@@ -5,11 +5,33 @@ local draw = draw
 local json = json
 
 -- =========================================================
--- ReactionTraining Remastered (V3.9 - Dynamic Slots & HUD Swap)
+-- ReactionTraining Remastered (V5.0 - FLAGS & LOGIC)
 -- =========================================================
 
 -- =========================================================
--- 0. GLOBAL VARIABLES & TEXTS
+-- CONFIGURATION FRAME METER
+-- =========================================================
+local STATE_NEUTRAL = 0
+local STATE_HURT    = 9
+local STATE_BLOCK   = 10
+local STATE_DI      = 11
+local STATE_DR      = 12 
+
+-- ETATS D'ATTAQUE (DÉCLENCHEURS)
+local ATTACK_STATES = { 
+    [7]=true,   -- Startup (Début du coup)
+    [8]=false,  -- Recovery (Ce n'est pas un début d'attaque)
+    [13]=true,  -- Active
+    [11]=true,  -- Drive Impact
+    [12]=false, -- Drive Rush ignoré
+    [1]=true,   -- Invincible
+    [2]=true,
+    [3]=true,
+    [4]=true
+}
+
+-- =========================================================
+-- GLOBAL VARIABLES
 -- =========================================================
 local TEXTS = {
     ready           = "READY",
@@ -22,10 +44,11 @@ local TEXTS = {
     timer_label     = "TIMER",
     infinite_label  = "INFINITE",
     
-    success         = "PUNISH SUCCESS!",
+    success         = "SUCCESS: INTERRUPT!",
     fail_block      = "FAIL: BLOCKED",
     fail_hit        = "FAIL: GOT HIT",
-    fail_whiff      = "FAIL: TOO SLOW / WHIFF",
+    fail_whiff      = "FAIL: WHIFF",
+    attack_inc      = "ATTACK...",
     
     mode_infinite   = "MODE: INFINITE",
     mode_timed      = "MODE: TIMED",
@@ -38,7 +61,7 @@ local TEXTS = {
     err_file        = "Err: File Access"
 }
 
--- Stockage de l'état réel lu en mémoire (Mannequin P2)
+-- Stockage de l'état réel lu en mémoire
 local real_slot_status = {}
 for i=1,8 do real_slot_status[i] = { is_valid=false, is_active=false } end
 
@@ -53,7 +76,7 @@ local BTN_LEFT   = 4
 local BTN_RIGHT  = 8
 
 -- =========================================================
--- 1. CONFIGURATION & STYLING
+-- CONFIGURATION & STYLING
 -- =========================================================
 local CONFIG_FILENAME = "TrainingReactions_Config.json"
 local LOG_FILENAME    = "TrainingReactions_SessionStats.txt"
@@ -86,7 +109,65 @@ local custom_font = { obj = nil, filename = "capcom_goji-udkakugoc80pro-db.ttf",
 local custom_font_timer = { obj = nil, filename = "SF6_college.ttf", loaded_size = 0, status = "Init..." }
 local res_watcher = { last_w = 0, last_h = 0, cooldown = 0 }
 
--- CHARACTER NAMES
+-- CONFIGURATION COMPLETE
+local user_config = {
+    session_mode = 0, 
+    timer_minutes = 3,
+    timer_mode_enabled = false, 
+    
+    hud_base_size = 20.24,
+    hud_auto_scale = true,
+    hud_n_global_y = -0.33799999952316284,     
+    hud_n_spacing_y = 0.028999999165534973,      
+    hud_n_spread_score = 0.09000000357627869,   
+    
+    hud_n_offset_score = 0.0,
+    hud_n_offset_total = 0.0,
+    hud_n_offset_timer = 0.0,    
+    hud_n_offset_status_y = 0.0, 
+    
+    timer_hud_y = -0.46,
+    timer_font_size = 80, 
+    timer_offset_x = 0.0,
+    
+    show_slot_stats = true,
+    show_debug_panel = false,
+    slot_visibility = { true, true, true, true, true, true, true, true },
+}
+
+-- Session State
+local session = {
+    is_running = false, is_paused = false, 
+    start_ts = os.time(), real_start_time = os.time(), time_rem = 0, last_clock = 0,
+    score = 0, total = 0, 
+    last_score = 0, score_col = COLORS.White, score_timer = 0,
+    status_msg = TEXTS.ready, export_msg = "",
+    feedback = { text = TEXTS.waiting, timer = 0, color = COLORS.White },
+    slot_stats = {},
+    
+    -- VARIABLES AUTO TRACKING
+    p1_max_frame = 0,
+    p2_max_frame = 0,
+    p2_is_end_flag = false, -- LE FAMEUX FLAG (Arg 5)
+    
+    p1_state = 0,
+    p2_state = 0,
+    is_tracking = false,
+    track_timer = 0,
+    outcome = "WAITING",
+    di_counter_success = false,
+    score_processed = false
+}
+for i=1,8 do session.slot_stats[i] = { attempts=0, success=0 } end
+
+-- GAME STATE INITIALIZATION
+local game_state = {
+    p1_id = -1, p2_id = -1,
+	last_valid_p1 = -1, last_valid_p2 = -1,
+    current_slot_index = -1, current_rec_state = 0, last_rec_state = 0
+}
+
+-- CHARACTERS
 local CHARACTER_NAMES = {
     [1] = "Ryu",        [2] = "Luke",       [3] = "Kimberly",   [4] = "Chun-Li",
     [5] = "Manon",      [6] = "Zangief",    [7] = "JP",         [8] = "Dhalsim",
@@ -99,69 +180,8 @@ local CHARACTER_NAMES = {
     [29] = "Elena",     [30] = "Viper"
 }
 
--- CONFIGURATION COMPLETE
-local user_config = {
-    session_mode = 0, 
-    timer_minutes = 3,
-    timer_mode_enabled = false, 
-    
-    -- Visual Settings
-    hud_base_size = 20.24,
-    hud_auto_scale = true,
-    hud_n_global_y = -0.33799999952316284,     
-    hud_n_spacing_y = 0.028999999165534973,      
-    hud_n_spread_score = 0.09000000357627869,   
-    
-    -- Offsets
-    hud_n_offset_score = 0.0,
-    hud_n_offset_total = 0.0,
-    hud_n_offset_timer = 0.0,    
-    hud_n_offset_status_y = 0.0, 
-    
-    -- Independent Timer
-    timer_hud_y = -0.46,
-    timer_font_size = 80, 
-    timer_offset_x = 0.0,
-    
-    -- Reaction Specifics
-    show_slot_stats = true,
-    show_debug_panel = false,
-    -- slot_visibility n'est plus utilisé manuellement, mais gardé pour compatibilité fichier json
-    slot_visibility = { true, true, true, true, true, true, true, true },
-}
-
--- Session State
-local session = {
-    is_running = false, is_paused = false, 
-    start_ts = os.time(), real_start_time = os.time(), time_rem = 0, last_clock = 0,
-    score = 0, total = 0, 
-    last_score = 0, score_col = COLORS.White, score_timer = 0,
-    status_msg = TEXTS.ready, export_msg = "",
-    feedback = { text = TEXTS.waiting, timer = 0, color = COLORS.White },
-    slot_stats = {} 
-}
-for i=1,8 do session.slot_stats[i] = { attempts=0, success=0 } end
-
--- GAME STATE INITIALIZATION
-local game_state = {
-    p1_id = -1, 
-    p2_id = -1,
-	last_valid_p1 = -1, 
-    last_valid_p2 = -1,
-    current_slot_index = -1, 
-    current_rec_state = 0, 
-	last_rec_state = 0,
-    monitored_slot_index = -1,
-    is_waiting_for_reset = false,
-    active_trigger_id = 0, 
-    contact_has_occurred = false
-}
-
-local p1_snapshot = { hp=0, hp_cap=0, action_id=0, hitstop=0, hit_timer=0, block_timer=0, max_hitstun=0, virtual_timer=0, prev_max_hitstun=0, is_blocking=false, total_active=0 }
-local p2_snapshot = { hp=0, hp_prev=0, action_id=0, frame_curr=0, frame_margin=0, hit_timer=0, block_timer=0, max_hitstun=0, virtual_timer=0, prev_max_hitstun=0, is_blocking=false, total_active=0 }
-
 -- =========================================================
--- 2. TOOLS & HELPERS
+-- TOOLS & HELPERS
 -- =========================================================
 
 local function get_character_name(id) 
@@ -170,8 +190,6 @@ local function get_character_name(id)
 end
 
 local function format_duration(s) if not s or s < 0 then s = 0 end return string.format("%02d:%02d", math.floor(s/60), math.floor(s%60)) end
-local function tooltip(text) if imgui.is_item_hovered() then imgui.set_tooltip(text) end end
-local function is_in_list(val, list) if not list then return false end for _, v in ipairs(list) do if v == val then return true end end return false end
 
 local function styled_button(label, style, text_col)
     imgui.push_style_color(21, style.base); imgui.push_style_color(22, style.hover); imgui.push_style_color(23, style.active)
@@ -222,15 +240,11 @@ local function update_real_slot_info()
         local fighter_list = rec_setting:get_field("FighterDataList")
         if not fighter_list then return end
 
--- ================= START FIX P2 ID =================
-        -- On utilise l'ID détecté par le Hook (game_state.p2_id)
-        -- Si P2 est Luke (ID 2), on charge l'Item 2.
         local target_id = game_state.p2_id
-        if target_id == -1 then return end -- Pas encore détecté
+        if target_id == -1 then return end
 
         local dummy = fighter_list:call("get_Item", target_id) 
         if not dummy then return end
-        -- ================= END FIX P2 ID =================
         local record_slots = dummy:get_field("RecordSlots")
         if not record_slots then return end
 
@@ -238,7 +252,6 @@ local function update_real_slot_info()
             local slot_obj = record_slots:call("get_Item", i)
             if slot_obj then
                 local lua_idx = i + 1
-                -- On lit la vérité directement depuis le jeu
                 real_slot_status[lua_idx].is_valid = slot_obj:get_field("IsValid")
                 real_slot_status[lua_idx].is_active = slot_obj:get_field("IsActive")
             end
@@ -289,127 +302,7 @@ end
 local function save_conf() json.dump_file(CONFIG_FILENAME, user_config) end
 
 -- =========================================================
--- SYSTEME DE FICHIERS SLOTS (MIX & MATCH ARCHITECTURE)
--- =========================================================
-
-local active_matchup_cache = { p1_name = "", p2_name = "", data = nil }
-
--- Génère le chemin pour les données "Agnostiques" de l'adversaire (Le Problème)
--- Format: TrainingReactions/DummyData/Dummy_Ryu.json
-local function get_dummy_filename(p2_id)
-    local p2_name = get_character_name(p2_id)
-    p2_name = p2_name:gsub("%s+", "_")
-    return "TrainingReactions/DummyData/Dummy_" .. p2_name .. ".json"
-end
-
--- Génère le chemin pour les données du Joueur (La Solution)
--- Format: TrainingReactions/PlayerData/Player_Ken.json
-local function get_player_filename(p1_id)
-    local p1_name = get_character_name(p1_id)
-    p1_name = p1_name:gsub("%s+", "_")
-    return "TrainingReactions/PlayerData/Player_" .. p1_name .. ".json"
-end
-
-local function load_matchup_data()
-    local p1_id = game_state.p1_id
-    local p2_id = game_state.p2_id
-    
-    if p1_id == -1 or p2_id == -1 then return end
-
-    local p1_name = get_character_name(p1_id)
-    local p2_name = get_character_name(p2_id)
-
-    -- Si on a déjà chargé ce matchup exact, on ne fait rien
-    if active_matchup_cache.p1_name == p1_name and active_matchup_cache.p2_name == p2_name and active_matchup_cache.data ~= nil then 
-        return 
-    end
-
-    -- 1. CHARGEMENT DES DONNÉES DU DUMMY (Agnostiques)
-    -- Ex: TrainingReactions/DummyData/Dummy_Ryu.json
-    local dummy_file = get_dummy_filename(p2_id)
-    local dummy_data = json.load_file(dummy_file) or {}
-    
-    -- 2. CHARGEMENT DES DONNÉES DU JOUEUR (Matchup Spécifique)
-    -- Ex: TrainingReactions/PlayerData/Player_Ken.json
-    local player_file = get_player_filename(p1_id)
-    local player_full_data = json.load_file(player_file) or {}
-    
-    -- On cherche la section "VS Ryu" dans "Player_Ken.json"
-    local player_vs_dummy_data = player_full_data[p2_name] or { slots = {} }
-
-    -- 3. FUSION (MIX & MATCH)
-    local combined_slots = {}
-    
-    for i=1, 8 do
-        combined_slots[i] = {}
-        
-        -- A. Partie DUMMY (Triggers & Options)
-        local d_slot = dummy_data.slots and dummy_data.slots[i] or {}
-        combined_slots[i].p2_trigger_ids = d_slot.p2_trigger_ids or {}
-        if d_slot.fail_on_whiff ~= nil then
-            combined_slots[i].fail_on_whiff = d_slot.fail_on_whiff
-        else
-            combined_slots[i].fail_on_whiff = true
-        end
-
-        -- B. Partie PLAYER (Tes Réponses)
-        local p_slot = player_vs_dummy_data.slots and player_vs_dummy_data.slots[i] or {}
-        combined_slots[i].valid_ids = p_slot.valid_ids or {0}
-    end
-
-    -- Mise en cache
-    active_matchup_cache.p1_name = p1_name
-    active_matchup_cache.p2_name = p2_name
-    active_matchup_cache.data = combined_slots
-    
-    -- (Optionnel) Création immédiate des fichiers si inexistants
-    -- save_matchup_data() 
-end
-
-local function save_matchup_data()
-    local p1_id = game_state.p1_id
-    local p2_id = game_state.p2_id
-    
-    if p1_id == -1 or p2_id == -1 or not active_matchup_cache.data then return end
-    
-    local p2_name = get_character_name(p2_id)
-
-    -- 1. SAUVEGARDE DUMMY (Trigger Agnostique)
-    local dummy_export = { slots = {} }
-    for i=1, 8 do
-        dummy_export.slots[i] = {
-            p2_trigger_ids = active_matchup_cache.data[i].p2_trigger_ids,
-            fail_on_whiff = active_matchup_cache.data[i].fail_on_whiff
-        }
-    end
-    json.dump_file(get_dummy_filename(p2_id), dummy_export)
-
-    -- 2. SAUVEGARDE PLAYER (Réponse Spécifique)
-    local player_file = get_player_filename(p1_id)
-    local player_full_data = json.load_file(player_file) or {}
-    
-    local player_slots_export = {}
-    for i=1, 8 do
-        player_slots_export[i] = {
-            valid_ids = active_matchup_cache.data[i].valid_ids
-        }
-    end
-    
-    -- Mise à jour de la section "VS OpponentName"
-    player_full_data[p2_name] = { slots = player_slots_export }
-    
-    json.dump_file(player_file, player_full_data)
-end
-
-local function get_active_slots_config()
-    load_matchup_data()
-    if active_matchup_cache.data then 
-        return active_matchup_cache.data, active_matchup_cache.p1_name, active_matchup_cache.p2_name
-    else 
-        return {}, "Loading...", "Loading..." 
-    end
-end-- =========================================================
--- 3. LOGIC & EXPORTS
+-- LOGIC & EXPORTS
 -- =========================================================
 
 local function set_feedback(msg, color, duration)
@@ -422,10 +315,12 @@ local function reset_session_stats()
     session.real_start_time = os.time()
     for i=1,8 do session.slot_stats[i] = { attempts=0, success=0 } end
     
-    game_state.is_waiting_for_reset = false
-    game_state.monitored_slot_index = -1
-    game_state.active_trigger_id = 0
-    game_state.contact_has_occurred = false
+    -- Reset Auto-Tracking Logic
+    session.is_tracking = false
+    session.track_timer = 0
+    session.outcome = "WAITING"
+    session.score_processed = false
+    session.di_counter_success = false
     
     if user_config.timer_mode_enabled then session.time_rem = user_config.timer_minutes * 60 else session.time_rem = 0 end
 end
@@ -436,20 +331,18 @@ local function export_log_excel()
     local now = os.date("%Y-%m-%d %H:%M:%S")
     local duration = os.difftime(os.time(), session.real_start_time)
     local mode = (user_config.session_mode == 1) and "TIMED" or "INFINITE"
-    local p1n = get_character_name(game_state.p1_id); local p2n = get_character_name(game_state.p2_id)
+    local p1n = get_character_name(game_state.p1_id)
+    local p2n = get_character_name(game_state.p2_id)
     local line = string.format("%s\t%s\t%s\t%s\t%s\t%d\t%d", now, format_duration(duration), mode, p1n, p2n, session.score, session.total)
-    for i=1,8 do
-        local s = session.slot_stats[i]
-        local pct = 0; if s.attempts > 0 then pct = (s.success / s.attempts) * 100 end
-        line = line .. string.format("\t%d\t%d\t%.1f%%", s.success, s.attempts, pct)
-    end
     file:write(line .. "\n"); file:close()
     session.export_msg = "Stats Exported!"
 end
 
 -- =========================================================
--- SDK HOOK FOR DETECTION
+-- SYSTEME DE HOOKS
 -- =========================================================
+
+-- 1. DETECTION ID JOUEURS (Pour scanner les slots)
 local sdk_cache = {
     BattleMediator = sdk.find_type_definition("app.FBattleMediator")
 }
@@ -475,10 +368,9 @@ if sdk_cache.BattleMediator then
                 if new_p1 ~= -1 and new_p2 ~= -1 then
                     if new_p1 ~= game_state.last_valid_p1 or new_p2 ~= game_state.last_valid_p2 then
                         reset_session_stats()
-                        local msg = string.format("NEW FIGHT: %s vs %s", get_character_name(new_p1), get_character_name(new_p2))
+                        local msg = string.format("VS: %s", get_character_name(new_p2))
                         set_feedback(msg, COLORS.Cyan, 3.0)
                         game_state.last_valid_p1 = new_p1; game_state.last_valid_p2 = new_p2
-                        active_matchup_cache = { p1_name = "", p2_name = "", data = nil }
                     end
                 end
             end
@@ -486,35 +378,40 @@ if sdk_cache.BattleMediator then
     end
 end
 
--- =========================================================
--- 4. CORE ENGINE
--- =========================================================
+-- 2. FRAME METER HOOKS (AVEC LES FLAGS isEnd)
+local t_fm = sdk.find_type_definition("app.training.UIWidget_TMFrameMeter")
 
-local function read_player_data(player_obj, snapshot_table)
-    if not player_obj then return end
-    snapshot_table.hp = player_obj:get_field("vital_new") or 0
-    snapshot_table.hp_cap = player_obj:get_field("heal_new") or 0
-    snapshot_table.hit_timer = player_obj:get_field("damage_time") or 0
-    snapshot_table.block_timer = player_obj:get_field("guard_time") or 0
-    snapshot_table.hitstop = player_obj:get_field("hit_stop") or 0
-    local damage_info = player_obj:get_field("damage_info")
-    if damage_info then snapshot_table.max_hitstun = damage_info:get_field("time") or 0 else snapshot_table.max_hitstun = 0 end
-    
-    local act_param = player_obj:get_field("mpActParam")
-    if act_param then
-        local act_part = act_param:get_field("ActionPart")
-        if act_part then
-            local engine = act_part:get_field("_Engine")
-            if engine then
-                snapshot_table.action_id = engine:call("get_ActionID") or 0
-                local frame_sfix = engine:call("get_ActionFrame"); local margin_sfix = engine:call("get_MarginFrame")
-                snapshot_table.frame_curr = frame_sfix and (tonumber(frame_sfix:call("ToString()")) or 0) or 0
-                snapshot_table.frame_margin = margin_sfix and (tonumber(margin_sfix:call("ToString()")) or 0) or 0
-            end
-        end
+if t_fm then
+    -- P1 (Toi)
+    local m_setup = t_fm:get_method("SetUpFrame")
+    if m_setup then
+        sdk.hook(m_setup, function(args)
+            local s = tonumber(tostring(sdk.to_int64(args[4])))
+            if s > session.p1_max_frame then session.p1_max_frame = s end
+        end, function(r) return r end)
     end
-    snapshot_table.is_blocking = (snapshot_table.block_timer > 0)
+
+    -- P2 (Adversaire)
+    local m_setdown = t_fm:get_method("SetDownFrame")
+    if m_setdown then
+        sdk.hook(m_setdown, function(args)
+            local s = tonumber(tostring(sdk.to_int64(args[4])))
+            
+            -- ARGUMENT 5 = LE FLAG "isEnd" (C'est lui qu'on voulait !)
+            local is_end = (sdk.to_int64(args[5]) & 1) == 1
+            
+            if s > session.p2_max_frame then session.p2_max_frame = s end
+            
+            -- Si le flag isEnd est vrai, on le mémorise pour cette frame
+            if is_end then session.p2_is_end_flag = true end
+            
+        end, function(r) return r end)
+    end
 end
+
+-- =========================================================
+-- CORE ENGINE
+-- =========================================================
 
 local function is_game_in_menu()
     local pm = sdk.get_managed_singleton("app.PauseManager")
@@ -528,6 +425,18 @@ local function is_game_in_menu()
     return false
 end
 
+local function update_slot_stats(is_success)
+    if game_state.current_slot_index >= 1 and game_state.current_slot_index <= 8 then
+        local stats = session.slot_stats[game_state.current_slot_index]
+        if stats then
+            stats.attempts = stats.attempts + 1
+            if is_success then
+                stats.success = stats.success + 1
+            end
+        end
+    end
+end
+
 local function update_logic()
     local now = os.clock(); local dt = now - session.last_clock; session.last_clock = now
     
@@ -536,7 +445,11 @@ local function update_logic()
     
     if session.feedback.timer > 0 then
         session.feedback.timer = session.feedback.timer - dt
-        if session.feedback.timer <= 0 then if not game_state.is_waiting_for_reset then session.feedback.text = TEXTS.waiting; session.feedback.color = COLORS.Grey end end
+        if session.feedback.timer <= 0 then 
+            if not session.is_tracking then 
+                session.feedback.text = TEXTS.waiting; session.feedback.color = COLORS.Grey 
+            end 
+        end
     end
 
     local game_paused = is_game_in_menu()
@@ -560,7 +473,6 @@ local function update_logic()
             game_state.current_slot_index = (g_data:get_field("SlotID") or -1) + 1
             game_state.current_rec_state = tonumber(tostring(g_data:get_field("State"))) or 0
             
-            -- LOGIQUE AUTO-START
             if user_config.session_mode == 1 and not session.is_running then
                 if game_state.last_rec_state == 0 and game_state.current_rec_state ~= 0 then
                     reset_session_stats()
@@ -574,112 +486,109 @@ local function update_logic()
         end
     end
 
-    local gBattle = sdk.find_type_definition("gBattle")
-    if not gBattle then return end
-    local player_manager = gBattle:get_field("Player"):get_data(nil)
-    if not player_manager then return end
-    local p1_obj = player_manager:call("getPlayer", 0); local p2_obj = player_manager:call("getPlayer", 1)
-    if not p1_obj or not p2_obj then return end
-
-    read_player_data(p1_obj, p1_snapshot)
-    read_player_data(p2_obj, p2_snapshot)
-
-    if p2_snapshot.hp_prev == 0 and p2_snapshot.hp > 0 then p2_snapshot.hp_prev = p2_snapshot.hp end
-    if p1_snapshot.hp == p1_snapshot.hp_cap then
-        if p1_snapshot.max_hitstun > 0 and p1_snapshot.hit_timer == 0 and p1_snapshot.block_timer == 0 and p1_snapshot.max_hitstun ~= p1_snapshot.prev_max_hitstun then
-            p1_snapshot.virtual_timer = p1_snapshot.max_hitstun
+    -- =========================================================
+    -- LOGIQUE FLAGS & STATES (PURE)
+    -- =========================================================
+    
+    -- 1. Récupération des Données
+    session.p1_state = session.p1_max_frame
+    session.p2_state = session.p2_max_frame
+    
+    local p2_ended = session.p2_is_end_flag -- Le flag "Fin de coup" officiel
+    
+    -- Reset pour la prochaine frame
+    session.p1_max_frame = 0 
+    session.p2_max_frame = 0
+    session.p2_is_end_flag = false 
+    
+    local p1 = session.p1_state
+    local p2 = session.p2_state
+    
+    -- 2. Machine à États
+    
+    -- CAS A : Début d'une VRAIE attaque
+    if not session.is_tracking then
+        -- Condition 1: P2 est dans un état d'attaque valide (7, 13, 11...)
+        -- Condition 2: P1 n'est PAS déjà en Hit/Block (Protection contre le double compte)
+        if ATTACK_STATES[p2] and p2 ~= 0 then
+            
+            if p1 ~= STATE_HURT and p1 ~= STATE_BLOCK then
+                session.is_tracking = true
+                session.track_timer = 0
+                set_feedback(TEXTS.attack_inc, COLORS.Yellow, 0)
+                session.di_counter_success = false
+                session.score_processed = false
+            end
         end
-    else p1_snapshot.virtual_timer = 0 end
-    if p1_snapshot.virtual_timer > 0 then p1_snapshot.virtual_timer = p1_snapshot.virtual_timer - 1 end
-    
-    local p2_val_changed = (p2_snapshot.max_hitstun ~= p2_snapshot.prev_max_hitstun)
-    local p2_damaged = (p2_snapshot.hp < p2_snapshot.hp_prev)
-    if p2_snapshot.max_hitstun > 0 and p2_snapshot.hit_timer == 0 and p2_snapshot.block_timer == 0 then
-        if p2_val_changed or p2_damaged then p2_snapshot.virtual_timer = p2_snapshot.max_hitstun end
-    end
-    if p2_snapshot.virtual_timer > 0 then p2_snapshot.virtual_timer = p2_snapshot.virtual_timer - 1 end
-    
-    p1_snapshot.prev_max_hitstun = p1_snapshot.max_hitstun; p2_snapshot.prev_max_hitstun = p2_snapshot.max_hitstun; p2_snapshot.hp_prev = p2_snapshot.hp
-    p1_snapshot.total_active = p1_snapshot.hit_timer + p1_snapshot.block_timer + p1_snapshot.virtual_timer
-    p2_snapshot.total_active = p2_snapshot.hit_timer + p2_snapshot.block_timer + p2_snapshot.virtual_timer
-    if p1_snapshot.hitstop > 0 then game_state.contact_has_occurred = true end
+        
+    -- CAS B : Pendant l'attaque
+    else
+        session.track_timer = session.track_timer + 1
 
-    -- STATE MACHINE
-    if game_state.is_waiting_for_reset then
-        if p1_snapshot.total_active == 0 and p2_snapshot.total_active == 0 then
-            game_state.is_waiting_for_reset = false
-            set_feedback(TEXTS.ready, COLORS.Grey, 0)
-            game_state.active_trigger_id = 0; game_state.monitored_slot_index = -1; game_state.contact_has_occurred = false
+        if not session.score_processed then
+            
+            -- P2 Interrompu -> SUCCESS
+            if p2 == STATE_HURT then
+                 set_feedback(TEXTS.success, COLORS.Green, 2.0)
+                 session.score = session.score + 1
+                 session.total = session.total + 1
+                 update_slot_stats(true) 
+                 session.score_processed = true
+            
+            -- P1 Touché -> FAIL
+            elseif p1 == STATE_HURT then
+                set_feedback(TEXTS.fail_hit, COLORS.Red, 2.0)
+                session.score = session.score - 1
+                session.total = session.total + 1
+                update_slot_stats(false) 
+                session.score_processed = true
+
+            -- P1 Bloque -> FAIL
+            elseif p1 == STATE_BLOCK then
+                set_feedback(TEXTS.fail_block, COLORS.Red, 2.0)
+                session.score = session.score - 1
+                session.total = session.total + 1
+                update_slot_stats(false) 
+                session.score_processed = true
+                
+            -- DI vs DI -> SUCCESS
+            elseif p2 == STATE_DI and p1 == STATE_DI then
+                set_feedback("DI COUNTER!", COLORS.Green, 2.0)
+                session.di_counter_success = true
+                session.score_processed = true 
+            end
         end
-        return
-    end
-    
-    local active_slots, _, _ = get_active_slots_config()
-    
-    if game_state.current_slot_index >= 1 and game_state.current_slot_index <= 8 then
-        local s = active_slots[game_state.current_slot_index]
-        if s and s.p2_trigger_ids and is_in_list(p2_snapshot.action_id, s.p2_trigger_ids) then
-            game_state.active_trigger_id = p2_snapshot.action_id
-        end
-    end
-    
-    -- DÉMARRAGE DU MONITORING (Avec Protection Replay)
-    if game_state.monitored_slot_index == -1 and game_state.current_slot_index >= 1 and game_state.current_slot_index <= 8 then
-        if game_state.current_rec_state ~= 0 then
-            local slot_conf = active_slots[game_state.current_slot_index]
-            if slot_conf and slot_conf.p2_trigger_ids and #slot_conf.p2_trigger_ids > 0 then
-                if is_in_list(p2_snapshot.action_id, slot_conf.p2_trigger_ids) and p2_snapshot.frame_curr < 5 then
-                    game_state.monitored_slot_index = game_state.current_slot_index
-                    game_state.active_trigger_id = p2_snapshot.action_id
-                    game_state.contact_has_occurred = false
-                    set_feedback("...", COLORS.Cyan, 0)
+        
+        -- FIN DE SEQUENCE
+        -- On utilise LE FLAG (Arg 5) ou le retour à 0
+        if p2 == STATE_NEUTRAL or p2_ended then
+            session.is_tracking = false
+            
+            -- Filtre anti-glitch (> 2 frames)
+            if session.track_timer > 2 then
+                if not session.score_processed then
+                    if session.di_counter_success then
+                        set_feedback("DI COUNTER!", COLORS.Green, 2.0)
+                    else
+                        -- C'est un WHIFF -> FAIL
+                        set_feedback(TEXTS.fail_whiff, COLORS.Red, 2.0)
+                        session.score = session.score - 1
+                        session.total = session.total + 1
+                        update_slot_stats(false) 
+                        session.score_processed = true
+                    end
                 end
-            end
-        end
-    end
-    
-    if game_state.monitored_slot_index ~= -1 then
-        local slot_conf = active_slots[game_state.monitored_slot_index]
-        local stats = session.slot_stats[game_state.monitored_slot_index]
-        
-        if p1_snapshot.is_blocking then
-            session.score = session.score - 1; session.total = session.total + 1; if stats then stats.attempts = stats.attempts + 1 end
-            game_state.is_waiting_for_reset = true; set_feedback(TEXTS.fail_block, COLORS.Red, 2.0); return
-        end
-        
-        if p1_snapshot.total_active > 0 and (p1_snapshot.hp == p1_snapshot.hp_cap or p1_snapshot.hit_timer > 0) then
-            session.score = session.score - 1; session.total = session.total + 1; if stats then stats.attempts = stats.attempts + 1 end
-            game_state.is_waiting_for_reset = true; set_feedback(TEXTS.fail_hit, COLORS.Red, 2.0); return
-        end
-        
-        if p2_snapshot.total_active > 0 and not p2_snapshot.is_blocking then
-            local condition_met = true
-            if slot_conf.valid_ids and slot_conf.valid_ids[1] ~= 0 then
-                if not is_in_list(p1_snapshot.action_id, slot_conf.valid_ids) then condition_met = false end
-            end
-            if condition_met then
-                session.score = session.score + 1; session.total = session.total + 1
-                if stats then stats.attempts = stats.attempts + 1; stats.success = stats.success + 1 end
-                game_state.is_waiting_for_reset = true; game_state.monitored_slot_index = -1
-                set_feedback(TEXTS.success, COLORS.Green, 2.0); return
-            end
-        end
-        
-        if slot_conf.fail_on_whiff and p2_snapshot.total_active == 0 then
-            local is_whiff = false
-            if p2_snapshot.action_id == game_state.active_trigger_id then
-                if p2_snapshot.frame_curr > p2_snapshot.frame_margin and p2_snapshot.frame_margin > 5 then is_whiff = true end
-            elseif p2_snapshot.action_id ~= game_state.active_trigger_id and not game_state.contact_has_occurred then is_whiff = true end
-            if is_whiff then
-                session.score = session.score - 1; session.total = session.total + 1; if stats then stats.attempts = stats.attempts + 1 end
-                game_state.is_waiting_for_reset = true; set_feedback(TEXTS.fail_whiff, COLORS.Red, 2.0); return
+            else
+                if not session.score_processed then
+                    set_feedback(TEXTS.waiting, COLORS.Grey, 0)
+                end
             end
         end
     end
 end
 
 -- =========================================================
--- 5. INPUT HANDLING
+-- INPUT HANDLING
 -- =========================================================
 local last_input_mask = 0
 
@@ -735,7 +644,7 @@ local function handle_input()
 end
 
 -- =========================================================
--- 6. HUD DRAWING & TICKER MASKING
+-- HUD DRAWING
 -- =========================================================
 
 local function draw_text_overlay(text, x, y, color)
@@ -836,7 +745,7 @@ re.on_frame(function()
 
     if cur_mode ~= 1 then return end
     
-    update_real_slot_info() -- Mise à jour de la mémoire Mannequin
+    update_real_slot_info() 
     handle_input()
     update_logic()
     handle_resolution_change()
@@ -873,7 +782,7 @@ re.on_frame(function()
             local msg_pause = TEXTS.pause_overlay
             local w_mp = imgui.calc_text_size(msg_pause).x; draw_text_overlay(msg_pause, center_x - w_mp/2, top_y, COLORS.Yellow)
         else
-            -- 1. BIG TIMER
+            -- 1. TIMER
             if user_config.session_mode == 1 then
                 local time_show = session.is_running and session.time_rem or (user_config.timer_minutes * 60)
                 local t_txt = format_duration(time_show)
@@ -903,19 +812,17 @@ re.on_frame(function()
             local x_tot = center_x + spread_score_px + off_total_px
             draw_text_overlay(tot_txt, x_tot, top_y, COLORS.White)
 
-            -- CALCULS POSITIONS POUR INVERSION LIGNE 2 et 3
             local line_2_y = top_y + spacing_y_px + off_status_px
             local line_3_y = line_2_y + spacing_y_px
 
-            -- 3. SLOT STATS (MAINTENANT EN LIGNE 2)
+            -- 3. SLOT STATS (FIX HUD)
             if user_config.show_slot_stats then
                 local slots_str = ""
                 local has_visible_slots = false
                 
                 for i=1,8 do
                     local status = real_slot_status[i]
-                    -- On affiche seulement si Valide ET Actif
-                    if status.is_valid and status.is_active then
+                    if (status.is_valid and status.is_active) or session.slot_stats[i].attempts > 0 then
                         local s = session.slot_stats[i]
                         local pct = 0
                         if s.attempts > 0 then pct = (s.success / s.attempts) * 100 end
@@ -933,7 +840,7 @@ re.on_frame(function()
                 draw_text_overlay(slots_str, center_x - w_sl/2, line_2_y, COLORS.White)
             end
 
-            -- 4. STATUS MESSAGE (MAINTENANT EN LIGNE 3 - TOUT EN BAS)
+            -- 4. STATUS MESSAGE
             local msg = session.feedback.text
             local w_msg = imgui.calc_text_size(msg).x
             draw_text_overlay(msg, center_x - w_msg/2, line_3_y, session.feedback.color)
@@ -946,13 +853,13 @@ re.on_frame(function()
 end)
 
 -- =========================================================
--- 7. MENU UI
+-- MENU UI
 -- =========================================================
 
 re.on_draw_ui(function()
     if _G.CurrentTrainerMode ~= 1 then return end
 
-    if imgui.tree_node("Reaction Trainer Remastered (V3.9)") then
+    if imgui.tree_node("Reaction Trainer Remastered (V5.0 - Logic)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
             imgui.text("SHORTCUTS (Hold SELECT or R3):")
@@ -1001,56 +908,11 @@ re.on_draw_ui(function()
         end
 
 		if styled_header("--- SLOTS & MATCHUPS ---", UI_THEME.hdr_slots) then
-            local slots, p1n, p2n = get_active_slots_config()
-            imgui.text_colored(string.format("Current Action : %s (%s) vs %s (%s)" , p1n, p1_snapshot.action_id,  p2n, p2_snapshot.action_id), COLORS.Cyan)
+            imgui.text_colored("AUTOMATIC TRACKING ACTIVE", COLORS.Green)
+            imgui.text("No manual configuration needed.")
+            imgui.text("Slot stats are updated automatically based on active slot.")
             
-            local c_st, v_st = imgui.checkbox("Show Stats on HUD", user_config.show_slot_stats); if c_st then user_config.show_slot_stats = v_st; save_conf() end
-            
-			imgui.separator()
-            imgui.text_colored("Slot visibility is handled automatically by game settings.", COLORS.Grey)
-            imgui.spacing()           
-
-            for i=1,8 do
-                -- AFFICHAGE DYNAMIQUE DU TITRE SELON L'ETAT
-                local status_txt = (real_slot_status[i].is_valid and real_slot_status[i].is_active) and " [ACTIVE]" or " [OFF]"
-                local col_node = (real_slot_status[i].is_valid and real_slot_status[i].is_active) and COLORS.Green or COLORS.White
-                
-                imgui.push_style_color(0, col_node)
-                local node_open = imgui.tree_node("Slot " .. i .. " Config" .. status_txt)
-                imgui.pop_style_color(1)
-
-                if node_open then
-                    local s = slots[i]
-                    local cw, vw = imgui.checkbox("Fail on Whiff", s.fail_on_whiff); if cw then s.fail_on_whiff = vw; save_matchup_data() end
-                    
-                    imgui.text("Opponent Action IDs (Trigger):")
-                    local del_p2 = -1
-                    if s.p2_trigger_ids then
-                        for idx, val in ipairs(s.p2_trigger_ids) do
-                            imgui.push_id(i*100 + idx); local ci, vi = input_int_keyboard("##p2", val); 
-                            if ci then s.p2_trigger_ids[idx] = vi; save_matchup_data() end; 
-                            imgui.pop_id()
-                            imgui.same_line(); imgui.push_id(i*100 + idx + 50); if imgui.button("X") then del_p2 = idx end; imgui.pop_id()
-                        end
-                    end
-                    if del_p2 ~= -1 then table.remove(s.p2_trigger_ids, del_p2); save_matchup_data() end 
-                    if imgui.button("Add ID##P2"..i) then table.insert(s.p2_trigger_ids, 0); save_matchup_data() end 
-                    
-                    imgui.text("Your Punish IDs (Valid Response):")
-                    local del_p1 = -1
-                    if s.valid_ids then
-                        for idx, val in ipairs(s.valid_ids) do
-                            imgui.push_id(i*200 + idx); local ci, vi = input_int_keyboard("##p1", val); 
-                            if ci then s.valid_ids[idx] = vi; save_matchup_data() end; 
-                            imgui.pop_id()
-                            imgui.same_line(); imgui.push_id(i*200 + idx + 50); if imgui.button("X") then del_p1 = idx end; imgui.pop_id()
-                        end
-                    end
-                    if del_p1 ~= -1 then table.remove(s.valid_ids, del_p1); save_matchup_data() end 
-                    if imgui.button("Add ID##P1"..i) then table.insert(s.valid_ids, 0); save_matchup_data() end 
-                    imgui.tree_pop()
-                end
-            end
+            local c_st, v_st = imgui.checkbox("Show Slot Percentages on HUD", user_config.show_slot_stats); if c_st then user_config.show_slot_stats = v_st; save_conf() end
         end
         
         if styled_header("--- UI LAYOUT ADJUSTMENTS ---", UI_THEME.hdr_layout) then
@@ -1076,8 +938,11 @@ re.on_draw_ui(function()
         
         if styled_header("--- DEBUG PANEL ---", UI_THEME.hdr_debug) then
             local cd, vd = imgui.checkbox("Enable Overlay", user_config.show_debug_panel); if cd then user_config.show_debug_panel = vd; save_conf() end
-            imgui.text("P2 Frame: " .. p2_snapshot.frame_curr)
-            if game_state.monitored_slot_index ~= -1 then imgui.text_colored("MONITORING SLOT: " .. game_state.monitored_slot_index, COLORS.Green) end
+            imgui.text("P1 State: " .. session.p1_state)
+            imgui.text("P2 State: " .. session.p2_state)
+            imgui.text("Active Slot: " .. game_state.current_slot_index)
+            imgui.text("P2 ID: " .. game_state.p2_id)
+            imgui.text("Flag End: " .. tostring(session.p2_is_end_flag))
         end
         
         imgui.tree_pop()
@@ -1085,9 +950,8 @@ re.on_draw_ui(function()
 
     if user_config.show_debug_panel then
         imgui.begin_window("Debug Overlay", true, 0)
-        imgui.text("REC State: " .. game_state.current_rec_state)
-        imgui.text("Trigger ID: " .. game_state.active_trigger_id)
-        imgui.text("P2 Total Active: " .. p2_snapshot.total_active)
+        imgui.text("Auto Logic Active")
+        imgui.text("Tracking: " .. tostring(session.is_tracking))
         imgui.end_window()
     end
 end)
