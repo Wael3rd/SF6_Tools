@@ -106,7 +106,7 @@ local user_config = {
     timer_mode_enabled = false, 
     
     -- Visual Settings
-    hud_base_size = 60,
+    hud_base_size = 20.24,
     hud_auto_scale = true,
     hud_n_global_y = -0.35,      
     hud_n_spacing_y = 0.05,      
