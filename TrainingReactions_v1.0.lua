@@ -108,9 +108,9 @@ local user_config = {
     -- Visual Settings
     hud_base_size = 20.24,
     hud_auto_scale = true,
-    hud_n_global_y = -0.35,      
-    hud_n_spacing_y = 0.05,      
-    hud_n_spread_score = 0.15,   
+    hud_n_global_y = -0.33799999952316284,     
+    hud_n_spacing_y = 0.028999999165534973,      
+    hud_n_spread_score = 0.09000000357627869,   
     
     -- Offsets
     hud_n_offset_score = 0.0,
@@ -119,8 +119,8 @@ local user_config = {
     hud_n_offset_status_y = 0.0, 
     
     -- Independent Timer
-    timer_hud_y = -0.45,
-    timer_font_size = 60, 
+    timer_hud_y = -0.46,
+    timer_font_size = 80, 
     timer_offset_x = 0.0,
     
     -- Reaction Specifics

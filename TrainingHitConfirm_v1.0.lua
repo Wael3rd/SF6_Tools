@@ -131,7 +131,7 @@ local last_trainer_mode = 0
 
 local user_config = {
     session_mode = 0, 
-    timer_minutes = 3,
+    timer_minutes = 5,
     timer_mode_enabled = false, 
     show_timer_hud = true,
     show_matrix_debug = false, 
@@ -143,10 +143,10 @@ local user_config = {
     show_status_line = true,
     hud_base_size = 20.24,
     hud_auto_scale = true,
-    hud_n_global_y = -0.35,
-    hud_n_spacing_y = 0.05,
-    hud_n_spread_score = 0.15,
-    hud_n_spread_stats = 0.15,
+    hud_n_global_y = -0.337,
+    hud_n_spacing_y = 0.02800000086426735,
+    hud_n_spread_score = 0.09000000357627869,
+    hud_n_spread_stats = 0.09000000357627869,
     hud_n_offset_score = 0.0,
     hud_n_offset_total = 0.0,
     hud_n_offset_timer = 0.0,
@@ -155,12 +155,12 @@ local user_config = {
     hud_n_offset_status_y = 0.0,
 	-- INDEPENDENT TIMER CONFIGURATION
     -- Y Position: -0.45 is usually top center (replacing Ticker)
-    timer_hud_y = -0.45,      
+    timer_hud_y = -0.46,      
     -- Font size for Timer only
-    timer_font_size = 60,     
+    timer_font_size = 80,     
     -- Horizontal offset if needed
     timer_offset_x = 0.0,
-    str_trigger_list = "13", str_success_list = "13", str_break_list = "7",
+    str_trigger_list = "13", str_success_list = "13", str_break_list = "7,2,1",
     str_dmg_hit_list = "3", str_dmg_block_list = "30",
     hit_p2_gauge = 1, success_p1_gauge = 1, persistence_text = 80, persistence_val = 80,
     show_index = true,
