@@ -49,8 +49,9 @@ end
 -- =========================================================
 -- 2. MEMORY ACCESS
 -- =========================================================
-local function get_slots_access()
-    if current_p2_id == -1 then return nil, "Unknown Character ID" end
+local function get_slots_access(target_id)
+    local use_id = target_id or current_p2_id
+    if use_id == -1 then return nil, "Unknown Character ID" end
 
     local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
     if not mgr then return nil, "No Manager" end
@@ -60,8 +61,8 @@ local function get_slots_access()
     local fighter_list = rec_func:get_field("_tData"):get_field("RecordSetting"):get_field("FighterDataList")
     if not fighter_list then return nil, "No Fighter List" end
 
-    local dummy_data = fighter_list:call("get_Item", current_p2_id)
-    if not dummy_data then return nil, "Data not found for ID " .. current_p2_id end
+    local dummy_data = fighter_list:call("get_Item", use_id)
+    if not dummy_data then return nil, "Data not found for ID " .. use_id end
 
     return dummy_data:get_field("RecordSlots"), "OK"
 end
@@ -104,12 +105,13 @@ end
 -- =========================================================
 -- 4. EXPORT (FULL 8 SLOTS + WEIGHT)
 -- =========================================================
-local function export_json_compressed()
-    local slots, err = get_slots_access()
+local function export_json_compressed(target_id)
+    local use_id = target_id or current_p2_id
+    local slots, err = get_slots_access(use_id)
     if not slots then return "Error: " .. tostring(err) end
 
     local export_data = {}
-    local p2_name = get_char_name(current_p2_id)
+    local p2_name = get_char_name(use_id)
 
     for i=0, 7 do
         local slot = slots:call("get_Item", i)
@@ -156,15 +158,35 @@ local function export_json_compressed()
     return "Saved Full Backup: "..p2_name..".json"
 end
 
+local function export_all_characters()
+    local count_ok = 0
+    local log = ""
+    
+    -- Iterate through all valid IDs in CHARACTER_NAMES (which are indices 1 to 30 roughly)
+    -- We can iterate the table pairs or a fixed range. CHARACTER_NAMES keys are integers.
+    for id, name in pairs(CHARACTER_NAMES) do
+        local res = export_json_compressed(id)
+        if string.find(res, "Saved") then
+            count_ok = count_ok + 1
+        else
+            log = log .. "\n" .. name .. ": " .. res
+        end
+    end
+    
+    if log ~= "" then return "Done ("..count_ok.."). Errors:"..log
+    else return "All Characters Exported ("..count_ok..")" end
+end
+
 -- =========================================================
 -- 5. IMPORT (CLEANER + WEIGHT)
 -- =========================================================
-local function import_json_compressed()
-    local p2_name = get_char_name(current_p2_id)
+local function import_json_compressed(target_id)
+    local use_id = target_id or current_p2_id
+    local p2_name = get_char_name(use_id)
     local data = json.load_file(DATA_FOLDER.."/"..p2_name..".json")
     if not data then return "File not found: "..p2_name..".json" end
 
-    local slots, err = get_slots_access()
+    local slots, err = get_slots_access(use_id)
     if not slots then return "Error: " .. tostring(err) end
 
     local count = 0
@@ -230,6 +252,32 @@ local function import_json_compressed()
     if log ~= "" then return "Partial ("..count..")."..log else return "Loaded: "..p2_name..".json" end
 end
 
+local function import_all_characters()
+    local count_ok = 0
+    local log = ""
+
+    for id, name in pairs(CHARACTER_NAMES) do
+        -- Check if file exists by trying to load it (or just relying on import_json_compressed check)
+        -- Optimization: We could check file existence first if json.load_file is heavy, 
+        -- but import_json_compressed returns specific string on missing file.
+        
+        local res = import_json_compressed(id)
+        -- We only care if it successfully loaded or if it failed for a reason OTHER than "File not found"
+        -- Actually user wants to import "ALL the folder", so if a file exists it should be imported.
+        
+        if string.find(res, "Loaded") then
+            count_ok = count_ok + 1
+        elseif string.find(res, "File not found") then
+            -- Silent skip
+        else
+            log = log .. "\n" .. name .. ": " .. res
+        end
+    end
+
+    if log ~= "" then return "Done ("..count_ok.."). Errors:"..log
+    else return "All Available Files Imported ("..count_ok..")" end
+end
+
 -- =========================================================
 -- UI DRAW
 -- =========================================================
@@ -245,14 +293,25 @@ re.on_draw_ui(function()
 
         if current_p2_id ~= -1 then
             if imgui.button("EXPORT " .. real_name .. ".json") then
-                local ok, res = pcall(export_json_compressed)
+                local ok, res = pcall(export_json_compressed, nil)
                 status_msg = ok and res or ("Crash: "..tostring(res))
             end
             
             imgui.same_line()
             
             if imgui.button("IMPORT " .. real_name .. ".json") then
-                local ok, res = pcall(import_json_compressed)
+                local ok, res = pcall(import_json_compressed, nil)
+                status_msg = ok and res or ("Crash: "..tostring(res))
+            end
+
+            imgui.separator()
+            if imgui.button("EXPORT ALL (Bulk)") then
+                local ok, res = pcall(export_all_characters)
+                status_msg = ok and res or ("Crash: "..tostring(res))
+            end
+            imgui.same_line()
+            if imgui.button("IMPORT ALL (Bulk)") then
+                 local ok, res = pcall(import_all_characters)
                 status_msg = ok and res or ("Crash: "..tostring(res))
             end
         else
