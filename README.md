@@ -12,6 +12,8 @@ There are 2 types of training modes
 1. Hit Confirm
 2. Reaction Drills
 
+You need to add both fonts in \Steam\steamapps\common\Street Fighter 6\reframework\fonts
+
 # Slots Managers
 
 A tool to Export / Import as text files the recording slots in training mode
