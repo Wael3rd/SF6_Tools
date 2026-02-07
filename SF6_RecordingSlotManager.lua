@@ -24,7 +24,7 @@ local CHARACTER_NAMES = {
 }
 
 -- =========================================================
--- 1. DETECTEUR D'IDENTITÉ
+-- 1. IDENTITY DETECTOR
 -- =========================================================
 local t_mediator = sdk.find_type_definition("app.FBattleMediator")
 if t_mediator then
@@ -47,7 +47,7 @@ local function get_char_name(id)
 end
 
 -- =========================================================
--- 2. ACCÈS MÉMOIRE
+-- 2. MEMORY ACCESS
 -- =========================================================
 local function get_slots_access()
     if current_p2_id == -1 then return nil, "Unknown Character ID" end
@@ -114,7 +114,7 @@ local function export_json_compressed()
     for i=0, 7 do
         local slot = slots:call("get_Item", i)
         local frames = slot:get_field("Frame")
-        local weight = slot:get_field("Weight") or 0 -- LE TAUX DE SELECTION
+        local weight = slot:get_field("Weight") or 0 -- SELECTION RATE
         local is_valid = slot:get_field("IsValid")
         
         local slot_entry = { 
@@ -123,7 +123,7 @@ local function export_json_compressed()
         }
 
         if is_valid and frames > 0 then
-            -- Slot Rempli
+            -- Filled Slot
             local buffer = slot:get_field("InputData"):get_field("buff")
             local sequence = {}
             local current_val = -1
@@ -145,7 +145,7 @@ local function export_json_compressed()
             slot_entry.timeline = sequence
             slot_entry.empty = false
         else
-            -- Slot Vide (mais on l'exporte quand même pour pouvoir l'écraser à l'import)
+            -- Empty Slot (exported anyway to overwrite on import)
             slot_entry.empty = true
         end
 
@@ -173,21 +173,21 @@ local function import_json_compressed()
     for _, s_data in ipairs(data) do
         local slot = slots:call("get_Item", s_data.id - 1)
         
-        -- 1. GESTION DU WEIGHT (TAUX)
+        -- 1. WEIGHT MANAGEMENT (RATE)
         if s_data.weight then
             slot:set_field("Weight", s_data.weight)
         end
 
-        -- 2. GESTION DU CONTENU
+        -- 2. CONTENT MANAGEMENT
         if s_data.empty then
-            -- NETTOYAGE COMPLET DU SLOT
+            -- COMPLETE SLOT CLEANING
             slot:set_field("IsValid", false)
             slot:set_field("Frame", 0)
             slot:set_field("IsActive", false)
             slot:get_field("InputData"):set_field("Num", 0)
-            -- On ne compte pas ça comme un "chargement réussi" mais comme un "reset"
+            -- This doesn't count as a "successful load" but as a "reset"
         else
-            -- CHARGEMENT STANDARD
+            -- STANDARD LOADING
             local buffer = slot:get_field("InputData"):get_field("buff")
             local needed = 0
             if s_data.timeline then
@@ -269,7 +269,7 @@ re.on_draw_ui(function()
                         local s = slots:call("get_Item", i)
                         local f = s:get_field("Frame")
                         local a = s:get_field("IsActive")
-                        local w = s:get_field("Weight") or 0 -- Affichage du Weight
+                        local w = s:get_field("Weight") or 0 -- Weight Display
                         
                         local line = string.format("Slot %d: %4d frames [Rate: %d] [%s]", i+1, f, w, a and "ON" or "OFF")
                         local col = (f > 0) and 0xFF00FF00 or 0xFF888888
