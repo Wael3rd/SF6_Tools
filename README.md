@@ -17,3 +17,7 @@ You need to add both fonts in \Steam\steamapps\common\Street Fighter 6\reframewo
 # Slots Managers
 
 A tool to Export / Import as text files the recording slots in training mode
+
+# Slots Editor
+
+Simple HTML file to Upload / Edit / Save the Training Replay Slots. Supports controllers.
