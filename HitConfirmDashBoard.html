@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Hit Confirm Training</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f111a;
+            --bg-panel: #1a1d29;
+            --accent-cyan: #00ffff;
+            --accent-green: #00ff9d;
+            --accent-red: #ff3860;
+            --accent-orange: #ff9f43;
+            --text-main: #e0e6ed;
+            --text-muted: #8b9bb4;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Rajdhani', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--bg-panel);
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 2rem;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+
+        /* File Input Styling */
+        .file-upload {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            border: 1px solid var(--accent-cyan);
+            background: rgba(0, 255, 255, 0.1);
+            color: var(--accent-cyan);
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .custom-file-upload:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-dark);
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
+
+        /* Dashboard Grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            opacity: 0.1; /* Hidden until loaded */
+            transition: opacity 0.5s ease;
+        }
+
+        .dashboard.loaded {
+            opacity: 1;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border-left: 4px solid transparent;
+        }
+
+        .card-kpi {
+            text-align: center;
+        }
+
+        .card-kpi h3 {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .kpi-value {
+            font-size: 2.5rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .kpi-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Specific Border Colors */
+        .border-blue { border-left-color: var(--accent-cyan); }
+        .border-green { border-left-color: var(--accent-green); }
+        .border-red { border-left-color: var(--accent-red); }
+        .border-orange { border-left-color: var(--accent-orange); }
+
+        /* Chart Containers */
+        .chart-container {
+            grid-column: span 2;
+            height: 350px;
+            position: relative;
+        }
+        
+        /* Centered Chart (Ratio) */
+        .chart-centered {
+            grid-column: 2 / span 2; /* Centers the chart in the middle columns */
+            height: 350px;
+        }
+
+        .chart-full {
+            grid-column: span 4;
+            height: 400px;
+        }
+
+        /* Table */
+        .table-container {
+            grid-column: span 4;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-panel);
+            border-radius: 8px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #2d3246;
+        }
+
+        th {
+            background-color: #232736;
+            color: var(--accent-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        /* Utility */
+        .text-green { color: var(--accent-green); }
+        .text-red { color: var(--accent-red); }
+        .text-cyan { color: var(--accent-cyan); }
+        .text-orange { color: var(--accent-orange); }
+
+        /* Empty State */
+        #empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">SF6 TRAINING // HIT CONFIRM</div>
+        <div class="file-upload">
+            <label for="file-input" class="custom-file-upload">
+                📥 IMPORT "HitConfirm_SessionStats.txt"
+            </label>
+            <input id="file-input" type="file" accept=".txt" />
+        </div>
+    </header>
+
+    <div id="empty-state">
+        <h2>Waiting for data...</h2>
+        <p>Import your statistics file to visualize the report.</p>
+    </div>
+
+    <div class="dashboard" id="main-dashboard">
+        
+        <div class="card card-kpi border-blue">
+            <h3>TOTAL SESSIONS</h3>
+            <div class="kpi-value text-cyan" id="kpi-sessions">0</div>
+            <div class="kpi-sub">Played</div>
+        </div>
+        <div class="card card-kpi border-green">
+            <h3>AVERAGE ACCURACY</h3>
+            <div class="kpi-value text-green" id="kpi-avg-acc">0%</div>
+            <div class="kpi-sub">Global</div>
+        </div>
+        <div class="card card-kpi border-orange">
+            <h3>BEST SCORE</h3>
+            <div class="kpi-value text-orange" id="kpi-best-score">0</div>
+            <div class="kpi-sub" id="kpi-best-score-date">-</div>
+        </div>
+        <div class="card card-kpi border-red">
+            <h3>TOTAL VOLUME</h3>
+            <div class="kpi-value text-red" id="kpi-total-hits">0</div>
+            <div class="kpi-sub">Interactions (Hits + Blocks)</div>
+        </div>
+
+        <div class="card chart-full border-blue">
+            <h3>Accuracy Evolution (%)</h3>
+            <canvas id="chart-evolution"></canvas>
+        </div>
+
+        <div class="card chart-centered border-green">
+            <h3>Hits vs Blocks (Ratio)</h3>
+            <canvas id="chart-ratio"></canvas>
+        </div>
+
+        <div class="card table-container border-blue">
+            <h3>Session History</h3>
+            <table id="stats-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Mode</th>
+                        <th>Score</th>
+                        <th>Total Inputs</th>
+                        <th>Success</th>
+                        <th>Global Accuracy</th>
+                        <th>Hit %</th>
+                        <th>Block %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- COLORS ---
+        const colors = {
+            cyan: 'rgba(0, 255, 255, 1)',
+            cyanLow: 'rgba(0, 255, 255, 0.2)',
+            green: 'rgba(0, 255, 157, 1)',
+            greenLow: 'rgba(0, 255, 157, 0.2)',
+            red: 'rgba(255, 56, 96, 1)',
+            orange: 'rgba(255, 159, 67, 1)',
+            white: '#e0e6ed'
+        };
+
+        // --- STATE ---
+        let charts = {};
+
+        // --- EVENT LISTENER ---
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                processData(content);
+            };
+            reader.readAsText(file);
+        });
+
+        // --- PARSING & PROCESSING ---
+        function processData(text) {
+            const lines = text.trim().split('\n');
+            const data = [];
+            
+            // Skip Header (Row 0) and parse lines
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const cols = line.split('\t');
+                
+                // NEW FORMAT (Without Diff): 
+                // 0:DATE, 1:TIME, 2:MODE, 3:DURATION
+                // 4:REAL_TOTAL, 5:TOT_SUCC, 6:TOT_PCT, 
+                // 7:SCORE, 8:HIT_TOT, 9:HIT_OK, 10:HIT_PCT, 
+                // 11:BLK_TOT, 12:BLK_OK, 13:BLK_PCT
+                
+                if (cols.length < 14) continue; // Basic validation
+
+                const entry = {
+                    date: cols[0],
+                    time: cols[1],
+                    fullDate: `${cols[0]} ${cols[1]}`,
+                    mode: cols[2],
+                    duration: cols[3],
+                    // Column 4 (Diff) is gone, so indices shift -1
+                    total: parseInt(cols[4]),
+                    success: parseInt(cols[5]),
+                    pct_global: parseFloat(cols[6].replace('%', '')),
+                    score: parseInt(cols[7]),
+                    hit_tot: parseInt(cols[8]),
+                    hit_ok: parseInt(cols[9]),
+                    pct_hit: parseFloat(cols[10].replace('%', '')),
+                    blk_tot: parseInt(cols[11]),
+                    blk_ok: parseInt(cols[12]),
+                    pct_blk: parseFloat(cols[13].replace('%', ''))
+                };
+                data.push(entry);
+            }
+
+            if (data.length > 0) {
+                updateDashboard(data);
+                document.getElementById('empty-state').style.display = 'none';
+                document.getElementById('main-dashboard').classList.add('loaded');
+            } else {
+                alert("No valid data found or incorrect format (Did you remove the Difficulty column?).");
+            }
+        }
+
+        // --- UPDATE DASHBOARD ---
+        function updateDashboard(data) {
+            updateKPIs(data);
+            updateTable(data);
+            updateCharts(data);
+        }
+
+        function updateKPIs(data) {
+            // Total Sessions
+            document.getElementById('kpi-sessions').innerText = data.length;
+
+            // Average Accuracy
+            const avgAcc = data.reduce((acc, curr) => acc + curr.pct_global, 0) / data.length;
+            document.getElementById('kpi-avg-acc').innerText = avgAcc.toFixed(2) + '%';
+
+            // Best Score
+            let best = data.reduce((prev, current) => (prev.score > current.score) ? prev : current);
+            document.getElementById('kpi-best-score').innerText = best.score;
+            document.getElementById('kpi-best-score-date').innerText = best.fullDate;
+
+            // Total Interactions
+            const totalInputs = data.reduce((acc, curr) => acc + curr.total, 0);
+            document.getElementById('kpi-total-hits').innerText = totalInputs.toLocaleString();
+        }
+
+        function updateTable(data) {
+            const tbody = document.querySelector('#stats-table tbody');
+            tbody.innerHTML = '';
+
+            // Reverse to show newest first
+            [...data].reverse().forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.fullDate}</td>
+                    <td>${row.mode}</td>
+                    <td style="font-weight:bold; color:var(--accent-orange)">${row.score}</td>
+                    <td>${row.total}</td>
+                    <td class="text-green">${row.success}</td>
+                    <td>${row.pct_global.toFixed(2)}%</td>
+                    <td>${row.pct_hit.toFixed(1)}%</td>
+                    <td>${row.pct_blk.toFixed(1)}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateCharts(data) {
+            // Destroy existing charts if update
+            if(charts.evo) charts.evo.destroy();
+            if(charts.ratio) charts.ratio.destroy();
+
+            // 1. Evolution Chart (Line)
+            const ctxEvo = document.getElementById('chart-evolution').getContext('2d');
+            charts.evo = new Chart(ctxEvo, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date + '\n' + d.time),
+                    datasets: [
+                        {
+                            label: 'Hit %',
+                            data: data.map(d => d.pct_hit),
+                            borderColor: colors.orange,
+                            backgroundColor: colors.orange,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Block %',
+                            data: data.map(d => d.pct_blk),
+                            borderColor: colors.cyan,
+                            backgroundColor: colors.cyan,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Global %',
+                            data: data.map(d => d.pct_global),
+                            borderColor: colors.green,
+                            backgroundColor: 'rgba(0, 255, 157, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: colors.white } }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            max: 100, 
+                            grid: { color: '#2d3246' },
+                            ticks: { color: colors.white }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: colors.white, maxRotation: 45, minRotation: 45 }
+                        }
+                    }
+                }
+            });
+
+            // 2. Ratio Hit/Block (Doughnut) - Now Centered
+            const totHit = data.reduce((acc, curr) => acc + curr.hit_tot, 0);
+            const totBlk = data.reduce((acc, curr) => acc + curr.blk_tot, 0);
+
+            const ctxRatio = document.getElementById('chart-ratio').getContext('2d');
+            charts.ratio = new Chart(ctxRatio, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Hits (Confirm)', 'Blocks (Safe)'],
+                    datasets: [{
+                        data: [totHit, totBlk],
+                        backgroundColor: [colors.orange, colors.cyan],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: colors.white } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

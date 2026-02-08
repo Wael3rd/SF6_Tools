@@ -298,7 +298,6 @@ local function export_session_stats()
     local duration_str = string.format("%02d:%02d", math.floor(duration/60), duration%60)
 
     local mode_str = "TIMED" -- Always TIMED
-    local diff_str = "MEDIUM"; if user_config.difficulty == 1 then diff_str = "EASY" elseif user_config.difficulty == 3 then diff_str = "HARD" end
 
     local real_total_attempts = session.hit_tot + session.blk_tot
     local total_success = session.hit_ok + session.blk_ok
@@ -308,8 +307,8 @@ local function export_session_stats()
     local total_pct = 0; if real_total_attempts > 0 then total_pct = (total_success / real_total_attempts) * 100 end
 
     local line = string.format(
-        "%s\t%s\t%s\t%s\t%s\t%d\t%d\t%.2f%%\t%d\t%d\t%d\t%.2f%%\t%d\t%d\t%.2f%%\n",
-        date_str, time_str, mode_str, duration_str, diff_str,
+        "%s\t%s\t%s\t%s\t%d\t%d\t%.2f%%\t%d\t%d\t%d\t%.2f%%\t%d\t%d\t%.2f%%\n",
+        date_str, time_str, mode_str, duration_str,
         real_total_attempts, total_success, total_pct, session.score,
         session.hit_tot, session.hit_ok, h_pct,
         session.blk_tot, session.blk_ok, b_pct
