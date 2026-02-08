@@ -42,7 +42,7 @@ local TEXTS = {
     score_label     = "SCORE: ",
     total_label     = "TOTAL: ",
     timer_label     = "TIMER",
-    infinite_label  = "INFINITE",
+    mode_label      = "REACTION DRILLS",
     
     success         = "SUCCESS: INTERRUPT!",
     fail_block      = "FAIL: BLOCKED",
@@ -57,6 +57,7 @@ local TEXTS = {
     stats_exported  = "STATS EXPORTED",
     reset_done      = "RESET DONE",
     
+    reset_prompt    = "PRESS (SELECT OR R3) + LEFT TO RESET",
     pause_overlay   = "PAUSED : PRESS (SELECT OR R3) + RIGHT TO RESUME",
     err_file        = "Err: File Access"
 }
@@ -111,7 +112,7 @@ local res_watcher = { last_w = 0, last_h = 0, cooldown = 0 }
 
 -- CONFIGURATION COMPLETE
 local user_config = {
-    session_mode = 0, 
+    session_mode = 1, 
     timer_minutes = 3,
     timer_mode_enabled = false, 
     
@@ -313,6 +314,11 @@ end
 local function reset_session_stats()
     session.score = 0; session.total = 0; session.is_running = false; session.is_paused = false
     session.real_start_time = os.time()
+
+    -- AJOUTS POUR LA LOGIQUE TIME UP
+    session.is_time_up = false 
+    session.time_up_delay = 0 
+    -- FIN AJOUTS
     for i=1,8 do session.slot_stats[i] = { attempts=0, success=0 } end
     
     -- Reset Auto-Tracking Logic
@@ -443,6 +449,17 @@ local function update_logic()
     if session.score ~= session.last_score then session.score_col = (session.score > session.last_score) and COLORS.Green or COLORS.Red; session.score_timer = 30; session.last_score = session.score end
     if session.score_timer > 0 then session.score_timer = session.score_timer - 1; if session.score_timer <= 0 then session.score_col = COLORS.White end end
     
+    -- === LOGIQUE TIME UP (BLOCKER) ===
+    if session.is_time_up then
+        session.time_up_delay = (session.time_up_delay or 0) + dt
+        -- Après 1 seconde, on affiche le message de Reset en jaune
+        if session.time_up_delay > 1.0 then
+            set_feedback(TEXTS.reset_prompt, COLORS.Yellow, 0)
+        end
+        return -- STOP : On ne track plus rien, on sort de la fonction
+    end
+    -- =================================
+
     if session.feedback.timer > 0 then
         session.feedback.timer = session.feedback.timer - dt
         if session.feedback.timer <= 0 then 
@@ -457,9 +474,15 @@ local function update_logic()
     if session.is_running and not game_paused and user_config.timer_mode_enabled and not session.is_paused then
         session.time_rem = session.time_rem - dt
         if session.time_rem <= 0 then 
-            session.time_rem = 0; session.is_running = false; 
+            session.time_rem = 0
+            session.is_running = false
+            -- ACTIVATION DU TIME UP
+            session.is_time_up = true
+            session.time_up_delay = 0
+            
             export_log_excel()
-            set_feedback(TEXTS.time_up, COLORS.Red, 0) 
+            -- Message immédiat (Rouge) avant le Jaune
+            set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0) 
         end
     end
 
@@ -473,7 +496,7 @@ local function update_logic()
             game_state.current_slot_index = (g_data:get_field("SlotID") or -1) + 1
             game_state.current_rec_state = tonumber(tostring(g_data:get_field("State"))) or 0
             
-            if user_config.session_mode == 1 and not session.is_running then
+            if user_config.session_mode == 1 and not session.is_running and not session.is_time_up then
                 if game_state.last_rec_state == 0 and game_state.current_rec_state ~= 0 then
                     reset_session_stats()
                     session.is_running = true
@@ -490,13 +513,10 @@ local function update_logic()
     -- LOGIQUE FLAGS & STATES (PURE)
     -- =========================================================
     
-    -- 1. Récupération des Données
     session.p1_state = session.p1_max_frame
     session.p2_state = session.p2_max_frame
+    local p2_ended = session.p2_is_end_flag
     
-    local p2_ended = session.p2_is_end_flag -- Le flag "Fin de coup" officiel
-    
-    -- Reset pour la prochaine frame
     session.p1_max_frame = 0 
     session.p2_max_frame = 0
     session.p2_is_end_flag = false 
@@ -504,14 +524,8 @@ local function update_logic()
     local p1 = session.p1_state
     local p2 = session.p2_state
     
-    -- 2. Machine à États
-    
-    -- CAS A : Début d'une VRAIE attaque
     if not session.is_tracking then
-        -- Condition 1: P2 est dans un état d'attaque valide (7, 13, 11...)
-        -- Condition 2: P1 n'est PAS déjà en Hit/Block (Protection contre le double compte)
         if ATTACK_STATES[p2] and p2 ~= 0 then
-            
             if p1 ~= STATE_HURT and p1 ~= STATE_BLOCK then
                 session.is_tracking = true
                 session.track_timer = 0
@@ -520,38 +534,28 @@ local function update_logic()
                 session.score_processed = false
             end
         end
-        
-    -- CAS B : Pendant l'attaque
     else
         session.track_timer = session.track_timer + 1
 
         if not session.score_processed then
-            
-            -- P2 Interrompu -> SUCCESS
             if p2 == STATE_HURT then
                  set_feedback(TEXTS.success, COLORS.Green, 2.0)
                  session.score = session.score + 1
                  session.total = session.total + 1
                  update_slot_stats(true) 
                  session.score_processed = true
-            
-            -- P1 Touché -> FAIL
             elseif p1 == STATE_HURT then
                 set_feedback(TEXTS.fail_hit, COLORS.Red, 2.0)
                 session.score = session.score - 1
                 session.total = session.total + 1
                 update_slot_stats(false) 
                 session.score_processed = true
-
-            -- P1 Bloque -> FAIL
             elseif p1 == STATE_BLOCK then
                 set_feedback(TEXTS.fail_block, COLORS.Red, 2.0)
                 session.score = session.score - 1
                 session.total = session.total + 1
                 update_slot_stats(false) 
                 session.score_processed = true
-                
-            -- DI vs DI -> SUCCESS
             elseif p2 == STATE_DI and p1 == STATE_DI then
                 set_feedback("DI COUNTER!", COLORS.Green, 2.0)
                 session.di_counter_success = true
@@ -559,18 +563,13 @@ local function update_logic()
             end
         end
         
-        -- FIN DE SEQUENCE
-        -- On utilise LE FLAG (Arg 5) ou le retour à 0
         if p2 == STATE_NEUTRAL or p2_ended then
             session.is_tracking = false
-            
-            -- Filtre anti-glitch (> 2 frames)
             if session.track_timer > 2 then
                 if not session.score_processed then
                     if session.di_counter_success then
                         set_feedback("DI COUNTER!", COLORS.Green, 2.0)
                     else
-                        -- C'est un WHIFF -> FAIL
                         set_feedback(TEXTS.fail_whiff, COLORS.Red, 2.0)
                         session.score = session.score - 1
                         session.total = session.total + 1
@@ -586,7 +585,6 @@ local function update_logic()
         end
     end
 end
-
 -- =========================================================
 -- INPUT HANDLING
 -- =========================================================
@@ -610,34 +608,53 @@ local function handle_input()
         return ((active_buttons & target_mask) == target_mask) and not ((last_input_mask & target_mask) == target_mask)
     end
 
-    if is_func_combo_pressed(BTN_UP) then
-        user_config.session_mode = (user_config.session_mode == 1) and 2 or 1
-        user_config.timer_mode_enabled = (user_config.session_mode == 1)
-        reset_session_stats()
-        local msg = (user_config.session_mode == 2) and TEXTS.mode_infinite or TEXTS.mode_timed
-        set_feedback(msg, COLORS.Cyan, 1.0); save_conf()
-    end
-
-    if is_func_combo_pressed(BTN_LEFT) then
-        if user_config.session_mode == 1 then
-            if not session.is_running then
-                session.is_running = true; session.is_paused = false; reset_session_stats(); session.time_rem = user_config.timer_minutes * 60; session.is_running = true; set_feedback(TEXTS.started, COLORS.Green, 1.0)
-            else export_log_excel(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0) end
-        elseif user_config.session_mode == 2 then
-            export_log_excel(); set_feedback(TEXTS.stats_exported, COLORS.Green, 1.0)
+    -- 1. REGLAGE TIMER (Bloqué si Time Up)
+    if not session.is_running and not session.is_time_up then 
+        if is_func_combo_pressed(BTN_UP) then
+            user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
+            session.time_rem = user_config.timer_minutes * 60
+            set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0); save_conf()
+        end
+        if is_func_combo_pressed(BTN_DOWN) then
+            user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
+            session.time_rem = user_config.timer_minutes * 60
+            set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0); save_conf()
         end
     end
 
+    -- 2. GAUCHE : STOP & EXPORT OU RESET (Logique modifiée)
+    if is_func_combo_pressed(BTN_LEFT) then
+        -- CAS A : C'est un TIME UP -> On RESET juste (car déjà exporté à 00:00)
+        if session.is_time_up then
+            reset_session_stats()
+            set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
+            
+        -- CAS B : Arrêt manuel avec score -> EXPORT + RESET
+        elseif session.total > 0 then
+            export_log_excel()
+            reset_session_stats()
+            set_feedback(TEXTS.stopped_export, COLORS.Red, 1.5)
+            
+        -- CAS C : Pas de données -> JUSTE RESET
+        else
+            reset_session_stats()
+            set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
+        end
+    end
+
+    -- 3. DROITE : START / PAUSE
     if is_func_combo_pressed(BTN_RIGHT) then
-        if user_config.session_mode == 1 and session.is_running then
+        -- On interdit le Start si on est en attente de Reset (Time Up)
+        if not session.is_running and not session.is_time_up then
+            reset_session_stats()
+            session.time_rem = user_config.timer_minutes * 60
+            session.is_running = true
+            session.is_paused = false
+            set_feedback(TEXTS.started, COLORS.Green, 1.0)
+        elseif session.is_running then
             session.is_paused = not session.is_paused
             set_feedback(session.is_paused and TEXTS.paused or TEXTS.resumed, COLORS.Yellow, 1.0)
         end
-    end
-    
-    if is_func_combo_pressed(BTN_DOWN) then
-        user_config.show_debug_panel = not user_config.show_debug_panel
-        set_feedback("DEBUG PANEL: " .. (user_config.show_debug_panel and "ON" or "OFF"), COLORS.White, 1.0)
     end
 
     last_input_mask = active_buttons
@@ -744,6 +761,20 @@ re.on_frame(function()
     last_trainer_mode = cur_mode
 
     if cur_mode ~= 1 then return end
+
+    -- AJOUT : LOGIQUE DE PAUSE PERSISTANTE (COPIÉ DE HITCONFIRM)
+    local pm = sdk.get_managed_singleton("app.PauseManager")
+    if pm then
+        local field = pm:get_type_definition():get_field("_CurrentPauseBit")
+        if field then
+            local val = field:get_data(pm)
+            -- Si le jeu n'est pas en gameplay actif (131072), on force la pause du script
+            if val and tostring(val) ~= "131072" then 
+                if session.is_running and not session.is_paused then session.is_paused = true end
+            end
+        end
+    end
+    -- FIN AJOUT
     
     update_real_slot_info() 
     handle_input()
@@ -758,12 +789,13 @@ re.on_frame(function()
     imgui.set_next_window_pos(Vector2f.new(0, 0)); imgui.set_next_window_size(Vector2f.new(sw, sh))
     local win_flags = IMGUI_FLAGS.NoTitleBar | IMGUI_FLAGS.NoResize | IMGUI_FLAGS.NoMove | IMGUI_FLAGS.NoScrollbar | IMGUI_FLAGS.NoMouseInputs | IMGUI_FLAGS.NoNav | IMGUI_FLAGS.NoBackground
 
-    if imgui.begin_window("HUD_Reaction", true, win_flags) then
+if imgui.begin_window("HUD_Reaction", true, win_flags) then
         if custom_font.obj then imgui.push_font(custom_font.obj) end
         
         local center_x = sw / 2
         local center_y = sh / 2
         
+        -- === CES LIGNES MANQUAIENT PROBABLEMENT ===
         if type(user_config.hud_n_global_y) ~= "number" then user_config.hud_n_global_y = -0.35 end
         local top_y = center_y + (user_config.hud_n_global_y * sh)
         
@@ -777,75 +809,82 @@ re.on_frame(function()
         local off_total_px = (type(user_config.hud_n_offset_total) == "number" and user_config.hud_n_offset_total or 0.0) * sw
         local off_timer_px = (type(user_config.hud_n_offset_timer) == "number" and user_config.hud_n_offset_timer or 0.0) * sw
         local off_status_px = (type(user_config.hud_n_offset_status_y) == "number" and user_config.hud_n_offset_status_y or 0.0) * sh
+        -- ===========================================
 
-        if session.is_running and session.is_paused then
-            local msg_pause = TEXTS.pause_overlay
-            local w_mp = imgui.calc_text_size(msg_pause).x; draw_text_overlay(msg_pause, center_x - w_mp/2, top_y, COLORS.Yellow)
-        else
-            -- 1. TIMER
-            if user_config.session_mode == 1 then
-                local time_show = session.is_running and session.time_rem or (user_config.timer_minutes * 60)
-                local t_txt = format_duration(time_show)
-                if custom_font.obj then imgui.pop_font() end
-                if custom_font_timer.obj then imgui.push_font(custom_font_timer.obj) end
-                local w_t = imgui.calc_text_size(t_txt).x
-                local t_col = COLORS.White
-                if session.time_rem < 10 and session.is_running then t_col = COLORS.Red end
-                local t_hud_y = (type(user_config.timer_hud_y) == "number" and user_config.timer_hud_y or -0.45)
-                local t_off_x = (type(user_config.timer_offset_x) == "number" and user_config.timer_offset_x or 0.0)
-                local timer_y_final = center_y + (t_hud_y * sh)
-                local timer_x_final = center_x - (w_t / 2) + (t_off_x * sw)
-                draw_timer_outline(t_txt, timer_x_final, timer_y_final, t_col)
-                if custom_font_timer.obj then imgui.pop_font() end
-                if custom_font.obj then imgui.push_font(custom_font.obj) end
-            end
-
-            -- 2. SCORE & TOTAL
-            local s_txt = TEXTS.score_label .. session.score; local tot_txt = TEXTS.total_label .. session.total
-            local t_mode = (user_config.session_mode == 1) and TEXTS.timer_label or TEXTS.infinite_label
-            local w_s = imgui.calc_text_size(s_txt).x
-            local x_s = center_x - spread_score_px - w_s + off_score_px
-            draw_text_overlay(s_txt, x_s, top_y, session.score_col)
-            local w_m = imgui.calc_text_size(t_mode).x
-            local x_m = center_x - (w_m / 2) + off_timer_px
-            draw_text_overlay(t_mode, x_m, top_y, COLORS.White)
-            local x_tot = center_x + spread_score_px + off_total_px
-            draw_text_overlay(tot_txt, x_tot, top_y, COLORS.White)
-
-            local line_2_y = top_y + spacing_y_px + off_status_px
-            local line_3_y = line_2_y + spacing_y_px
-
-            -- 3. SLOT STATS (FIX HUD)
-            if user_config.show_slot_stats then
-                local slots_str = ""
-                local has_visible_slots = false
-                
-                for i=1,8 do
-                    local status = real_slot_status[i]
-                    if (status.is_valid and status.is_active) or session.slot_stats[i].attempts > 0 then
-                        local s = session.slot_stats[i]
-                        local pct = 0
-                        if s.attempts > 0 then pct = (s.success / s.attempts) * 100 end
-                        
-                        slots_str = slots_str .. string.format("S%d:%.0f%%  ", i, pct)
-                        has_visible_slots = true
-                    end
-                end
-                
-                if not has_visible_slots then
-                    slots_str = "WAITING FOR ACTIVE SLOTS..."
-                end
-
-                local w_sl = imgui.calc_text_size(slots_str).x
-                draw_text_overlay(slots_str, center_x - w_sl/2, line_2_y, COLORS.White)
-            end
-
-            -- 4. STATUS MESSAGE
-            local msg = session.feedback.text
-            local w_msg = imgui.calc_text_size(msg).x
-            draw_text_overlay(msg, center_x - w_msg/2, line_3_y, session.feedback.color)
+        -- 1. TIMER (TOUJOURS VISIBLE)
+        if user_config.session_mode == 1 then
+            local time_show = session.is_running and session.time_rem or (user_config.timer_minutes * 60)
+            local t_txt = format_duration(time_show)
+            
+            if custom_font.obj then imgui.pop_font() end
+            if custom_font_timer.obj then imgui.push_font(custom_font_timer.obj) end
+            
+            local w_t = imgui.calc_text_size(t_txt).x
+            local t_col = COLORS.White
+            if session.is_paused then t_col = COLORS.Yellow
+            elseif session.time_rem < 10 and session.is_running then t_col = COLORS.Red end
+            
+            local t_hud_y = (type(user_config.timer_hud_y) == "number" and user_config.timer_hud_y or -0.45)
+            local t_off_x = (type(user_config.timer_offset_x) == "number" and user_config.timer_offset_x or 0.0)
+            local timer_y_final = center_y + (t_hud_y * sh)
+            local timer_x_final = center_x - (w_t / 2) + (t_off_x * sw)
+            
+            draw_timer_outline(t_txt, timer_x_final, timer_y_final, t_col)
+            
+            if custom_font_timer.obj then imgui.pop_font() end
+            if custom_font.obj then imgui.push_font(custom_font.obj) end
         end
+
+        -- 2. SCORE & TOTAL
+        local s_txt = TEXTS.score_label .. session.score
+        local tot_txt = TEXTS.total_label .. session.total
+        local t_mode = TEXTS.mode_label
         
+        local w_s = imgui.calc_text_size(s_txt).x
+        local x_s = center_x - spread_score_px - w_s + off_score_px
+        draw_text_overlay(s_txt, x_s, top_y, session.score_col)
+
+        local w_m = imgui.calc_text_size(t_mode).x
+        local x_m = center_x - (w_m / 2) + off_timer_px
+        local mode_col = COLORS.White
+        if session.is_paused then mode_col = COLORS.Yellow end
+        draw_text_overlay(t_mode, x_m, top_y, mode_col)
+
+        local x_tot = center_x + spread_score_px + off_total_px
+        draw_text_overlay(tot_txt, x_tot, top_y, COLORS.White)
+
+        local line_2_y = top_y + spacing_y_px + off_status_px
+        local line_3_y = line_2_y + spacing_y_px
+
+        -- 3. SLOT STATS
+        if user_config.show_slot_stats then
+            local slots_str = ""
+            local has_visible_slots = false
+            for i=1,8 do
+                local status = real_slot_status[i]
+                if (status.is_valid and status.is_active) or session.slot_stats[i].attempts > 0 then
+                    local s = session.slot_stats[i]
+                    local pct = 0
+                    if s.attempts > 0 then pct = (s.success / s.attempts) * 100 end
+                    slots_str = slots_str .. string.format("S%d:%.0f%%  ", i, pct)
+                    has_visible_slots = true
+                end
+            end
+            if not has_visible_slots then slots_str = "WAITING FOR ACTIVE SLOTS..." end
+            local w_sl = imgui.calc_text_size(slots_str).x
+            draw_text_overlay(slots_str, center_x - w_sl/2, line_2_y, COLORS.White)
+        end
+
+        -- 4. STATUS
+        local final_msg = session.feedback.text
+        local final_color = session.feedback.color
+        if session.is_running and session.is_paused then
+            final_msg = TEXTS.pause_overlay
+            final_color = COLORS.Yellow
+        end
+        local w_msg = imgui.calc_text_size(final_msg).x
+        draw_text_overlay(final_msg, center_x - w_msg/2, line_3_y, final_color)
+
         if custom_font.obj then imgui.pop_font() end
         imgui.end_window()
     end
@@ -862,25 +901,13 @@ re.on_draw_ui(function()
     if imgui.tree_node("Reaction Trainer Remastered (V5.0 - Logic)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
-            imgui.text("SHORTCUTS (Hold SELECT or R3):")
-            imgui.text("- + UP : Switch Mode (Timed/Infinite)"); imgui.text("- + LEFT : Start / Stop / Export")
-            imgui.text("- + RIGHT : Pause / Resume"); imgui.text("- + DOWN : Toggle Debug Panel")
-        end
+imgui.text("SHORTCUTS (Hold SELECT or R3):")
+imgui.text("- (Func) + UP / DOWN : Adjust Timer"); 
+imgui.text("- (Func) + LEFT : Stop / Export / Reset"); 
+imgui.text("- (Func) + RIGHT : Start / Pause")
+    end
 
         if styled_header("--- SESSION CONFIGURATION ---", UI_THEME.hdr_session) then
-            imgui.text("MODE:"); imgui.same_line()
-            local btn_timed_style = (user_config.session_mode == 1) and UI_THEME.btn_green or UI_THEME.btn_neutral
-            if styled_button("TIMED", btn_timed_style) then 
-                user_config.session_mode = 1; user_config.timer_mode_enabled = true; reset_session_stats(); save_conf() 
-            end
-            imgui.same_line()
-            local btn_inf_style = (user_config.session_mode == 2) and UI_THEME.btn_green or UI_THEME.btn_neutral
-            if styled_button("INFINITE", btn_inf_style) then 
-                user_config.session_mode = 2; user_config.timer_mode_enabled = false; reset_session_stats(); session.is_running = true; session.is_paused = false; save_conf() 
-            end
-            
-            imgui.separator()
-            if user_config.session_mode == 1 then
                 imgui.text("DURATION:"); imgui.same_line(); 
                 if styled_button("-", UI_THEME.btn_neutral) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
                 imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " min"); imgui.same_line(); 
@@ -900,11 +927,6 @@ re.on_draw_ui(function()
                     imgui.same_line(); 
                     if styled_button(session.is_paused and "RESUME" or "PAUSE", UI_THEME.btn_neutral) then session.is_paused = not session.is_paused end
                 end
-            else
-                if styled_button("RESET SCORES", UI_THEME.btn_red) then reset_session_stats(); session.is_running = true end
-                imgui.same_line();
-                if styled_button("EXPORT LOG", UI_THEME.btn_green) then export_log_excel(); set_feedback(TEXTS.stats_exported, COLORS.Green, 1.0) end
-            end
         end
 
 		if styled_header("--- SLOTS & MATCHUPS ---", UI_THEME.hdr_slots) then
