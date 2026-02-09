@@ -5,7 +5,7 @@ local draw = draw
 local json = json
 
 -- =========================================================
--- ReactionTraining Remastered (V5.0 - FLAGS & LOGIC)
+-- ReactionTraining Remastered (V6.2 - MOD2 LOGIC STOP)
 -- =========================================================
 
 -- =========================================================
@@ -19,8 +19,8 @@ local STATE_DR      = 12
 
 -- ETATS D'ATTAQUE (DÉCLENCHEURS)
 local ATTACK_STATES = { 
-    [7]=true,   -- Startup (Début du coup)
-    [8]=false,  -- Recovery (Ce n'est pas un début d'attaque)
+    [7]=true,   -- Startup
+    [8]=false,  -- Recovery
     [13]=true,  -- Active
     [11]=true,  -- Drive Impact
     [12]=false, -- Drive Rush ignoré
@@ -29,52 +29,6 @@ local ATTACK_STATES = {
     [3]=true,
     [4]=true
 }
-
--- =========================================================
--- GLOBAL VARIABLES
--- =========================================================
-local TEXTS = {
-    ready           = "READY",
-    waiting         = "WAITING",
-    paused          = "PAUSED",
-    resumed         = "RESUMED",
-    time_up         = "TIME UP!",
-    score_label     = "SCORE: ",
-    total_label     = "TOTAL: ",
-    timer_label     = "TIMER",
-    mode_label      = "REACTION DRILLS",
-    
-    success         = "SUCCESS: INTERRUPT!",
-    fail_block      = "FAIL: BLOCKED",
-    fail_hit        = "FAIL: GOT HIT",
-    fail_whiff      = "FAIL: WHIFF",
-    attack_inc      = "ATTACK...",
-    
-    mode_infinite   = "MODE: INFINITE",
-    mode_timed      = "MODE: TIMED",
-    started         = "STARTED!",
-    stopped_export  = "STOPPED & EXPORTED",
-    stats_exported  = "STATS EXPORTED",
-    reset_done      = "RESET DONE",
-    
-    reset_prompt    = "PRESS (SELECT OR R3) + LEFT TO RESET",
-    pause_overlay   = "PAUSED : PRESS (SELECT OR R3) + RIGHT TO RESUME",
-    err_file        = "Err: File Access"
-}
-
--- Stockage de l'état réel lu en mémoire
-local real_slot_status = {}
-for i=1,8 do real_slot_status[i] = { is_valid=false, is_active=false } end
-
-local last_trainer_mode = 0
-
--- BUTTON MASKS
-local BTN_SELECT = 16384
-local BTN_R3     = 8192
-local BTN_UP     = 1
-local BTN_DOWN   = 2
-local BTN_LEFT   = 4
-local BTN_RIGHT  = 8
 
 -- =========================================================
 -- CONFIGURATION & STYLING
@@ -134,7 +88,112 @@ local user_config = {
     show_slot_stats = true,
     show_debug_panel = false,
     slot_visibility = { true, true, true, true, true, true, true, true },
+    
+    playback_mode_auto = true 
 }
+
+-- =========================================================
+-- CONFIGURATION PLAYBACK
+-- =========================================================
+local playback_loop = {
+    active = false,     
+    wait_frames = 0     
+}
+
+-- FONCTION INTELLIGENTE (STYLE MOD2.LUA)
+-- Elle vérifie si la méthode a besoin d'arguments. Si oui, elle envoie '0' par défaut.
+local function call_tm_method(method_name, arg)
+    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
+    local rec_func = mgr and mgr:call("get_RecordFunc")
+    if not rec_func then return end
+
+    local method = rec_func:get_type_definition():get_method(method_name)
+    if method then
+        local num_params = method:get_num_params()
+        if num_params > 0 then
+            -- Si la fonction veut un argument, on lui donne 'arg' ou '0' (comme mod2)
+            method:call(rec_func, arg or 0)
+        else
+            -- Sinon on appelle sans argument
+            method:call(rec_func)
+        end
+    end
+end
+
+-- Fonction pour gérer l'état (Initialisation uniquement)
+local function set_playback_mode(enable)
+    if enable then
+        -- START
+        if user_config.playback_mode_auto then
+            call_tm_method("SetAllPlayActive")
+        end
+        
+        -- On lance la lecture
+        call_tm_method("SetPlay", true) 
+        call_tm_method("ForceApply") -- ForceApply est nécessaire pour le Start/Play
+        
+        playback_loop.active = true
+        playback_loop.wait_frames = 5
+    else
+        -- STOP (COPIE EXACTE DE MOD2.LUA)
+        playback_loop.active = false
+        
+        -- Mod2 appelle juste Stop(0). Pas de ForceApply ensuite.
+        call_tm_method("Stop", 0) 
+        call_tm_method("ForceApply") -- ForceApply est nécessaire pour le Start/Play
+		
+        
+        -- Note: On ne fait PAS ForceApply ici car dans ton test mod2, ça marche sans.
+        -- Le ForceApply pourrait annuler le Stop s'il réapplique des settings de lecture.
+    end
+end
+
+-- =========================================================
+-- GLOBAL VARIABLES
+-- =========================================================
+local TEXTS = {
+    ready           = "READY",
+    waiting         = "WAITING",
+    paused          = "PAUSED",
+    resumed         = "RESUMED",
+    time_up         = "TIME UP!",
+    score_label     = "SCORE: ",
+    total_label     = "TOTAL: ",
+    timer_label     = "TIMER",
+    mode_label      = "REACTION DRILLS",
+    
+    success         = "SUCCESS: INTERRUPT!",
+    fail_block      = "FAIL: BLOCKED",
+    fail_hit        = "FAIL: GOT HIT",
+    fail_whiff      = "FAIL: WHIFF",
+    attack_inc      = "ATTACK...",
+    
+    mode_infinite   = "MODE: INFINITE",
+    mode_timed      = "MODE: TIMED",
+    started         = "STARTED!",
+    stopped_export  = "STOPPED & EXPORTED",
+    stats_exported  = "STATS EXPORTED",
+    reset_done      = "RESET DONE",
+    
+    reset_prompt    = "PRESS (SELECT OR R3) + LEFT TO RESET",
+    pause_overlay   = "PAUSED : PRESS (SELECT OR R3) + RIGHT TO RESUME",
+    err_file        = "Err: File Access"
+}
+
+-- Stockage de l'état réel lu en mémoire
+local real_slot_status = {}
+for i=1,8 do real_slot_status[i] = { is_valid=false, is_active=false } end
+
+local last_trainer_mode = 0
+
+-- BUTTON MASKS
+local BTN_SELECT = 16384
+local BTN_R3     = 8192
+local BTN_UP     = 1
+local BTN_DOWN   = 2
+local BTN_LEFT   = 4
+local BTN_RIGHT  = 8
+
 
 -- Session State
 local session = {
@@ -149,7 +208,7 @@ local session = {
     -- VARIABLES AUTO TRACKING
     p1_max_frame = 0,
     p2_max_frame = 0,
-    p2_is_end_flag = false, -- LE FAMEUX FLAG (Arg 5)
+    p2_is_end_flag = false,
     
     p1_state = 0,
     p2_state = 0,
@@ -157,7 +216,10 @@ local session = {
     track_timer = 0,
     outcome = "WAITING",
     di_counter_success = false,
-    score_processed = false
+    score_processed = false,
+    
+    is_time_up = false,
+    time_up_delay = 0
 }
 for i=1,8 do session.slot_stats[i] = { attempts=0, success=0 } end
 
@@ -271,6 +333,8 @@ local function load_conf()
     if type(user_config.timer_font_size) ~= "number" then user_config.timer_font_size = 60 end
     if type(user_config.hud_base_size) ~= "number" then user_config.hud_base_size = 60 end
     
+    if user_config.playback_mode_auto == nil then user_config.playback_mode_auto = true end
+    
     user_config.timer_mode_enabled = (user_config.session_mode == 1)
 end
 load_conf()
@@ -300,7 +364,9 @@ local function handle_resolution_change()
     if res_watcher.cooldown > 0 then res_watcher.cooldown = res_watcher.cooldown - 1; if res_watcher.cooldown == 0 then try_load_font() end end
 end
 
-local function save_conf() json.dump_file(CONFIG_FILENAME, user_config) end
+local function save_conf() 
+    json.dump_file(CONFIG_FILENAME, user_config) 
+end
 
 -- =========================================================
 -- LOGIC & EXPORTS
@@ -314,14 +380,14 @@ end
 local function reset_session_stats()
     session.score = 0; session.total = 0; session.is_running = false; session.is_paused = false
     session.real_start_time = os.time()
-
-    -- AJOUTS POUR LA LOGIQUE TIME UP
+    
     session.is_time_up = false 
     session.time_up_delay = 0 
-    -- FIN AJOUTS
+    
+    set_playback_mode(false)
+    
     for i=1,8 do session.slot_stats[i] = { attempts=0, success=0 } end
     
-    -- Reset Auto-Tracking Logic
     session.is_tracking = false
     session.track_timer = 0
     session.outcome = "WAITING"
@@ -348,7 +414,6 @@ end
 -- SYSTEME DE HOOKS
 -- =========================================================
 
--- 1. DETECTION ID JOUEURS (Pour scanner les slots)
 local sdk_cache = {
     BattleMediator = sdk.find_type_definition("app.FBattleMediator")
 }
@@ -384,11 +449,10 @@ if sdk_cache.BattleMediator then
     end
 end
 
--- 2. FRAME METER HOOKS (AVEC LES FLAGS isEnd)
+-- 2. FRAME METER HOOKS
 local t_fm = sdk.find_type_definition("app.training.UIWidget_TMFrameMeter")
 
 if t_fm then
-    -- P1 (Toi)
     local m_setup = t_fm:get_method("SetUpFrame")
     if m_setup then
         sdk.hook(m_setup, function(args)
@@ -397,20 +461,13 @@ if t_fm then
         end, function(r) return r end)
     end
 
-    -- P2 (Adversaire)
     local m_setdown = t_fm:get_method("SetDownFrame")
     if m_setdown then
         sdk.hook(m_setdown, function(args)
             local s = tonumber(tostring(sdk.to_int64(args[4])))
-            
-            -- ARGUMENT 5 = LE FLAG "isEnd" (C'est lui qu'on voulait !)
             local is_end = (sdk.to_int64(args[5]) & 1) == 1
-            
             if s > session.p2_max_frame then session.p2_max_frame = s end
-            
-            -- Si le flag isEnd est vrai, on le mémorise pour cette frame
             if is_end then session.p2_is_end_flag = true end
-            
         end, function(r) return r end)
     end
 end
@@ -443,22 +500,61 @@ local function update_slot_stats(is_success)
     end
 end
 
+-- =========================================================
+-- GESTION PLAYBACK (MOD2 LOGIC)
+-- =========================================================
+local function manage_playback()
+    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
+    local rec_func = mgr and mgr:call("get_RecordFunc")
+    local g_data = rec_func and rec_func:get_field("_gData")
+
+    if not g_data then return end
+
+    local current_state = tonumber(tostring(g_data:get_field("State"))) -- 0=Stop, 5=Play
+
+    -- 1. CAS: SESSION ACTIVE (PLAYING)
+    if session.is_running and not session.is_paused and not session.is_time_up and playback_loop.active then
+        
+        -- Si le mannequin est à l'arrêt
+        if current_state == 0 then
+            
+            -- On attend 5 frames (buffer de sécurité anti-glitch début de slot)
+            if playback_loop.wait_frames > 0 then
+                playback_loop.wait_frames = playback_loop.wait_frames - 1
+            else
+                -- Lancement !
+                call_tm_method("SetPlay", true)
+                call_tm_method("ForceApply")
+                playback_loop.wait_frames = 5
+            end
+        else
+            -- S'il joue déjà, on maintient le délai
+            playback_loop.wait_frames = 5
+        end
+        
+    -- 2. CAS: PAUSE / STOP (ARRET VIA STOP METHOD)
+    else
+        -- Si le mannequin n'est PAS à l'arrêt, on force le STOP comme mod2.lua
+        if current_state ~= 0 then
+            call_tm_method("Stop", 0) 
+            -- PAS DE FORCE APPLY ICI
+        end
+    end
+end
+
 local function update_logic()
     local now = os.clock(); local dt = now - session.last_clock; session.last_clock = now
     
     if session.score ~= session.last_score then session.score_col = (session.score > session.last_score) and COLORS.Green or COLORS.Red; session.score_timer = 30; session.last_score = session.score end
     if session.score_timer > 0 then session.score_timer = session.score_timer - 1; if session.score_timer <= 0 then session.score_col = COLORS.White end end
     
-    -- === LOGIQUE TIME UP (BLOCKER) ===
     if session.is_time_up then
         session.time_up_delay = (session.time_up_delay or 0) + dt
-        -- Après 1 seconde, on affiche le message de Reset en jaune
         if session.time_up_delay > 1.0 then
             set_feedback(TEXTS.reset_prompt, COLORS.Yellow, 0)
         end
-        return -- STOP : On ne track plus rien, on sort de la fonction
+        return 
     end
-    -- =================================
 
     if session.feedback.timer > 0 then
         session.feedback.timer = session.feedback.timer - dt
@@ -480,8 +576,10 @@ local function update_logic()
             session.is_time_up = true
             session.time_up_delay = 0
             
+            -- ARRET DU MANNEQUIN
+            set_playback_mode(false)
+            
             export_log_excel()
-            -- Message immédiat (Rouge) avant le Jaune
             set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0) 
         end
     end
@@ -495,16 +593,6 @@ local function update_logic()
         if g_data then 
             game_state.current_slot_index = (g_data:get_field("SlotID") or -1) + 1
             game_state.current_rec_state = tonumber(tostring(g_data:get_field("State"))) or 0
-            
-            if user_config.session_mode == 1 and not session.is_running and not session.is_time_up then
-                if game_state.last_rec_state == 0 and game_state.current_rec_state ~= 0 then
-                    reset_session_stats()
-                    session.is_running = true
-                    session.is_paused = false
-                    session.time_rem = user_config.timer_minutes * 60
-                    set_feedback("AUTO START!", COLORS.Green, 2.0)
-                end
-            end
             game_state.last_rec_state = game_state.current_rec_state
         end
     end
@@ -608,7 +696,7 @@ local function handle_input()
         return ((active_buttons & target_mask) == target_mask) and not ((last_input_mask & target_mask) == target_mask)
     end
 
-    -- 1. REGLAGE TIMER (Bloqué si Time Up)
+    -- 1. REGLAGE TIMER
     if not session.is_running and not session.is_time_up then 
         if is_func_combo_pressed(BTN_UP) then
             user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
@@ -622,21 +710,18 @@ local function handle_input()
         end
     end
 
-    -- 2. GAUCHE : STOP & EXPORT OU RESET (Logique modifiée)
+    -- 2. GAUCHE : STOP & EXPORT OU RESET
     if is_func_combo_pressed(BTN_LEFT) then
-        -- CAS A : C'est un TIME UP -> On RESET juste (car déjà exporté à 00:00)
         if session.is_time_up then
             reset_session_stats()
             set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
-            
-        -- CAS B : Arrêt manuel avec score -> EXPORT + RESET
         elseif session.total > 0 then
+            set_playback_mode(false) -- STOP
             export_log_excel()
             reset_session_stats()
             set_feedback(TEXTS.stopped_export, COLORS.Red, 1.5)
-            
-        -- CAS C : Pas de données -> JUSTE RESET
         else
+            set_playback_mode(false) -- STOP
             reset_session_stats()
             set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
         end
@@ -644,16 +729,17 @@ local function handle_input()
 
     -- 3. DROITE : START / PAUSE
     if is_func_combo_pressed(BTN_RIGHT) then
-        -- On interdit le Start si on est en attente de Reset (Time Up)
         if not session.is_running and not session.is_time_up then
             reset_session_stats()
             session.time_rem = user_config.timer_minutes * 60
             session.is_running = true
             session.is_paused = false
             set_feedback(TEXTS.started, COLORS.Green, 1.0)
+            set_playback_mode(true) -- START PLAYBACK
         elseif session.is_running then
             session.is_paused = not session.is_paused
             set_feedback(session.is_paused and TEXTS.paused or TEXTS.resumed, COLORS.Yellow, 1.0)
+            set_playback_mode(not session.is_paused) -- PAUSE/RESUME PLAYBACK
         end
     end
 
@@ -762,22 +848,28 @@ re.on_frame(function()
 
     if cur_mode ~= 1 then return end
 
-    -- AJOUT : LOGIQUE DE PAUSE PERSISTANTE (COPIÉ DE HITCONFIRM)
+    -- LOGIQUE DE PAUSE PERSISTANTE DU JEU
     local pm = sdk.get_managed_singleton("app.PauseManager")
     if pm then
         local field = pm:get_type_definition():get_field("_CurrentPauseBit")
         if field then
             local val = field:get_data(pm)
-            -- Si le jeu n'est pas en gameplay actif (131072), on force la pause du script
             if val and tostring(val) ~= "131072" then 
-                if session.is_running and not session.is_paused then session.is_paused = true end
+                if session.is_running and not session.is_paused then 
+                    session.is_paused = true 
+                    set_playback_mode(false) -- PAUSE AUTO
+                end
             end
         end
     end
-    -- FIN AJOUT
     
     update_real_slot_info() 
     handle_input()
+    
+    -- >>> GESTION INTELLIGENTE PLAYBACK & STOP <<<
+    manage_playback()
+    -- >>>>>>>>>>>><<<<<<<<<<<<
+    
     update_logic()
     handle_resolution_change()
     manage_ticker_visibility_backup() 
@@ -795,23 +887,16 @@ if imgui.begin_window("HUD_Reaction", true, win_flags) then
         local center_x = sw / 2
         local center_y = sh / 2
         
-        -- === CES LIGNES MANQUAIENT PROBABLEMENT ===
-        if type(user_config.hud_n_global_y) ~= "number" then user_config.hud_n_global_y = -0.35 end
         local top_y = center_y + (user_config.hud_n_global_y * sh)
-        
-        if type(user_config.hud_n_spread_score) ~= "number" then user_config.hud_n_spread_score = 0.15 end
         local spread_score_px = user_config.hud_n_spread_score * sw
-        
-        if type(user_config.hud_n_spacing_y) ~= "number" then user_config.hud_n_spacing_y = 0.05 end
         local spacing_y_px    = user_config.hud_n_spacing_y * sh
         
         local off_score_px = (type(user_config.hud_n_offset_score) == "number" and user_config.hud_n_offset_score or 0.0) * sw
         local off_total_px = (type(user_config.hud_n_offset_total) == "number" and user_config.hud_n_offset_total or 0.0) * sw
         local off_timer_px = (type(user_config.hud_n_offset_timer) == "number" and user_config.hud_n_offset_timer or 0.0) * sw
         local off_status_px = (type(user_config.hud_n_offset_status_y) == "number" and user_config.hud_n_offset_status_y or 0.0) * sh
-        -- ===========================================
 
-        -- 1. TIMER (TOUJOURS VISIBLE)
+        -- 1. TIMER
         if user_config.session_mode == 1 then
             local time_show = session.is_running and session.time_rem or (user_config.timer_minutes * 60)
             local t_txt = format_duration(time_show)
@@ -856,13 +941,14 @@ if imgui.begin_window("HUD_Reaction", true, win_flags) then
         local line_2_y = top_y + spacing_y_px + off_status_px
         local line_3_y = line_2_y + spacing_y_px
 
-        -- 3. SLOT STATS
+        -- 3. SLOT STATS (AFFICHE UNIQUEMENT LES SLOTS "ON")
         if user_config.show_slot_stats then
             local slots_str = ""
             local has_visible_slots = false
             for i=1,8 do
                 local status = real_slot_status[i]
-                if (status.is_valid and status.is_active) or session.slot_stats[i].attempts > 0 then
+                -- On affiche UNIQUEMENT si le slot est ACTIVE dans le jeu (ON)
+                if status.is_active then
                     local s = session.slot_stats[i]
                     local pct = 0
                     if s.attempts > 0 then pct = (s.success / s.attempts) * 100 end
@@ -898,14 +984,14 @@ end)
 re.on_draw_ui(function()
     if _G.CurrentTrainerMode ~= 1 then return end
 
-    if imgui.tree_node("Reaction Trainer Remastered (V5.0 - Logic)") then
+    if imgui.tree_node("Reaction Trainer Remastered (V6.2 - Mod2 Logic)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
-imgui.text("SHORTCUTS (Hold SELECT or R3):")
-imgui.text("- (Func) + UP / DOWN : Adjust Timer"); 
-imgui.text("- (Func) + LEFT : Stop / Export / Reset"); 
-imgui.text("- (Func) + RIGHT : Start / Pause")
-    end
+            imgui.text("SHORTCUTS (Hold SELECT or R3):")
+            imgui.text("- (Func) + UP / DOWN : Adjust Timer"); 
+            imgui.text("- (Func) + LEFT : Stop / Export / Reset"); 
+            imgui.text("- (Func) + RIGHT : Start / Pause")
+        end
 
         if styled_header("--- SESSION CONFIGURATION ---", UI_THEME.hdr_session) then
                 imgui.text("DURATION:"); imgui.same_line(); 
@@ -921,19 +1007,39 @@ imgui.text("- (Func) + RIGHT : Start / Pause")
                     if styled_button("START SESSION", UI_THEME.btn_green) then 
                         session.is_running = true; session.is_paused = false; reset_session_stats(); 
                         session.time_rem = user_config.timer_minutes * 60; session.is_running = true; set_feedback(TEXTS.started, COLORS.Green, 1.0) 
+                        set_playback_mode(true) -- START PLAYBACK
                     end
                 else
-                    if styled_button("STOP & EXPORT", UI_THEME.btn_red) then export_log_excel(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0) end
+                    if styled_button("STOP & EXPORT", UI_THEME.btn_red) then 
+                        set_playback_mode(false) -- STOP
+                        export_log_excel(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0) 
+                    end
                     imgui.same_line(); 
-                    if styled_button(session.is_paused and "RESUME" or "PAUSE", UI_THEME.btn_neutral) then session.is_paused = not session.is_paused end
+                    if styled_button(session.is_paused and "RESUME" or "PAUSE", UI_THEME.btn_neutral) then 
+                        session.is_paused = not session.is_paused 
+                        set_playback_mode(not session.is_paused) -- TOGGLE PLAYBACK
+                    end
                 end
         end
 
 		if styled_header("--- SLOTS & MATCHUPS ---", UI_THEME.hdr_slots) then
-            imgui.text_colored("AUTOMATIC TRACKING ACTIVE", COLORS.Green)
-            imgui.text("No manual configuration needed.")
-            imgui.text("Slot stats are updated automatically based on active slot.")
+            imgui.text_colored("INSTANT LOOP ACTIVE", COLORS.Green)
+            imgui.text("Playback restarts immediately after action ends.")
             
+            -- TOGGLE AUTO / MANUAL
+            imgui.separator()
+            local c_auto, v_auto = imgui.checkbox("Auto-Activate All Slots", user_config.playback_mode_auto)
+            if c_auto then user_config.playback_mode_auto = v_auto; save_conf() end
+            
+            if user_config.playback_mode_auto then
+                imgui.text_colored("Mode: AUTO", COLORS.Cyan)
+                imgui.text("Script forces all filled slots to ACTIVE on start.")
+            else
+                imgui.text_colored("Mode: MANUAL", COLORS.Orange)
+                imgui.text("Script ONLY presses Play. You must select slots in-game.")
+            end
+            
+            imgui.separator()
             local c_st, v_st = imgui.checkbox("Show Slot Percentages on HUD", user_config.show_slot_stats); if c_st then user_config.show_slot_stats = v_st; save_conf() end
         end
         
@@ -963,8 +1069,6 @@ imgui.text("- (Func) + RIGHT : Start / Pause")
             imgui.text("P1 State: " .. session.p1_state)
             imgui.text("P2 State: " .. session.p2_state)
             imgui.text("Active Slot: " .. game_state.current_slot_index)
-            imgui.text("P2 ID: " .. game_state.p2_id)
-            imgui.text("Flag End: " .. tostring(session.p2_is_end_flag))
         end
         
         imgui.tree_pop()
@@ -973,7 +1077,7 @@ imgui.text("- (Func) + RIGHT : Start / Pause")
     if user_config.show_debug_panel then
         imgui.begin_window("Debug Overlay", true, 0)
         imgui.text("Auto Logic Active")
-        imgui.text("Tracking: " .. tostring(session.is_tracking))
+        imgui.text("Wait frames: " .. playback_loop.wait_frames)
         imgui.end_window()
     end
 end)
