@@ -5,7 +5,7 @@ local draw = draw
 local json = json
 
 -- =========================================================
--- TrainingHitConfirm_v4.0 (TIMED ONLY EDITION)
+-- TrainingHitConfirm_v7.1 (MATRIX BASED GAP CHECK)
 -- =========================================================
 
 -- =========================================================
@@ -19,7 +19,7 @@ local TEXTS = {
     time_up         = "TIME UP!",
     score_label     = "SCORE: ",
     total_label     = "TOTAL: ",
-    mode_label     = "HIT CONFIRM",
+    mode_label      = "HIT CONFIRM",
     hit_pct_label   = "HIT: ",
     blk_pct_label   = "BLOCK: ",
     
@@ -38,6 +38,12 @@ local TEXTS = {
     fail_hit        = "HIT FAIL",
     fail_blk_fast   = "BLOCK FAIL (CANCEL TOO FAST)",
     fail_blk_soon   = "BLOCK FAIL (2ND HIT TOO SOON)",
+    
+    -- NEW SPECIFIC MESSAGES
+    fail_gap        = "FAIL: GAP DETECTED",
+    safe_no_gap     = "SAFE: TRUE BLOCKSTRING",
+    fail_optimal    = "FAIL: SUBOPTIMAL (NEED HEAVY)",
+    perfect_dr      = "PERFECT: MED -> DR -> HEAVY",
     
     started         = "STARTED!",
     stopped_export  = "STOPPED & EXPORTED",
@@ -61,6 +67,14 @@ local BTN_UP     = 1
 local BTN_DOWN   = 2
 local BTN_LEFT   = 4
 local BTN_RIGHT  = 8
+
+local MASK_LIGHT  = 144 -- 16 + 128
+local MASK_MEDIUM = 288 -- 32 + 256
+local MASK_HEAVY  = 576 -- 64 + 512
+
+local STATE_NEUTRAL = 0
+local STATE_HURT    = 9
+local STATE_BLOCK   = 10
 
 -- =========================================================
 -- 1. CONFIGURATION & STYLING
@@ -130,6 +144,7 @@ local user_config = {
     timer_offset_x = 0.0,
     str_trigger_list = "13", str_success_list = "13", str_break_list = "7,2,1",
     str_dmg_hit_list = "3", str_dmg_block_list = "30",
+    str_light_btn_list = "16,128", 
     hit_p2_gauge = 1, success_p1_gauge = 1, persistence_text = 80, persistence_val = 80,
     show_index = true,
     p1 = { frame_type = true, status_type = true, frame_number = false, start_frame = false, end_frame = false, main_gauge = false },
@@ -137,7 +152,7 @@ local user_config = {
     show_damage = true, show_hitstop = true, show_status_label = true
 }
 
-local work_tables = { trigger = {}, success = {}, dmg_hit = {}, dmg_block = {}, break_list = {} }
+local work_tables = { trigger = {}, success = {}, dmg_hit = {}, dmg_block = {}, break_list = {}, light_btns = {} }
 
 local session = {
     is_running = false, is_paused = false, 
@@ -147,7 +162,15 @@ local session = {
     status_msg = TEXTS.ready, export_msg = "",
     is_logging = false, history_list = {}, history_map = {},
     feedback = { text = TEXTS.waiting, timer = 0, color = COLORS.White },
-    last_result_was_success = false
+    last_result_was_success = false,
+    
+    -- Input Buffer Variables
+    last_light_input_time = 0, 
+    last_medium_input_time = 0, 
+    last_heavy_input_time = 0, 
+    
+    debug_logic = { is_light=false, target_combo=0, actual_combo=0, reason="" },
+    detected_type = "NONE"
 }
 
 local detection = {
@@ -155,7 +178,11 @@ local detection = {
     active_lines = {}, last_head_index = 0, abs_clock = 0, buffer_capacity = 0, 
     live_dmg = 0, live_hs = 0, live_combo = 0,
     mem_hit = {}, mem_blk = {}, mem_res = {}, mem_dmg = {}, mem_hs = {},
-    monitor = { active = false, type = nil, has_reset_hs = false, start_combo = 0 },
+    monitor = { active = false, type = nil, has_reset_hs = false, target_combo = 0, is_medium = false }, 
+    
+    -- SPECIAL MONITOR FOR DR
+    dr_monitor = { active = false, type = nil, context = nil, timer = 0, start_combo = 0, gap_grace = 0 },
+    
     lockout = false
 }
 
@@ -228,11 +255,62 @@ local function refresh_tables()
     work_tables.dmg_hit = parse_list(user_config.str_dmg_hit_list)
     work_tables.dmg_block = parse_list(user_config.str_dmg_block_list)
     work_tables.break_list = parse_list(user_config.str_break_list)
+    work_tables.light_btns = parse_list(user_config.str_light_btn_list) 
 end
 
 local function is_in(tbl, val)
     for _, v in ipairs(tbl) do if v == val then return true end end
     return false
+end
+
+-- [NEW] READ GAME INPUT DIRECTLY (pl_sw_new)
+local function read_p1_game_input()
+    local gBattle = sdk.find_type_definition("gBattle")
+    if not gBattle then return 0 end
+    local player_mgr = gBattle:get_field("Player"):get_data(nil)
+    if not player_mgr then return 0 end
+    
+    local p1 = player_mgr:call("getPlayer", 0)
+    if not p1 then return 0 end
+    
+    local f_sw = p1:get_type_definition():get_field("pl_sw_new")
+    if not f_sw then return 0 end
+    
+    return f_sw:get_data(p1) or 0
+end
+
+-- [NEW] GET P1 ACTION ID
+local function get_p1_action_id()
+    local gBattle = sdk.find_type_definition("gBattle")
+    if not gBattle then return -1 end
+    local player_mgr = gBattle:get_field("Player"):get_data(nil)
+    if not player_mgr then return -1 end
+    local cPlayer = player_mgr.mcPlayer
+    if not cPlayer then return -1 end
+    local p1 = cPlayer[0] 
+    if not p1 then return -1 end
+    local actParam = p1.mpActParam
+    if not actParam then return -1 end
+    local actPart = actParam.ActionPart
+    if not actPart then return -1 end
+    local engine = actPart._Engine
+    if not engine then return -1 end
+    return engine:get_ActionID() or -1
+end
+
+-- Keep Hardware reader ONLY for menu navigation shortcuts
+local function get_hardware_pad_mask()
+    local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
+    local gamepad_type = sdk.find_type_definition("via.hid.GamePad")
+    if not gamepad_manager then return 0 end
+    local devices = sdk.call_native_func(gamepad_manager, gamepad_type, "get_ConnectingDevices")
+    if not devices then return 0 end
+    local count = devices:call("get_Count") or 0
+    for i = 0, count - 1 do
+        local pad = devices:call("get_Item", i)
+        if pad then local b = pad:call("get_Button") or 0; if b > 0 then return b end end
+    end
+    return 0
 end
 
 local function format_time(s) if not s or s < 0 then s = 0 end return string.format("%02d:%02d", math.floor(s/60), math.floor(s%60)) end
@@ -276,6 +354,11 @@ local function reset_session_stats()
     session.real_start_time = os.time()
     session.last_result_was_success = false
     session.time_rem = user_config.timer_minutes * 60
+    session.last_light_input_time = 0
+    session.last_medium_input_time = 0
+    session.last_heavy_input_time = 0
+    session.detected_type = "NONE"
+    detection.dr_monitor = { active = false, type = nil, context = nil, timer = 0, start_combo = 0, gap_grace = 0 }
 end
 
 local function export_session_stats()
@@ -418,35 +501,146 @@ local function update_detection()
 
                 local is_ft_trig = is_in(work_tables.trigger, p1_data.ft)
                 local is_dmg_allowed = is_in(work_tables.dmg_hit, detection.live_dmg)
-                local trig_hit = (is_ft_trig and detection.live_combo == 1 and is_dmg_allowed)
+                
+                -- LIGHT/MEDIUM/HEAVY BUFFER CHECKS
+                local time_since_light = os.clock() - session.last_light_input_time
+                local is_light_buffered = (time_since_light < 0.25) 
+                
+                local time_since_medium = os.clock() - session.last_medium_input_time
+                local is_medium_buffered = (time_since_medium < 0.5) -- Extended Buffer for Medium
+                
+                local required_combo_start = is_light_buffered and 2 or 1
+                
+                -- Debug Display Logic
+                if is_ft_trig then
+                    if is_light_buffered then session.detected_type = "LIGHT"
+                    elseif is_medium_buffered then session.detected_type = "MEDIUM"
+                    else session.detected_type = "HEAVY" end
+                end
+                
+                session.debug_logic.is_light = is_light_buffered
+                session.debug_logic.target_combo = required_combo_start
+                session.debug_logic.actual_combo = detection.live_combo
+                if is_ft_trig and is_dmg_allowed then
+                    if detection.live_combo == required_combo_start then session.debug_logic.reason = "MATCH"
+                    elseif detection.live_combo < required_combo_start then session.debug_logic.reason = "WAITING COMBO"
+                    else session.debug_logic.reason = "PASSED" end
+                else
+                   session.debug_logic.reason = "NO TRIGGER"
+                end
+                
+                local trig_hit = (is_ft_trig and detection.live_combo == required_combo_start and is_dmg_allowed)
                 local is_dmg_blk = is_in(work_tables.dmg_block, detection.live_dmg)
                 local trig_blk = (is_ft_trig and p2_data.mg > 0 and is_dmg_blk)
+                
+                -- =======================================================
+                -- MEDIUM DR CANCEL MONITOR START
+                -- =======================================================
+                if (trig_hit or trig_blk) and is_medium_buffered and not detection.dr_monitor.active then
+                    detection.dr_monitor.active = true
+                    detection.dr_monitor.type = "WAIT_DR"
+                    detection.dr_monitor.context = trig_hit and "HIT" or "BLOCK"
+                    detection.dr_monitor.timer = 20 -- Frames to wait for DR cancel
+                    detection.dr_monitor.start_combo = detection.live_combo
+                    detection.dr_monitor.gap_grace = 0
+                end
                 
                 if trig_hit and not detection.lockout then
                     detection.mem_hit[active_head_index] = detection.abs_clock
                     if session.history_map[detection.abs_clock] then session.history_map[detection.abs_clock].tag = "HIT" end
                     if not detection.monitor.active or detection.monitor.type ~= "HIT" then
                         detection.monitor.active = true; detection.monitor.type = "HIT"; detection.monitor.has_reset_hs = false
+                        detection.monitor.target_combo = required_combo_start + 1 
                         detection.mem_res[active_head_index] = { status = "HIT LANDED", time = detection.abs_clock }
                         update_history_status(detection.abs_clock, "HIT LANDED")
-                        if user_config.show_early_detection then set_feedback(TEXTS.hit_detected, COLORS.Yellow, 2.0) end
+                        if user_config.show_early_detection then 
+                            local msg = is_light_buffered and "HIT (LIGHT CHAIN START)!" or TEXTS.hit_detected
+                            local col = is_light_buffered and COLORS.Orange or COLORS.Yellow
+                            set_feedback(msg, col, 2.0) 
+                        end
                     end
                 elseif trig_blk and not detection.lockout then
                     detection.mem_blk[active_head_index] = detection.abs_clock
                     if session.history_map[detection.abs_clock] then session.history_map[detection.abs_clock].tag = "BLOCK" end
                     if not detection.monitor.active or detection.monitor.type ~= "BLOCK" then
                         detection.monitor.active = true; detection.monitor.type = "BLOCK"; detection.monitor.has_reset_hs = false
+                        
+                        -- MEMORIZE IF THIS IS A MEDIUM HIT
+                        detection.monitor.is_medium = is_medium_buffered
+                        
                         detection.mem_res[active_head_index] = { status = "BLOCK LANDED", time = detection.abs_clock }
                         update_history_status(detection.abs_clock, "BLOCK LANDED")
                         if user_config.show_early_detection then set_feedback(TEXTS.blk_detected, COLORS.Cyan, 2.0) end
                     end
                 end
                 
-                if detection.monitor.active then
+                -- =======================================================
+                -- MEDIUM DR CANCEL MONITOR LOGIC (PARALLEL)
+                -- =======================================================
+                if detection.dr_monitor.active then
+                    if detection.dr_monitor.type == "WAIT_DR" then
+                        -- Check for Drive Rush (739)
+                        if get_p1_action_id() == 739 then
+                            detection.dr_monitor.type = "EXECUTE"
+                            detection.dr_monitor.timer = 120 -- Monitor window
+                            detection.dr_monitor.gap_grace = 3 -- Grace period for gap check
+                        else
+                            detection.dr_monitor.timer = detection.dr_monitor.timer - 1
+                            if detection.dr_monitor.timer <= 0 then detection.dr_monitor.active = false end
+                        end
+                    elseif detection.dr_monitor.type == "EXECUTE" then
+                        if detection.dr_monitor.context == "BLOCK" then
+                            -- BLOCK CONTEXT: Check for Gap via MATRIX DATA (p2_data.ft)
+                            -- 0 = Neutral/Gap. 10 = Block.
+                            
+                            if detection.dr_monitor.gap_grace > 0 then
+                                detection.dr_monitor.gap_grace = detection.dr_monitor.gap_grace - 1
+                            else
+                                if p2_data.ft == 0 then -- [FIXED: USING MATRIX FT]
+                                    detection.dr_monitor.active = false; detection.monitor.active = false; detection.lockout = true
+                                    session.score = session.score - 1; session.blk_tot = session.blk_tot + 1; session.total = session.total + 1
+                                    detection.mem_res[active_head_index] = { status = TEXTS.fail_gap, time = detection.abs_clock }
+                                    set_feedback(TEXTS.fail_gap, COLORS.Red, 2.0)
+                                elseif (p2_data.ft == 10 or p2_data.ft == 9) and detection.live_hs > 0 then
+                                    -- New Hit/Block detected without gap -> SUCCESS
+                                    detection.dr_monitor.active = false; detection.monitor.active = false; detection.lockout = true
+                                    detection.mem_res[active_head_index] = { status = TEXTS.safe_no_gap, time = detection.abs_clock }
+                                    set_feedback(TEXTS.safe_no_gap, COLORS.White, 2.0)
+                                end
+                            end
+                        elseif detection.dr_monitor.context == "HIT" then
+                            -- HIT CONTEXT: Check Combo & Button
+                            if detection.live_combo > detection.dr_monitor.start_combo then
+                                -- Check Buffer instead of live input for robustness
+                                local is_heavy_buffered = (os.clock() - session.last_heavy_input_time < 0.4)
+                                
+                                detection.dr_monitor.active = false; detection.monitor.active = false; detection.lockout = true
+                                if is_heavy_buffered then
+                                    session.score = session.score + 1; session.hit_ok = session.hit_ok + 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
+                                    detection.mem_res[active_head_index] = { status = TEXTS.perfect_dr, time = detection.abs_clock }
+                                    set_feedback(TEXTS.perfect_dr, COLORS.Green, 2.0)
+                                else
+                                    session.score = session.score - 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
+                                    detection.mem_res[active_head_index] = { status = TEXTS.fail_optimal, time = detection.abs_clock }
+                                    set_feedback(TEXTS.fail_optimal, COLORS.Red, 2.0)
+                                end
+                            elseif p2_data.ft == 0 or detection.live_combo == 0 then
+                                detection.dr_monitor.active = false; detection.monitor.active = false; detection.lockout = true
+                                session.score = session.score - 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
+                                detection.mem_res[active_head_index] = { status = TEXTS.fail_drop, time = detection.abs_clock }
+                                set_feedback(TEXTS.fail_drop, COLORS.Red, 2.0)
+                            end
+                        end
+                    end
+                end
+                
+                -- STANDARD MONITOR (RUNS ONLY IF DR MONITOR IS NOT HANDLING THINGS AND NOT LOCKED OUT)
+                if detection.monitor.active and not detection.dr_monitor.active and not detection.lockout then
                     if detection.live_hs == 0 then detection.monitor.has_reset_hs = true end
                     if detection.monitor.has_reset_hs then
                         if detection.monitor.type == "HIT" then
-                            if detection.live_combo >= 2 then
+                            -- [FIX] Use the SNAPSHOTTED target_combo, do not recalculate!
+                            if detection.live_combo >= detection.monitor.target_combo then
                                 detection.mem_res[active_head_index] = { status = TEXTS.success_hit, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.success_hit)
                                 detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = true
                                 session.score = session.score + 1; session.hit_ok = session.hit_ok + 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
@@ -459,6 +653,8 @@ local function update_detection()
                             end
                         end
                         if detection.monitor.type == "BLOCK" then
+                            
+                            -- IF (Break List Detected) => FAIL UNSAFE
                             if is_in(work_tables.break_list, p1_data.ft) then
                                 detection.mem_res[active_head_index] = { status = TEXTS.fail_blk_fast, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.fail_blk_fast)
                                 detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = false
@@ -535,6 +731,14 @@ local function update_logic()
     
     local now = os.clock(); local dt = now - session.last_clock; session.last_clock = now
     
+    -- [NEW] Capture Inputs from GAME LOGIC (P1 Only)
+    local cur_input_game = read_p1_game_input()
+    for _, btn_mask in ipairs(work_tables.light_btns) do
+        if (cur_input_game & btn_mask) ~= 0 then session.last_light_input_time = now; break end
+    end
+    if (cur_input_game & MASK_MEDIUM) ~= 0 then session.last_medium_input_time = now end
+    if (cur_input_game & MASK_HEAVY) ~= 0 then session.last_heavy_input_time = now end -- [NEW] Heavy Buffer
+    
     -- TIME UP MESSAGE MANAGEMENT
     if session.is_time_up then
         session.time_up_delay = (session.time_up_delay or 0) + dt
@@ -585,17 +789,8 @@ local function apply_difficulty(val)
 end
 
 local function handle_input()
-    local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
-    local gamepad_type = sdk.find_type_definition("via.hid.GamePad")
-    if not gamepad_manager then return end
-    local devices = sdk.call_native_func(gamepad_manager, gamepad_type, "get_ConnectingDevices")
-    if not devices then return end
-    local count = devices:call("get_Count") or 0; local active_buttons = 0
-    
-    for i = 0, count - 1 do
-        local pad = devices:call("get_Item", i)
-        if pad then local b = pad:call("get_Button") or 0; if b > 0 then active_buttons = b; break end end
-    end
+    -- Use Hardware Input for MENU NAVIGATION Only
+    local active_buttons = get_hardware_pad_mask()
 
     local function is_func_combo_pressed(target_mask)
         -- Get Function Key from Manager or default to Select
@@ -840,7 +1035,7 @@ end)
 re.on_draw_ui(function()
     if DEPENDANT_ON_MANAGER and _G.CurrentTrainerMode ~= 2 then return end
 
-    if imgui.tree_node("Hit Confirm Trainer (V4.0 Timed Only)") then
+    if imgui.tree_node("Hit Confirm Trainer (V7.1 Matrix Gap Fix)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
             imgui.text("SHORTCUTS (Hold FUNCTION):")
@@ -877,6 +1072,12 @@ re.on_draw_ui(function()
             local chg2, v2 = imgui.input_text("Confirm Moves (ID)", user_config.str_success_list); if chg2 then user_config.str_success_list = v2; refresh_tables(); save_conf() end
             local chgBrk, vBrk = imgui.input_text("Break List (Reset)", user_config.str_break_list); if chgBrk then user_config.str_break_list = vBrk; refresh_tables(); save_conf() end
             local chg3, v3 = imgui.input_text("Hit Damage Type List", user_config.str_dmg_hit_list); if chg3 then user_config.str_dmg_hit_list = v3; refresh_tables(); save_conf() end
+            
+            -- [NEW] Light Button Config Input
+            local chgBtn, vBtn = imgui.input_text("Light Buttons (Bitmask)", user_config.str_light_btn_list); 
+            if chgBtn then user_config.str_light_btn_list = vBtn; refresh_tables(); save_conf() end
+            if imgui.is_item_hovered() then imgui.set_tooltip("16=LP (X/Square), 128=LK (A/Cross)") end
+            
             local chg4, v4 = imgui.input_text("Block Damage Type List", user_config.str_dmg_block_list); if chg4 then user_config.str_dmg_block_list = v4; refresh_tables(); save_conf() end
         end
         
@@ -896,9 +1097,27 @@ re.on_draw_ui(function()
     if user_config.show_matrix_debug then
         imgui.set_next_window_size(Vector2f.new(1000, 600), 1 << 2)
         if imgui.begin_window("Diagnostic Matrix (V3)", true, 0) then
+            
+            -- [NEW] Debug Logic Monitor (TOP)
+            imgui.text_colored("--- LOGIC MONITOR ---", COLORS.Orange)
+            local log_txt = "DETECTED: " .. (session.debug_logic.is_light and "LIGHT (BUFFERED)" or "HEAVY/NORMAL")
+            log_txt = log_txt .. " | TARGET COMBO: " .. session.debug_logic.target_combo
+            log_txt = log_txt .. " | LIVE COMBO: " .. session.debug_logic.actual_combo
+            log_txt = log_txt .. " | STATUS: " .. session.debug_logic.reason
+            imgui.text(log_txt)
+            
+            if detection.dr_monitor.active then
+                imgui.text_colored(string.format("DR MONITOR: %s (%s) Timer: %d Grace: %d", detection.dr_monitor.type, detection.dr_monitor.context, detection.dr_monitor.timer, detection.dr_monitor.gap_grace), COLORS.Cyan)
+            end
+            
+            imgui.separator()
+
             imgui.text(string.format("DMG: %d | HS: %d | CLOCK: %d", detection.live_dmg, detection.live_hs, detection.abs_clock))
             imgui.same_line(); imgui.text_colored(string.format(" | COMBO: %d", detection.live_combo), COLORS.Yellow)
-            if detection.monitor.active then imgui.text_colored("MONITOR ACTIVE: " .. (detection.monitor.type or "?"), COLORS.Green) end
+            if detection.monitor.active then 
+                imgui.text_colored("MONITOR ACTIVE: " .. (detection.monitor.type or "?"), COLORS.Green) 
+                imgui.same_line(); imgui.text(string.format("(Target: >= %d)", detection.monitor.target_combo))
+            end
             if detection.lockout then imgui.same_line(); imgui.text_colored("[LOCKED]", COLORS.Red) end
             imgui.separator()
             local h = ""; if user_config.show_index then h = h .. "IDX | " end

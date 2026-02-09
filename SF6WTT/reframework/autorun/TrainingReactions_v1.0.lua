@@ -5,7 +5,7 @@ local draw = draw
 local json = json
 
 -- =========================================================
--- ReactionTraining Remastered (V6.2 - MOD2 LOGIC STOP)
+-- ReactionTraining Remastered (V6.8 - P2 STATE CHECK)
 -- =========================================================
 
 -- =========================================================
@@ -204,7 +204,10 @@ local session = {
     score_processed = false,
     
     is_time_up = false,
-    time_up_delay = 0
+    time_up_delay = 0,
+    
+    -- [NEW] Track P1 Actions
+    last_act_id = -1
 }
 for i=1,8 do session.slot_stats[i] = { attempts=0, success=0 } end
 
@@ -272,6 +275,25 @@ local function get_dynamic_screen_size()
     end
     if w <= 0 then w = 1920 end; if h <= 0 then h = 1080 end
     return w, h
+end
+
+-- [FIXED] GET P1 ACTION ID (via Engine)
+local function get_p1_action_id()
+    local gBattle = sdk.find_type_definition("gBattle")
+    if not gBattle then return -1 end
+    local player_mgr = gBattle:get_field("Player"):get_data(nil)
+    if not player_mgr then return -1 end
+    local cPlayer = player_mgr.mcPlayer
+    if not cPlayer then return -1 end
+    local p1 = cPlayer[0] 
+    if not p1 then return -1 end
+    local actParam = p1.mpActParam
+    if not actParam then return -1 end
+    local actPart = actParam.ActionPart
+    if not actPart then return -1 end
+    local engine = actPart._Engine
+    if not engine then return -1 end
+    return engine:get_ActionID() or -1
 end
 
 -- MEMORY SCANNER
@@ -378,6 +400,7 @@ local function reset_session_stats()
     session.outcome = "WAITING"
     session.score_processed = false
     session.di_counter_success = false
+    session.last_act_id = -1
     
     if user_config.timer_mode_enabled then session.time_rem = user_config.timer_minutes * 60 else session.time_rem = 0 end
 end
@@ -593,6 +616,29 @@ local function update_logic()
     
     local p1 = session.p1_state
     local p2 = session.p2_state
+    
+    -- [NEW V6.6] RESET LOGIC IF NEUTRAL AND NOT TRACKING P2
+    if not session.is_tracking and p1 == STATE_NEUTRAL then
+        session.score_processed = false
+    end
+    
+    -- [NEW V6.8] CHECK WHIFF DR CANCEL (ID 739) VIA P2 STATE
+    local curr_act_id = get_p1_action_id()
+    
+    if session.is_running and not session.score_processed then
+        -- If player transitioned to DR (739)
+        if curr_act_id == 739 and session.last_act_id ~= 739 then
+             -- ONLY FAIL IF P2 IS NOT HURT AND NOT BLOCK (Whiff)
+             if p2 ~= STATE_HURT and p2 ~= STATE_BLOCK then
+                 set_feedback("FAIL: UNSAFE DR CANCEL", COLORS.Red, 2.0)
+                 session.score = session.score - 1
+                 session.total = session.total + 1
+                 update_slot_stats(false) 
+                 session.score_processed = true
+             end
+        end
+    end
+    session.last_act_id = curr_act_id
     
     if not session.is_tracking then
         if ATTACK_STATES[p2] and p2 ~= 0 then
@@ -964,7 +1010,7 @@ end)
 re.on_draw_ui(function()
     if _G.CurrentTrainerMode ~= 1 then return end
 
-    if imgui.tree_node("Reaction Trainer Remastered (V6.2 - Mod2 Logic)") then
+    if imgui.tree_node("Reaction Trainer Remastered (V6.8 - P2 State Check)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
             imgui.text("SHORTCUTS (Hold FUNCTION):")
@@ -1049,6 +1095,7 @@ re.on_draw_ui(function()
             imgui.text("P1 State: " .. session.p1_state)
             imgui.text("P2 State: " .. session.p2_state)
             imgui.text("Active Slot: " .. game_state.current_slot_index)
+            imgui.text("Last P1 Act: " .. session.last_act_id)
         end
         
         imgui.tree_pop()
