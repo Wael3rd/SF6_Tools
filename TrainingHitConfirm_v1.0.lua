@@ -44,8 +44,8 @@ local TEXTS = {
     stats_exported  = "STATS EXPORTED",
     reset_done      = "RESET DONE",
     
-    pause_overlay   = "PAUSED : PRESS (SELECT OR R3) + RIGHT TO RESUME",
-    reset_prompt    = "PRESS (SELECT OR R3) + LEFT TO RESET",
+    pause_overlay   = "PAUSED : PRESS (FUNC) + RIGHT TO RESUME",
+    reset_prompt    = "PRESS (FUNC) + LEFT TO RESET",
     
     err_session_file = "Err: Session File",
     err_history_file = "Err: History File"
@@ -57,13 +57,10 @@ local TEXTS = {
 local DEPENDANT_ON_MANAGER = true 
 
 -- BUTTON MASKS
-local BTN_SELECT = 16384
-local BTN_R3     = 8192
 local BTN_UP     = 1
 local BTN_DOWN   = 2
 local BTN_LEFT   = 4
 local BTN_RIGHT  = 8
--- BTN_LK n'est plus utilisé car plus de changement de mode
 
 -- =========================================================
 -- 1. CONFIGURATION & STYLING
@@ -275,7 +272,7 @@ local function reset_session_stats()
     session.score = 0; session.total = 0; session.hit_ok = 0; session.hit_tot = 0; session.blk_ok = 0; session.blk_tot = 0
     session.is_running = false; session.is_paused = false
     session.is_time_up = false 
-    session.time_up_delay = 0 -- NOUVEAU COMPTEUR
+    session.time_up_delay = 0 
     session.real_start_time = os.time()
     session.last_result_was_success = false
     session.time_rem = user_config.timer_minutes * 60
@@ -538,14 +535,13 @@ local function update_logic()
     
     local now = os.clock(); local dt = now - session.last_clock; session.last_clock = now
     
-    -- GESTION MESSAGE TIME UP (Après 1 seconde)
+    -- TIME UP MESSAGE MANAGEMENT
     if session.is_time_up then
         session.time_up_delay = (session.time_up_delay or 0) + dt
         if session.time_up_delay > 1.0 then
-            -- On change le message ici (Jaune pour bien voir l'instruction)
             set_feedback(TEXTS.reset_prompt, COLORS.Yellow, 0)
         end
-        return -- On bloque tout le reste
+        return 
     end
 
     if session.feedback.timer > 0 then
@@ -561,17 +557,16 @@ local function update_logic()
             session.time_rem = 0
             session.is_running = false
             session.is_time_up = true
-            session.time_up_delay = 0 -- On lance le chrono de transition
+            session.time_up_delay = 0 
             
             export_session_stats() 
-            
-            -- Message initial (Rouge)
             set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0) 
         end
     end
     
     if is_game_active then update_detection() end
 end
+
 -- =========================================================
 -- INPUT HANDLING
 -- =========================================================
@@ -603,13 +598,15 @@ local function handle_input()
     end
 
     local function is_func_combo_pressed(target_mask)
-        local is_func_held = ((active_buttons & BTN_SELECT) == BTN_SELECT) or ((active_buttons & BTN_R3) == BTN_R3)
+        -- Get Function Key from Manager or default to Select
+        local func_btn = _G.TrainingFuncButton or 16384
+        local is_func_held = ((active_buttons & func_btn) == func_btn)
         if not is_func_held then return false end
         return ((active_buttons & target_mask) == target_mask) and not ((last_input_mask & target_mask) == target_mask)
     end
 
--- 1. REGLAGE TIMER (Bloqué si session en cours OU si Time Up en attente de reset)
-    if not session.is_running and not session.is_time_up then -- MODIFICATION ICI
+-- 1. TIMER SETTINGS
+    if not session.is_running and not session.is_time_up then 
         if is_func_combo_pressed(BTN_UP) then
             user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
             session.time_rem = user_config.timer_minutes * 60 
@@ -622,9 +619,9 @@ local function handle_input()
         end
     end
 
-    -- 2. DROITE : START / PAUSE
+    -- 2. RIGHT : START / PAUSE
     if is_func_combo_pressed(BTN_RIGHT) then
-        if not session.is_running and not session.is_time_up then -- On ne peut pas Start si Time Up sans reset
+        if not session.is_running and not session.is_time_up then 
             reset_session_stats()
             session.time_rem = user_config.timer_minutes * 60
             session.is_running = true; session.is_paused = false
@@ -635,21 +632,21 @@ local function handle_input()
         end
     end
 
-    -- 3. GAUCHE : STOP & EXPORT (Si données) OU RESET
+    -- 3. LEFT : STOP & EXPORT OR RESET
     if is_func_combo_pressed(BTN_LEFT) then
-        -- CAS 1 : C'est un TIME UP -> JUSTE RESET (Car déjà exporté)
+        -- TIME UP -> JUST RESET
         if session.is_time_up then
             reset_session_stats()
             set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
             
-        -- CAS 2 : Arrêt manuel avec données -> EXPORT + RESET
+        -- MANUAL STOP WITH DATA -> EXPORT + RESET
         elseif session.total > 0 then
             export_session_stats()
             reset_session_stats()
             session.is_running = false
             set_feedback(TEXTS.stopped_export, COLORS.Red, 1.5)
             
-        -- CAS 3 : Pas de données -> JUSTE RESET
+        -- NO DATA -> JUST RESET
         else
             reset_session_stats()
             set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
@@ -815,10 +812,7 @@ re.on_frame(function()
         if h_txt ~= "" then local wh = imgui.calc_text_size(h_txt).x; local xh = center_x - spread_stats_px - wh + off_hit_px; draw_text_overlay(h_txt, xh, y2, COLORS.White) end
         if b_txt ~= "" then local wb = imgui.calc_text_size(b_txt).x; local xb = center_x + spread_stats_px + off_blk_px; draw_text_overlay(b_txt, xb, y2, COLORS.White) end
         
---        local diff_txt = "MEDIUM"; if user_config.difficulty == 1 then diff_txt = "EASY" elseif user_config.difficulty == 3 then diff_txt = "HARD" end
---        local w_diff = imgui.calc_text_size(diff_txt).x; draw_text_overlay(diff_txt, center_x - w_diff/2, y2, COLORS.White)
-        
-        -- [D] STATUS / PAUSE MESSAGE (FUSIONNÉS)
+        -- [D] STATUS / PAUSE MESSAGE
         local final_msg = ""
         local final_col = COLORS.White
         
@@ -849,7 +843,7 @@ re.on_draw_ui(function()
     if imgui.tree_node("Hit Confirm Trainer (V4.0 Timed Only)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
-            imgui.text("SHORTCUTS (Hold SELECT or R3):")
+            imgui.text("SHORTCUTS (Hold FUNCTION):")
             imgui.text("- (Func) + UP / DOWN : Adjust Timer"); 
             imgui.text("- (Func) + LEFT : Stop / Export / Reset"); 
             imgui.text("- (Func) + RIGHT : Start / Pause")

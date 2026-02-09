@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>SF6 Ultimate Editor (V2.2 - Robust Mode)</title>
+    <title>SF6 Ultimate Editor (V2.5 - Stable Steam)</title>
     <style>
         :root {
             --bg: #121212; --panel: #1e1e1e; --border: #333;
@@ -32,27 +32,32 @@
         button:hover { background: #444; border-color: #888; }
         button.primary { background: var(--accent); border-color: var(--accent); }
         button.primary:hover { background: #cc0044; }
-        
-        input[type="file"] { display: none; }
-        .btn-file { background: #0077ff; border-color: #0055cc; display: inline-block; padding: 5px 10px; cursor: pointer; font-size: 0.75em; font-weight: bold; border-radius: 2px; white-space: nowrap;}
+
+        /* Style bouton fichier personnalisé */
+        .file-upload {
+            position: relative; overflow: hidden; display: inline-block;
+        }
+        .file-upload input[type=file] {
+            font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer;
+        }
+        .btn-blue { background: #0077ff; border-color: #0055cc; }
+        .btn-blue:hover { background: #0055aa; }
+
+        #current-file-display {
+            font-size: 0.8em; color: #aaa; font-style: italic; margin-left: auto; margin-right: 10px;
+        }
 
         /* GRID SYSTEM */
         .main-container {
-            flex-grow: 1; 
-            overflow: hidden; 
-            display: grid; 
-            grid-template-columns: repeat(8, 1fr); 
-            gap: 4px; 
-            padding-bottom: 5px;
+            flex-grow: 1; overflow: hidden; display: grid; 
+            grid-template-columns: repeat(8, 1fr); gap: 4px; padding-bottom: 5px;
         }
 
         /* COLONNE SLOT */
         .slot-column {
             background: var(--panel); border: 1px solid var(--border);
-            display: flex; flex-direction: column;
-            min-width: 0; 
+            display: flex; flex-direction: column; min-width: 0; 
         }
-        
         .slot-column.disabled { opacity: 0.4; filter: grayscale(1); }
 
         /* EN-TETE */
@@ -73,8 +78,7 @@
 
         /* TIMELINE */
         .timeline-body {
-            flex-grow: 1; overflow-y: auto; padding: 2px;
-            background: #181818;
+            flex-grow: 1; overflow-y: auto; padding: 2px; background: #181818;
             scrollbar-width: thin; 
         }
         .timeline-body::-webkit-scrollbar { width: 6px; }
@@ -103,7 +107,7 @@
         .slot-footer { padding: 5px; text-align: center; border-top: 1px solid var(--border); }
         .btn-add { width: 100%; font-size: 0.7em; padding: 4px; }
         
-        #gamepad-status { margin-left: auto; font-size: 0.75em; color: #888; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+        #gamepad-status { font-size: 0.75em; color: #888; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
         .led { width: 8px; height: 8px; border-radius: 50%; background: #444; display: inline-block; }
         .led.active { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
 
@@ -112,14 +116,21 @@
 <body>
 
     <div class="toolbar">
-        <h1>SF6 EDITOR V2.2</h1>
-        <label class="btn-file">📂 CHARGER<input type="file" id="fileInput" accept=".json"></label>
-        <button onclick="createNew()">📄 RESET</button>
-        <button onclick="saveJson()" class="primary">💾 EXPORTER JSON</button>
+        <h1>SF6 EDITOR V2.5</h1>
         
+        <div class="file-upload">
+            <button class="btn-blue">📂 OUVRIR</button>
+            <input type="file" id="fileInput" accept=".json">
+        </div>
+        
+        <button onclick="createNew()">📄 RESET</button>
+        <button onclick="saveJson()" class="primary">💾 SAUVEGARDER</button>
+        
+        <span id="current-file-display">SF6_Replay_Data.json</span>
+
         <div id="gamepad-status">
             <span class="led" id="gp-led"></span>
-            <span id="gp-text">Manette déconnectée</span>
+            <span id="gp-text">Manette OFF</span>
         </div>
     </div>
 
@@ -131,7 +142,8 @@
         let gamepadIndex = null;
         let lastButtons = [];
         let lastAxes = [];
-
+        let currentFileName = "SF6_Replay_Data.json";
+        
         const BTN_MAP = {
             0: "LK", 1: "MK", 2: "LP", 3: "MP",
             4: "LB", 5: "HP", 6: "LT", 7: "HK",
@@ -197,17 +209,28 @@
             requestAnimationFrame(pollGamepad);
         }
 
-        // --- FICHIER ---
+        // --- GESTION FICHIERS (RETOUR METHODE CLASSIQUE) ---
+
         function createNew() {
             currentData = Array.from({length: 8}, (_, i) => ({
                 id: i + 1, empty: true, weight: 1, timeline: []
             }));
+            updateFileName("SF6_Replay_Data.json");
             render();
+        }
+
+        function updateFileName(name) {
+            currentFileName = name;
+            document.getElementById("current-file-display").textContent = name;
         }
 
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
+            
+            // On sauvegarde le nom et on l'affiche
+            updateFileName(file.name);
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -216,7 +239,32 @@
                 } catch(err) { alert("JSON Invalide: " + err); }
             };
             reader.readAsText(file);
+            
+            // Important : on vide l'input pour permettre de recharger le même fichier si besoin
+            e.target.value = ''; 
         });
+
+        // --- SAUVEGARDE CLASSIQUE (TELECHARGEMENT) ---
+        function saveJson() {
+            // Demande le nom à l'utilisateur, pré-rempli avec le nom actuel
+            let fileNameToSave = prompt("Nom du fichier à sauvegarder :", currentFileName);
+            if (fileNameToSave === null) return;
+
+            if (!fileNameToSave.toLowerCase().endsWith(".json")) {
+                fileNameToSave += ".json";
+            }
+            updateFileName(fileNameToSave);
+
+            const str = JSON.stringify(currentData, null, 4);
+            const blob = new Blob([str], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileName;
+            a.click();
+            
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+        }
 
         // --- RENDER ---
         function render() {
@@ -224,12 +272,9 @@
             container.innerHTML = '';
 
             for (let i = 0; i < 8; i++) {
-                // Initialisation robuste : Si le slot n'existe pas ou est mal formé
                 if (!currentData[i]) {
                     currentData[i] = { id: i+1, empty: true, weight: 1, timeline: [] };
                 }
-                
-                // CORRECTIF V2.2 : Forcer l'existence de la timeline
                 if (!currentData[i].timeline) {
                     currentData[i].timeline = [];
                 }
@@ -263,7 +308,6 @@
             const parent = document.getElementById(`timeline-${slotIndex}`);
             parent.innerHTML = '';
             
-            // On est sûr que timeline existe grâce au fix dans render()
             currentData[slotIndex].timeline.forEach((line, lineIndex) => {
                 let parts = line.split(':');
                 let frames = parts[0].replace('f','').trim();
@@ -315,16 +359,6 @@
 
         function setInputFocus(el) { activeInput = el; el.classList.add("recording"); }
         function removeInputFocus() { if (activeInput) activeInput.classList.remove("recording"); activeInput = null; }
-
-        function saveJson() {
-            const str = JSON.stringify(currentData, null, 4);
-            const blob = new Blob([str], {type: "application/json"});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "Replay_Data.json";
-            a.click();
-        }
 
         createNew();
     </script>

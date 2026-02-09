@@ -17,13 +17,13 @@ local STATE_BLOCK   = 10
 local STATE_DI      = 11
 local STATE_DR      = 12 
 
--- ETATS D'ATTAQUE (DÉCLENCHEURS)
+-- ATTACK STATES (TRIGGERS)
 local ATTACK_STATES = { 
     [7]=true,   -- Startup
     [8]=false,  -- Recovery
     [13]=true,  -- Active
     [11]=true,  -- Drive Impact
-    [12]=false, -- Drive Rush ignoré
+    [12]=false, -- Drive Rush ignored
     [1]=true,   -- Invincible
     [2]=true,
     [3]=true,
@@ -64,7 +64,7 @@ local custom_font = { obj = nil, filename = "capcom_goji-udkakugoc80pro-db.ttf",
 local custom_font_timer = { obj = nil, filename = "SF6_college.ttf", loaded_size = 0, status = "Init..." }
 local res_watcher = { last_w = 0, last_h = 0, cooldown = 0 }
 
--- CONFIGURATION COMPLETE
+-- FULL CONFIG
 local user_config = {
     session_mode = 1, 
     timer_minutes = 3,
@@ -93,15 +93,13 @@ local user_config = {
 }
 
 -- =========================================================
--- CONFIGURATION PLAYBACK
+-- PLAYBACK CONFIGURATION
 -- =========================================================
 local playback_loop = {
     active = false,     
     wait_frames = 0     
 }
 
--- FONCTION INTELLIGENTE (STYLE MOD2.LUA)
--- Elle vérifie si la méthode a besoin d'arguments. Si oui, elle envoie '0' par défaut.
 local function call_tm_method(method_name, arg)
     local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
     local rec_func = mgr and mgr:call("get_RecordFunc")
@@ -111,16 +109,13 @@ local function call_tm_method(method_name, arg)
     if method then
         local num_params = method:get_num_params()
         if num_params > 0 then
-            -- Si la fonction veut un argument, on lui donne 'arg' ou '0' (comme mod2)
             method:call(rec_func, arg or 0)
         else
-            -- Sinon on appelle sans argument
             method:call(rec_func)
         end
     end
 end
 
--- Fonction pour gérer l'état (Initialisation uniquement)
 local function set_playback_mode(enable)
     if enable then
         -- START
@@ -128,23 +123,16 @@ local function set_playback_mode(enable)
             call_tm_method("SetAllPlayActive")
         end
         
-        -- On lance la lecture
         call_tm_method("SetPlay", true) 
-        call_tm_method("ForceApply") -- ForceApply est nécessaire pour le Start/Play
+        call_tm_method("ForceApply") 
         
         playback_loop.active = true
         playback_loop.wait_frames = 5
     else
-        -- STOP (COPIE EXACTE DE MOD2.LUA)
+        -- STOP 
         playback_loop.active = false
-        
-        -- Mod2 appelle juste Stop(0). Pas de ForceApply ensuite.
         call_tm_method("Stop", 0) 
-        call_tm_method("ForceApply") -- ForceApply est nécessaire pour le Start/Play
-		
-        
-        -- Note: On ne fait PAS ForceApply ici car dans ton test mod2, ça marche sans.
-        -- Le ForceApply pourrait annuler le Stop s'il réapplique des settings de lecture.
+        call_tm_method("ForceApply") 
     end
 end
 
@@ -175,20 +163,17 @@ local TEXTS = {
     stats_exported  = "STATS EXPORTED",
     reset_done      = "RESET DONE",
     
-    reset_prompt    = "PRESS (SELECT OR R3) + LEFT TO RESET",
-    pause_overlay   = "PAUSED : PRESS (SELECT OR R3) + RIGHT TO RESUME",
+    reset_prompt    = "PRESS (FUNC) + LEFT TO RESET",
+    pause_overlay   = "PAUSED : PRESS (FUNC) + RIGHT TO RESUME",
     err_file        = "Err: File Access"
 }
 
--- Stockage de l'état réel lu en mémoire
 local real_slot_status = {}
 for i=1,8 do real_slot_status[i] = { is_valid=false, is_active=false } end
 
 local last_trainer_mode = 0
 
 -- BUTTON MASKS
-local BTN_SELECT = 16384
-local BTN_R3     = 8192
 local BTN_UP     = 1
 local BTN_DOWN   = 2
 local BTN_LEFT   = 4
@@ -205,7 +190,7 @@ local session = {
     feedback = { text = TEXTS.waiting, timer = 0, color = COLORS.White },
     slot_stats = {},
     
-    -- VARIABLES AUTO TRACKING
+    -- AUTO TRACKING VARIABLES
     p1_max_frame = 0,
     p2_max_frame = 0,
     p2_is_end_flag = false,
@@ -289,7 +274,7 @@ local function get_dynamic_screen_size()
     return w, h
 end
 
--- SCANNER MEMOIRE MANNEQUIN
+-- MEMORY SCANNER
 local function update_real_slot_info()
     local status, err = pcall(function()
         local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
@@ -411,7 +396,7 @@ local function export_log_excel()
 end
 
 -- =========================================================
--- SYSTEME DE HOOKS
+-- HOOKS
 -- =========================================================
 
 local sdk_cache = {
@@ -501,7 +486,7 @@ local function update_slot_stats(is_success)
 end
 
 -- =========================================================
--- GESTION PLAYBACK (MOD2 LOGIC)
+-- PLAYBACK MANAGEMENT
 -- =========================================================
 local function manage_playback()
     local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
@@ -512,32 +497,30 @@ local function manage_playback()
 
     local current_state = tonumber(tostring(g_data:get_field("State"))) -- 0=Stop, 5=Play
 
-    -- 1. CAS: SESSION ACTIVE (PLAYING)
+    -- 1. ACTIVE SESSION (PLAYING)
     if session.is_running and not session.is_paused and not session.is_time_up and playback_loop.active then
         
-        -- Si le mannequin est à l'arrêt
+        -- If dummy is stopped
         if current_state == 0 then
             
-            -- On attend 5 frames (buffer de sécurité anti-glitch début de slot)
+            -- Wait 5 frames
             if playback_loop.wait_frames > 0 then
                 playback_loop.wait_frames = playback_loop.wait_frames - 1
             else
-                -- Lancement !
+                -- Play !
                 call_tm_method("SetPlay", true)
                 call_tm_method("ForceApply")
                 playback_loop.wait_frames = 5
             end
         else
-            -- S'il joue déjà, on maintient le délai
             playback_loop.wait_frames = 5
         end
         
-    -- 2. CAS: PAUSE / STOP (ARRET VIA STOP METHOD)
+    -- 2. PAUSE / STOP
     else
-        -- Si le mannequin n'est PAS à l'arrêt, on force le STOP comme mod2.lua
+        -- Force stop if not stopped
         if current_state ~= 0 then
             call_tm_method("Stop", 0) 
-            -- PAS DE FORCE APPLY ICI
         end
     end
 end
@@ -576,7 +559,6 @@ local function update_logic()
             session.is_time_up = true
             session.time_up_delay = 0
             
-            -- ARRET DU MANNEQUIN
             set_playback_mode(false)
             
             export_log_excel()
@@ -598,7 +580,7 @@ local function update_logic()
     end
 
     -- =========================================================
-    -- LOGIQUE FLAGS & STATES (PURE)
+    -- LOGIC FLAGS & STATES (PURE)
     -- =========================================================
     
     session.p1_state = session.p1_max_frame
@@ -691,12 +673,14 @@ local function handle_input()
     end
 
     local function is_func_combo_pressed(target_mask)
-        local is_func_held = ((active_buttons & BTN_SELECT) == BTN_SELECT) or ((active_buttons & BTN_R3) == BTN_R3)
+        -- Get Function Key from Manager or default to Select
+        local func_btn = _G.TrainingFuncButton or 16384
+        local is_func_held = ((active_buttons & func_btn) == func_btn)
         if not is_func_held then return false end
         return ((active_buttons & target_mask) == target_mask) and not ((last_input_mask & target_mask) == target_mask)
     end
 
-    -- 1. REGLAGE TIMER
+    -- 1. TIMER SETTINGS
     if not session.is_running and not session.is_time_up then 
         if is_func_combo_pressed(BTN_UP) then
             user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
@@ -710,7 +694,7 @@ local function handle_input()
         end
     end
 
-    -- 2. GAUCHE : STOP & EXPORT OU RESET
+    -- 2. LEFT : STOP & EXPORT OR RESET
     if is_func_combo_pressed(BTN_LEFT) then
         if session.is_time_up then
             reset_session_stats()
@@ -727,7 +711,7 @@ local function handle_input()
         end
     end
 
-    -- 3. DROITE : START / PAUSE
+    -- 3. RIGHT : START / PAUSE
     if is_func_combo_pressed(BTN_RIGHT) then
         if not session.is_running and not session.is_time_up then
             reset_session_stats()
@@ -848,7 +832,7 @@ re.on_frame(function()
 
     if cur_mode ~= 1 then return end
 
-    -- LOGIQUE DE PAUSE PERSISTANTE DU JEU
+    -- PERSISTENT PAUSE LOGIC
     local pm = sdk.get_managed_singleton("app.PauseManager")
     if pm then
         local field = pm:get_type_definition():get_field("_CurrentPauseBit")
@@ -857,7 +841,7 @@ re.on_frame(function()
             if val and tostring(val) ~= "131072" then 
                 if session.is_running and not session.is_paused then 
                     session.is_paused = true 
-                    set_playback_mode(false) -- PAUSE AUTO
+                    set_playback_mode(false) -- AUTO PAUSE
                 end
             end
         end
@@ -865,11 +849,7 @@ re.on_frame(function()
     
     update_real_slot_info() 
     handle_input()
-    
-    -- >>> GESTION INTELLIGENTE PLAYBACK & STOP <<<
     manage_playback()
-    -- >>>>>>>>>>>><<<<<<<<<<<<
-    
     update_logic()
     handle_resolution_change()
     manage_ticker_visibility_backup() 
@@ -941,13 +921,13 @@ if imgui.begin_window("HUD_Reaction", true, win_flags) then
         local line_2_y = top_y + spacing_y_px + off_status_px
         local line_3_y = line_2_y + spacing_y_px
 
-        -- 3. SLOT STATS (AFFICHE UNIQUEMENT LES SLOTS "ON")
+        -- 3. SLOT STATS
         if user_config.show_slot_stats then
             local slots_str = ""
             local has_visible_slots = false
             for i=1,8 do
                 local status = real_slot_status[i]
-                -- On affiche UNIQUEMENT si le slot est ACTIVE dans le jeu (ON)
+                -- Only show active slots
                 if status.is_active then
                     local s = session.slot_stats[i]
                     local pct = 0
@@ -987,7 +967,7 @@ re.on_draw_ui(function()
     if imgui.tree_node("Reaction Trainer Remastered (V6.2 - Mod2 Logic)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
-            imgui.text("SHORTCUTS (Hold SELECT or R3):")
+            imgui.text("SHORTCUTS (Hold FUNCTION):")
             imgui.text("- (Func) + UP / DOWN : Adjust Timer"); 
             imgui.text("- (Func) + LEFT : Stop / Export / Reset"); 
             imgui.text("- (Func) + RIGHT : Start / Pause")
