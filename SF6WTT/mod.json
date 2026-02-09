@@ -1,0 +1,9 @@
+{
+  "name": "SF6 Wael Training Tools",
+  "version": "1.0.0",
+  "author": "Wael3rd",
+  "description": "Advanced training tools for Street Fighter 6 including recording slot management and custom training modes",
+  "game": "Street Fighter 6",
+  "requiresREFramework": true,
+  "dependencies": []
+}
