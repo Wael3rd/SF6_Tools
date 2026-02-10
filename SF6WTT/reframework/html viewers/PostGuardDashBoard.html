@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PostGuard Training</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f111a;
+            --bg-panel: #1a1d29;
+            --accent-cyan: #00ffff;
+            --accent-green: #00ff9d;
+            --accent-red: #ff3860;
+            --accent-orange: #ff9f43;
+            --text-main: #e0e6ed;
+            --text-muted: #8b9bb4;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Rajdhani', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--bg-panel);
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            font-size: 2rem;
+            color: var(--accent-orange); /* Changed to Orange for Guard theme distinction */
+            text-shadow: 0 0 10px rgba(255, 159, 67, 0.3);
+        }
+
+        /* File Input Styling */
+        .file-upload {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            border: 1px solid var(--accent-cyan);
+            background: rgba(0, 255, 255, 0.1);
+            color: var(--accent-cyan);
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .custom-file-upload:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-dark);
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
+
+        /* Dashboard Grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            opacity: 0.1; /* Hidden until loaded */
+            transition: opacity 0.5s ease;
+        }
+
+        .dashboard.loaded {
+            opacity: 1;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--bg-panel);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border-left: 4px solid transparent;
+        }
+
+        .card-kpi {
+            text-align: center;
+        }
+
+        .card-kpi h3 {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .kpi-value {
+            font-size: 2.5rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .kpi-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Specific Border Colors */
+        .border-blue { border-left-color: var(--accent-cyan); }
+        .border-green { border-left-color: var(--accent-green); }
+        .border-red { border-left-color: var(--accent-red); }
+        .border-orange { border-left-color: var(--accent-orange); }
+
+        /* Chart Containers */
+        .chart-container {
+            grid-column: span 2;
+            height: 350px;
+            position: relative;
+        }
+        
+        .chart-full {
+            grid-column: span 4;
+            height: 350px;
+        }
+        
+        .chart-half {
+            grid-column: span 2;
+            height: 350px;
+        }
+
+        /* Table */
+        .table-container {
+            grid-column: span 4;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-panel);
+            border-radius: 8px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #2d3246;
+        }
+
+        th {
+            background-color: #232736;
+            color: var(--accent-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        /* Utility */
+        .text-green { color: var(--accent-green); }
+        .text-red { color: var(--accent-red); }
+        .text-cyan { color: var(--accent-cyan); }
+        .text-orange { color: var(--accent-orange); }
+
+        /* Empty State */
+        #empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">SF6 TRAINING // POST GUARD</div>
+        <div class="file-upload">
+            <label for="file-input" class="custom-file-upload">
+                📥 IMPORT "PostGuard_Stats.txt"
+            </label>
+            <input id="file-input" type="file" accept=".txt" />
+        </div>
+    </header>
+
+    <div id="empty-state">
+        <h2>Waiting for data...</h2>
+        <p>Import your statistics file to visualize the report.</p>
+    </div>
+
+    <div class="dashboard" id="main-dashboard">
+        
+        <div class="card card-kpi border-blue">
+            <h3>TOTAL SESSIONS</h3>
+            <div class="kpi-value text-cyan" id="kpi-sessions">0</div>
+            <div class="kpi-sub">Played</div>
+        </div>
+        <div class="card card-kpi border-green">
+            <h3>AVERAGE GUARD %</h3>
+            <div class="kpi-value text-green" id="kpi-avg-acc">0%</div>
+            <div class="kpi-sub">Global Success Rate</div>
+        </div>
+        <div class="card card-kpi border-orange">
+            <h3>BEST SCORE</h3>
+            <div class="kpi-value text-orange" id="kpi-best-score">0</div>
+            <div class="kpi-sub" id="kpi-best-score-date">-</div>
+        </div>
+        <div class="card card-kpi border-red">
+            <h3>TOTAL DEFENSE</h3>
+            <div class="kpi-value text-red" id="kpi-total-hits">0</div>
+            <div class="kpi-sub">Total Interactions</div>
+        </div>
+
+        <div class="card chart-half border-green">
+            <h3>Guard Accuracy (%)</h3>
+            <canvas id="chart-evolution"></canvas>
+        </div>
+
+        <div class="card chart-half border-orange">
+            <h3>Score History</h3>
+            <canvas id="chart-score"></canvas>
+        </div>
+
+        <div class="card table-container border-blue">
+            <h3>Session History</h3>
+            <table id="stats-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Duration</th>
+                        <th>Score</th>
+                        <th>Total Inputs</th>
+                        <th>Success Rate</th>
+                        <th>Evaluation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- COLORS ---
+        const colors = {
+            cyan: 'rgba(0, 255, 255, 1)',
+            cyanLow: 'rgba(0, 255, 255, 0.2)',
+            green: 'rgba(0, 255, 157, 1)',
+            greenLow: 'rgba(0, 255, 157, 0.2)',
+            red: 'rgba(255, 56, 96, 1)',
+            orange: 'rgba(255, 159, 67, 1)',
+            orangeLow: 'rgba(255, 159, 67, 0.2)',
+            white: '#e0e6ed'
+        };
+
+        // --- STATE ---
+        let charts = {};
+
+        // --- EVENT LISTENER ---
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                processData(content);
+            };
+            reader.readAsText(file);
+        });
+
+        // --- PARSING & PROCESSING ---
+        function processData(text) {
+            const lines = text.trim().split('\n');
+            const data = [];
+            
+            // Expected Format (Tab Separated):
+            // 0:DATE (YYYY-MM-DD HH:MM:SS)	1:DURATION	2:SCORE	3:SUCCESS_PCT	4:TOTAL
+            
+            // Skip Header (Row 0)
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const cols = line.split('\t');
+                
+                if (cols.length < 5) continue; 
+
+                // Parse Date/Time from Col 0
+                const dateTimeStr = cols[0];
+                const dateParts = dateTimeStr.split(' ');
+                const dateOnly = dateParts[0];
+                const timeOnly = dateParts[1] || '';
+
+                const entry = {
+                    fullDate: dateTimeStr,
+                    date: dateOnly,
+                    time: timeOnly,
+                    duration: cols[1],
+                    score: parseInt(cols[2]),
+                    pct: parseFloat(cols[3].replace('%', '')),
+                    total: parseInt(cols[4])
+                };
+                data.push(entry);
+            }
+
+            if (data.length > 0) {
+                updateDashboard(data);
+                document.getElementById('empty-state').style.display = 'none';
+                document.getElementById('main-dashboard').classList.add('loaded');
+            } else {
+                alert("No valid data found. Make sure you are using the correct PostGuard_Stats.txt file.");
+            }
+        }
+
+        // --- UPDATE DASHBOARD ---
+        function updateDashboard(data) {
+            updateKPIs(data);
+            updateTable(data);
+            updateCharts(data);
+        }
+
+        function updateKPIs(data) {
+            // Total Sessions
+            document.getElementById('kpi-sessions').innerText = data.length;
+
+            // Average Accuracy
+            const avgAcc = data.reduce((acc, curr) => acc + curr.pct, 0) / data.length;
+            document.getElementById('kpi-avg-acc').innerText = avgAcc.toFixed(2) + '%';
+
+            // Best Score (Max value)
+            let best = data.reduce((prev, current) => (prev.score > current.score) ? prev : current);
+            document.getElementById('kpi-best-score').innerText = best.score;
+            document.getElementById('kpi-best-score-date').innerText = best.fullDate;
+
+            // Total Interactions
+            const totalInputs = data.reduce((acc, curr) => acc + curr.total, 0);
+            document.getElementById('kpi-total-hits').innerText = totalInputs.toLocaleString();
+        }
+
+        function updateTable(data) {
+            const tbody = document.querySelector('#stats-table tbody');
+            tbody.innerHTML = '';
+
+            // Reverse to show newest first
+            [...data].reverse().forEach(row => {
+                const tr = document.createElement('tr');
+                
+                // Colorize Score
+                let scoreColor = 'var(--text-main)';
+                if(row.score > 0) scoreColor = 'var(--accent-green)';
+                if(row.score < 0) scoreColor = 'var(--accent-red)';
+
+                // Colorize PCT
+                let pctClass = '';
+                if(row.pct >= 80) pctClass = 'text-green';
+                else if(row.pct >= 50) pctClass = 'text-orange';
+                else pctClass = 'text-red';
+
+                tr.innerHTML = `
+                    <td>${row.fullDate}</td>
+                    <td>${row.duration}</td>
+                    <td style="font-weight:bold; color:${scoreColor}">${row.score}</td>
+                    <td>${row.total}</td>
+                    <td class="${pctClass}">${row.pct.toFixed(2)}%</td>
+                    <td>${getRank(row.pct)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getRank(pct) {
+            if(pct >= 90) return "S";
+            if(pct >= 80) return "A";
+            if(pct >= 60) return "B";
+            if(pct >= 40) return "C";
+            return "D";
+        }
+
+        function updateCharts(data) {
+            // Destroy existing charts if update
+            if(charts.evo) charts.evo.destroy();
+            if(charts.score) charts.score.destroy();
+
+            const labels = data.map(d => d.date + '\n' + d.time);
+
+            // 1. Evolution Chart (Line - Accuracy)
+            const ctxEvo = document.getElementById('chart-evolution').getContext('2d');
+            charts.evo = new Chart(ctxEvo, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Success %',
+                            data: data.map(d => d.pct),
+                            borderColor: colors.green,
+                            backgroundColor: colors.greenLow,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointBackgroundColor: colors.green
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            max: 100, 
+                            grid: { color: '#2d3246' },
+                            ticks: { color: colors.white }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: colors.white, maxRotation: 45, minRotation: 45, font: {size: 10} }
+                        }
+                    }
+                }
+            });
+
+            // 2. Score History (Bar Chart)
+            const ctxScore = document.getElementById('chart-score').getContext('2d');
+            charts.score = new Chart(ctxScore, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Score',
+                        data: data.map(d => d.score),
+                        backgroundColor: data.map(d => d.score >= 0 ? colors.orange : colors.red),
+                        borderColor: data.map(d => d.score >= 0 ? colors.orange : colors.red),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { 
+                            grid: { color: '#2d3246' },
+                            ticks: { color: colors.white }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: colors.white, maxRotation: 45, minRotation: 45, font: {size: 10} }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
