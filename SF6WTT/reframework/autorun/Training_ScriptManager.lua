@@ -85,7 +85,7 @@ local function handle_input()
     -- If [Function] held and [Square] pressed -> Switch Mode
     if is_func_held and is_switch_pressed then
         _G.CurrentTrainerMode = _G.CurrentTrainerMode + 1
-        if _G.CurrentTrainerMode > 2 then _G.CurrentTrainerMode = 0 end
+        if _G.CurrentTrainerMode > 3 then _G.CurrentTrainerMode = 0 end
     end
     
     last_input_mask = active_buttons
@@ -223,6 +223,10 @@ re.on_draw_ui(function()
 
         local c2, v2 = imgui.checkbox("HitConfirm Training", _G.CurrentTrainerMode == 2)
         if c2 and v2 then _G.CurrentTrainerMode = 2 end
+
+
+        local c3, v3 = imgui.checkbox("Post Guard Training", _G.CurrentTrainerMode == 3)
+        if c3 and v3 then _G.CurrentTrainerMode = 3 end
         
         imgui.spacing()
         imgui.separator()
