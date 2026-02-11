@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - PostGuard Training</title>
+    <title>Dashboard - PostGuard Training V2</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
@@ -45,7 +45,7 @@
 
         .logo {
             font-size: 2rem;
-            color: var(--accent-orange); /* Changed to Orange for Guard theme distinction */
+            color: var(--accent-orange);
             text-shadow: 0 0 10px rgba(255, 159, 67, 0.3);
         }
 
@@ -133,11 +133,6 @@
             position: relative;
         }
         
-        .chart-full {
-            grid-column: span 4;
-            height: 350px;
-        }
-        
         .chart-half {
             grid-column: span 2;
             height: 350px;
@@ -161,6 +156,7 @@
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #2d3246;
+            font-size: 0.9rem;
         }
 
         th {
@@ -173,6 +169,19 @@
         tr:hover {
             background-color: rgba(255,255,255,0.05);
         }
+
+        /* Details Pill */
+        .detail-pill {
+            display: inline-block;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 4px;
+            margin-bottom: 2px;
+            background: rgba(255,255,255,0.1);
+        }
+        .pill-success { border: 1px solid var(--accent-green); color: var(--accent-green); }
+        .pill-fail { border: 1px solid var(--accent-red); color: var(--accent-red); }
 
         /* Utility */
         .text-green { color: var(--accent-green); }
@@ -195,7 +204,7 @@
 <body>
 
     <header>
-        <div class="logo">SF6 TRAINING // POST GUARD</div>
+        <div class="logo">SF6 TRAINING // POST GUARD V2</div>
         <div class="file-upload">
             <label for="file-input" class="custom-file-upload">
                 📥 IMPORT "PostGuard_Stats.txt"
@@ -206,7 +215,7 @@
 
     <div id="empty-state">
         <h2>Waiting for data...</h2>
-        <p>Import your statistics file to visualize the report.</p>
+        <p>Import your statistics file to visualize the detailed report.</p>
     </div>
 
     <div class="dashboard" id="main-dashboard">
@@ -217,24 +226,19 @@
             <div class="kpi-sub">Played</div>
         </div>
         <div class="card card-kpi border-green">
-            <h3>AVERAGE GUARD %</h3>
+            <h3>AVG SUCCESS RATE</h3>
             <div class="kpi-value text-green" id="kpi-avg-acc">0%</div>
-            <div class="kpi-sub">Global Success Rate</div>
+            <div class="kpi-sub">Global</div>
         </div>
         <div class="card card-kpi border-orange">
-            <h3>BEST SCORE</h3>
+            <h3>HIGHEST SCORE</h3>
             <div class="kpi-value text-orange" id="kpi-best-score">0</div>
             <div class="kpi-sub" id="kpi-best-score-date">-</div>
         </div>
         <div class="card card-kpi border-red">
-            <h3>TOTAL DEFENSE</h3>
+            <h3>TOTAL INTERACTIONS</h3>
             <div class="kpi-value text-red" id="kpi-total-hits">0</div>
-            <div class="kpi-sub">Total Interactions</div>
-        </div>
-
-        <div class="card chart-half border-green">
-            <h3>Guard Accuracy (%)</h3>
-            <canvas id="chart-evolution"></canvas>
+            <div class="kpi-sub">Defensive Actions</div>
         </div>
 
         <div class="card chart-half border-orange">
@@ -242,17 +246,23 @@
             <canvas id="chart-score"></canvas>
         </div>
 
+        <div class="card chart-half border-cyan">
+            <h3>Interaction Breakdown (Aggregate)</h3>
+            <canvas id="chart-breakdown"></canvas>
+        </div>
+
         <div class="card table-container border-blue">
-            <h3>Session History</h3>
+            <h3>Session History & Details</h3>
             <table id="stats-table">
                 <thead>
                     <tr>
                         <th>Date</th>
-                        <th>Duration</th>
+                        <th>Dur.</th>
                         <th>Score</th>
-                        <th>Total Inputs</th>
-                        <th>Success Rate</th>
-                        <th>Evaluation</th>
+                        <th>Total</th>
+                        <th>Success %</th>
+                        <th>Rank</th>
+                        <th>Detailed Report</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -264,17 +274,19 @@
     <script>
         // --- COLORS ---
         const colors = {
-            cyan: 'rgba(0, 255, 255, 1)',
-            cyanLow: 'rgba(0, 255, 255, 0.2)',
-            green: 'rgba(0, 255, 157, 1)',
-            greenLow: 'rgba(0, 255, 157, 0.2)',
-            red: 'rgba(255, 56, 96, 1)',
-            orange: 'rgba(255, 159, 67, 1)',
-            orangeLow: 'rgba(255, 159, 67, 0.2)',
-            white: '#e0e6ed'
+            cyan: '#00ffff',
+            cyanAlpha: 'rgba(0, 255, 255, 0.6)',
+            green: '#00ff9d',
+            greenAlpha: 'rgba(0, 255, 157, 0.6)',
+            red: '#ff3860',
+            redAlpha: 'rgba(255, 56, 96, 0.6)',
+            orange: '#ff9f43',
+            orangeAlpha: 'rgba(255, 159, 67, 0.6)',
+            white: '#e0e6ed',
+            purple: '#a55eea',
+            yellow: '#f7b731'
         };
 
-        // --- STATE ---
         let charts = {};
 
         // --- EVENT LISTENER ---
@@ -290,37 +302,39 @@
             reader.readAsText(file);
         });
 
-        // --- PARSING & PROCESSING ---
+        // --- PARSING ---
         function processData(text) {
             const lines = text.trim().split('\n');
             const data = [];
             
-            // Expected Format (Tab Separated):
-            // 0:DATE (YYYY-MM-DD HH:MM:SS)	1:DURATION	2:SCORE	3:SUCCESS_PCT	4:TOTAL
+            // Format Attendu:
+            // 0:DATE 1:DURATION 2:SCORE 3:SUCCESS_PCT 4:TOTAL 5:DETAILS(Optionnel)
             
-            // Skip Header (Row 0)
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
                 
                 const cols = line.split('\t');
-                
                 if (cols.length < 5) continue; 
 
-                // Parse Date/Time from Col 0
-                const dateTimeStr = cols[0];
-                const dateParts = dateTimeStr.split(' ');
-                const dateOnly = dateParts[0];
-                const timeOnly = dateParts[1] || '';
+                // Parse Detail String "KEY=VAL|KEY=VAL"
+                let details = {};
+                if (cols[5]) {
+                    const pairs = cols[5].split('|');
+                    pairs.forEach(p => {
+                        if(!p) return;
+                        const [k, v] = p.split('=');
+                        if(k && v) details[k] = parseInt(v);
+                    });
+                }
 
                 const entry = {
-                    fullDate: dateTimeStr,
-                    date: dateOnly,
-                    time: timeOnly,
+                    fullDate: cols[0],
                     duration: cols[1],
                     score: parseInt(cols[2]),
                     pct: parseFloat(cols[3].replace('%', '')),
-                    total: parseInt(cols[4])
+                    total: parseInt(cols[4]),
+                    details: details // Object
                 };
                 data.push(entry);
             }
@@ -330,7 +344,7 @@
                 document.getElementById('empty-state').style.display = 'none';
                 document.getElementById('main-dashboard').classList.add('loaded');
             } else {
-                alert("No valid data found. Make sure you are using the correct PostGuard_Stats.txt file.");
+                alert("No valid data found.");
             }
         }
 
@@ -342,19 +356,14 @@
         }
 
         function updateKPIs(data) {
-            // Total Sessions
             document.getElementById('kpi-sessions').innerText = data.length;
-
-            // Average Accuracy
             const avgAcc = data.reduce((acc, curr) => acc + curr.pct, 0) / data.length;
             document.getElementById('kpi-avg-acc').innerText = avgAcc.toFixed(2) + '%';
-
-            // Best Score (Max value)
+            
             let best = data.reduce((prev, current) => (prev.score > current.score) ? prev : current);
             document.getElementById('kpi-best-score').innerText = best.score;
             document.getElementById('kpi-best-score-date').innerText = best.fullDate;
 
-            // Total Interactions
             const totalInputs = data.reduce((acc, curr) => acc + curr.total, 0);
             document.getElementById('kpi-total-hits').innerText = totalInputs.toLocaleString();
         }
@@ -363,34 +372,37 @@
             const tbody = document.querySelector('#stats-table tbody');
             tbody.innerHTML = '';
 
-            // Reverse to show newest first
             [...data].reverse().forEach(row => {
                 const tr = document.createElement('tr');
                 
-                // Colorize Score
-                let scoreColor = 'var(--text-main)';
-                if(row.score > 0) scoreColor = 'var(--accent-green)';
-                if(row.score < 0) scoreColor = 'var(--accent-red)';
+                let scoreColor = row.score >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                let pctClass = row.pct >= 80 ? 'text-green' : (row.pct >= 50 ? 'text-orange' : 'text-red');
 
-                // Colorize PCT
-                let pctClass = '';
-                if(row.pct >= 80) pctClass = 'text-green';
-                else if(row.pct >= 50) pctClass = 'text-orange';
-                else pctClass = 'text-red';
+                // Generate Details HTML
+                let detailsHTML = '';
+                for (const [key, val] of Object.entries(row.details)) {
+                    // Check if key implies success or fail for styling
+                    const isSuccess = key.includes("SUCCESS") || key.includes("SAFE") || key.includes("COUNTER");
+                    const pillClass = isSuccess ? 'pill-success' : 'pill-fail';
+                    detailsHTML += `<span class="detail-pill ${pillClass}">${key}: ${val}</span>`;
+                }
+                if (!detailsHTML) detailsHTML = '<span style="color:#555">No detailed data</span>';
 
                 tr.innerHTML = `
                     <td>${row.fullDate}</td>
                     <td>${row.duration}</td>
                     <td style="font-weight:bold; color:${scoreColor}">${row.score}</td>
                     <td>${row.total}</td>
-                    <td class="${pctClass}">${row.pct.toFixed(2)}%</td>
+                    <td class="${pctClass}">${row.pct.toFixed(1)}%</td>
                     <td>${getRank(row.pct)}</td>
+                    <td>${detailsHTML}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
         function getRank(pct) {
+            if(pct >= 95) return "S+";
             if(pct >= 90) return "S";
             if(pct >= 80) return "A";
             if(pct >= 60) return "B";
@@ -399,53 +411,12 @@
         }
 
         function updateCharts(data) {
-            // Destroy existing charts if update
-            if(charts.evo) charts.evo.destroy();
             if(charts.score) charts.score.destroy();
+            if(charts.breakdown) charts.breakdown.destroy();
 
-            const labels = data.map(d => d.date + '\n' + d.time);
+            const labels = data.map(d => d.fullDate.split(' ')[1]); // Just time
 
-            // 1. Evolution Chart (Line - Accuracy)
-            const ctxEvo = document.getElementById('chart-evolution').getContext('2d');
-            charts.evo = new Chart(ctxEvo, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Success %',
-                            data: data.map(d => d.pct),
-                            borderColor: colors.green,
-                            backgroundColor: colors.greenLow,
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 4,
-                            pointBackgroundColor: colors.green
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: { 
-                            beginAtZero: true, 
-                            max: 100, 
-                            grid: { color: '#2d3246' },
-                            ticks: { color: colors.white }
-                        },
-                        x: { 
-                            grid: { display: false },
-                            ticks: { color: colors.white, maxRotation: 45, minRotation: 45, font: {size: 10} }
-                        }
-                    }
-                }
-            });
-
-            // 2. Score History (Bar Chart)
+            // 1. Score History (Bar)
             const ctxScore = document.getElementById('chart-score').getContext('2d');
             charts.score = new Chart(ctxScore, {
                 type: 'bar',
@@ -455,24 +426,59 @@
                         label: 'Score',
                         data: data.map(d => d.score),
                         backgroundColor: data.map(d => d.score >= 0 ? colors.orange : colors.red),
-                        borderColor: data.map(d => d.score >= 0 ? colors.orange : colors.red),
-                        borderWidth: 1
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: '#2d3246' }, ticks: { color: colors.white } },
+                        x: { display: false }
+                    }
+                }
+            });
+
+            // 2. Interaction Breakdown (Aggregate Doughnut)
+            // Aggregate all details
+            let agg = {};
+            data.forEach(d => {
+                for (const [k, v] of Object.entries(d.details || {})) {
+                    if (!agg[k]) agg[k] = 0;
+                    agg[k] += v;
+                }
+            });
+
+            const breakdownLabels = Object.keys(agg);
+            const breakdownData = Object.values(agg);
+            
+            // Generate colors dynamically based on label content
+            const breakdownColors = breakdownLabels.map(l => {
+                if (l.includes("SUCCESS")) return colors.green;
+                if (l.includes("FAIL")) return colors.red;
+                if (l.includes("TRADE")) return colors.cyan;
+                return colors.orange; // Default
+            });
+
+            const ctxBreakdown = document.getElementById('chart-breakdown').getContext('2d');
+            charts.breakdown = new Chart(ctxBreakdown, {
+                type: 'doughnut',
+                data: {
+                    labels: breakdownLabels,
+                    datasets: [{
+                        data: breakdownData,
+                        backgroundColor: breakdownColors,
+                        borderWidth: 0
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: { 
-                            grid: { color: '#2d3246' },
-                            ticks: { color: colors.white }
-                        },
-                        x: { 
-                            grid: { display: false },
-                            ticks: { color: colors.white, maxRotation: 45, minRotation: 45, font: {size: 10} }
+                        legend: { 
+                            position: 'right', 
+                            labels: { color: colors.white, font: {size: 11} } 
                         }
                     }
                 }

@@ -2,12 +2,11 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>SF6 Ultimate Editor (V2.5 - Stable Steam)</title>
+    <title>SF6 Ultimate Editor (Stable)</title>
     <style>
         :root {
             --bg: #121212; --panel: #1e1e1e; --border: #333;
             --accent: #ff0055; --text: #ddd; --input-bg: #2a2a2a;
-            --active-rec: #ff4444; --highlight: #444;
         }
         body {
             font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text);
@@ -23,60 +22,44 @@
         }
         h1 { margin: 0; font-size: 1em; text-transform: uppercase; margin-right: 10px; white-space: nowrap; }
         
-        /* BOUTONS */
         button {
-            background: #333; color: white; border: 1px solid #555; padding: 5px 10px;
-            cursor: pointer; text-transform: uppercase; font-weight: bold; font-size: 0.75em;
-            transition: 0.2s; white-space: nowrap;
+            background: #333; color: white; border: 1px solid #555; padding: 5px 15px;
+            cursor: pointer; text-transform: uppercase; font-weight: bold; font-size: 0.85em;
+            transition: 0.2s; white-space: nowrap; height: 30px;
         }
         button:hover { background: #444; border-color: #888; }
         button.primary { background: var(--accent); border-color: var(--accent); }
         button.primary:hover { background: #cc0044; }
 
-        /* Style bouton fichier personnalisé */
-        .file-upload {
-            position: relative; overflow: hidden; display: inline-block;
-        }
+        .file-upload { position: relative; overflow: hidden; display: inline-block; }
         .file-upload input[type=file] {
             font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer;
         }
         .btn-blue { background: #0077ff; border-color: #0055cc; }
         .btn-blue:hover { background: #0055aa; }
 
-        #current-file-display {
-            font-size: 0.8em; color: #aaa; font-style: italic; margin-left: auto; margin-right: 10px;
-        }
+        #current-file-display { font-size: 0.8em; color: #aaa; font-style: italic; margin-left: auto; }
 
         /* GRID SYSTEM */
         .main-container {
             flex-grow: 1; overflow: hidden; display: grid; 
             grid-template-columns: repeat(8, 1fr); gap: 4px; padding-bottom: 5px;
         }
-
-        /* COLONNE SLOT */
         .slot-column {
             background: var(--panel); border: 1px solid var(--border);
             display: flex; flex-direction: column; min-width: 0; 
         }
         .slot-column.disabled { opacity: 0.4; filter: grayscale(1); }
 
-        /* EN-TETE */
-        .slot-header {
-            padding: 5px; background: #252525; border-bottom: 1px solid var(--border);
-            text-align: center;
-        }
+        .slot-header { padding: 5px; background: #252525; border-bottom: 1px solid var(--border); text-align: center; }
         .slot-title { font-weight: bold; color: var(--accent); font-size: 0.9em; margin-bottom: 2px; display: block; }
         
         .slot-controls { display: flex; justify-content: space-between; align-items: center; font-size: 0.75em; }
         label { white-space: nowrap; display: flex; align-items: center; gap: 2px; }
         input[type="number"].weight-input { width: 30px; text-align: center; background: var(--input-bg); border: 1px solid #555; color: white; padding: 1px; }
 
-        .header-labels {
-            display: grid; grid-template-columns: 35px 1fr 15px; gap:2px; margin-top:4px; 
-            font-size:0.7em; opacity:0.6; text-align: left;
-        }
+        .header-labels { display: grid; grid-template-columns: 35px 1fr 15px; gap:2px; margin-top:4px; font-size:0.7em; opacity:0.6; text-align: left; }
 
-        /* TIMELINE */
         .timeline-body {
             flex-grow: 1; overflow-y: auto; padding: 2px; background: #181818;
             scrollbar-width: thin; 
@@ -84,39 +67,29 @@
         .timeline-body::-webkit-scrollbar { width: 6px; }
         .timeline-body::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
 
-        .action-row {
-            display: grid; grid-template-columns: 35px 1fr 15px; gap: 2px;
-            margin-bottom: 2px; align-items: center;
-        }
-        
+        .action-row { display: grid; grid-template-columns: 35px 1fr 15px; gap: 2px; margin-bottom: 2px; align-items: center; }
         input { background: var(--input-bg); border: 1px solid var(--border); color: white; padding: 2px 4px; font-size: 0.8em; }
         input:focus { border-color: var(--accent); outline: none; }
         
         .inp-frames { text-align: center; color: #aaa; padding: 2px 0; }
         .inp-action { font-family: monospace; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        .inp-action.recording {
-            background-color: #521818; border-color: #ff0000; color: #ffaaaa;
-            animation: pulse 1s infinite;
-        }
+        .inp-action.recording { background-color: #521818; border-color: #ff0000; color: #ffaaaa; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { border-color: #ff0000; } 50% { border-color: #880000; } 100% { border-color: #ff0000; } }
 
         .btn-del { color: #666; background: transparent; border: none; padding: 0; font-size: 1em; line-height: 1; }
         .btn-del:hover { color: #ff4444; background: transparent; }
-
         .slot-footer { padding: 5px; text-align: center; border-top: 1px solid var(--border); }
         .btn-add { width: 100%; font-size: 0.7em; padding: 4px; }
         
         #gamepad-status { font-size: 0.75em; color: #888; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
         .led { width: 8px; height: 8px; border-radius: 50%; background: #444; display: inline-block; }
         .led.active { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
-
     </style>
 </head>
 <body>
 
     <div class="toolbar">
-        <h1>SF6 EDITOR V2.5</h1>
+        <h1>SF6 EDITOR</h1>
         
         <div class="file-upload">
             <button class="btn-blue">📂 OUVRIR</button>
@@ -124,6 +97,7 @@
         </div>
         
         <button onclick="createNew()">📄 RESET</button>
+        
         <button onclick="saveJson()" class="primary">💾 SAUVEGARDER</button>
         
         <span id="current-file-display">SF6_Replay_Data.json</span>
@@ -172,33 +146,26 @@
             if (activeInput) {
                 let pressed = [];
                 let direction = 5;
-
                 let x = gp.axes[0];
                 let y = gp.axes[1];
-                
                 if (gp.buttons[12].pressed) y = -1;
                 if (gp.buttons[13].pressed) y = 1;
                 if (gp.buttons[14].pressed) x = -1;
                 if (gp.buttons[15].pressed) x = 1;
-
                 if (y < -0.5) { if (x < -0.5) direction = 7; else if (x > 0.5) direction = 9; else direction = 8; } 
                 else if (y > 0.5) { if (x < -0.5) direction = 1; else if (x > 0.5) direction = 3; else direction = 2; } 
                 else { if (x < -0.5) direction = 4; else if (x > 0.5) direction = 6; }
-
                 gp.buttons.forEach((b, i) => {
                     if (b.pressed && !lastButtons[i]) { if (BTN_MAP[i]) pressed.push(BTN_MAP[i]); }
                     lastButtons[i] = b.pressed;
                 });
-
                 if (pressed.length > 0 || (direction !== 5 && direction !== lastAxes)) {
                     let text = activeInput.value;
                     if (direction !== 5) text = direction + ""; 
-                    
                     if (pressed.length > 0) {
                         let btnStr = pressed.join("+");
                         text = (text && text !== "5") ? (text + "+" + btnStr) : btnStr;
                     }
-                    
                     if (text !== activeInput.value) {
                         activeInput.value = text;
                         activeInput.dispatchEvent(new Event('change'));
@@ -209,12 +176,9 @@
             requestAnimationFrame(pollGamepad);
         }
 
-        // --- GESTION FICHIERS (RETOUR METHODE CLASSIQUE) ---
-
+        // --- GESTION FICHIERS ---
         function createNew() {
-            currentData = Array.from({length: 8}, (_, i) => ({
-                id: i + 1, empty: true, weight: 1, timeline: []
-            }));
+            currentData = Array.from({length: 8}, (_, i) => ({ id: i + 1, empty: true, weight: 1, timeline: [] }));
             updateFileName("SF6_Replay_Data.json");
             render();
         }
@@ -227,10 +191,8 @@
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
-            // On sauvegarde le nom et on l'affiche
+            // On sauvegarde le vrai nom du fichier pour l'utiliser lors de la sauvegarde
             updateFileName(file.name);
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -239,29 +201,24 @@
                 } catch(err) { alert("JSON Invalide: " + err); }
             };
             reader.readAsText(file);
-            
-            // Important : on vide l'input pour permettre de recharger le même fichier si besoin
             e.target.value = ''; 
         });
 
-        // --- SAUVEGARDE CLASSIQUE (TELECHARGEMENT) ---
+        // --- SAUVEGARDE SIMPLE ET EFFICACE ---
         function saveJson() {
-            // Demande le nom à l'utilisateur, pré-rempli avec le nom actuel
-            let fileNameToSave = prompt("Nom du fichier à sauvegarder :", currentFileName);
-            if (fileNameToSave === null) return;
-
-            if (!fileNameToSave.toLowerCase().endsWith(".json")) {
-                fileNameToSave += ".json";
-            }
-            updateFileName(fileNameToSave);
-
             const str = JSON.stringify(currentData, null, 4);
             const blob = new Blob([str], {type: "application/json"});
             const url = URL.createObjectURL(blob);
+            
             const a = document.createElement('a');
             a.href = url;
-            a.download = currentFileName;
+            // On utilise le nom du fichier chargé. 
+            // Si Chrome est configuré sur "Toujours demander", il s'ouvrira au bon endroit ou dernier endroit utilisé.
+            a.download = currentFileName; 
+            
+            document.body.appendChild(a); 
             a.click();
+            document.body.removeChild(a);
             
             setTimeout(() => URL.revokeObjectURL(url), 100);
         }
@@ -270,19 +227,12 @@
         function render() {
             const container = document.getElementById('grid-container');
             container.innerHTML = '';
-
             for (let i = 0; i < 8; i++) {
-                if (!currentData[i]) {
-                    currentData[i] = { id: i+1, empty: true, weight: 1, timeline: [] };
-                }
-                if (!currentData[i].timeline) {
-                    currentData[i].timeline = [];
-                }
-                
+                if (!currentData[i]) currentData[i] = { id: i+1, empty: true, weight: 1, timeline: [] };
+                if (!currentData[i].timeline) currentData[i].timeline = [];
                 const slot = currentData[i];
                 const col = document.createElement('div');
                 col.className = `slot-column ${slot.empty ? 'disabled' : ''}`;
-                
                 col.innerHTML = `
                     <div class="slot-header">
                         <span class="slot-title">SLOT ${i + 1}</span>
@@ -290,14 +240,10 @@
                             <label><input type="checkbox" ${!slot.empty ? 'checked' : ''} onchange="toggleSlot(${i}, this.checked)"> ON</label>
                             <label>Poids <input type="number" class="weight-input" value="${slot.weight}" min="1" onchange="updateWeight(${i}, this.value)"></label>
                         </div>
-                        <div class="header-labels">
-                            <span>Durée</span><span>Action</span><span></span>
-                        </div>
+                        <div class="header-labels"><span>Durée</span><span>Action</span><span></span></div>
                     </div>
                     <div class="timeline-body" id="timeline-${i}"></div>
-                    <div class="slot-footer">
-                        <button class="btn-add" onclick="addStep(${i})">+ LIGNE</button>
-                    </div>
+                    <div class="slot-footer"><button class="btn-add" onclick="addStep(${i})">+ LIGNE</button></div>
                 `;
                 container.appendChild(col);
                 renderTimeline(i);
@@ -307,56 +253,31 @@
         function renderTimeline(slotIndex) {
             const parent = document.getElementById(`timeline-${slotIndex}`);
             parent.innerHTML = '';
-            
             currentData[slotIndex].timeline.forEach((line, lineIndex) => {
                 let parts = line.split(':');
                 let frames = parts[0].replace('f','').trim();
                 let action = parts[1] ? parts[1].trim() : "";
-
                 const row = document.createElement('div');
                 row.className = 'action-row';
                 row.innerHTML = `
                     <input type="number" class="inp-frames" value="${frames}" onchange="updateLine(${slotIndex}, ${lineIndex}, 'frames', this.value)">
-                    <input type="text" class="inp-action" value="${action}" 
-                           onfocus="setInputFocus(this)" onblur="removeInputFocus()"
-                           onchange="updateLine(${slotIndex}, ${lineIndex}, 'action', this.value)">
+                    <input type="text" class="inp-action" value="${action}" onfocus="setInputFocus(this)" onblur="removeInputFocus()" onchange="updateLine(${slotIndex}, ${lineIndex}, 'action', this.value)">
                     <button class="btn-del" onclick="removeStep(${slotIndex}, ${lineIndex})">×</button>
                 `;
                 parent.appendChild(row);
             });
         }
 
-        // --- ACTIONS ---
-        function toggleSlot(idx, val) {
-            currentData[idx].empty = !val;
-            render();
-        }
-
-        function updateWeight(idx, val) {
-            currentData[idx].weight = parseInt(val) || 1;
-        }
-
-        function addStep(idx) {
-            currentData[idx].timeline.push("10f : 5");
-            renderTimeline(idx);
-        }
-
-        function removeStep(slotIdx, lineIdx) {
-            currentData[slotIdx].timeline.splice(lineIdx, 1);
-            renderTimeline(slotIdx);
-        }
-
+        function toggleSlot(idx, val) { currentData[idx].empty = !val; render(); }
+        function updateWeight(idx, val) { currentData[idx].weight = parseInt(val) || 1; }
+        function addStep(idx) { currentData[idx].timeline.push("10f : 5"); renderTimeline(idx); }
+        function removeStep(slotIdx, lineIdx) { currentData[slotIdx].timeline.splice(lineIdx, 1); renderTimeline(slotIdx); }
         function updateLine(slotIdx, lineIdx, type, val) {
             let old = currentData[slotIdx].timeline[lineIdx].split(':');
-            let f = old[0].replace('f','').trim();
-            let a = old[1] ? old[1].trim() : "";
-
-            if (type === 'frames') f = val;
-            if (type === 'action') a = val;
-
+            let f = old[0].replace('f','').trim(); let a = old[1] ? old[1].trim() : "";
+            if (type === 'frames') f = val; if (type === 'action') a = val;
             currentData[slotIdx].timeline[lineIdx] = `${f}f : ${a}`;
         }
-
         function setInputFocus(el) { activeInput = el; el.classList.add("recording"); }
         function removeInputFocus() { if (activeInput) activeInput.classList.remove("recording"); activeInput = null; }
 

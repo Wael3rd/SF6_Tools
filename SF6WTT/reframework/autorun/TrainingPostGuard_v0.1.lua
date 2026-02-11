@@ -42,7 +42,7 @@ local custom_font_timer = { obj = nil, filename = "SF6_college.ttf", loaded_size
 local res_watcher = { last_w = 0, last_h = 0, cooldown = 0 }
 
 local user_config = {
-    timer_minutes = 5,
+    timer_minutes = 1,
     hud_base_size = 20.24,
     hud_auto_scale = true,
     hud_n_global_y = -0.337,
@@ -171,7 +171,7 @@ local function get_act_st(player_index)
 end
 
 local function get_p1_extended_info()
-    local info = { catch_flag = false }
+    local info = { catch_flag = false, trade_dm_flag = false } -- On ajoute le champ par défaut
     local gBattle = sdk.find_type_definition("gBattle")
     if not gBattle then return info end
     local player_mgr = gBattle:get_field("Player"):get_data(nil)
@@ -182,6 +182,10 @@ local function get_p1_extended_info()
     -- Lecture de catch_flag (true = en train de chopper)
     local catch = p1:get_field("catch_flag")
     if catch then info.catch_flag = (tostring(catch) == "true") end
+    
+    -- NOUVEAU : Lecture du trade_dm_flag
+    local trade = p1:get_field("trade_dm_flag")
+    if trade then info.trade_dm_flag = (tostring(trade) == "true") end
     
     return info
 end
@@ -219,10 +223,11 @@ local function is_game_in_menu()
     return false
 end
 
--- [FIXED EXPORT FUNCTION]
 local function export_stats()
     local file = io.open(LOG_FILENAME, "a"); if not file then return end
-    if file:seek("end") == 0 then file:write("DATE\tDURATION\tSCORE\tSUCCESS_PCT\tTOTAL\n") end
+    
+    -- On ajoute la colonne DETAILS au header si le fichier est vide
+    if file:seek("end") == 0 then file:write("DATE\tDURATION\tSCORE\tSUCCESS_PCT\tTOTAL\tDETAILS\n") end
     
     local now = os.date("%Y-%m-%d %H:%M:%S")
     local duration = os.difftime(os.time(), session.real_start_time)
@@ -232,9 +237,15 @@ local function export_stats()
         pct = (session.success_count / session.total) * 100.0 
     end
     
-    -- Correction de la ligne de formatage qui causait le crash
-    -- On passe explicitement pct (float) a %.2f et les autres en string/int
-    local line = string.format("%s\t%s\t%d\t%.2f%%\t%d", now, format_time(duration), session.score, pct, session.total)
+    -- Création de la chaîne de caractères pour les détails (Format: Clé:Valeur|Clé:Valeur...)
+    local details_str = ""
+    for k, v in pairs(session.detailed_stats) do
+        -- On nettoie un peu le texte pour éviter les tabulations ou retours à la ligne
+        local clean_key = string.gsub(k, "\t", " ")
+        details_str = details_str .. clean_key .. "=" .. v .. "|"
+    end
+    
+    local line = string.format("%s\t%s\t%d\t%.2f%%\t%d\t%s", now, format_time(duration), session.score, pct, session.total, details_str)
     
     file:write(line .. "\n")
     file:close()
@@ -256,6 +267,9 @@ local function reset_session_stats()
     session.phase = PHASE_WAIT_BLOCK
     session.timer_action = 0
     session.time_up_delay = 0
+    
+    -- NOUVEAU : Table pour stocker le détail des outcomes
+    session.detailed_stats = {} 
     
     session.p2_has_attacked_ground = false
     session.p2_was_in_air = false
@@ -289,16 +303,23 @@ end
 
 local function evaluate_outcome(success, reason)
     session.total = session.total + 1
+    
+    -- NOUVEAU : On incrémente le compteur pour cette raison spécifique
+    if not session.detailed_stats[reason] then
+        session.detailed_stats[reason] = 0
+    end
+    session.detailed_stats[reason] = session.detailed_stats[reason] + 1
+
     if success then
         session.score = session.score + 1
         session.success_count = session.success_count + 1 
-        set_feedback(reason, COLORS.Green, 2.0)
+        set_feedback(reason, COLORS.Green, 0.5) -- Délai court comme vu ensemble
     else
         session.score = session.score - 1
-        set_feedback(reason, COLORS.Red, 2.0)
+        set_feedback(reason, COLORS.Red, 0.5)
     end
     session.phase = PHASE_RESULT
-    session.timer_action = 45 
+    session.timer_action = 30 -- ~0.5 sec de pause logique
 end
 
 local function update_logic()
@@ -354,6 +375,7 @@ local function update_logic()
     
     local p1_act_st = get_act_st(0) -- P1 Action (37 = Throwing)
     local p2_act_st = get_act_st(1) -- P2 Action (39 = Parry, 38 = Thrown)
+	local p1_mem = get_p1_extended_info()
     local p2_mem = get_p2_extended_info() -- Pour le Tech et l'Air state
 
     -- =========================================================
@@ -402,6 +424,13 @@ local function update_logic()
 
     elseif session.phase == PHASE_OBSERVATION then
         
+		-- [PRIORITÉ ABSOLUE] CHECK DU TRADE
+        -- On le met ici pour qu'il passe AVANT le check "FAIL: GOT HIT"
+        if p1_mem.trade_dm_flag then
+             evaluate_outcome(true, "SUCCESS: PERFECT PARRY!")
+             return
+        end
+		
         -- [PRIORITÉ 0] FAIL CRITIQUE : JE ME SUIS FAIT TOUCHER
         -- Si P1 est touché (State 9), c'est perdu tout de suite.
         -- On exclut le cas du DI (géré plus bas) pour avoir le bon message d'erreur.
@@ -475,13 +504,20 @@ local function update_logic()
         session.timer_action = session.timer_action + 1
         if session.timer_action > user_config.observation_window then
             if not session.p2_has_attacked_ground and not session.p2_air_attack_confirmed and not session.p2_has_parried then 
-                evaluate_outcome(true, "SUCCESS: SAFE") 
+            --    evaluate_outcome(true, "SUCCESS: SAFE") 
             elseif p2_act_st == 0 then
                 reset_round_silent() 
             end
         end
 
     elseif session.phase == PHASE_RESULT then
+	
+	-- AJOUT : Si on retape dans la garde (P2 Block), on relance tout de suite
+        if session.p2_state == STATE_BLOCK then
+            reset_round() -- Réinitialise les variables et revient en mode attente
+            return        -- On arrête là pour cette frame, la prochaine frame lancera l'OBSERVATION
+        end
+		
         session.timer_action = session.timer_action - 1
         if session.timer_action <= 0 then
             reset_round()
