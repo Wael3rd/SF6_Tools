@@ -867,20 +867,7 @@ end
 -- UI DRAW (UNIFIED)
 -- =========================================================
 re.on_draw_ui(function()
-    -- Standalone Logger Window (always checked, independent of tree)
-    if logger_state.window_open then
-        local should_draw = imgui.begin_window("Input Logger Standalone", true, 0)
-        if should_draw then
-            if imgui.button("<< Re-Attach to REFramework") then
-                logger_state.window_open = false
-            end
-            imgui.separator()
-            draw_logger_content()
-            imgui.end_window()
-        else
-            logger_state.window_open = false
-        end
-    end
+
 
     if imgui.tree_node("RECORDING SLOT MANAGER") then  
         
@@ -1121,5 +1108,19 @@ re.on_draw_ui(function()
 end)
 
 re.on_frame(function()
+    -- Standalone Logger Window (always checked, independent of tree)
+    if logger_state.window_open then
+        local should_draw = imgui.begin_window("Input Logger Standalone", true, 0)
+        if should_draw then
+            if imgui.button("<< Re-Attach to REFramework") then
+                logger_state.window_open = false
+            end
+            imgui.separator()
+            draw_logger_content()
+            imgui.end_window()
+        else
+            logger_state.window_open = false
+        end
+    end
     logger_process_game_state()
 end)
