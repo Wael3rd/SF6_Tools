@@ -5,7 +5,7 @@ local draw = draw
 local json = json
 
 -- =========================================================
--- TrainingHitConfirm_v7.1 (MATRIX BASED GAP CHECK)
+-- TrainingHitConfirm_v7.3 (Heavy DR Cancel Fail Logic)
 -- =========================================================
 
 -- =========================================================
@@ -44,6 +44,7 @@ local TEXTS = {
     safe_no_gap     = "SAFE: TRUE BLOCKSTRING",
     fail_optimal    = "FAIL: SUBOPTIMAL (NEED HEAVY)",
     perfect_dr      = "PERFECT: MED -> DR -> HEAVY",
+    fail_heavy_dr   = "FAIL: HEAVY DR CANCEL", -- [NEW MESSAGE]
     
     started         = "STARTED!",
     stopped_export  = "STOPPED & EXPORTED",
@@ -181,7 +182,7 @@ local detection = {
     monitor = { active = false, type = nil, has_reset_hs = false, target_combo = 0, is_medium = false }, 
     
     -- SPECIAL MONITOR FOR DR
-    dr_monitor = { active = false, type = nil, context = nil, timer = 0, start_combo = 0, gap_grace = 0 },
+    dr_monitor = { active = false, type = nil, context = nil, timer = 0, start_combo = 0, gap_grace = 0, is_heavy = false },
     
     lockout = false
 }
@@ -509,6 +510,10 @@ local function update_detection()
                 local time_since_medium = os.clock() - session.last_medium_input_time
                 local is_medium_buffered = (time_since_medium < 0.5) -- Extended Buffer for Medium
                 
+                -- [MOVED] Heavy Buffer check moved here for Logic
+                local time_since_heavy = os.clock() - session.last_heavy_input_time
+                local is_heavy_buffered = (time_since_heavy < 0.5) 
+                
                 local required_combo_start = is_light_buffered and 2 or 1
                 
                 -- Debug Display Logic
@@ -534,15 +539,17 @@ local function update_detection()
                 local trig_blk = (is_ft_trig and p2_data.mg > 0 and is_dmg_blk)
                 
                 -- =======================================================
-                -- MEDIUM DR CANCEL MONITOR START
+                -- MONITOR DR CANCEL START (MEDIUM + HEAVY)
                 -- =======================================================
-                if (trig_hit or trig_blk) and is_medium_buffered and not detection.dr_monitor.active then
+                -- [MODIFIED] Now triggers for Heavy on Block too
+                if (trig_hit or trig_blk) and (is_medium_buffered or is_heavy_buffered) and not detection.dr_monitor.active then
                     detection.dr_monitor.active = true
                     detection.dr_monitor.type = "WAIT_DR"
                     detection.dr_monitor.context = trig_hit and "HIT" or "BLOCK"
                     detection.dr_monitor.timer = 20 -- Frames to wait for DR cancel
                     detection.dr_monitor.start_combo = detection.live_combo
                     detection.dr_monitor.gap_grace = 0
+                    detection.dr_monitor.is_heavy = is_heavy_buffered -- Remember if it was heavy
                 end
                 
                 if trig_hit and not detection.lockout then
@@ -575,15 +582,23 @@ local function update_detection()
                 end
                 
                 -- =======================================================
-                -- MEDIUM DR CANCEL MONITOR LOGIC (PARALLEL)
+                -- DR CANCEL MONITOR LOGIC (PARALLEL)
                 -- =======================================================
                 if detection.dr_monitor.active then
                     if detection.dr_monitor.type == "WAIT_DR" then
                         -- Check for Drive Rush (739)
                         if get_p1_action_id() == 739 then
-                            detection.dr_monitor.type = "EXECUTE"
-                            detection.dr_monitor.timer = 120 -- Monitor window
-                            detection.dr_monitor.gap_grace = 3 -- Grace period for gap check
+                            -- [NEW] LOGIC: IF HEAVY + BLOCK + DR => FAIL IMMEDIATELY
+                            if detection.dr_monitor.context == "BLOCK" and detection.dr_monitor.is_heavy then
+                                detection.dr_monitor.active = false; detection.monitor.active = false; detection.lockout = true
+                                session.score = session.score - 1; session.blk_tot = session.blk_tot + 1; session.total = session.total + 1
+                                detection.mem_res[active_head_index] = { status = TEXTS.fail_heavy_dr, time = detection.abs_clock }
+                                set_feedback(TEXTS.fail_heavy_dr, COLORS.Red, 2.0)
+                            else
+                                detection.dr_monitor.type = "EXECUTE"
+                                detection.dr_monitor.timer = 120 -- Monitor window
+                                detection.dr_monitor.gap_grace = 3 -- Grace period for gap check
+                            end
                         else
                             detection.dr_monitor.timer = detection.dr_monitor.timer - 1
                             if detection.dr_monitor.timer <= 0 then detection.dr_monitor.active = false end
@@ -717,12 +732,12 @@ end
 -- =========================================================
 local function update_logic()
     local is_game_active = true
-    local pm = sdk.get_managed_singleton("app.PauseManager")
+local pm = sdk.get_managed_singleton("app.PauseManager")
     if pm then
-        local field = pm:get_type_definition():get_field("_CurrentPauseBit")
-        if field then
-            local val = field:get_data(pm)
-            if val and tostring(val) ~= "131072" then is_game_active = false end
+        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
+        -- Si ce n'est ni 64 (Jeu normal) ni 2112 (Autre état actif), alors le jeu est en pause/menu
+        if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then 
+            is_game_active = false 
         end
     end
     
@@ -913,26 +928,12 @@ local function manage_ticker_visibility()
     end
 end
 
-re.on_frame(function()
-    if DEPENDANT_ON_MANAGER and (_G.CurrentTrainerMode ~= 2) then return end
-    
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local field = pm:get_type_definition():get_field("_CurrentPauseBit")
-        if field then
-            local val = field:get_data(pm)
-            if val and tostring(val) ~= "131072" then 
-                if session.is_running and not session.is_paused then session.is_paused = true end
-                return 
-            end
-        end
-    end
+-- =========================================================
+-- [FIXED EVENTS]
+-- =========================================================
 
-    local cur_mode = _G.CurrentTrainerMode or 0
-    if cur_mode == 2 and last_trainer_mode ~= 2 then reset_session_stats() end
-    last_trainer_mode = cur_mode
-
-    update_logic_and_input()
+-- Fonction pour dessiner le HUD (Extraite pour clarté, à appeler dans on_frame)
+local function draw_hud_overlay()
     handle_resolution_change()
     
     local sw, sh = get_dynamic_screen_size()
@@ -940,6 +941,7 @@ re.on_frame(function()
     imgui.push_style_var(4, 0.0); imgui.push_style_var(2, Vector2f.new(0, 0)); imgui.push_style_color(2, 0) 
     imgui.set_next_window_pos(Vector2f.new(0, 0)); imgui.set_next_window_size(Vector2f.new(sw, sh))
     
+    -- Utilisation des mêmes flags que DistanceViewer pour la fenêtre transparente
     local win_flags = IMGUI_FLAGS.NoTitleBar | IMGUI_FLAGS.NoResize | IMGUI_FLAGS.NoMove | IMGUI_FLAGS.NoScrollbar | IMGUI_FLAGS.NoMouseInputs | IMGUI_FLAGS.NoNav | IMGUI_FLAGS.NoBackground
 
     if imgui.begin_window("HUD_Overlay", true, win_flags) then
@@ -1030,12 +1032,44 @@ re.on_frame(function()
         imgui.end_window()
     end
     imgui.pop_style_var(2); imgui.pop_style_color(1)
+end
+
+re.on_frame(function()
+    if DEPENDANT_ON_MANAGER and (_G.CurrentTrainerMode ~= 2) then return end
+    
+    local should_update_logic = true
+    local should_draw_hud = true -- [NEW] Variable pour contrôler le dessin du HUD
+
+    local pm = sdk.get_managed_singleton("app.PauseManager")
+    if pm then
+        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
+        -- Si pause active ou état non standard (différent de 64 et 2112)
+        if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then
+            if session.is_running and not session.is_paused then session.is_paused = true end
+            should_update_logic = false
+            should_draw_hud = false -- [NEW] On masque le HUD si on est dans les menus
+        end
+    end
+
+    local cur_mode = _G.CurrentTrainerMode or 0
+    if cur_mode == 2 and last_trainer_mode ~= 2 then reset_session_stats() end
+    last_trainer_mode = cur_mode
+
+    if should_update_logic then
+        update_logic_and_input()
+    end
+
+    -- [NEW] On ne dessine le HUD que si autorisé (donc masqué en pause menu)
+    if should_draw_hud then
+        draw_hud_overlay()
+    end
 end)
 
 re.on_draw_ui(function()
     if DEPENDANT_ON_MANAGER and _G.CurrentTrainerMode ~= 2 then return end
 
-    if imgui.tree_node("Hit Confirm Trainer (V7.1 Matrix Gap Fix)") then
+    -- On garde le menu de config ici (imgui standard)
+    if imgui.tree_node("Hit Confirm Trainer (V7.3 Heavy DR Fail)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
             imgui.text("SHORTCUTS (Hold FUNCTION):")

@@ -5,7 +5,7 @@ local draw = draw
 local json = json
 
 -- =========================================================
--- TrainingPostGuard (V1.12 - EXPORT FIX)
+-- TrainingPostGuard (V1.13 - Flicker Fix)
 -- =========================================================
 
 local DEPENDANT_ON_MANAGER = true 
@@ -213,16 +213,6 @@ local function get_p2_extended_info()
     return info
 end
 
-
-local function is_game_in_menu()
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local field = pm:get_type_definition():get_field("_CurrentPauseBit")
-        if field then local val = field:get_data(pm); if val and tostring(val) ~= "131072" then return true end end
-    end
-    return false
-end
-
 local function export_stats()
     local file = io.open(LOG_FILENAME, "a"); if not file then return end
     
@@ -239,10 +229,12 @@ local function export_stats()
     
     -- Création de la chaîne de caractères pour les détails (Format: Clé:Valeur|Clé:Valeur...)
     local details_str = ""
-    for k, v in pairs(session.detailed_stats) do
-        -- On nettoie un peu le texte pour éviter les tabulations ou retours à la ligne
-        local clean_key = string.gsub(k, "\t", " ")
-        details_str = details_str .. clean_key .. "=" .. v .. "|"
+    if session.detailed_stats then
+        for k, v in pairs(session.detailed_stats) do
+            -- On nettoie un peu le texte pour éviter les tabulations ou retours à la ligne
+            local clean_key = string.gsub(k, "\t", " ")
+            details_str = details_str .. clean_key .. "=" .. v .. "|"
+        end
     end
     
     local line = string.format("%s\t%s\t%d\t%.2f%%\t%d\t%s", now, format_time(duration), session.score, pct, session.total, details_str)
@@ -305,10 +297,12 @@ local function evaluate_outcome(success, reason)
     session.total = session.total + 1
     
     -- NOUVEAU : On incrémente le compteur pour cette raison spécifique
-    if not session.detailed_stats[reason] then
-        session.detailed_stats[reason] = 0
+    if session.detailed_stats then
+        if not session.detailed_stats[reason] then
+            session.detailed_stats[reason] = 0
+        end
+        session.detailed_stats[reason] = session.detailed_stats[reason] + 1
     end
-    session.detailed_stats[reason] = session.detailed_stats[reason] + 1
 
     if success then
         session.score = session.score + 1
@@ -328,11 +322,6 @@ local function update_logic()
     -- GESTION SCORE VISUEL
     if session.score ~= session.last_score then session.score_col = (session.score > session.last_score) and COLORS.Green or COLORS.Red; session.score_timer = 30; session.last_score = session.score end
     if session.score_timer > 0 then session.score_timer = session.score_timer - 1; if session.score_timer <= 0 then session.score_col = COLORS.White end end
-    
-    if is_game_in_menu() then
-        if session.is_running and not session.is_paused then session.is_paused = true end
-        return 
-    end
     
     -- TIME UP LOOP
     if session.is_time_up then 
@@ -640,6 +629,7 @@ local function draw_timer_outline(text, x, y, color)
 end
 
 local function draw_hud()
+    handle_resolution_change()
     local sw, sh = get_dynamic_screen_size()
     imgui.push_style_var(4, 0.0); imgui.push_style_var(2, Vector2f.new(0, 0)); imgui.push_style_color(2, 0) 
     imgui.set_next_window_pos(Vector2f.new(0, 0)); imgui.set_next_window_size(Vector2f.new(sw, sh))
@@ -701,7 +691,7 @@ local function draw_hud()
 
 -- D. STATUS MESSAGE
         local msg = session.feedback.text
-        if session.is_paused then msg = "PAUSED: (FUNC) + RIGHT" end
+        if session.is_running and session.is_paused then msg = "PAUSED: (FUNC) + RIGHT" end
         if session.is_time_up then msg = session.feedback.text end -- Force Logic Text
         
         local y3 = y2 + spacing_y + (user_config.hud_n_offset_status_y * sh)
@@ -732,7 +722,7 @@ end
 
 re.on_draw_ui(function()
     if DEPENDANT_ON_MANAGER and _G.CurrentTrainerMode ~= MY_TRAINER_ID then return end
-    if imgui.tree_node("Post Guard Training (v1.12 Final)") then
+    if imgui.tree_node("Post Guard Training (v1.13 Flicker Fix)") then
         if styled_header("--- INFO ---", UI_THEME.hdr_info) then imgui.text("Hit the guard to start observation.\nPunish if attack, Wait if nothing.\nCOUNTER DI if you see it!") end
         
         imgui.separator()
@@ -780,6 +770,30 @@ end)
 
 re.on_frame(function()
     if DEPENDANT_ON_MANAGER and _G.CurrentTrainerMode ~= MY_TRAINER_ID then return end
-    handle_resolution_change(); handle_input(); update_logic(); manage_ticker_visibility()
-    if not is_game_in_menu() then draw_hud() end
+    
+    local should_update = true
+    local should_draw = true
+
+    local pm = sdk.get_managed_singleton("app.PauseManager")
+    if pm then
+        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
+        if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then
+            -- Pause Menu / System
+            if session.is_running and not session.is_paused then session.is_paused = true end
+            should_update = false
+            should_draw = false
+        end
+    end
+
+    handle_resolution_change()
+    
+    if should_update then
+        handle_input()
+        update_logic()
+        manage_ticker_visibility()
+    end
+    
+    if should_draw then
+        draw_hud()
+    end
 end)

@@ -5,7 +5,7 @@ local draw = draw
 local json = json
 
 -- =========================================================
--- ReactionTraining Remastered (V6.8 - P2 STATE CHECK)
+-- ReactionTraining Remastered (V6.10 - Recording Fix)
 -- =========================================================
 
 -- =========================================================
@@ -520,32 +520,36 @@ local function manage_playback()
 
     local current_state = tonumber(tostring(g_data:get_field("State"))) -- 0=Stop, 5=Play
 
-    -- 1. ACTIVE SESSION (PLAYING)
-    if session.is_running and not session.is_paused and not session.is_time_up and playback_loop.active then
-        
-        -- If dummy is stopped
-        if current_state == 0 then
+    -- [FIX] ONLY MANAGE PLAYBACK IF SESSION IS RUNNING
+    if session.is_running then
+        -- 1. ACTIVE SESSION (PLAYING)
+        if not session.is_paused and not session.is_time_up and playback_loop.active then
             
-            -- Wait 5 frames
-            if playback_loop.wait_frames > 0 then
-                playback_loop.wait_frames = playback_loop.wait_frames - 1
+            -- If dummy is stopped
+            if current_state == 0 then
+                
+                -- Wait 5 frames
+                if playback_loop.wait_frames > 0 then
+                    playback_loop.wait_frames = playback_loop.wait_frames - 1
+                else
+                    -- Play !
+                    call_tm_method("SetPlay", true)
+                    call_tm_method("ForceApply")
+                    playback_loop.wait_frames = 5
+                end
             else
-                -- Play !
-                call_tm_method("SetPlay", true)
-                call_tm_method("ForceApply")
                 playback_loop.wait_frames = 5
             end
+            
+        -- 2. PAUSE / STOP (ONLY ENFORCE STOP IF SESSION IS ACTIVE BUT PAUSED)
         else
-            playback_loop.wait_frames = 5
-        end
-        
-    -- 2. PAUSE / STOP
-    else
-        -- Force stop if not stopped
-        if current_state ~= 0 then
-            call_tm_method("Stop", 0) 
+            -- Force stop if not stopped
+            if current_state ~= 0 then
+                call_tm_method("Stop", 0) 
+            end
         end
     end
+    -- IF SESSION IS NOT RUNNING -> DO NOTHING (Allows Manual Recording)
 end
 
 local function update_logic()
@@ -571,9 +575,10 @@ local function update_logic()
         end
     end
 
-    local game_paused = is_game_in_menu()
+    -- [FIX] Logic Pause is handled in re.on_frame via pause flags
+    -- Removed internal is_game_in_menu() call here.
 
-    if session.is_running and not game_paused and user_config.timer_mode_enabled and not session.is_paused then
+    if session.is_running and user_config.timer_mode_enabled and not session.is_paused then
         session.time_rem = session.time_rem - dt
         if session.time_rem <= 0 then 
             session.time_rem = 0
@@ -589,7 +594,7 @@ local function update_logic()
         end
     end
 
-    if game_paused or session.is_paused then return end
+    if session.is_paused then return end
 
     local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
     local rec_func = mgr and mgr:call("get_RecordFunc")
@@ -868,46 +873,14 @@ if _G.CurrentTrainerMode ~= 1 then return true end
     return true
 end)
 
-re.on_frame(function()
-    local cur_mode = _G.CurrentTrainerMode or 0
-    if cur_mode == 1 and last_trainer_mode ~= 1 then
-        reset_session_stats()
-        set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
-    end
-    last_trainer_mode = cur_mode
-
-    if cur_mode ~= 1 then return end
-
-    -- PERSISTENT PAUSE LOGIC
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local field = pm:get_type_definition():get_field("_CurrentPauseBit")
-        if field then
-            local val = field:get_data(pm)
-            if val and tostring(val) ~= "131072" then 
-                if session.is_running and not session.is_paused then 
-                    session.is_paused = true 
-                    set_playback_mode(false) -- AUTO PAUSE
-                end
-            end
-        end
-    end
-    
-    update_real_slot_info() 
-    handle_input()
-    manage_playback()
-    update_logic()
-    handle_resolution_change()
-    manage_ticker_visibility_backup() 
-    
-    if is_game_in_menu() then return end
-    
+-- Fonction pour dessiner le HUD (Extraite pour clarté, à appeler dans on_frame)
+local function draw_hud_overlay()
     local sw, sh = get_dynamic_screen_size()
     imgui.push_style_var(4, 0.0); imgui.push_style_var(2, Vector2f.new(0, 0)); imgui.push_style_color(2, 0) 
     imgui.set_next_window_pos(Vector2f.new(0, 0)); imgui.set_next_window_size(Vector2f.new(sw, sh))
     local win_flags = IMGUI_FLAGS.NoTitleBar | IMGUI_FLAGS.NoResize | IMGUI_FLAGS.NoMove | IMGUI_FLAGS.NoScrollbar | IMGUI_FLAGS.NoMouseInputs | IMGUI_FLAGS.NoNav | IMGUI_FLAGS.NoBackground
 
-if imgui.begin_window("HUD_Reaction", true, win_flags) then
+    if imgui.begin_window("HUD_Reaction", true, win_flags) then
         if custom_font.obj then imgui.push_font(custom_font.obj) end
         
         local center_x = sw / 2
@@ -1001,6 +974,47 @@ if imgui.begin_window("HUD_Reaction", true, win_flags) then
         imgui.end_window()
     end
     imgui.pop_style_var(2); imgui.pop_style_color(1)
+end
+
+re.on_frame(function()
+    local cur_mode = _G.CurrentTrainerMode or 0
+    if cur_mode == 1 and last_trainer_mode ~= 1 then
+        reset_session_stats()
+        set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
+    end
+    last_trainer_mode = cur_mode
+
+    if cur_mode ~= 1 then return end
+
+    local should_update_logic = true
+    local should_draw_hud = true
+
+    local pm = sdk.get_managed_singleton("app.PauseManager")
+    if pm then
+        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
+        -- Si pause active ou état non standard (différent de 64 et 2112)
+        if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then
+            if session.is_running and not session.is_paused then 
+                session.is_paused = true 
+                set_playback_mode(false) -- AUTO PAUSE
+            end
+            should_update_logic = false
+            should_draw_hud = false -- Masquer le HUD dans les menus
+        end
+    end
+    
+    if should_update_logic then
+        update_real_slot_info() 
+        handle_input()
+        manage_playback()
+        update_logic()
+        handle_resolution_change()
+        manage_ticker_visibility_backup()
+    end
+    
+    if should_draw_hud then
+        draw_hud_overlay()
+    end
 end)
 
 -- =========================================================
@@ -1010,7 +1024,7 @@ end)
 re.on_draw_ui(function()
     if _G.CurrentTrainerMode ~= 1 then return end
 
-    if imgui.tree_node("Reaction Trainer Remastered (V6.8 - P2 State Check)") then
+    if imgui.tree_node("Reaction Trainer Remastered (V6.10 - Recording Fix)") then
         
         if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
             imgui.text("SHORTCUTS (Hold FUNCTION):")
