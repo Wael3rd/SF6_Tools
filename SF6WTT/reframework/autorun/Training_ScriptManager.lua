@@ -1,3 +1,6 @@
+-- Training_ScriptManager.lua
+-- v3.0 : Mappings de Garde Corrigés (0, 3, 4)
+
 local re = re
 local sdk = sdk
 local imgui = imgui
@@ -27,6 +30,85 @@ local function save_config()
 end
 
 load_config()
+
+-- ==========================================
+-- 0. GUARD CONTROL UTILITIES (SAFE PATTERN)
+-- ==========================================
+local last_mode_state = 0
+local saved_guard_state = 0 -- Par défaut 0, stocke l'état précédent
+local is_guard_overridden = false
+
+-- IDs de Garde définis par l'utilisateur
+local GUARD_NO = 0
+local GUARD_ALL = 3
+local GUARD_RANDOM = 4
+
+-- Fonction de sécurité pour éviter les crashs
+local function call_fresh(target_type, method, ...)
+    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
+    if not mgr then return false end
+    
+    local obj = nil
+    if target_type == "TM" then 
+        obj = mgr 
+    elseif target_type == "Guard" then 
+        local ok, guard = pcall(function() return mgr:call("get_GuardFunc") end)
+        if ok and guard then obj = guard end
+    end
+
+    if not obj or sdk.to_int64(obj) == 0 then return false end
+    
+    local args = {...}
+    return pcall(function() return obj:call(method, table.unpack(args)) end)
+end
+
+-- Fonction pour appliquer la garde proprement
+local function set_guard_type(guard_id)
+    -- 1. Applique le type au Dummy (ID 1)
+    call_fresh("Guard", "ChangeGuardType", 1, guard_id)
+    -- 2. Force le rafraichissement
+    call_fresh("TM", "set_IsReqRefresh", true)
+end
+
+local function update_guard_logic()
+    local current_mode = _G.CurrentTrainerMode or 0
+    
+    -- Si le mode n'a pas changé, on ne fait rien
+    if current_mode == last_mode_state then return end
+
+    -- LOGIQUE DE CHANGEMENT
+    
+    -- Si on passe d'un mode inactif (0) à un mode actif (1, 2, 3), on "sauvegarde" l'état fictif
+    -- (Note: Sans fonction get_GuardType fiable, on assume que l'utilisateur commence en No Guard ou veut y revenir)
+    if last_mode_state == 0 and current_mode ~= 0 then
+        if not is_guard_overridden then
+            saved_guard_state = 0 -- On reviendra à 0 par défaut
+            is_guard_overridden = true
+        end
+    end
+
+    if current_mode == 1 then
+        -- >>> REACTION DRILLS >>> NO GUARD (0)
+        set_guard_type(GUARD_NO)
+
+    elseif current_mode == 2 then
+        -- >>> HIT CONFIRM >>> RANDOM GUARD (4)
+        set_guard_type(GUARD_RANDOM)
+
+    elseif current_mode == 3 then
+        -- >>> POST GUARD >>> ALL GUARD (3)
+        set_guard_type(GUARD_ALL)
+
+    elseif current_mode == 0 then
+        -- >>> DISABLED >>> RESTAURATION
+        if is_guard_overridden then
+            set_guard_type(saved_guard_state) -- Retour à 0 (ou l'état sauvegardé)
+            is_guard_overridden = false
+        end
+    end
+
+    last_mode_state = current_mode
+end
 
 -- ==========================================
 -- 1. MODE MANAGEMENT (TRAINER MANAGER)
@@ -73,16 +155,10 @@ local function handle_input()
     end
 
     -- SCRIPT SWITCH LOGIC (FUNCTION + SQUARE)
-    -- Get dynamic function button (or default to Select)
     local func_btn = _G.TrainingFuncButton or 16384
-    
-    -- Check if Function button is held
     local is_func_held = (active_buttons & func_btn) == func_btn
-    
-    -- Check if Square was just pressed
     local is_switch_pressed = (active_buttons & BTN_SQUARE) == BTN_SQUARE and (last_input_mask & BTN_SQUARE) ~= BTN_SQUARE
 
-    -- If [Function] held and [Square] pressed -> Switch Mode
     if is_func_held and is_switch_pressed then
         _G.CurrentTrainerMode = _G.CurrentTrainerMode + 1
         if _G.CurrentTrainerMode > 3 then _G.CurrentTrainerMode = 0 end
@@ -202,6 +278,9 @@ re.on_frame(function()
     handle_input()
     
     if is_binding_mode then return end
+    
+    -- CHECK AUTOMATIC GUARD SWITCHING
+    update_guard_logic()
 
     local scripts_active = (_G.CurrentTrainerMode ~= 0)
     manage_ui_visibility(scripts_active)
@@ -218,14 +297,14 @@ re.on_draw_ui(function()
         local c0, v0 = imgui.checkbox("Disabled (Normal)", _G.CurrentTrainerMode == 0)
         if c0 and v0 then _G.CurrentTrainerMode = 0 end
 
-        local c1, v1 = imgui.checkbox("Reaction Training", _G.CurrentTrainerMode == 1)
+        local c1, v1 = imgui.checkbox("Reaction Drills (No Guard)", _G.CurrentTrainerMode == 1)
         if c1 and v1 then _G.CurrentTrainerMode = 1 end
 
-        local c2, v2 = imgui.checkbox("HitConfirm Training", _G.CurrentTrainerMode == 2)
+        local c2, v2 = imgui.checkbox("HitConfirm (Random Guard)", _G.CurrentTrainerMode == 2)
         if c2 and v2 then _G.CurrentTrainerMode = 2 end
 
 
-        local c3, v3 = imgui.checkbox("Post Guard Training", _G.CurrentTrainerMode == 3)
+        local c3, v3 = imgui.checkbox("Post Guard (All Guard)", _G.CurrentTrainerMode == 3)
         if c3 and v3 then _G.CurrentTrainerMode = 3 end
         
         imgui.spacing()
@@ -248,14 +327,16 @@ re.on_draw_ui(function()
             end
         end
         imgui.text_colored("Mode Switch Shortcut: [Function] + [Square / X]", 0xFF00FF00)
-        imgui.text_colored("Script Shortcuts: [Function] + [Arrows]", 0xFF00FF00)
         
         imgui.separator()
         
         if _G.CurrentTrainerMode ~= 0 then
             imgui.text_colored("STATUS: SCRIPTS ACTIVE", 0xFF00FF00)
+            if _G.CurrentTrainerMode == 1 then imgui.text("(No Guard [0] Active)") end
+            if _G.CurrentTrainerMode == 2 then imgui.text("(Random Guard [4] Active)") end
+            if _G.CurrentTrainerMode == 3 then imgui.text("(All Guard [3] Active)") end
         else
-            imgui.text_colored("STATUS: NORMAL", 0xFFAAAAAA)
+            imgui.text_colored("STATUS: NORMAL (Guard Restored)", 0xFFAAAAAA)
         end
 
         imgui.tree_pop()

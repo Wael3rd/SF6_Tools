@@ -16,10 +16,24 @@ local current_p1_id = -1
 local current_p2_id = -1
 local game_tick_counter = 0
 local last_processed_tick = -1
-local custom_file_input = "FileName.json" 
+local custom_file_input = "" 
 local last_saved_state = {} 
 local is_first_load = true
 local cached_file_list = {} 
+local filtered_file_list = {}
+local filtered_display_list = {}
+local dropdown_selected_index = 0
+local last_filtered_p2_id = -1
+local save_as_input = ""
+local save_as_open = false
+
+-- Replay Records dropdown (Live Slots)
+local cached_replay_list = {}
+local filtered_replay_list = {}
+local filtered_replay_display_list = {}
+local slot_dropdown_indices = { [0]=0, [1]=0, [2]=0, [3]=0, [4]=0, [5]=0, [6]=0, [7]=0 }
+local slot_import_msgs = { [0]="", [1]="", [2]="", [3]="", [4]="", [5]="", [6]="", [7]="" }
+local last_filtered_replay_p2_id = -1
 
 -- Queue d'actions pour l'allocation mémoire asynchrone
 local action_queue = {} 
@@ -117,7 +131,7 @@ end
 -- =========================================================
 local function refresh_file_list()
     cached_file_list = {}
-    local files = fs.glob(DATA_FOLDER .. "\\*.json")
+    local files = fs.glob(DATA_FOLDER .. "\\\\.*json")
     if files then
         for _, filepath in ipairs(files) do
             local filename = filepath:match("^.+\\(.+)$") or filepath
@@ -126,6 +140,81 @@ local function refresh_file_list()
     end
     table.sort(cached_file_list)
 end
+
+local function normalize_name(s)
+    return s:lower():gsub("[%.%s%-]", "")
+end
+
+local function refresh_filtered_list()
+    local previous_selection = custom_file_input
+    filtered_file_list = {}
+    filtered_display_list = {}
+    dropdown_selected_index = 0
+    if current_p2_id == -1 then
+        for _, f in ipairs(cached_file_list) do
+            table.insert(filtered_file_list, f)
+            table.insert(filtered_display_list, (f:gsub("%.json$", "")))
+        end
+    else
+        local char_name = get_char_name(current_p2_id)
+        local norm_char = normalize_name(char_name)
+        for _, filename in ipairs(cached_file_list) do
+            local norm_file = normalize_name(filename)
+            if norm_file:find(norm_char, 1, true) then
+                table.insert(filtered_file_list, filename)
+                table.insert(filtered_display_list, (filename:gsub("%.json$", "")))
+            end
+        end
+    end
+    -- Retrouver l'index de la sélection précédente
+    if previous_selection and previous_selection ~= "" then
+        for i, f in ipairs(filtered_file_list) do
+            if f == previous_selection then
+                dropdown_selected_index = i
+                break
+            end
+        end
+    end
+end
+
+local function refresh_replay_list()
+    cached_replay_list = {}
+    local files = fs.glob(REPLAY_FOLDER .. "\\\\.*json")
+    if files then
+        for _, filepath in ipairs(files) do
+            local filename = filepath:match("^.+\\(.+)$") or filepath
+            table.insert(cached_replay_list, filename)
+        end
+    end
+    table.sort(cached_replay_list, function(a, b) return a > b end)
+end
+
+local function refresh_filtered_replay_list()
+    filtered_replay_list = {}
+    filtered_replay_display_list = { "" } -- index 1 = vide (rien sélectionné)
+    if current_p2_id == -1 then
+        for _, f in ipairs(cached_replay_list) do
+            table.insert(filtered_replay_list, f)
+            table.insert(filtered_replay_display_list, (f:gsub("%.json$", "")))
+        end
+    else
+        local char_name = get_char_name(current_p2_id)
+        local norm_char = normalize_name(char_name)
+        for _, filename in ipairs(cached_replay_list) do
+            local norm_file = normalize_name(filename)
+            if norm_file:find(norm_char, 1, true) then
+                table.insert(filtered_replay_list, filename)
+                table.insert(filtered_replay_display_list, (filename:gsub("%.json$", "")))
+            end
+        end
+    end
+end
+
+-- Peupler les listes au chargement
+refresh_file_list()
+refresh_filtered_list()
+refresh_replay_list()
+refresh_filtered_replay_list()
 
 -- =========================================================
 -- DIRTY STATE LOGIC
@@ -205,7 +294,7 @@ end
 -- =========================================================
 -- FONCTION D'IMPORT / EXPORT COMMUNE
 -- =========================================================
-local function apply_data_to_character(target_id, data_table, source_name)
+local function apply_data_to_character(target_id, data_table, source_name, live_slot_idx)
     local use_id = target_id or current_p2_id
     local slots, err = get_slots_access(use_id)
     if not slots then return "Error: " .. tostring(err) end
@@ -254,7 +343,8 @@ local function apply_data_to_character(target_id, data_table, source_name)
             type = "WRITE_DATA",
             target_id = use_id,
             data = data_table,
-            name = source_name
+            name = source_name,
+            live_slot_idx = live_slot_idx
         })
         
         return "Auto-Allocating " .. #missing_memory_slots .. " slots... Please wait."
@@ -333,7 +423,7 @@ local function import_single_replay_slot(slot_idx, filename)
         }
     }
     
-    return apply_data_to_character(current_p2_id, single_slot_data, filename)
+    return apply_data_to_character(current_p2_id, single_slot_data, filename, slot_idx)
 end
 
 -- =========================================================
@@ -396,8 +486,11 @@ re.on_frame(function()
             
         -- === TYPE: ECRITURE FINALE DES DONNEES ===
         elseif action.type == "WRITE_DATA" then
-            local res = apply_data_to_character(action.target_id, action.data, action.name)
+            local res = apply_data_to_character(action.target_id, action.data, action.name, action.live_slot_idx)
             status_msg = res
+            if action.live_slot_idx then
+                slot_import_msgs[action.live_slot_idx] = res
+            end
             table.remove(action_queue, 1)
         end
     end
@@ -450,6 +543,7 @@ local function export_json_compressed(target_id)
     json.dump_file(DATA_FOLDER.."/"..p2_name..".json", export_data)
     update_saved_state_reference()
     refresh_file_list()
+    refresh_filtered_list()
     return "Saved: "..p2_name..".json"
 end
 
@@ -509,6 +603,7 @@ local function save_custom_file_text()
     json.dump_file(DATA_FOLDER.."/"..filepath, export_data)
     update_saved_state_reference()
     refresh_file_list()
+    refresh_filtered_list()
     return "Custom Saved: "..filepath
 end
 
@@ -878,21 +973,60 @@ re.on_draw_ui(function()
             local is_dirty = check_is_dirty()
             
             imgui.text_colored("Character: " .. real_name, 0xFF00FFFF)
-            local upper_name = string.upper(real_name)
 
             -- ================= SOLO OPERATIONS =================
             if sm_styled_header("--- SOLO OPERATIONS ---", SM_THEME.hdr_solo) then
+
+                -- Auto-refresh du filtre si le perso change
+                if current_p2_id ~= last_filtered_p2_id then
+                    refresh_filtered_list()
+                    last_filtered_p2_id = current_p2_id
+                end
+
+                if imgui.button("Refresh") then
+                    refresh_file_list()
+                    refresh_filtered_list()
+                end
+
+                imgui.same_line()
+
+                -- Dropdown des fichiers filtrés par personnage (sans .json)
+                imgui.push_item_width(250)
+                local combo_changed, combo_idx = imgui.combo("##file_picker", dropdown_selected_index, filtered_display_list)
+                if combo_changed then
+                    dropdown_selected_index = combo_idx
+                    if filtered_file_list[combo_idx] then
+                        custom_file_input = filtered_file_list[combo_idx]
+                    end
+                end
+                imgui.pop_item_width()
+
+                imgui.same_line()
+
+                if imgui.button("IMPORT") then
+                    if custom_file_input == "" then
+                        custom_file_input = get_char_name(current_p2_id) .. ".json"
+                    end
+                    local ok, res = pcall(import_custom_file_text)
+                    status_msg = ok and res or ("Crash: "..tostring(res))
+                end
+
+                imgui.same_line()
+
                 if is_dirty then 
                     imgui.push_style_color(21, 0xFF00A5FF)
                     imgui.push_style_color(22, 0xFF00C0FF)
                     imgui.push_style_color(23, 0xFF0080FF)
                 end
-                
-                if imgui.button("EXPORT " .. upper_name .. " SLOTS") then
-                    local ok, res = pcall(export_json_compressed, nil)
+
+                if imgui.button("EXPORT") then
+                    if custom_file_input == "" then
+                        custom_file_input = get_char_name(current_p2_id) .. ".json"
+                    end
+                    local ok, res = pcall(save_custom_file_text)
                     status_msg = ok and res or ("Crash: "..tostring(res))
                 end
-                
+
                 if is_dirty then 
                     imgui.pop_style_color(3)
                     if imgui.is_item_hovered() then
@@ -901,31 +1035,39 @@ re.on_draw_ui(function()
                 end
 
                 imgui.same_line()
-                if imgui.button("IMPORT " .. upper_name .. " SLOTS") then
-                    local ok, res = pcall(import_json_compressed, nil)
-                    status_msg = ok and res or ("Crash: "..tostring(res))
+
+                if imgui.button("SAVE AS") then
+                    save_as_input = get_char_name(current_p2_id)
+                    save_as_open = true
+                    imgui.open_popup("##save_as_popup")
                 end
 
-                imgui.spacing()
+                if imgui.begin_popup("##save_as_popup") then
+                    imgui.text("Save as:")
+                    imgui.push_item_width(250)
+                    local sa_changed, sa_val = imgui.input_text("##save_as_field", save_as_input)
+                    if sa_changed then save_as_input = sa_val end
+                    imgui.pop_item_width()
+                    imgui.same_line()
+                    imgui.text(".json")
 
-                if imgui.button("EXPORT CUSTOM SLOTS") then
-                    local ok, res = pcall(save_custom_file_text)
-                    status_msg = ok and res or ("Crash: "..tostring(res))
+                    if imgui.button("OK") then
+                        custom_file_input = save_as_input
+                        if not custom_file_input:match("%.json$") then
+                            custom_file_input = custom_file_input .. ".json"
+                        end
+                        local ok, res = pcall(save_custom_file_text)
+                        status_msg = ok and res or ("Crash: "..tostring(res))
+                        save_as_open = false
+                        imgui.close_current_popup()
+                    end
+                    imgui.same_line()
+                    if imgui.button("Cancel") then
+                        save_as_open = false
+                        imgui.close_current_popup()
+                    end
+                    imgui.end_popup()
                 end
-
-                imgui.same_line()
-
-                if imgui.button("IMPORT CUSTOM SLOTS") then
-                    local ok, res = pcall(import_custom_file_text)
-                    status_msg = ok and res or ("Crash: "..tostring(res))
-                end
-
-                imgui.same_line()
-
-                imgui.push_item_width(480)
-                local changed, new_val = imgui.input_text("##custom", custom_file_input)
-                if changed then custom_file_input = new_val end
-                imgui.pop_item_width()
             end
 
             -- ================= MASS OPERATIONS =================
@@ -966,6 +1108,12 @@ re.on_draw_ui(function()
             if sm_styled_header("--- LIVE SLOTS ---", SM_THEME.hdr_liveSlots) then
             local slots, msg = get_slots_access()
             if slots then
+
+                -- Auto-refresh du filtre replay si le perso change
+                if current_p2_id ~= last_filtered_replay_p2_id then
+                    refresh_filtered_replay_list()
+                    last_filtered_replay_p2_id = current_p2_id
+                end
 			
 			-- [ETAPE 1] On analyse l'état actuel : Est-ce que tout est activé ?
                     local all_active = true
@@ -974,13 +1122,13 @@ re.on_draw_ui(function()
                     for i=0, 7 do
                         local s = slots:call("get_Item", i)
                         if s and s:get_field("IsValid") then
-                            has_valid_slots = true -- Il y a au moins un slot utilisé
+                            has_valid_slots = true
                             local raw_act = s:get_field("IsActive")
                             local is_act = (raw_act == true) or (raw_act == 1)
                             
                             if not is_act then
                                 all_active = false
-                                break -- On a trouvé un slot inactif, donc "tout" n'est pas actif
+                                break
                             end
                         end
                     end
@@ -988,10 +1136,9 @@ re.on_draw_ui(function()
                     -- [ETAPE 2] On affiche LE bouton unique en fonction du résultat
                     if has_valid_slots then
                         if all_active then
-                            -- CAS : Tout est ON -> Bouton pour tout éteindre (Orange/Rouge)
-                            imgui.push_style_color(21, 0xFF4A4A99) -- Couleur Bouton (Rougeâtre)
-                            imgui.push_style_color(22, 0xFF6666CC) -- Hover
-                            imgui.push_style_color(23, 0xFF333366) -- Active
+                            imgui.push_style_color(21, 0xFF4A4A99)
+                            imgui.push_style_color(22, 0xFF6666CC)
+                            imgui.push_style_color(23, 0xFF333366)
                             
                             if imgui.button("DEACTIVATE ALL") then
                                 for i=0, 7 do
@@ -1001,10 +1148,9 @@ re.on_draw_ui(function()
                             end
                             imgui.pop_style_color(3)
                         else
-                            -- CAS : Mixte ou Tout OFF -> Bouton pour tout allumer (Ton Vert)
-                            imgui.push_style_color(21, 0xFF4E9F5F) -- Base (Ton vert précédent)
-                            imgui.push_style_color(22, 0xFF66B576) -- Hover
-                            imgui.push_style_color(23, 0xFF367844) -- Active
+                            imgui.push_style_color(21, 0xFF4E9F5F)
+                            imgui.push_style_color(22, 0xFF66B576)
+                            imgui.push_style_color(23, 0xFF367844)
                             
                             if imgui.button("ACTIVATE ALL") then
                                 for i=0, 7 do
@@ -1019,15 +1165,22 @@ re.on_draw_ui(function()
                     else
                         imgui.text_colored("No valid slots loaded.", 0xFF888888)
                     end
+
+                    imgui.same_line()
+                    if imgui.button("Refresh All") then
+                        refresh_replay_list()
+                        refresh_filtered_replay_list()
+                    end
                     
-                    -- [FIN DU BOUTON UNIQUE]
-                if imgui.begin_table("SlotTbl", 5, 1 << 0) then 
+                    -- [FIN DES BOUTONS]
+                if imgui.begin_table("SlotTbl", 6, 1 << 0) then 
                     
                     imgui.table_setup_column("ID", 0, 10)
                     imgui.table_setup_column("Active", 0, 10)
                     imgui.table_setup_column("Weight", 0, 10)
                     imgui.table_setup_column("Frames", 0, 10)
-                    imgui.table_setup_column("IMPORT REPLAY DATA (Folder: ReplayRecords)", 0, 150)
+                    imgui.table_setup_column("IMPORT REPLAY DATA (Folder: ReplayRecords)", 0, 180)
+                    imgui.table_setup_column("Status", 0, 80)
                     imgui.table_headers_row()
 
                     for i=0, 7 do
@@ -1065,20 +1218,41 @@ re.on_draw_ui(function()
                             imgui.text_colored("-", 0xFF666666)
                         end
 
-                        -- REPLAY IMPORT COLUMN
+                        -- REPLAY IMPORT COLUMN (dropdown + bouton)
                         imgui.table_next_column()
-                        imgui.push_item_width(200)
-                        local f_change, f_val = imgui.input_text("##f_rep", slot_file_inputs[i])
-                        if f_change then slot_file_inputs[i] = f_val end
+                        imgui.push_item_width(-70)
+                        local rd_changed, rd_idx = imgui.combo("##rep_pick", slot_dropdown_indices[i] or 1, filtered_replay_display_list)
+                        if rd_changed then
+                            slot_dropdown_indices[i] = rd_idx
+                        end
                         imgui.pop_item_width()
                         
                         imgui.same_line()
                         if imgui.button("IMPORT") then
-                            local res = import_single_replay_slot(i, slot_file_inputs[i])
-                            status_msg = res
-                            if string.find(res, "Loaded") or string.find(res, "Allocating") then
-                                slot_file_inputs[i] = ""
+                            local sel_idx = slot_dropdown_indices[i] or 1
+                            if sel_idx > 1 and filtered_replay_list[sel_idx - 1] then
+                                local filename = filtered_replay_list[sel_idx - 1]
+                                local res = import_single_replay_slot(i, filename)
+                                if string.find(res, "Loaded") or string.find(res, "Allocating") then
+                                    slot_import_msgs[i] = res
+                                    slot_dropdown_indices[i] = 1 -- reset à vide
+                                else
+                                    slot_import_msgs[i] = res
+                                end
+                            else
+                                slot_import_msgs[i] = "No file selected"
                             end
+                            status_msg = slot_import_msgs[i]
+                        end
+
+                        -- Status column (per-slot msg)
+                        imgui.table_next_column()
+                        if slot_import_msgs[i] ~= "" then
+                            local mcol = 0xFFFFFFFF
+                            if string.find(slot_import_msgs[i], "Loaded") then mcol = 0xFF00FF00 end
+                            if string.find(slot_import_msgs[i], "Allocating") then mcol = 0xFFFFAA00 end
+                            if string.find(slot_import_msgs[i], "Fail") or string.find(slot_import_msgs[i], "No file") then mcol = 0xFF0000FF end
+                            imgui.text_colored(slot_import_msgs[i], mcol)
                         end
                         
                         imgui.pop_id()
