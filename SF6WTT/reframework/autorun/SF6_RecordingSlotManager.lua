@@ -10,6 +10,7 @@ local os = os
 -- =========================================================
 local DATA_FOLDER = "SlotManager_Data"
 local REPLAY_FOLDER = "ReplayRecords" -- Dossier cible pour les Replays
+local SETTINGS_FILE = "SlotManager_Data/settings.json"
 local status_msg = "Ready."
 local force_open_live_slots = false -- La variable qui servira de déclencheur
 local current_p1_id = -1
@@ -26,6 +27,7 @@ local dropdown_selected_index = 0
 local last_filtered_p2_id = -1
 local save_as_input = ""
 local save_as_open = false
+local activate_on_load = false
 
 -- Replay Records dropdown (Live Slots)
 local cached_replay_list = {}
@@ -96,7 +98,8 @@ if t_mediator then
                     local new_id = (p2 and p2:get_field("value__")) or -1
                     if new_id ~= current_p2_id then
                         current_p2_id = new_id
-                        is_first_load = true 
+                        is_first_load = true
+                        status_msg = "Char selected : " .. (CHARACTER_NAMES[new_id] or ("Unknown("..tostring(new_id)..")"))
                     end
                 end
             end
@@ -150,6 +153,7 @@ local function refresh_filtered_list()
     filtered_file_list = {}
     filtered_display_list = {}
     dropdown_selected_index = 0
+    custom_file_input = ""
     if current_p2_id == -1 then
         for _, f in ipairs(cached_file_list) do
             table.insert(filtered_file_list, f)
@@ -171,6 +175,7 @@ local function refresh_filtered_list()
         for i, f in ipairs(filtered_file_list) do
             if f == previous_selection then
                 dropdown_selected_index = i
+                custom_file_input = previous_selection
                 break
             end
         end
@@ -215,6 +220,22 @@ refresh_file_list()
 refresh_filtered_list()
 refresh_replay_list()
 refresh_filtered_replay_list()
+
+-- =========================================================
+-- SETTINGS PERSISTENCE
+-- =========================================================
+local function save_settings()
+    json.dump_file(SETTINGS_FILE, { activate_on_load = activate_on_load })
+end
+
+local function load_settings()
+    local s = json.load_file(SETTINGS_FILE)
+    if s then
+        if s.activate_on_load ~= nil then activate_on_load = s.activate_on_load end
+    end
+end
+
+load_settings()
 
 -- =========================================================
 -- DIRTY STATE LOGIC
@@ -399,6 +420,18 @@ local function apply_data_to_character(target_id, data_table, source_name, live_
     end
     
     update_saved_state_reference()
+
+    -- Si "Activate on Load" est activé, on active tous les slots valides
+    if activate_on_load then
+        for i=0, 7 do
+            local s = slots:call("get_Item", i)
+            if s and s:get_field("IsValid") then
+                s:set_field("IsActive", true)
+            end
+        end
+        update_saved_state_reference()
+    end
+
     return "Loaded: "..source_name
 end
 
@@ -486,7 +519,19 @@ re.on_frame(function()
             
         -- === TYPE: ECRITURE FINALE DES DONNEES ===
         elseif action.type == "WRITE_DATA" then
-            local res = apply_data_to_character(action.target_id, action.data, action.name, action.live_slot_idx)
+            local res
+            if action.already_retried then
+                -- Allocation already attempted and still insufficient: abort to avoid infinite loop
+                res = "Alloc Failed: memory still insufficient after retry"
+            else
+                res = apply_data_to_character(action.target_id, action.data, action.name, action.live_slot_idx)
+                -- If apply_data re-queued a WRITE_DATA (memory still missing), flag it as retry
+                for _, queued in ipairs(action_queue) do
+                    if queued.type == "WRITE_DATA" and queued.target_id == action.target_id then
+                        queued.already_retried = true
+                    end
+                end
+            end
             status_msg = res
             if action.live_slot_idx then
                 slot_import_msgs[action.live_slot_idx] = res
@@ -1165,6 +1210,23 @@ re.on_draw_ui(function()
                     else
                         imgui.text_colored("No valid slots loaded.", 0xFF888888)
                     end
+
+                    imgui.same_line()
+                    -- Bouton toggle "ACTIVATE ON LOAD"
+                    if activate_on_load then
+                        imgui.push_style_color(21, 0xFF4E9F5F)
+                        imgui.push_style_color(22, 0xFF66B576)
+                        imgui.push_style_color(23, 0xFF367844)
+                    else
+                        imgui.push_style_color(21, 0xFF444444)
+                        imgui.push_style_color(22, 0xFF666666)
+                        imgui.push_style_color(23, 0xFF222222)
+                    end
+                    if imgui.button(activate_on_load and "ACTIVATE ON LOAD [ON]" or "ACTIVATE ON LOAD [OFF]") then
+                        activate_on_load = not activate_on_load
+                        save_settings()
+                    end
+                    imgui.pop_style_color(3)
 
                     imgui.same_line()
                     if imgui.button("Refresh All") then
