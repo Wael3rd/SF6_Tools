@@ -29,6 +29,11 @@ local save_as_input = ""
 local save_as_open = false
 local activate_on_load = false
 
+-- Mass export confirmation
+local mass_export_confirm = false
+local mass_export_hold_start = nil
+local MASS_EXPORT_HOLD_DURATION = 1.0
+
 -- Replay Records dropdown (Live Slots)
 local cached_replay_list = {}
 local filtered_replay_list = {}
@@ -62,7 +67,6 @@ local CHARACTER_NAMES = {
 -- =========================================================
 local SM_THEME = {
     hdr_solo   = { base = 0xFFDB9834, hover = 0xFFE6A94D, active = 0xFFC78320 },
-    hdr_mass   = { base = 0xFF5D6DDA, hover = 0xFF7382E6, active = 0xFF4555C9 },
     hdr_logger = { base = 0xFFB6599B, hover = 0xFFC770AC, active = 0xFFA04885 },
 	hdr_liveSlots = { base = 0xFF4E9F5F, hover = 0xFF66B576, active = 0xFF367844 },
 }
@@ -671,14 +675,6 @@ local function export_all_characters()
     return "Mass Export Done ("..count_ok..")"
 end
 
-local function import_all_characters()
-    local count_ok = 0
-    for id, name in pairs(CHARACTER_NAMES) do
-        local res = import_json_compressed(id)
-        if string.find(res, "Loaded") then count_ok = count_ok + 1 end
-    end
-    return "Mass Import Done ("..count_ok..")"
-end
 
 -- =========================================================
 -- INPUT LOGGER (JSON EXPORT)
@@ -1113,18 +1109,63 @@ re.on_draw_ui(function()
                     end
                     imgui.end_popup()
                 end
-            end
 
-            -- ================= MASS OPERATIONS =================
-            if sm_styled_header("--- MASS OPERATIONS ---", SM_THEME.hdr_mass) then
-                if imgui.button("EXPORT ALL CHARS") then
-                    local ok, res = pcall(export_all_characters)
-                    status_msg = ok and res or ("Crash: "..tostring(res))
-                end
                 imgui.same_line()
-                if imgui.button("IMPORT ALL CHARS") then
-                    local ok, res = pcall(import_all_characters)
-                    status_msg = ok and res or ("Crash: "..tostring(res))
+
+                -- EXPORT ALL CHARS (avec confirmation hold)
+                if not mass_export_confirm then
+                    if imgui.button("EXPORT ALL CHARS") then
+                        mass_export_confirm = true
+                        mass_export_hold_start = nil
+                    end
+                else
+                    imgui.text_colored("Are you sure? This will overwrite existing files.", 0xFF00FFFF)
+
+                    -- Bouton NO
+                    imgui.push_style_color(21, 0xFF1B1BAA)
+                    imgui.push_style_color(22, 0xFF3030CC)
+                    imgui.push_style_color(23, 0xFF101080)
+                    if imgui.button("  NO  ") then
+                        mass_export_confirm = false
+                        mass_export_hold_start = nil
+                    end
+                    imgui.pop_style_color(3)
+
+                    imgui.same_line()
+
+                    -- Bouton YES (maintenir 1 seconde)
+                    imgui.push_style_color(21, 0xFF1B6E1B)
+                    imgui.push_style_color(22, 0xFF2A9E2A)
+                    imgui.push_style_color(23, 0xFF104E10)
+                    imgui.button("  YES (hold 1s)  ")
+                    imgui.pop_style_color(3)
+
+                    local is_held = imgui.is_item_active()
+                    if is_held then
+                        if not mass_export_hold_start then
+                            mass_export_hold_start = os.clock()
+                        end
+                        local elapsed = os.clock() - mass_export_hold_start
+                        local progress = math.min(elapsed / MASS_EXPORT_HOLD_DURATION, 1.0)
+
+                        imgui.push_style_color(28, 0xFF2A9E2A)
+                        imgui.progress_bar(progress, Vector2f.new(120, 12), "")
+                        imgui.pop_style_color(1)
+
+                        if progress >= 1.0 then
+                            local ok, res = pcall(export_all_characters)
+                            status_msg = ok and res or ("Crash: "..tostring(res))
+                            mass_export_confirm = false
+                            mass_export_hold_start = nil
+                        end
+                    else
+                        if mass_export_hold_start then
+                            mass_export_hold_start = nil
+                        end
+                        imgui.push_style_color(28, 0xFF444444)
+                        imgui.progress_bar(0.0, Vector2f.new(120, 12), "")
+                        imgui.pop_style_color(1)
+                    end
                 end
             end
 
