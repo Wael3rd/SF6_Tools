@@ -255,9 +255,16 @@ local function draw_single_line_content()
     end
     imgui.pop_item_width()
 
+    local pb_btn_w = ((rec_btn_w * 2) + (play_btn_w * 2) + sp) / 3
+
     -- 4. RECORD P1 / STOP & SAVE
     imgui.same_line(0, sp)
-    if trial_state.is_recording then
+    if trial_state.is_playing then
+        if styled_sf6_button("RESET (" .. sc("L") .. ")", false, pb_btn_w, true) then
+            ctx.reset_trial_steps_and_load(trial_state.playing_player)
+            ctx.apply_forced_position()
+        end
+    elseif trial_state.is_recording then
         if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, rec_btn_w, true) then stop_recording_and_save() end
     else
         if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, rec_btn_w, true) then start_recording(0) end
@@ -265,7 +272,11 @@ local function draw_single_line_content()
 
     -- 5. START TRIAL P1
     imgui.same_line(0, sp)
-    if not trial_state.is_recording then
+    if trial_state.is_playing then
+        if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, pb_btn_w, true) then
+            trial_state.is_playing = false
+        end
+    elseif not trial_state.is_recording then
         local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
         if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, true) then
             if is_p1_active then trial_state.is_playing = false
@@ -275,25 +286,35 @@ local function draw_single_line_content()
 
     -- 6. RECORD P2 / CANCEL
     imgui.same_line(0, sp)
-    if trial_state.is_recording then
+    if trial_state.is_playing then
+        if styled_sf6_button("SWITCH POS (" .. sc("D") .. ")", false, pb_btn_w, true) then
+            d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
+            if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
+            ctx.save_d2d_config()
+            ctx.apply_forced_position()
+            if ctx.reset_visuals then ctx.reset_visuals() end
+        end
+    elseif trial_state.is_recording then
         if styled_sf6_button("CANCEL (" .. sc("D") .. ")", false, rec_btn_w, true) then cancel_recording() end
     else
         if styled_sf6_button("RECORD P2 (" .. sc("D") .. ")", false, rec_btn_w, true) then start_recording(1) end
     end
 
     -- 7. START TRIAL P2
-    imgui.same_line(0, sp)
-    if not trial_state.is_recording then
-        local is_p2_active = (trial_state.is_playing and trial_state.playing_player == 1)
-        local is_p2_disabled = (d2d_cfg.forced_position_idx ~= 1)
-        if is_p2_disabled and imgui.begin_disabled then imgui.begin_disabled(true) end
-        if styled_sf6_button(is_p2_active and "STOP TRIAL P2 (" .. sc("R") .. ")" or "START TRIAL P2 (" .. sc("R") .. ")", is_p2_active, play_btn_w, true, is_p2_disabled) then
-            if not is_p2_disabled then
-                if is_p2_active then trial_state.is_playing = false
-                else load_and_start_trial(1) end
+    if not trial_state.is_playing then
+        imgui.same_line(0, sp)
+        if not trial_state.is_recording then
+            local is_p2_active = (trial_state.is_playing and trial_state.playing_player == 1)
+            local is_p2_disabled = (d2d_cfg.forced_position_idx ~= 1)
+            if is_p2_disabled and imgui.begin_disabled then imgui.begin_disabled(true) end
+            if styled_sf6_button(is_p2_active and "STOP TRIAL P2 (" .. sc("R") .. ")" or "START TRIAL P2 (" .. sc("R") .. ")", is_p2_active, play_btn_w, true, is_p2_disabled) then
+                if not is_p2_disabled then
+                    if is_p2_active then trial_state.is_playing = false
+                    else load_and_start_trial(1) end
+                end
             end
+            if is_p2_disabled and imgui.begin_disabled then imgui.end_disabled() end
         end
-        if is_p2_disabled and imgui.begin_disabled then imgui.end_disabled() end
     end
 
     -- 8. CHECKBOX (tout à droite avec padding)
@@ -411,7 +432,20 @@ local function draw_combo_trials_content(is_floating)
 
     imgui.begin_group()
     if not is_floating then imgui.text_colored("2. RECORDING", COLORS.White) end
-    if trial_state.is_recording then
+    
+    if trial_state.is_playing then
+        if styled_sf6_button("RESET (" .. sc("L") .. ")", false, rec_btn_w, is_floating) then
+            ctx.reset_trial_steps_and_load(trial_state.playing_player)
+            ctx.apply_forced_position()
+        end
+        if mode_all_stacked then imgui.spacing() end
+        if styled_sf6_button("SWITCH POS (" .. sc("D") .. ")", false, rec_btn_w, is_floating) then
+            d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
+            if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
+            ctx.save_d2d_config()
+            ctx.apply_forced_position()
+        end
+    elseif trial_state.is_recording then
         if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, rec_btn_w, is_floating) then
             stop_recording_and_save()
         end
@@ -442,7 +476,19 @@ local function draw_combo_trials_content(is_floating)
     imgui.begin_group()
     if not is_floating then imgui.text_colored("3. PLAYBACK (TRIAL)", COLORS.White) end
 
-    if not trial_state.is_recording then
+    if trial_state.is_playing then
+        if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, play_btn_w, is_floating) then
+            trial_state.is_playing = false
+        end
+        if mode_all_stacked then imgui.spacing() end
+        
+        imgui.push_style_color(0, 0x88444444) -- TEXT
+        imgui.push_style_color(21, 0x88444444) -- BUTTON
+        imgui.push_style_color(22, 0x88444444) -- HOVERED
+        imgui.push_style_color(23, 0x88444444) -- ACTIVE
+        styled_sf6_button(" ", false, play_btn_w, is_floating)
+        imgui.pop_style_color(4)
+    elseif not trial_state.is_recording then
         local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
         if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, is_floating) then
             if is_p1_active then

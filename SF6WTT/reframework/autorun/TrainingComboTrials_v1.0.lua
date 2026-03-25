@@ -61,6 +61,7 @@ local esf_names_map = {
     ["ESF_031"] = "Alex"
 }
 
+
 local common_exceptions = {}
 pcall(function()
     local loaded = json.load_file("exceptions/Common.json")
@@ -116,10 +117,166 @@ local trial_state = {
     _pending_vital_hp = nil,    -- HP exact à injecter via player object
 	_rec_pending_snapshot = 0,
     _was_playing = false,   -- État précédent pour détecter les transitions
-    _step1_wrong_pending = false -- Première action : fail seulement si le coup touche
+    _step1_wrong_pending = false, -- Première action : fail seulement si le coup touche
+    _demo_backup_slot = nil       -- Sandbox slot backup for demo
 }
 
 
+
+-- =========================================================
+-- INPUT LOGGER (JSON EXPORT)
+-- =========================================================
+local logger_state = {
+    rec_p1 = { active = false, has_started = false, data = {}, facing_right = false, char_name = "P1_Waiting" },
+    rec_p2 = { active = false, has_started = false, data = {}, facing_right = false, char_name = "P2_Waiting" },
+    dual_active = false,
+    window_open = false,
+    last_export_name = nil,
+    last_export_name_2 = nil
+}
+
+local function logger_update_char_names()
+    if players[0].profile_name ~= "Unknown" then
+        logger_state.rec_p1.char_name = players[0].profile_name
+    end
+    if players[1].profile_name ~= "Unknown" then
+        logger_state.rec_p2.char_name = players[1].profile_name
+    end
+end
+
+local function logger_get_numpad_notation(dir_val)
+    local u = (dir_val & 1) ~= 0
+    local d = (dir_val & 2) ~= 0
+    local r = (dir_val & 4) ~= 0
+    local l = (dir_val & 8) ~= 0
+
+    if u and l then return "7"
+    elseif u and r then return "9"
+    elseif d and l then return "1"
+    elseif d and r then return "3"
+    elseif u then return "8"
+    elseif d then return "2"
+    elseif l then return "4"
+    elseif r then return "6"
+    end
+    return "5"
+end
+
+local function logger_get_btn_string(val)
+    local str = ""
+    if (val & 16) ~= 0  then str = str .. "+LP" end
+    if (val & 128) ~= 0 then str = str .. "+LK" end
+    if (val & 32) ~= 0  then str = str .. "+MP" end
+    if (val & 256) ~= 0 then str = str .. "+MK" end
+    if (val & 64) ~= 0  then str = str .. "+HP" end
+    if (val & 512) ~= 0 then str = str .. "+HK" end
+    return str
+end
+
+local function logger_export(rec_struct, suffix)
+    local output = { 
+        ReplayInputRecord = true, 
+        timeline = {} 
+    }
+    
+    for i, entry in ipairs(rec_struct.data) do
+        local frame_str = tostring(entry.frames) .. "f"
+        local dir_str = logger_get_numpad_notation(entry.dir)
+        local btn_str = logger_get_btn_string(entry.btn)
+        local line = string.format("%s : %s%s", frame_str, dir_str, btn_str)
+        table.insert(output.timeline, line)
+    end
+    
+    local timestamp = os.date("%Y%m%d%H%M%S")
+    local name = rec_struct.char_name or "Unknown"
+    local safe_name = name:gsub("%s+", "")
+    if suffix then safe_name = safe_name .. suffix end
+    
+    local short_filename = "ReplayInputRecord_" .. safe_name .. "_" .. timestamp .. ".json"
+    local full_path = "ReplayRecords/" .. short_filename
+    
+    if fs.create_dir then fs.create_dir("ReplayRecords") end
+    json.dump_file(full_path, output)
+
+    return short_filename
+end
+
+local function logger_update_recording(rec_table, current_dir, current_btn)
+    local buffer = rec_table.data
+    local last_entry = buffer[#buffer] 
+    local is_same = false
+    
+    if last_entry and last_entry.dir == current_dir and last_entry.btn == current_btn then 
+        is_same = true 
+    end
+    
+    if is_same then
+        last_entry.frames = last_entry.frames + 1
+    else
+        table.insert(buffer, { dir=current_dir, btn=current_btn, frames=1 })
+    end
+end
+
+local function logger_process_game_state()
+    logger_update_char_names()
+
+    local gBattle = sdk.find_type_definition("gBattle")
+    local player_mgr = nil
+    
+    if gBattle then
+        local f_player = gBattle:get_field("Player")
+        if f_player then
+            player_mgr = f_player:get_data(nil)
+        end
+    end
+    
+    if not player_mgr then return end
+
+    local is_paused = false
+    local pm = sdk.get_managed_singleton("app.PauseManager")
+    if pm then
+        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
+        if pause_bit > 64 then is_paused = true end
+    end
+
+    local function process_player(index, rec_struct)
+        local p = player_mgr:call("getPlayer", index)
+        if not p then return end
+        
+        local is_facing_right = p:get_field("rl_dir")
+        rec_struct.facing_right = is_facing_right
+
+        if rec_struct.active and not is_paused then
+            local f_input = p:get_type_definition():get_field("pl_input_new")
+            local f_sw = p:get_type_definition():get_field("pl_sw_new")
+            
+            local d = (f_input and f_input:get_data(p)) or 0
+            local b = (f_sw and f_sw:get_data(p)) or 0
+            
+            if not is_facing_right then
+                local has_right = (d & 4) ~= 0 
+                local has_left  = (d & 8) ~= 0 
+                d = d & ~4 
+                d = d & ~8 
+                if has_right then d = d | 8 end 
+                if has_left  then d = d | 4 end 
+            end
+            
+            if not rec_struct.has_started then
+                if d == 0 and b == 0 then
+                    return 
+                else
+                    rec_struct.has_started = true
+                end
+            end
+            
+            logger_update_recording(rec_struct, d, b)
+        end
+    end
+
+    process_player(0, logger_state.rec_p1)
+    process_player(1, logger_state.rec_p2)
+end
 
 local file_system = {
     saved_combos_display_p1 = {},
@@ -950,6 +1107,9 @@ local function apply_forced_position(skip_mirror)
     local pos1, pos2, raw1, raw2
 
     if d2d_cfg.forced_position_idx == 1 then
+        -- En mode OFF pendant un trial actif : ne rien faire, garder la position actuelle
+        if trial_state.is_playing then return end
+        -- Sinon (état initial) : capturer et sauvegarder la position courante
         local p1, p2, r1, r2 = capture_current_positions()
         if not r1 or not r2 then return end
         pos1, pos2, raw1, raw2 = p1, p2, r1, r2
@@ -982,6 +1142,9 @@ local function apply_forced_position(skip_mirror)
 
     -- Déclenchement du vrai reset natif (Jauges, Buffs, Vie, etc.)
     tm._IsReqRefresh = true
+    -- Stocker les valeurs sfix exactes pour correction post-refresh
+    trial_state.exact_inject_r1 = raw1
+    trial_state.exact_inject_r2 = raw2
     trial_state.pending_exact_pos = 10
 end
 -- =========================================================
@@ -1002,6 +1165,8 @@ local function apply_current_position_refresh()
     -- Stocker ces coordonnées comme priorité absolue pour la prochaine injection
     trial_state.override_inject_r1 = r1
     trial_state.override_inject_r2 = r2
+    trial_state.exact_inject_r1 = r1
+    trial_state.exact_inject_r2 = r2
 
     if sm.StartLocation ~= 3 then
         trial_state.saved_start_location = sm.StartLocation
@@ -1063,13 +1228,25 @@ local function clear_combo_state()
     trial_state.start_pos_p2_raw = nil
 end
 
-
-
+-- =========================================================
+-- END DEMO PLAYBACK AREA
+-- =========================================================
 
 local function start_recording(player_idx)
     trial_state.is_recording = true
     trial_state.recording_player = player_idx
     trial_state.sequence = {}
+
+    -- LOGGER EXPORT RECORDING INIT
+    if player_idx == 0 then
+        logger_state.rec_p1.data = {}
+        logger_state.rec_p1.has_started = false 
+        logger_state.rec_p1.active = true
+    else
+        logger_state.rec_p2.data = {}
+        logger_state.rec_p2.has_started = false 
+        logger_state.rec_p2.active = true
+    end
 
     -- Capturer la position live et refresh (même comportement que start_trial)
     trial_state.start_pos_p1, trial_state.start_pos_p2, trial_state.start_pos_p1_raw, trial_state.start_pos_p2_raw =
@@ -1090,6 +1267,7 @@ local function start_trial(player_idx)
     trial_state.playing_player = player_idx
     trial_state.current_step = 1
     trial_state._was_playing = false
+
 	-- READ AND INJECT COUNTER STATE
     local hit_t = nil
     if trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].combo_stats then
@@ -1129,11 +1307,43 @@ local function stop_recording_and_save()
     -- NEW: If nothing was recorded, act exactly like Cancel
     if #trial_state.sequence == 0 then
         cancel_recording()
+        
+        -- CANCEL LOGGER
+        if trial_state.recording_player == 0 then
+            logger_state.rec_p1.active = false
+            logger_state.rec_p1.has_started = false
+            logger_state.rec_p1.data = {}
+        else
+            logger_state.rec_p2.active = false
+            logger_state.rec_p2.has_started = false
+            logger_state.rec_p2.data = {}
+        end
+
         return
     end
 
     local saved_player = trial_state.recording_player
     trial_state.is_recording = false
+
+    -- EXPORT LOGGER
+    if saved_player == 0 then
+        if logger_state.rec_p1.has_started then
+            logger_state.last_export_name = logger_export(logger_state.rec_p1)
+            logger_state.last_export_name_2 = nil
+        end
+        logger_state.rec_p1.active = false
+        logger_state.rec_p1.has_started = false
+        logger_state.rec_p1.data = {}
+    else
+        if logger_state.rec_p2.has_started then
+            logger_state.last_export_name = logger_export(logger_state.rec_p2)
+            logger_state.last_export_name_2 = nil
+        end
+        logger_state.rec_p2.active = false
+        logger_state.rec_p2.has_started = false
+        logger_state.rec_p2.data = {}
+    end
+
     save_trial_sequence()
     start_trial(saved_player)
 end
@@ -1279,40 +1489,77 @@ local function handle_combo_shortcuts()
         if kb_now[vk] then _G.ComboTrials_InputDevice = "kb" end
     end
 
-    -- DPAD LEFT / Touche 1 : RECORD P1 / STOP AND SAVE
+    -- DPAD LEFT / Touche 1 : RECORD P1 / STOP AND SAVE ou RESET en PLAYING
     if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
-        if trial_state.is_recording and trial_state.recording_player == 0 then
+        if trial_state.is_playing then
+            -- RESET : recharge la séquence sans quitter le trial
+            local curr_player = trial_state.playing_player
+            local paths = (curr_player == 0) and file_system.saved_combos_paths_p1 or file_system.saved_combos_paths_p2
+            local idx = (curr_player == 0) and (file_system.selected_file_idx_p1 or 1) or (file_system.selected_file_idx_p2 or 1)
+            if #paths > 0 then
+                local loaded = json.load_file(paths[idx])
+                if loaded then
+                    trial_state.sequence = loaded
+                    assign_groups(trial_state.sequence)
+                end
+            end
+            trial_state.is_playing = true
+            trial_state.current_step = 1
+            trial_state._step1_wrong_pending = false
+            trial_state.success_timer = 0
+            trial_state.fail_timer = 0
+            trial_state.fail_reason = nil
+            trial_state.active_universal_hold = nil
+            for _, item in ipairs(trial_state.sequence) do
+                item.actual_combo = 0
+                item.has_hit = false
+                item.last_frame_diff = nil
+            end
+            apply_forced_position()
+            ComboTrials_D2D.reset_anim()
+            ComboTrials_D2D.reset_raw()
+            
+        elseif trial_state.is_recording and trial_state.recording_player == 0 then
             stop_recording_and_save()
         elseif not trial_state.is_playing and not trial_state.is_recording then
             start_recording(0)
         end
     end
 
-    -- DPAD DOWN / Touche 3 : RECORD P2 / CANCEL
+    -- DPAD DOWN / Touche 3 : RECORD P2 / CANCEL ou SWITCH POS en PLAYING
     if is_pressed(BTN_DOWN) or kb_pressed(KB_3) then
-        if trial_state.is_recording then
+        if trial_state.is_playing then
+            -- SWITCH POS
+            d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
+            if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
+            save_d2d_config()
+            apply_forced_position()
+            if ctx.reset_visuals then ctx.reset_visuals() end
+        elseif trial_state.is_recording then
             cancel_recording()
         elseif not trial_state.is_playing and not trial_state.is_recording then
             start_recording(1)
         end
     end
 
-    -- DPAD UP / Touche 2 : START/STOP TRIAL P1
+    -- DPAD UP / Touche 2 : START/STOP TRIAL P1 ou STOP TRIAL en PLAYING
     if is_pressed(BTN_UP) or kb_pressed(KB_2) then
-        if trial_state.is_playing and trial_state.playing_player == 0 then
+        if trial_state.is_playing then
             trial_state.is_playing = false
         elseif not trial_state.is_recording then
             load_and_start_trial(0)
         end
     end
 
-    -- DPAD RIGHT / Touche 4 : START/STOP TRIAL P2
+    -- DPAD RIGHT / Touche 4 : START/STOP TRIAL P2 ou RIEN en PLAYING
     if is_pressed(BTN_RIGHT) or kb_pressed(KB_4) then
-        if d2d_cfg.forced_position_idx == 1 then
-            if trial_state.is_playing and trial_state.playing_player == 1 then
-                trial_state.is_playing = false
-            elseif not trial_state.is_recording then
-                load_and_start_trial(1)
+        if trial_state.is_playing then
+            -- RIEN
+        else
+            if d2d_cfg.forced_position_idx == 1 then
+                if not trial_state.is_recording then
+                    load_and_start_trial(1)
+                end
             end
         end
     end
@@ -1367,6 +1614,9 @@ re.on_frame(function()
 
     engine_frame_count = engine_frame_count + 1
 
+    -- Process the input logger to record real inputs
+    logger_process_game_state()
+
     -- Détection des transitions is_playing pour la vie P2
     local now_playing = trial_state.is_playing
     if now_playing and not trial_state._was_playing then
@@ -1378,6 +1628,40 @@ re.on_frame(function()
         apply_current_position_refresh()
     end
     trial_state._was_playing = now_playing
+
+    -- POST-REFRESH EXACT POSITION CORRECTION
+    -- ManualPosX uniquement en entiers (cm). Après le refresh natif, on réinjecte
+    -- la position exacte via POS_SETx (sfix) pour corriger au centième près.
+    if trial_state.pending_exact_pos and trial_state.pending_exact_pos > 0 then
+        local tm_check = sdk.get_managed_singleton("app.training.TrainingManager")
+        if tm_check and tm_check:get_field("_IsReqRefresh") == false then
+            trial_state.pending_exact_pos = trial_state.pending_exact_pos - 1
+            if trial_state.pending_exact_pos == 0 then
+                pcall(function()
+                    local r1 = trial_state.exact_inject_r1
+                    local r2 = trial_state.exact_inject_r2
+                    if not r1 or not r2 then return end
+
+                    local gBt = sdk.find_type_definition("gBattle")
+                    if not gBt then return end
+                    local sP = gBt:get_field("Player"):get_data(nil)
+                    if not sP or not sP.mcPlayer then return end
+                    local p1 = sP.mcPlayer[0]
+                    local p2 = sP.mcPlayer[1]
+                    if not p1 or not p2 then return end
+
+                    local sfix_type = sdk.find_type_definition("via.sfix")
+                    if not sfix_type then return end
+                    local sfix_from = sfix_type:get_method("From(System.Double)")
+                    if not sfix_from then return end
+
+                    -- r1/r2 sont des valeurs sfix brutes (pos.x.v). En cm : raw / 65536.0
+                    if p1.POS_SETx then p1:POS_SETx(sfix_from:call(nil, r1 / 65536.0)) end
+                    if p2.POS_SETx then p2:POS_SETx(sfix_from:call(nil, r2 / 65536.0)) end
+                end)
+            end
+        end
+    end
 
 
 
@@ -2446,6 +2730,9 @@ function save_trial_sequence()
             stats.super_used = math.max(0, init.attacker_super - (init.min_atk_super or init.attacker_super))
         end
         trial_state.sequence[1].combo_stats = stats
+        if logger_state.last_export_name then
+            trial_state.sequence[1].raw_input_file = logger_state.last_export_name
+        end
         trial_state._rec_gauges = nil
         trial_state._rec_hit_type = nil
     end
@@ -2480,6 +2767,36 @@ ctx.restore_trial_vital = restore_trial_vital
 ctx.save_d2d_config = save_d2d_config
 ctx.get_exc_filename = get_exc_filename
 ctx.ui_state = ui_state
+ctx.apply_forced_position = apply_forced_position
+ctx.reset_visuals = function()
+    ComboTrials_D2D.reset_anim()
+    ComboTrials_D2D.reset_raw()
+end
+ctx.reset_trial_steps_and_load = function(player_idx)
+    local paths = (player_idx == 0) and file_system.saved_combos_paths_p1 or file_system.saved_combos_paths_p2
+    local idx = (player_idx == 0) and (file_system.selected_file_idx_p1 or 1) or (file_system.selected_file_idx_p2 or 1)
+    if #paths > 0 then
+        local loaded = json.load_file(paths[idx])
+        if loaded then
+            trial_state.sequence = loaded
+            assign_groups(trial_state.sequence)
+        end
+    end
+    trial_state.is_playing = true
+    trial_state.current_step = 1
+    trial_state._step1_wrong_pending = false
+    trial_state.success_timer = 0
+    trial_state.fail_timer = 0
+    trial_state.fail_reason = nil
+    trial_state.active_universal_hold = nil
+    for _, item in ipairs(trial_state.sequence) do
+        item.actual_combo = 0
+        item.has_hit = false
+        item.last_frame_diff = nil
+    end
+    ComboTrials_D2D.reset_anim()
+    ComboTrials_D2D.reset_raw()
+end
 
 sf6_menu_state = { active = false, x = 0, y = 0, w = 0, h = 0 }
 ctx.sf6_menu_state = sf6_menu_state

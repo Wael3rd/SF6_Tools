@@ -953,4 +953,9 @@ function M.reset_anim()
     d2d_anim.active_y = nil
 end
 
+function M.reset_raw()
+    raw_state.history_p1 = {}
+    raw_state.history_p2 = {}
+end
+
 return M
