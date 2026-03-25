@@ -1,0 +1,92 @@
+{
+    "655": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6HP"
+    },
+    "656": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">2HK"
+    },
+    "657": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">j.MP"
+    },
+    "717": {
+        "force": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "4throw"
+    },
+    "739": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "drc"
+    },
+    "918": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">j.K"
+    },
+    "925": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">j.P"
+    },
+    "939": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">j.P"
+    },
+    "947": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">j.K"
+    },
+    "948": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "> j.KK"
+    },
+    "956": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">j.P"
+    },
+    "957": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">j.PP"
+    }
+}

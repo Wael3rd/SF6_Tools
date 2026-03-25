@@ -32,6 +32,18 @@ end
 load_config()
 
 -- ==========================================
+-- 0.5. SCENE DETECTION (ABSOLUTE KILLSWITCH)
+-- ==========================================
+local function is_in_training_mode()
+    local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+    if tm then
+        local tData = tm:get_field("_tData")
+        if tData ~= nil then return true end
+    end
+    return false
+end
+
+-- ==========================================
 -- 0. GUARD CONTROL UTILITIES (SAFE PATTERN)
 -- ==========================================
 local last_mode_state = 0
@@ -99,8 +111,8 @@ local function update_guard_logic()
         -- >>> POST GUARD >>> ALL GUARD (3)
         set_guard_type(GUARD_ALL)
 
-    elseif current_mode == 0 then
-        -- >>> DISABLED >>> RESTAURATION
+    elseif current_mode == 0 or current_mode == 4 then
+        -- >>> DISABLED / COMBO TRIALS >>> RESTAURATION
         if is_guard_overridden then
             set_guard_type(saved_guard_state) -- Retour à 0 (ou l'état sauvegardé)
             is_guard_overridden = false
@@ -161,33 +173,27 @@ local function handle_input()
 
     if is_func_held and is_switch_pressed then
         _G.CurrentTrainerMode = _G.CurrentTrainerMode + 1
-        if _G.CurrentTrainerMode > 3 then _G.CurrentTrainerMode = 0 end
+        if _G.CurrentTrainerMode > 4 then _G.CurrentTrainerMode = 0 end
     end
     
     last_input_mask = active_buttons
 end
 
 -- ==========================================
--- 2. UI RESTORATION LOGIC (CLEANUP)
+-- 2. UI RESTORATION & HUD TRACKING LOGIC
 -- ==========================================
-local ui_targets = {
-    BattleHud_Timer = { { "c_main", "c_hud", "c_timer", "c_infinite" } }
-}
+_G.CurrentHudSuffix = "Default"
 
-local function apply_force_invisible(control, path, depth, should_hide)
-    local depth = depth or 1
-    if depth > #path then 
+local function apply_infinite_visibility(control, should_hide)
+    if not control then return end
+    local name = control:call("get_Name")
+    if name and string.match(name:lower(), "infinite") then
         control:call("set_ForceInvisible", should_hide)
         if not should_hide then control:call("set_Visible", true) end
-        return 
     end
-
     local child = control:call("get_Child")
     while child do
-        local name = child:call("get_Name")
-        if name and string.match(name, path[depth]) then 
-            apply_force_invisible(child, path, depth + 1, should_hide) 
-        end
+        apply_infinite_visibility(child, should_hide)
         child = child:call("get_Next")
     end
 end
@@ -251,21 +257,28 @@ local function manage_ui_visibility(scripts_active)
 end
 
 -- ==========================================
--- 3. DRAW HOOK
+-- 3. DRAW HOOK (MASTER HUD TRACKER)
 -- ==========================================
 re.on_pre_gui_draw_element(function(element, context)
-    if _G.CurrentTrainerMode ~= 0 then return true end
+    if not is_in_training_mode() then return true end
+
     local game_object = element:call("get_GameObject")
     if not game_object then return true end
     
     local name = game_object:call("get_Name")
-    local paths = ui_targets[name]
-
-    if paths then
+    
+    -- DÉTECTION FLOUE GLOBALE DU HUD
+    if name and string.find(name, "BattleHud_Timer") then
+        -- 1. Extraction du suffixe pour TOUS les autres scripts
+        local suffix = string.match(name, "BattleHud_Timer(.*)")
+        if suffix == "" or suffix == nil then suffix = "Default" end
+        _G.CurrentHudSuffix = suffix
+        
+        -- 2. Gestion de la visibilité du symbole infini (Jamais caché en mode 4)
+        local hide_infinite = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3)
+        
         local view = element:call("get_View")
-        for _, path in ipairs(paths) do 
-            apply_force_invisible(view, path, 1, false) 
-        end
+        apply_infinite_visibility(view, hide_infinite)
     end
 
     return true
@@ -275,6 +288,15 @@ end)
 -- 4. MAIN LOOP
 -- ==========================================
 re.on_frame(function()
+    -- COUPE CIRCUIT ABSOLU : Aucune lecture de manette ou logique hors du training
+    if not is_in_training_mode() then 
+        -- AUTO-RESET : On éteint tous les modes actifs si on sort du mode Training
+        if _G.CurrentTrainerMode ~= 0 then 
+            _G.CurrentTrainerMode = 0 
+        end
+        return 
+    end
+
     handle_input()
     
     if is_binding_mode then return end
@@ -282,7 +304,7 @@ re.on_frame(function()
     -- CHECK AUTOMATIC GUARD SWITCHING
     update_guard_logic()
 
-    local scripts_active = (_G.CurrentTrainerMode ~= 0)
+    local scripts_active = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3 or (_G.CurrentTrainerMode == 4 and _G.ComboTrials_HideNativeHUD))
     manage_ui_visibility(scripts_active)
 end)
 
@@ -290,22 +312,33 @@ end)
 -- 5. USER INTERFACE
 -- ==========================================
 re.on_draw_ui(function()
-    if imgui.tree_node("Trainer Manager (Main Controller)") then
+    if imgui.tree_node("TRAINING SCRIPT MANAGER") then
         
+        -- Si on n'est pas en training, on affiche un message d'attente et on bloque l'UI
+        if not is_in_training_mode() then
+            imgui.text_colored("[!] INACTIF : En attente du Mode Training...", 0xFF00A5FF)
+            imgui.tree_pop()
+            return
+        end
+
         imgui.text("Select active mode:")
         
-        local c0, v0 = imgui.checkbox("Disabled (Normal)", _G.CurrentTrainerMode == 0)
+        local c0, v0 = imgui.checkbox("DISABLED", _G.CurrentTrainerMode == 0)
         if c0 and v0 then _G.CurrentTrainerMode = 0 end
-
-        local c1, v1 = imgui.checkbox("Reaction Drills (No Guard)", _G.CurrentTrainerMode == 1)
+        
+        local c1, v1 = imgui.checkbox("REACTION DRILLS", _G.CurrentTrainerMode == 1)
         if c1 and v1 then _G.CurrentTrainerMode = 1 end
 
-        local c2, v2 = imgui.checkbox("HitConfirm (Random Guard)", _G.CurrentTrainerMode == 2)
+        local c2, v2 = imgui.checkbox("HIT CONFIRM", _G.CurrentTrainerMode == 2)
         if c2 and v2 then _G.CurrentTrainerMode = 2 end
 
 
-        local c3, v3 = imgui.checkbox("Post Guard (All Guard)", _G.CurrentTrainerMode == 3)
+        local c3, v3 = imgui.checkbox("POST GUARD", _G.CurrentTrainerMode == 3)
         if c3 and v3 then _G.CurrentTrainerMode = 3 end
+
+        local c4, v4 = imgui.checkbox("CUSTOM COMBO TRIALS", _G.CurrentTrainerMode == 4)
+        if c4 and v4 then _G.CurrentTrainerMode = 4 end
+
         
         imgui.spacing()
         imgui.separator()
@@ -335,9 +368,14 @@ re.on_draw_ui(function()
             if _G.CurrentTrainerMode == 1 then imgui.text("(No Guard [0] Active)") end
             if _G.CurrentTrainerMode == 2 then imgui.text("(Random Guard [4] Active)") end
             if _G.CurrentTrainerMode == 3 then imgui.text("(All Guard [3] Active)") end
+            if _G.CurrentTrainerMode == 4 then imgui.text("(No Guard [0] Active)") end
         else
             imgui.text_colored("STATUS: NORMAL (Guard Restored)", 0xFFAAAAAA)
         end
+
+        imgui.separator()
+        imgui.text_colored("--- DEBUG INFO ---", 0xFF00A5FF)
+        imgui.text("HUD Actif Detecte : [" .. tostring(_G.CurrentHudSuffix or "Default") .. "]")
 
         imgui.tree_pop()
     end

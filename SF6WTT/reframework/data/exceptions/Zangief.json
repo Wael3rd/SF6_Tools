@@ -1,0 +1,187 @@
+{
+    "1206": {
+        "absorb_ids": "1207",
+        "charge_max": 112,
+        "charge_min": 111,
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": true,
+        "override_name": "236236+P"
+    },
+    "1213": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6"
+    },
+    "1215": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">4"
+    },
+    "1218": {
+        "force": false,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "360+360+P"
+    },
+    "501": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "RAW DR"
+    },
+    "504": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "DRC"
+    },
+    "605": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">MP"
+    },
+    "606": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">MP"
+    },
+    "637": {
+        "charge_max": 23,
+        "charge_min": 3,
+        "force": false,
+        "ignore": false,
+        "is_holdable": true,
+        "override_name": "HP"
+    },
+    "647": {
+        "charge_max": 20,
+        "charge_min": 7,
+        "force": false,
+        "ignore": false,
+        "is_holdable": true,
+        "override_name": "j.HK"
+    },
+    "679": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">MK"
+    },
+    "680": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">MK"
+    },
+    "710": {
+        "force": true,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "1+LP+LK"
+    },
+    "711": {
+        "force": true,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "2+LP+LK"
+    },
+    "712": {
+        "force": true,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "3+LP+LK"
+    },
+    "715": {
+        "force": true,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "4+LP+LK"
+    },
+    "717": {
+        "force": true,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "6+LP+LK"
+    },
+    "918": {
+        "force": true,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "63214+K"
+    },
+    "924": {
+        "force": true,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "63214+KK"
+    },
+    "930": {
+        "force": false,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "360+LP"
+    },
+    "935": {
+        "force": false,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "360+MP"
+    },
+    "940": {
+        "force": false,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "360+HP"
+    },
+    "945": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "360+PP"
+    },
+    "950": {
+        "force": false,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "j.360+K"
+    },
+    "963": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "j.360+KK"
+    }
+}

@@ -1,0 +1,178 @@
+{
+    "606": {
+        "absorb_ids": "",
+        "charge_max": 60,
+        "charge_min": 30,
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": true,
+        "override_name": "HP"
+    },
+    "674": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">LK"
+    },
+    "675": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">LK"
+    },
+    "677": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">MK"
+    },
+    "678": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">HP"
+    },
+    "681": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">HP"
+    },
+    "683": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">HP"
+    },
+    "717": {
+        "force": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "4 (throw)"
+    },
+    "739": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "drc"
+    },
+    "902": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6LP"
+    },
+    "904": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6MP"
+    },
+    "906": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6HP"
+    },
+    "909": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6LP"
+    },
+    "911": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6MP"
+    },
+    "913": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6HP"
+    },
+    "934": {
+        "charge_max": 26,
+        "charge_min": 11,
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": true,
+        "override_name": "236+LK"
+    },
+    "942": {
+        "charge_max": 30,
+        "charge_min": 15,
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": true,
+        "override_name": "236+MK"
+    },
+    "950": {
+        "charge_max": 30,
+        "charge_min": 12,
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": true,
+        "override_name": "236+HK"
+    },
+    "987": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">66 (CANCEL)"
+    },
+    "989": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6P (INSTANT)"
+    },
+    "990": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6P (1ST HALF)"
+    },
+    "991": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">6P (2ND HALF)"
+    },
+    "993": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": ">44"
+    }
+}

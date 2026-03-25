@@ -1,0 +1,85 @@
+{
+    "1210": {
+        "absorb_ids": "",
+        "charge_max": 188,
+        "charge_min": 139,
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": true,
+        "override_name": "214214+LK"
+    },
+    "1232": {
+        "absorb_ids": "",
+        "charge_max": 188,
+        "charge_min": 139,
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": true,
+        "override_name": "214214+MK"
+    },
+    "1254": {
+        "absorb_ids": "",
+        "charge_max": 188,
+        "charge_min": 139,
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": true,
+        "override_name": "214214+HK"
+    },
+    "717": {
+        "force": true,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "4+THROW"
+    },
+    "719": {
+        "force": false,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "2+THROW"
+    },
+    "739": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "DRC"
+    },
+    "740": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "RAW DR"
+    },
+    "900": {
+        "charge_max": 27,
+        "charge_min": 6,
+        "force": false,
+        "ignore": false,
+        "is_holdable": true,
+        "override_name": "236+LP"
+    },
+    "904": {
+        "charge_max": 27,
+        "charge_min": 6,
+        "force": false,
+        "ignore": false,
+        "is_holdable": true,
+        "override_name": "236+MP"
+    },
+    "908": {
+        "charge_max": 27,
+        "charge_min": 6,
+        "force": false,
+        "ignore": false,
+        "is_holdable": true,
+        "override_name": "236+HP"
+    }
+}

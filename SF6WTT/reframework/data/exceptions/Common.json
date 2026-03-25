@@ -1,0 +1,188 @@
+{
+    "154": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "DGD_STAND_H_DM_M"
+    },
+    "155": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "DGD_STAND_H_DM_H"
+    },
+    "230": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "BUTT_RISE"
+    },
+    "231": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "BUTT_RISE_45"
+    },
+    "232": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "BUTT_RISE_00"
+    },
+    "244": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "BUTT_H_START_90"
+    },
+    "245": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "BUTT_H_START_45"
+    },
+    "246": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "BUTT_H_START_00"
+    },
+    "251": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "BUTT_B_START_90"
+    },
+    "276": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "KUZURE"
+    },
+    "320": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "THROWBREAK_TO"
+    },
+    "321": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "> (LP+LK)"
+    },
+    "337": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "DIE_BACK"
+    },
+    "344": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "GETUP_B_FU"
+    },
+    "480": {
+        "force": false,
+        "ignore": false,
+        "is_holdable": false,
+        "override_name": "PARRY"
+    },
+    "482": {
+        "force": false,
+        "ignore": true,
+        "is_holdable": false,
+        "override_name": "> (MP+MK)"
+    },
+    "483": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "PARRY"
+    },
+    "484": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "Follow-up (MP+MK)"
+    },
+    "485": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 60,
+        "ignore_prev_id": 480,
+        "is_holdable": false,
+        "override_name": "PARRY"
+    },
+    "486": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "parry"
+    },
+    "488": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "PARRY"
+    },
+    "489": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "PARRY"
+    },
+    "715": {
+        "force": false,
+        "ignore": false,
+        "override_name": "THROW"
+    },
+    "719": {
+        "force": false,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false
+    },
+    "850": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "6REVERSAL"
+    },
+    "852": {
+        "force": false,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "6REVERSAL"
+    }
+}

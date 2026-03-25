@@ -1,0 +1,44 @@
+{
+    "0": {
+        "Ryu": {
+            "visibility": {
+                "2HK": true,
+                "2HP": false,
+                "2LP": false,
+                "2MK": false,
+                "2MP": false,
+                "5HK": false,
+                "5HP": false,
+                "5LK": false,
+                "5LP": false,
+                "5MK": false,
+                "5MP": false,
+                "6HK": true,
+                "6HP": false,
+                "6MP": true
+            },
+            "yellow_offset": 50
+        }
+    },
+    "1": {
+        "Ryu": {
+            "visibility": {
+                "2HK": true,
+                "2HP": false,
+                "2LP": false,
+                "2MK": false,
+                "2MP": false,
+                "5HK": false,
+                "5HP": false,
+                "5LK": false,
+                "5LP": false,
+                "5MK": false,
+                "5MP": false,
+                "6HK": true,
+                "6HP": false,
+                "6MP": true
+            },
+            "yellow_offset": 50
+        }
+    }
+}

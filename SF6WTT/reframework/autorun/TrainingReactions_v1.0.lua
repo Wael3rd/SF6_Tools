@@ -55,14 +55,7 @@ local UI_THEME = {
     btn_red     = { base = 0xFF0000CC, hover = 0xFF2222FF, active = 0xFF000099 },
 }
 
-local IMGUI_FLAGS = {
-    NoTitleBar = 1, NoResize = 2, NoMove = 4, NoScrollbar = 8, 
-    NoMouseInputs = 512, NoNav = 786432, NoBackground = 128
-}
-
-local custom_font = { obj = nil, filename = "capcom_goji-udkakugoc80pro-db.ttf", loaded_size = 0, status = "Init..." }
-local custom_font_timer = { obj = nil, filename = "SF6_college.ttf", loaded_size = 0, status = "Init..." }
-local res_watcher = { last_w = 0, last_h = 0, cooldown = 0 }
+local SharedUI = require("func/Training_SharedUI")
 
 -- FULL CONFIG
 local user_config = {
@@ -264,18 +257,7 @@ local function input_int_keyboard(label, value)
     return false, value
 end
 
-local function get_dynamic_screen_size()
-    local w, h = 1920, 1080 
-    if imgui.get_display_size then
-        local result = imgui.get_display_size()
-        if type(result) == "userdata" then
-            local ok, x = pcall(function() return result.x end); local ok2, y = pcall(function() return result.y end)
-            if ok and ok2 then w, h = x, y else w = result.w or w; h = result.h or h end
-        elseif type(result) == "number" then local w_val, h_val = imgui.get_display_size(); w, h = w_val, h_val end
-    end
-    if w <= 0 then w = 1920 end; if h <= 0 then h = 1080 end
-    return w, h
-end
+
 
 -- [FIXED] GET P1 ACTION ID (via Engine)
 local function get_p1_action_id()
@@ -346,30 +328,6 @@ local function load_conf()
 end
 load_conf()
 
-local function try_load_font()
-    if not imgui.load_font then return end
-    local sw, sh = get_dynamic_screen_size(); local scale_factor = sh / 1080.0
-    if scale_factor < 0.1 then scale_factor = 1.0 end
-    
-    if type(user_config.hud_base_size) ~= "number" then user_config.hud_base_size = 60 end
-    if type(user_config.timer_font_size) ~= "number" then user_config.timer_font_size = 60 end
-
-    local target_size = math.floor(user_config.hud_base_size * (user_config.hud_auto_scale and scale_factor or 1.0))
-    local font = imgui.load_font(custom_font.filename, target_size)
-    if font then custom_font.obj = font; custom_font.loaded_size = target_size end
-
-    local target_size_timer = math.floor(user_config.timer_font_size * (user_config.hud_auto_scale and scale_factor or 1.0))
-    local font_t = imgui.load_font(custom_font_timer.filename, target_size_timer)
-    if font_t then custom_font_timer.obj = font_t end
-end
-try_load_font()
-
-local function handle_resolution_change()
-    local sw, sh = get_dynamic_screen_size()
-    if res_watcher.last_w == 0 then res_watcher.last_w = sw; res_watcher.last_h = sh; try_load_font(); return end
-    if sw ~= res_watcher.last_w or sh ~= res_watcher.last_h then res_watcher.cooldown = 30; res_watcher.last_w = sw; res_watcher.last_h = sh end
-    if res_watcher.cooldown > 0 then res_watcher.cooldown = res_watcher.cooldown - 1; if res_watcher.cooldown == 0 then try_load_font() end end
-end
 
 local function save_conf() 
     json.dump_file(CONFIG_FILENAME, user_config) 
@@ -785,33 +743,6 @@ end
 -- HUD DRAWING
 -- =========================================================
 
-local function draw_text_overlay(text, x, y, color)
-    local safe_text = string.gsub(text, "%%", "%%%%")
-    local outline_color = COLORS.Grey 
-    local outline_thick = 0.1             
-    local shadow_depth = 0              
-
-    imgui.set_cursor_pos(Vector2f.new(x + shadow_depth, y + shadow_depth))
-    imgui.text_colored(safe_text, outline_color)
-
-    for dx = -outline_thick, outline_thick do
-        for dy = -outline_thick, outline_thick do
-            if (dx ~= 0 or dy ~= 0) and (math.abs(dx) + math.abs(dy) <= outline_thick) then
-                imgui.set_cursor_pos(Vector2f.new(x + dx, y + dy))
-                imgui.text_colored(safe_text, outline_color)
-            end
-        end
-    end
-
-    imgui.set_cursor_pos(Vector2f.new(x, y))
-    imgui.text_colored(safe_text, color)
-end
-
-local function draw_timer_outline(text, x, y, color)
-    local safe_text = string.gsub(text, "%%", "%%%%"); local outline_color = 0xFF000000; local thickness = 2
-    for dx = -thickness, thickness, thickness do for dy = -thickness, thickness, thickness do if dx~=0 or dy~=0 then imgui.set_cursor_pos(Vector2f.new(x + dx, y + dy)); imgui.text_colored(safe_text, outline_color) end end end
-    imgui.set_cursor_pos(Vector2f.new(x, y)); imgui.text_colored(safe_text, color)
-end
 
 local function manage_ticker_visibility_backup()
     local should_hide = (user_config.session_mode == 1)
@@ -875,107 +806,26 @@ end)
 
 -- Fonction pour dessiner le HUD (Extraite pour clarté, à appeler dans on_frame)
 local function draw_hud_overlay()
-    local sw, sh = get_dynamic_screen_size()
-    imgui.push_style_var(4, 0.0); imgui.push_style_var(2, Vector2f.new(0, 0)); imgui.push_style_color(2, 0) 
-    imgui.set_next_window_pos(Vector2f.new(0, 0)); imgui.set_next_window_size(Vector2f.new(sw, sh))
-    local win_flags = IMGUI_FLAGS.NoTitleBar | IMGUI_FLAGS.NoResize | IMGUI_FLAGS.NoMove | IMGUI_FLAGS.NoScrollbar | IMGUI_FLAGS.NoMouseInputs | IMGUI_FLAGS.NoNav | IMGUI_FLAGS.NoBackground
-
-    if imgui.begin_window("HUD_Reaction", true, win_flags) then
-        if custom_font.obj then imgui.push_font(custom_font.obj) end
-        
-        local center_x = sw / 2
-        local center_y = sh / 2
-        
-        local top_y = center_y + (user_config.hud_n_global_y * sh)
-        local spread_score_px = user_config.hud_n_spread_score * sw
-        local spacing_y_px    = user_config.hud_n_spacing_y * sh
-        
-        local off_score_px = (type(user_config.hud_n_offset_score) == "number" and user_config.hud_n_offset_score or 0.0) * sw
-        local off_total_px = (type(user_config.hud_n_offset_total) == "number" and user_config.hud_n_offset_total or 0.0) * sw
-        local off_timer_px = (type(user_config.hud_n_offset_timer) == "number" and user_config.hud_n_offset_timer or 0.0) * sw
-        local off_status_px = (type(user_config.hud_n_offset_status_y) == "number" and user_config.hud_n_offset_status_y or 0.0) * sh
-
-        -- 1. TIMER
-        if user_config.session_mode == 1 then
-            local time_show = session.is_running and session.time_rem or (user_config.timer_minutes * 60)
-            local t_txt = format_duration(time_show)
-            
-            if custom_font.obj then imgui.pop_font() end
-            if custom_font_timer.obj then imgui.push_font(custom_font_timer.obj) end
-            
-            local w_t = imgui.calc_text_size(t_txt).x
-            local t_col = COLORS.White
-            if session.is_paused then t_col = COLORS.Yellow
-            elseif session.time_rem < 10 and session.is_running then t_col = COLORS.Red end
-            
-            local t_hud_y = (type(user_config.timer_hud_y) == "number" and user_config.timer_hud_y or -0.45)
-            local t_off_x = (type(user_config.timer_offset_x) == "number" and user_config.timer_offset_x or 0.0)
-            local timer_y_final = center_y + (t_hud_y * sh)
-            local timer_x_final = center_x - (w_t / 2) + (t_off_x * sw)
-            
-            draw_timer_outline(t_txt, timer_x_final, timer_y_final, t_col)
-            
-            if custom_font_timer.obj then imgui.pop_font() end
-            if custom_font.obj then imgui.push_font(custom_font.obj) end
-        end
-
-        -- 2. SCORE & TOTAL
-        local s_txt = TEXTS.score_label .. session.score
-        local tot_txt = TEXTS.total_label .. session.total
-        local t_mode = TEXTS.mode_label
-        
-        local w_s = imgui.calc_text_size(s_txt).x
-        local x_s = center_x - spread_score_px - w_s + off_score_px
-        draw_text_overlay(s_txt, x_s, top_y, session.score_col)
-
-        local w_m = imgui.calc_text_size(t_mode).x
-        local x_m = center_x - (w_m / 2) + off_timer_px
-        local mode_col = COLORS.White
-        if session.is_paused then mode_col = COLORS.Yellow end
-        draw_text_overlay(t_mode, x_m, top_y, mode_col)
-
-        local x_tot = center_x + spread_score_px + off_total_px
-        draw_text_overlay(tot_txt, x_tot, top_y, COLORS.White)
-
-        local line_2_y = top_y + spacing_y_px + off_status_px
-        local line_3_y = line_2_y + spacing_y_px
-
-        -- 3. SLOT STATS
+    local show_timer = (user_config.session_mode == 1)
+    
+    SharedUI.draw_standard_hud("HUD_Reaction", user_config, session, TEXTS.mode_label, show_timer, function(cx, cy, sw, sh)
         if user_config.show_slot_stats then
             local slots_str = ""
             local has_visible_slots = false
             for i=1,8 do
-                local status = real_slot_status[i]
-                -- Only show active slots
-                if status.is_active then
+                if real_slot_status[i] and real_slot_status[i].is_active then
                     local s = session.slot_stats[i]
-                    local pct = 0
-                    if s.attempts > 0 then pct = (s.success / s.attempts) * 100 end
+                    local pct = 0; if s and s.attempts > 0 then pct = (s.success / s.attempts) * 100 end
                     slots_str = slots_str .. string.format("S%d:%.0f%%  ", i, pct)
                     has_visible_slots = true
                 end
             end
             if not has_visible_slots then slots_str = "WAITING FOR ACTIVE SLOTS..." end
             local w_sl = imgui.calc_text_size(slots_str).x
-            draw_text_overlay(slots_str, center_x - w_sl/2, line_2_y, COLORS.White)
+            SharedUI.draw_text(slots_str, cx - w_sl/2, cy, SharedUI.COLORS.White)
         end
-
-        -- 4. STATUS
-        local final_msg = session.feedback.text
-        local final_color = session.feedback.color
-        if session.is_running and session.is_paused then
-            final_msg = TEXTS.pause_overlay
-            final_color = COLORS.Yellow
-        end
-        local w_msg = imgui.calc_text_size(final_msg).x
-        draw_text_overlay(final_msg, center_x - w_msg/2, line_3_y, final_color)
-
-        if custom_font.obj then imgui.pop_font() end
-        imgui.end_window()
-    end
-    imgui.pop_style_var(2); imgui.pop_style_color(1)
+    end)
 end
-
 re.on_frame(function()
     local cur_mode = _G.CurrentTrainerMode or 0
     if cur_mode == 1 and last_trainer_mode ~= 1 then
@@ -1008,7 +858,6 @@ re.on_frame(function()
         handle_input()
         manage_playback()
         update_logic()
-        handle_resolution_change()
         manage_ticker_visibility_backup()
     end
     
@@ -1085,11 +934,10 @@ re.on_draw_ui(function()
         
         if styled_header("--- UI LAYOUT ADJUSTMENTS ---", UI_THEME.hdr_layout) then
             local chg = false; local v
-            local c_main, v_main = input_int_keyboard("Main Text Size", user_config.hud_base_size)
-            if c_main then user_config.hud_base_size = v_main; save_conf(); try_load_font() end
+			local c_main, v_main = input_int_keyboard("Main Text Size", user_config.hud_base_size)
+            if c_main then user_config.hud_base_size = v_main; save_conf(); SharedUI.update_fonts(user_config) end
             local c_time, v_time = input_int_keyboard("Timer Font Size", user_config.timer_font_size)
-            if c_time then user_config.timer_font_size = v_time; save_conf(); try_load_font() end
-
+            if c_time then user_config.timer_font_size = v_time; save_conf(); SharedUI.update_fonts(user_config) end
             imgui.separator()
             chg, v = imgui.slider_float("Global Y Pos", user_config.hud_n_global_y, -1.0, 1.0); if chg then user_config.hud_n_global_y = v; save_conf() end
             chg, v = imgui.slider_float("Line Spacing", user_config.hud_n_spacing_y, 0.0, 0.2); if chg then user_config.hud_n_spacing_y = v; save_conf() end

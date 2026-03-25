@@ -1,0 +1,3439 @@
+{
+    "A.K.I.": {
+        "low": {
+            "ar": 192.34,
+            "input": "2HP"
+        },
+        "moves": [
+            {
+                "ar": 216.15,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 192.34,
+                "guard_bit": 6,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 178.17,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 173.62,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 160.1,
+                "guard_bit": 7,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 148.0,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.97,
+                "guard_bit": 5,
+                "input": "3MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 137.57,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 137.46,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 134.0,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 126.88,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 119.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 104.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 96.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 90.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 148.0,
+            "input": "5MK"
+        },
+        "yellow_offset": 50
+    },
+    "Akuma": {
+        "low": {
+            "ar": 147.33,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 253.21,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 195.69,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 186.14,
+                "guard_bit": 5,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 178.27,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 164.92,
+                "guard_bit": 7,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 148.34,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 147.33,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 130.29,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 123.0,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 118.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 113.42,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 105.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 102.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 100.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 95.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 90.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 196.5,
+            "input": "6HP"
+        },
+        "yellow_offset": 50
+    },
+    "Alex": {
+        "low": {
+            "ar": 188.34,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 230.24,
+                "guard_bit": 7,
+                "input": "5HK (HOLD)",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 205.24,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 203.4,
+                "guard_bit": 7,
+                "input": "5HP (HOLD)",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 188.34,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 178.34,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 170.0,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 164.97,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 163.88,
+                "guard_bit": 5,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 158.16,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.9,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 131.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 130.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 128.0,
+                "guard_bit": 7,
+                "input": "4MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 123.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 108.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.93,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 230.24,
+            "input": "5HK (HOLD)"
+        },
+        "yellow_offset": 50
+    },
+    "Blanka": {
+        "low": {
+            "ar": 310.06,
+            "input": "3HP"
+        },
+        "moves": [
+            {
+                "ar": 310.06,
+                "guard_bit": 6,
+                "input": "3HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 213.72,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 207.0,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 186.55,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 172.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 170.25,
+                "guard_bit": 7,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 164.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 156.11,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 151.92,
+                "guard_bit": 7,
+                "input": "4MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 149.43,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 148.0,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.51,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 140.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 136.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 126.43,
+                "guard_bit": 5,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 123.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 111.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 213.72,
+            "input": "2HP"
+        },
+        "yellow_offset": 50
+    },
+    "Cammy": {
+        "low": {
+            "ar": 149.0,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 187.87,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 173.0,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 157.0,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 149.0,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 139.67,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 139.0,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 133.51,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 127.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 114.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 109.0,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 108.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 105.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 105.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 104.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 82.62,
+                "guard_bit": 7,
+                "input": "4MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 187.87,
+            "input": "5HK"
+        },
+        "yellow_offset": 50
+    },
+    "Chun-Li": {
+        "low": {
+            "ar": 147.74,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 189.68,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 184.06,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 175.56,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 171.52,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 153.75,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 147.74,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 140.05,
+                "guard_bit": 5,
+                "input": "3HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 139.66,
+                "guard_bit": 7,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 138.0,
+                "guard_bit": 5,
+                "input": "3HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 113.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 110.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 105.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 97.0,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 91.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 85.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 80.31,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 73.0,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 175.56,
+            "input": "5HP"
+        },
+        "yellow_offset": 50
+    },
+    "Dee Jay": {
+        "low": {
+            "ar": 152.08,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 223.45,
+                "guard_bit": 7,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 218.64,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 193.85,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 179.63,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 161.8,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 152.08,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 144.94,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 123.94,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 122.54,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 122.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 118.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 118.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 104.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 96.21,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 223.45,
+            "input": "6MK"
+        },
+        "yellow_offset": 50
+    },
+    "Dhalsim": {
+        "low": {
+            "ar": 251.01,
+            "input": "3MK"
+        },
+        "moves": [
+            {
+                "ar": 362.4,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 334.0,
+                "guard_bit": 3,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 305.74,
+                "guard_bit": 6,
+                "input": "3HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 298.29,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 295.0,
+                "guard_bit": 6,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 252.02,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 251.01,
+                "guard_bit": 6,
+                "input": "3MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 250.0,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 196.0,
+                "guard_bit": 3,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 155.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 146.0,
+                "guard_bit": 7,
+                "input": "1HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.96,
+                "guard_bit": 6,
+                "input": "3LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 129.0,
+                "guard_bit": 6,
+                "input": "1HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 119.0,
+                "guard_bit": 6,
+                "input": "1MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 118.0,
+                "guard_bit": 7,
+                "input": "4MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 114.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 107.86,
+                "guard_bit": 7,
+                "input": "4MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 105.0,
+                "guard_bit": 6,
+                "input": "1LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 88.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 80.0,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 362.4,
+            "input": "5HP"
+        },
+        "yellow_offset": 50
+    },
+    "E. Honda": {
+        "low": {
+            "ar": 211.44,
+            "input": "6HK"
+        },
+        "moves": [
+            {
+                "ar": 299.49,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 211.44,
+                "guard_bit": 6,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 191.66,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 168.7,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 160.5,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 154.34,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 153.0,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.01,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 137.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 128.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 123.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 112.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 111.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 95.0,
+                "guard_bit": 5,
+                "input": "3HK",
+                "is_cancelable": false,
+                "is_super_cancelable": true
+            }
+        ],
+        "red": {
+            "ar": 168.7,
+            "input": "5MP"
+        },
+        "yellow_offset": 50
+    },
+    "Ed": {
+        "low": {
+            "ar": 187.0,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 454.3,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 249.78,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 187.0,
+                "guard_bit": 7,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 183.95,
+                "guard_bit": 7,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 178.19,
+                "guard_bit": 6,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 166.06,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 141.07,
+                "guard_bit": 6,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 130.0,
+                "guard_bit": 7,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 130.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 122.21,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 117.58,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 102.0,
+                "guard_bit": 6,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 92.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 249.78,
+            "input": "6HP"
+        },
+        "yellow_offset": 50
+    },
+    "Guile": {
+        "low": {
+            "ar": 207.73,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 207.73,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 192.1,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 190.65,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 190.65,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 186.26,
+                "guard_bit": 7,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 159.27,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 158.74,
+                "guard_bit": 7,
+                "input": "4LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 155.88,
+                "guard_bit": 7,
+                "input": "3HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 149.04,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 146.49,
+                "guard_bit": 5,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.59,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 140.82,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 127.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 122.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 117.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 107.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 103.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 94.03,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 91.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 192.1,
+            "input": "6HP"
+        },
+        "yellow_offset": 50
+    },
+    "JP": {
+        "low": {
+            "ar": 174.0,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 190.28,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 186.0,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 174.0,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 162.0,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 158.0,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 150.0,
+                "guard_bit": 5,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 147.0,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 138.0,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 122.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 122.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 119.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 115.0,
+                "guard_bit": 7,
+                "input": "4MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 112.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 107.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 87.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 190.28,
+            "input": "5MP"
+        },
+        "yellow_offset": 50
+    },
+    "Jamie": {
+        "low": {
+            "ar": 193.0,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 223.95,
+                "guard_bit": 7,
+                "input": "6HK 4 Drinks",
+                "is_cancelable": false,
+                "is_super_cancelable": true
+            },
+            {
+                "ar": 223.95,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": true
+            },
+            {
+                "ar": 222.95,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": true
+            },
+            {
+                "ar": 222.95,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": true,
+                "is_super_cancelable": true
+            },
+            {
+                "ar": 212.13,
+                "guard_bit": 7,
+                "input": "6HK 0 Drink",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 193.0,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 192.08,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": true,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 181.04,
+                "guard_bit": 5,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 180.3,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 147.6,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 146.0,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 123.42,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 119.4,
+                "guard_bit": 7,
+                "input": "2KK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 113.21,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 113.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 113.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 108.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 98.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 97.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 223.95,
+            "input": "6HK 4 Drinks"
+        },
+        "yellow_offset": 50
+    },
+    "Juri": {
+        "low": {
+            "ar": 151.72,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 226.44,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 190.0,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 184.55,
+                "guard_bit": 5,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 179.75,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 172.0,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 158.78,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 151.72,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 147.82,
+                "guard_bit": 7,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 142.74,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 116.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 112.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 97.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 93.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 92.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 87.35,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 85.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 226.44,
+            "input": "5HK"
+        },
+        "yellow_offset": 50
+    },
+    "Ken": {
+        "low": {
+            "ar": 145.97,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 192.13,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 173.04,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 164.51,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 149.1,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 145.97,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 132.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 114.82,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 112.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 104.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 91.43,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 89.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 192.13,
+            "input": "5HK"
+        },
+        "yellow_offset": 50
+    },
+    "Kimberly": {
+        "low": {
+            "ar": 152.0,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 292.33,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 256.36,
+                "guard_bit": 6,
+                "input": "3MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 152.0,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 145.76,
+                "guard_bit": 7,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 145.76,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": true,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 142.04,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 141.0,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 120.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 119.5,
+                "guard_bit": 5,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 117.0,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 116.94,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 111.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 103.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 97.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 62.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 145.76,
+            "input": "5MK"
+        },
+        "yellow_offset": 50
+    },
+    "Lily": {
+        "low": {
+            "ar": 193.82,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 210.0,
+                "guard_bit": 5,
+                "input": "3HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 206.08,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 196.17,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 193.82,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 171.97,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 171.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 165.0,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 150.58,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.85,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 136.42,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 132.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 129.28,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 123.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 113.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 82.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 171.0,
+            "input": "2HP"
+        },
+        "yellow_offset": 50
+    },
+    "Luke": {
+        "low": {
+            "ar": 166.05,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 200.6,
+                "guard_bit": 7,
+                "input": "4MP",
+                "is_cancelable": false,
+                "is_super_cancelable": true
+            },
+            {
+                "ar": 200.6,
+                "guard_bit": 7,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": true
+            },
+            {
+                "ar": 189.98,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 167.33,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 166.31,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 166.05,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 166.0,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": true,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 152.97,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 148.66,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 148.22,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 126.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 124.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 116.93,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": true
+            },
+            {
+                "ar": 116.93,
+                "guard_bit": 7,
+                "input": "4LP",
+                "is_cancelable": false,
+                "is_super_cancelable": true
+            },
+            {
+                "ar": 111.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 107.96,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 105.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 93.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 189.98,
+            "input": "6HP"
+        },
+        "yellow_offset": 50
+    },
+    "M.Bison": {
+        "low": {
+            "ar": 148.21,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 346.97,
+                "guard_bit": 6,
+                "input": "3HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 207.1,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 199.1,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 172.87,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 159.01,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 150.75,
+                "guard_bit": 5,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 148.21,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 130.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 128.84,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 126.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 109.68,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 107.54,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 106.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 105.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 80.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 207.1,
+            "input": "5HP"
+        },
+        "yellow_offset": 50
+    },
+    "Manon": {
+        "low": {
+            "ar": 201.0,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 228.03,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 203.98,
+                "guard_bit": 7,
+                "input": "3HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 201.0,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 166.02,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 162.0,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 158.71,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 148.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 135.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 133.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 129.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 122.0,
+                "guard_bit": 7,
+                "input": "4MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 109.0,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 109.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 89.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 228.03,
+            "input": "5HK"
+        },
+        "yellow_offset": 50
+    },
+    "Marisa": {
+        "low": {
+            "ar": 162.33,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 223.79,
+                "guard_bit": 7,
+                "input": "5HP (HOLD)",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 223.54,
+                "guard_bit": 7,
+                "input": "5HK (HOLD)",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 204.54,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 200.79,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 195.64,
+                "guard_bit": 6,
+                "input": "2HK (HOLD)",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 185.64,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 174.88,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 162.33,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 145.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.29,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 141.28,
+                "guard_bit": 7,
+                "input": "4HP (HOLD)",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 135.62,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 134.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 132.28,
+                "guard_bit": 7,
+                "input": "2HP (HOLD)",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 132.28,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 121.61,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 117.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 110.28,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 223.79,
+            "input": "5HP (HOLD)"
+        },
+        "yellow_offset": 50
+    },
+    "Maï": {
+        "low": {
+            "ar": 170.29,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 197.0,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 170.29,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 161.28,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 160.49,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 158.0,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 146.04,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 146.0,
+                "guard_bit": 5,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 143.81,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 123.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 111.85,
+                "guard_bit": 7,
+                "input": "4HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 103.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 99.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 97.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 77.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 197.0,
+            "input": "5HK"
+        },
+        "yellow_offset": 50
+    },
+    "Rashid": {
+        "low": {
+            "ar": 171.09,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 243.59,
+                "guard_bit": 7,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 196.37,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 189.21,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 186.26,
+                "guard_bit": 5,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 174.8,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 171.09,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 157.82,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 144.85,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 140.52,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 116.75,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 113.23,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 111.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 110.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 102.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 243.59,
+            "input": "6MP"
+        },
+        "yellow_offset": 50
+    },
+    "Ryu": {
+        "low": {
+            "ar": 148.24,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 192.44,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 187.66,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 179.31,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 170.12,
+                "guard_bit": 5,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 157.25,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 156.76,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 154.51,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 148.24,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 130.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 116.75,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 114.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 94.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 157.25,
+            "input": "5HK"
+        },
+        "yellow_offset": 50
+    },
+    "Sagat": {
+        "low": {
+            "ar": 234.85,
+            "input": "6LK"
+        },
+        "moves": [
+            {
+                "ar": 234.85,
+                "guard_bit": 6,
+                "input": "6LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 227.72,
+                "guard_bit": 7,
+                "input": "4HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 222.22,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 217.16,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 196.32,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 191.26,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 186.85,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 170.62,
+                "guard_bit": 5,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 166.02,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 165.28,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 155.98,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 147.97,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 126.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 122.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 120.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 107.6,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 222.22,
+            "input": "6HK"
+        },
+        "yellow_offset": 50
+    },
+    "Terry": {
+        "low": {
+            "ar": 162.79,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 180.17,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 162.79,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 154.15,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 150.15,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 146.76,
+                "guard_bit": 5,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 129.78,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 124.49,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 119.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 116.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 110.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 91.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 79.0,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 180.17,
+            "input": "5HK"
+        },
+        "yellow_offset": 50
+    },
+    "Viper": {
+        "low": {
+            "ar": 160.08,
+            "input": "2MK"
+        },
+        "moves": [
+            {
+                "ar": 189.04,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 181.12,
+                "guard_bit": 7,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 177.85,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 160.08,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 156.93,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 154.52,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 142.99,
+                "guard_bit": 5,
+                "input": "6MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 136.17,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 120.0,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 114.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 106.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 101.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 95.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 181.12,
+            "input": "6HK"
+        },
+        "yellow_offset": 50
+    },
+    "Zangief": {
+        "low": {
+            "ar": 195.54,
+            "input": "2HK"
+        },
+        "moves": [
+            {
+                "ar": 293.63,
+                "guard_bit": 5,
+                "input": "6HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 244.59,
+                "guard_bit": 7,
+                "input": "5HP (HOLD)",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 218.59,
+                "guard_bit": 7,
+                "input": "5HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 196.44,
+                "guard_bit": 3,
+                "input": "3HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 195.54,
+                "guard_bit": 6,
+                "input": "2HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 189.24,
+                "guard_bit": 7,
+                "input": "5HK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 177.81,
+                "guard_bit": 7,
+                "input": "5MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 177.68,
+                "guard_bit": 6,
+                "input": "2MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 173.39,
+                "guard_bit": 7,
+                "input": "6MK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 168.04,
+                "guard_bit": 7,
+                "input": "2HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 166.84,
+                "guard_bit": 7,
+                "input": "5LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 166.0,
+                "guard_bit": 7,
+                "input": "5MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 160.13,
+                "guard_bit": 7,
+                "input": "6HP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 156.0,
+                "guard_bit": 7,
+                "input": "5LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 152.0,
+                "guard_bit": 7,
+                "input": "2LP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 149.0,
+                "guard_bit": 7,
+                "input": "2MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 139.0,
+                "guard_bit": 6,
+                "input": "2LK",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            },
+            {
+                "ar": 133.36,
+                "guard_bit": 7,
+                "input": "3MP",
+                "is_cancelable": false,
+                "is_super_cancelable": false
+            }
+        ],
+        "red": {
+            "ar": 244.59,
+            "input": "5HP (HOLD)"
+        },
+        "yellow_offset": 50
+    }
+}
