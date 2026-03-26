@@ -668,6 +668,7 @@ end
 -- INPUT HANDLING
 -- =========================================================
 local last_input_mask = 0
+local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false }
 
 local function handle_input()
     local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
@@ -681,30 +682,34 @@ local function handle_input()
         if pad then local b = pad:call("get_Button") or 0; if b > 0 then active_buttons = b; break end end
     end
 
-    local function is_func_combo_pressed(target_mask)
-        -- Get Function Key from Manager or default to Select
-        local func_btn = _G.TrainingFuncButton or 16384
-        local is_func_held = ((active_buttons & func_btn) == func_btn)
-        if not is_func_held then return false end
-        return ((active_buttons & target_mask) == target_mask) and not ((last_input_mask & target_mask) == target_mask)
-    end
+    local func_btn = _G.TrainingFuncButton or 16384
+    local is_func_held = ((active_buttons & func_btn) == func_btn)
 
-    -- 1. TIMER SETTINGS
+    local kb_state = {}
+    for _, k in ipairs({0x31, 0x32, 0x33, 0x34}) do
+        local ok, down = pcall(function() return reframework:is_key_down(k) end)
+        kb_state[k] = ok and down
+    end
+    local function kb_pressed(k) return kb_state[k] and not last_kb_state[k] end
+    local function pad_pressed(btn) return ((active_buttons & btn) == btn) and not ((last_input_mask & btn) == btn) end
+    local function is_action(btn, kb) return (is_func_held and pad_pressed(btn)) or kb_pressed(kb) end
+
+    -- 1. TIMER SETTINGS (UP/DOWN = 2/3)
     if not session.is_running and not session.is_time_up then 
-        if is_func_combo_pressed(BTN_UP) then
+        if is_action(BTN_UP, 0x32) then
             user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
             session.time_rem = user_config.timer_minutes * 60
             set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0); save_conf()
         end
-        if is_func_combo_pressed(BTN_DOWN) then
+        if is_action(BTN_DOWN, 0x31) then
             user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
             session.time_rem = user_config.timer_minutes * 60
             set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0); save_conf()
         end
     end
 
-    -- 2. LEFT : STOP & EXPORT OR RESET
-    if is_func_combo_pressed(BTN_LEFT) then
+    -- 2. LEFT = 1 : STOP & EXPORT OR RESET
+    if is_action(BTN_LEFT, 0x34) then
         if session.is_time_up then
             reset_session_stats()
             set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
@@ -720,8 +725,8 @@ local function handle_input()
         end
     end
 
-    -- 3. RIGHT : START / PAUSE
-    if is_func_combo_pressed(BTN_RIGHT) then
+    -- 3. RIGHT = 4 : START / PAUSE
+    if is_action(BTN_RIGHT, 0x33) then
         if not session.is_running and not session.is_time_up then
             reset_session_stats()
             session.time_rem = user_config.timer_minutes * 60
@@ -737,6 +742,7 @@ local function handle_input()
     end
 
     last_input_mask = active_buttons
+    last_kb_state = kb_state
 end
 
 -- =========================================================

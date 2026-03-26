@@ -477,6 +477,7 @@ end
 -- =========================================================
 local last_input_mask = 0
 local BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT = 1, 2, 4, 8
+local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false }
 
 local function handle_input()
     local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
@@ -493,33 +494,38 @@ local function handle_input()
     local func_btn = _G.TrainingFuncButton or 16384
     local is_func_held = ((active_buttons & func_btn) == func_btn)
 
-    if is_func_held then
-        if session.is_time_up then
-             if ((active_buttons & BTN_LEFT) == BTN_LEFT) and not ((last_input_mask & BTN_LEFT) == BTN_LEFT) then
-                reset_session_stats(); set_feedback("RESET DONE", COLORS.White, 1.0)
-            end
-            last_input_mask = active_buttons
-            return
-        end
+    local kb_state = {}
+    for _, k in ipairs({0x31, 0x32, 0x33, 0x34}) do
+        local ok, down = pcall(function() return reframework:is_key_down(k) end)
+        kb_state[k] = ok and down
+    end
+    local function kb_pressed(k) return kb_state[k] and not last_kb_state[k] end
+    local function pad_pressed(btn) return ((active_buttons & btn) == btn) and not ((last_input_mask & btn) == btn) end
+    local function is_action(btn, kb) return (is_func_held and pad_pressed(btn)) or kb_pressed(kb) end
 
+    if session.is_time_up then
+         if is_action(BTN_LEFT, 0x34) then
+            reset_session_stats(); set_feedback("RESET DONE", COLORS.White, 1.0)
+        end
+    else
         if not session.is_running then
-             if ((active_buttons & BTN_UP) == BTN_UP) and not ((last_input_mask & BTN_UP) == BTN_UP) then
+             if is_action(BTN_UP, 0x32) then
                 user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
                 session.time_rem = user_config.timer_minutes * 60; set_feedback("TIMER: "..user_config.timer_minutes.." MIN", COLORS.White, 1.0)
              end
-             if ((active_buttons & BTN_DOWN) == BTN_DOWN) and not ((last_input_mask & BTN_DOWN) == BTN_DOWN) then
+             if is_action(BTN_DOWN, 0x31) then
                 user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
                 session.time_rem = user_config.timer_minutes * 60; set_feedback("TIMER: "..user_config.timer_minutes.." MIN", COLORS.White, 1.0)
              end
         end
-        if ((active_buttons & BTN_RIGHT) == BTN_RIGHT) and not ((last_input_mask & BTN_RIGHT) == BTN_RIGHT) then
+        if is_action(BTN_RIGHT, 0x33) then
             if not session.is_running then 
                 reset_session_stats(); session.is_running = true; set_feedback("SESSION STARTED", COLORS.Green, 1.0)
             else 
                 session.is_paused = not session.is_paused 
             end
         end
-        if ((active_buttons & BTN_LEFT) == BTN_LEFT) and not ((last_input_mask & BTN_LEFT) == BTN_LEFT) then
+        if is_action(BTN_LEFT, 0x34) then
             if session.total > 0 then
                 export_stats(); reset_session_stats(); set_feedback("STOP & EXPORT DONE", COLORS.Red, 1.5)
             else
@@ -527,7 +533,9 @@ local function handle_input()
             end
         end
     end
+
     last_input_mask = active_buttons
+    last_kb_state = kb_state
 end
 
 -- =========================================================

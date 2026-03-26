@@ -53,7 +53,7 @@
         "success_p1_gauge": 1,
         "timer_font_size": 80,
         "timer_hud_y": -0.46,
-        "timer_minutes": 4,
+        "timer_minutes": 3,
         "timer_mode_enabled": true,
         "timer_offset_x": 0.0
     }

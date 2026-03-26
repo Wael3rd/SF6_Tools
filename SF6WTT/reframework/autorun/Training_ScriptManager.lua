@@ -52,6 +52,7 @@ local is_guard_overridden = false
 
 -- IDs de Garde définis par l'utilisateur
 local GUARD_NO = 0
+local GUARD_AFTER_FIRST_HIT = 2
 local GUARD_ALL = 3
 local GUARD_RANDOM = 4
 
@@ -111,7 +112,12 @@ local function update_guard_logic()
         -- >>> POST GUARD >>> ALL GUARD (3)
         set_guard_type(GUARD_ALL)
 
-    elseif current_mode == 0 or current_mode == 4 then
+    elseif current_mode == 4 then
+        -- >>> COMBO TRIALS >>> GUARD_AFTER_FIRST_HIT (2)
+        set_guard_type(GUARD_AFTER_FIRST_HIT)
+
+
+    elseif current_mode == 0 then
         -- >>> DISABLED / COMBO TRIALS >>> RESTAURATION
         if is_guard_overridden then
             set_guard_type(saved_guard_state) -- Retour à 0 (ou l'état sauvegardé)
@@ -129,9 +135,10 @@ if _G.CurrentTrainerMode == nil then
     _G.CurrentTrainerMode = 0 
 end
 
--- Input Management (Gamepad)
+-- Input Management (Gamepad & Keyboard)
 local last_input_mask = 0
 local is_binding_mode = false 
+local last_kb_0_state = false -- NEW: State tracker for the '0' key
 
 -- CORRECTED: 64 = X (Xbox) / Square (PS)
 local BTN_SQUARE = 64 
@@ -166,17 +173,24 @@ local function handle_input()
         return 
     end
 
-    -- SCRIPT SWITCH LOGIC (FUNCTION + SQUARE)
+    -- SCRIPT SWITCH LOGIC (FUNCTION + SQUARE on Pad)
     local func_btn = _G.TrainingFuncButton or 16384
     local is_func_held = (active_buttons & func_btn) == func_btn
     local is_switch_pressed = (active_buttons & BTN_SQUARE) == BTN_SQUARE and (last_input_mask & BTN_SQUARE) ~= BTN_SQUARE
 
-    if is_func_held and is_switch_pressed then
+    -- SCRIPT SWITCH LOGIC (KEYBOARD '0' Key - VK Code 0x30)
+    local is_kb_0_down = false
+    pcall(function() is_kb_0_down = reframework:is_key_down(0x30) end)
+    local is_kb_0_pressed = is_kb_0_down and not last_kb_0_state
+
+    -- Trigger switch if either Pad combo or Keyboard '0' is pressed
+    if (is_func_held and is_switch_pressed) or is_kb_0_pressed then
         _G.CurrentTrainerMode = _G.CurrentTrainerMode + 1
         if _G.CurrentTrainerMode > 4 then _G.CurrentTrainerMode = 0 end
     end
     
     last_input_mask = active_buttons
+    last_kb_0_state = is_kb_0_down
 end
 
 -- ==========================================
