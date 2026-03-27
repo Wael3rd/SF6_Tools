@@ -277,18 +277,10 @@ local function logger_process_game_state()
                 if has_left  then d = d | 4 end 
             end
             
-            -- PHASE 1 : On bloque tout tant que les boutons de lancement ne sont pas lâchés
-            if rec_struct.wait_neutral then
-                if d == 0 and b == 0 then
-                    rec_struct.wait_neutral = false -- Le joueur est revenu au neutre !
-                end
-                return -- On ignore cette frame
-            end
-
-            -- PHASE 2 : On attend le vrai premier coup du combo
+            -- On attend la première vraie action (direction ou bouton) pour démarrer la timeline
             if not rec_struct.has_started then
                 if d == 0 and b == 0 then
-                    return -- On ignore tous les neutres en attendant l'action
+                    return -- On ignore tous les neutres initiaux en attendant l'action
                 else
                     rec_struct.has_started = true -- C'est parti !
                 end
@@ -1097,8 +1089,21 @@ local function update_trial_flip_state()
             trial_state.flip_inputs = false
             return
         end
+        
+        local recorded_by = 0
+        if trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].recorded_by then
+            recorded_by = trial_state.sequence[1].recorded_by
+        end
+
         r1 = trial_state.start_pos_p1_raw
         r2 = trial_state.start_pos_p2_raw
+
+        -- Swap si le joueur qui joue n'est pas celui qui a enregistré
+        if trial_state.is_playing and trial_state.playing_player ~= recorded_by then
+            local temp = r1
+            r1 = r2
+            r2 = temp
+        end
 
         -- Inversion mathématique automatique si on a choisi MIRRORED
         if d2d_cfg.forced_position_idx == 3 then
@@ -1143,10 +1148,30 @@ local function apply_forced_position(skip_mirror)
         trial_state.start_pos_p2_raw = r2
     else
         if not trial_state.start_pos_p1 or not trial_state.start_pos_p2 then return end
-        pos1 = trial_state.start_pos_p1
-        pos2 = trial_state.start_pos_p2
-        raw1 = trial_state.start_pos_p1_raw
-        raw2 = trial_state.start_pos_p2_raw
+        
+        local recorded_by = 0
+        if trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].recorded_by then
+            recorded_by = trial_state.sequence[1].recorded_by
+        end
+
+        local p1_pos = trial_state.start_pos_p1
+        local p2_pos = trial_state.start_pos_p2
+        local p1_raw = trial_state.start_pos_p1_raw
+        local p2_raw = trial_state.start_pos_p2_raw
+
+        -- L'attaquant prend la place de l'attaquant, la victime la place de la victime !
+        if trial_state.is_playing and trial_state.playing_player ~= recorded_by then
+            p1_pos = trial_state.start_pos_p2
+            p2_pos = trial_state.start_pos_p1
+            p1_raw = trial_state.start_pos_p2_raw
+            p2_raw = trial_state.start_pos_p1_raw
+        end
+
+        pos1 = p1_pos
+        pos2 = p2_pos
+        raw1 = p1_raw
+        raw2 = p2_raw
+
         if d2d_cfg.forced_position_idx == 3 and not skip_mirror then
             pos1 = -pos1
             pos2 = -pos2
@@ -1295,7 +1320,15 @@ local function start_trial(player_idx)
     trial_state.current_step = 1
     trial_state._was_playing = false
 
-	-- READ AND INJECT COUNTER STATE
+    -- NOUVEAU : Reset total de l'affichage (Log texte + D2D Raw et Animé)
+    players[player_idx].log = {}
+    players[player_idx].input_history_queue = {}
+    if ComboTrials_D2D then
+        pcall(function() ComboTrials_D2D.reset_anim() end)
+        pcall(function() ComboTrials_D2D.reset_raw() end)
+    end
+
+    -- READ AND INJECT COUNTER STATE
     local hit_t = nil
     if trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].combo_stats then
         hit_t = trial_state.sequence[1].combo_stats.hit_type
@@ -1386,7 +1419,6 @@ local function stop_recording_and_save()
     end
 
     save_trial_sequence()
-    start_trial(saved_player)
 end
 
 
@@ -1561,11 +1593,16 @@ local function handle_combo_shortcuts()
                     item.has_hit = false
                     item.last_frame_diff = nil
                 end
+                
+                -- NOUVEAU : Purge mémoire pour que le non-raw disparaisse vraiment
+                players[curr_player].log = {}
+                players[curr_player].input_history_queue = {}
+
                 apply_forced_position()
                 ComboTrials_D2D.reset_anim()
                 ComboTrials_D2D.reset_raw()
             end
-        elseif trial_state.is_recording and trial_state.recording_player == 0 then
+        elseif trial_state.is_recording then
             stop_recording_and_save()
         elseif not trial_state.is_playing and not trial_state.is_recording then
             start_recording(0)
@@ -1599,37 +1636,34 @@ local function handle_combo_shortcuts()
         end
     end
 
-    -- DPAD RIGHT / Touche 4 : START/STOP TRIAL P2 ou SWITCH POS en PLAYING
+    -- DPAD RIGHT / Touche 4 : SWITCH POS (Bloqué pendant le record)
     if is_pressed(BTN_RIGHT) or kb_pressed(KB_4) then
-        if trial_state.is_playing or is_demo_active then
-            -- SWITCH POS
+        if not trial_state.is_recording then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             save_d2d_config()
-            apply_forced_position()
             
-            if is_demo_active then
-                if ctx.start_demo then ctx.start_demo() end
-            else
-                -- Mini-reset pour replacer proprement après le switch pos
-                trial_state.current_step = 1
-                trial_state._step1_wrong_pending = false
-                trial_state.success_timer = 0
-                trial_state.fail_timer = 0
-                trial_state.fail_reason = nil
-                trial_state.active_universal_hold = nil
-                for _, item in ipairs(trial_state.sequence) do
-                    item.actual_combo = 0
-                    item.has_hit = false
-                    item.last_frame_diff = nil
+            local is_demo_active = (demo_state and demo_state.is_playing)
+            -- On applique physiquement la position UNIQUEMENT si un trial ou une démo est en cours
+            if is_demo_active or trial_state.is_playing then
+                apply_forced_position()
+                if is_demo_active then
+                    if ctx.start_demo then ctx.start_demo() end
+                else
+                    -- Mini-reset pour replacer proprement après le switch pos
+                    trial_state.current_step = 1
+                    trial_state._step1_wrong_pending = false
+                    trial_state.success_timer = 0
+                    trial_state.fail_timer = 0
+                    trial_state.fail_reason = nil
+                    trial_state.active_universal_hold = nil
+                    for _, item in ipairs(trial_state.sequence) do
+                        item.actual_combo = 0
+                        item.has_hit = false
+                        item.last_frame_diff = nil
+                    end
                 end
-            end
-            if ctx.reset_visuals then ctx.reset_visuals() end
-        else
-            if d2d_cfg.forced_position_idx == 1 then
-                if not trial_state.is_recording then
-                    load_and_start_trial(1)
-                end
+                if ctx.reset_visuals then ctx.reset_visuals() end
             end
         end
     end
@@ -2788,6 +2822,7 @@ function save_trial_sequence()
             trial_state.sequence[1].start_pos_p2 = trial_state.start_pos_p2
             trial_state.sequence[1].start_pos_p1_raw = trial_state.start_pos_p1_raw
             trial_state.sequence[1].start_pos_p2_raw = trial_state.start_pos_p2_raw
+            trial_state.sequence[1].recorded_by = rec_p
         end
 
         -- Calcul des stats du combo (dégâts, drive, super, hit type)
@@ -2860,13 +2895,18 @@ ctx.reset_trial_steps_and_load = function(player_idx)
     trial_state.fail_reason = nil
     trial_state.active_universal_hold = nil
     for _, item in ipairs(trial_state.sequence) do
-        item.actual_combo = 0
-        item.has_hit = false
-        item.last_frame_diff = nil
+            item.actual_combo = 0
+            item.has_hit = false
+            item.last_frame_diff = nil
+        end
+        
+        -- NOUVEAU : Purge mémoire pour que le non-raw disparaisse vraiment
+        players[player_idx].log = {}
+        players[player_idx].input_history_queue = {}
+
+        ComboTrials_D2D.reset_anim()
+        ComboTrials_D2D.reset_raw()
     end
-    ComboTrials_D2D.reset_anim()
-    ComboTrials_D2D.reset_raw()
-end
 -- =========================================================
 -- DEMO ENGINE LOGIC & EXPORTS
 -- =========================================================
@@ -2919,6 +2959,14 @@ local function start_demo()
     trial_state.fail_timer = 0
     trial_state.fail_reason = nil
     trial_state.active_universal_hold = nil
+    
+    -- NOUVEAU : Purge totale de l'historique au lancement de la Démo
+    players[0].log = {}
+    players[0].input_history_queue = {}
+    if ComboTrials_D2D then
+        pcall(function() ComboTrials_D2D.reset_anim() end)
+        pcall(function() ComboTrials_D2D.reset_raw() end)
+    end
     
     update_trial_flip_state()
     reset_trial_steps()

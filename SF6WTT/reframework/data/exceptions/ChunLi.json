@@ -42,7 +42,7 @@
         "ignore": false,
         "ignore_prev_frames": 5,
         "is_holdable": false,
-        "override_name": ">MK"
+        "override_name": ">LK"
     },
     "668": {
         "absorb_ids": "",
@@ -51,7 +51,25 @@
         "ignore": false,
         "ignore_prev_frames": 5,
         "is_holdable": false,
+        "override_name": ">MK"
+    },
+    "669": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
         "override_name": ">HK"
+    },
+    "684": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "214+P"
     },
     "699": {
         "absorb_ids": "",

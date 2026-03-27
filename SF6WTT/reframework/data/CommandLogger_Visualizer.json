@@ -38,15 +38,15 @@
     "fail_display_frames": 120,
     "fail_reset_delay": 1.5,
     "float_pos": {
-        "x": 0.08984375,
-        "y": 0.9534722222222223
+        "x": 0.0890625,
+        "y": 0.9541666666666667
     },
     "float_size": {
         "h": 0.04027777777777778,
-        "w": 0.821484375
+        "w": 0.821875
     },
     "font_size": 0.020999999716877937,
-    "forced_position_idx": 2,
+    "forced_position_idx": 3,
     "ghost_filter_frames": 4,
     "hud_font_size": 20,
     "hud_global_y": -0.337,
@@ -153,5 +153,5 @@
     "spacing_y": 0.03999999910593033,
     "special_icon_scale": 1.5,
     "text_y_offset": -0.014999999664723873,
-    "trial_visible_steps": 15
+    "trial_visible_steps": 13
 }

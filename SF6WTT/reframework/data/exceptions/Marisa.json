@@ -165,9 +165,11 @@
         "override_name": "4THROW"
     },
     "900": {
+        "absorb_ids": "",
         "charge_max": 26,
         "charge_min": 10,
         "force": false,
+        "hold_partial_check": false,
         "ignore": false,
         "ignore_prev_frames": 5,
         "is_holdable": true,

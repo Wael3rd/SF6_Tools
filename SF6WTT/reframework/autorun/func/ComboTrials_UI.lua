@@ -179,8 +179,6 @@ end
 
 
 
-local auto_load_first_time = true
-
 -- =========================================================
 -- SINGLE LINE MODE : FORCE POS | P1 | P2 | SLOT 1 | SLOT 2 | SLOT 3 | SLOT 4 | ☑
 -- =========================================================
@@ -192,22 +190,31 @@ local function draw_single_line_content()
     local pad_x = sw * 0.01
     local pad_y = sh * 0.01
 
-    -- Calcul de la largeur identique pour les 4 boutons
+    -- Largeurs sans les boutons P2
     local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc("L") .. ")", "CANCEL (" .. sc("U") .. ")", "RECORD P1 (" .. sc("L") .. ")", "RECORD P2 (" .. sc("D") .. ")", "RESET (" .. sc("L") .. ")", "DEMO (" .. sc("D") .. ")" }, true)
-    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "START TRIAL P2 (" .. sc("R") .. ")", "STOP TRIAL P2 (" .. sc("R") .. ")", "SWITCH POS (" .. sc("R") .. ")" }, true)
+    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "SWITCH POS (" .. sc("R") .. ")" }, true)
     
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
 
-    -- Réserver la place checkbox en mesurant sa vraie taille
     local cb_size = imgui.calc_text_size("W").y + 6
     local cb_reserve = cb_size + 10
 
-    local usable_w = w_width - (pad_x * 2)
-    local fixed_w = (absolute_btn_w * 4) + cb_reserve + (sp * 8)
-    local dropdown_total = math.max(usable_w - fixed_w, 150)
-    local dd_w = dropdown_total / 3
+    -- Répartition dynamique : 2 Dropdowns + 4 Boutons = 6 parts (L'espace vide est comblé)
+    local usable_w = w_width - (pad_x * 2) - cb_reserve - (sp * 6)
+    
+    -- 1. Fixed width for dropdowns (based on button text size to remain clean)
+    local dd_w = absolute_btn_w
+    
+    -- 2. The 4 buttons dynamically share ALL the remaining empty space
+    local remaining_for_btns = usable_w - (dd_w * 2)
+    local actual_btn_w = math.max(absolute_btn_w, remaining_for_btns / 4)
 
-    -- Couvrir toute la fenêtre avec le fond sombre
+    local dynamic_rec_w = actual_btn_w
+    if trial_state.is_recording then
+        -- In record mode, distribute the massive 4-button space into 2
+        dynamic_rec_w = (actual_btn_w * 4 + sp * 2) / 2
+    end
+
     imgui.set_cursor_pos(Vector2f.new(-10, -10))
     imgui.push_style_color(7, 0xFF220000)
     if not pcall(function() imgui.progress_bar(0.0, Vector2f.new(w_width + 20, win_h + 20)) end) then
@@ -215,7 +222,6 @@ local function draw_single_line_content()
     end
     imgui.pop_style_color(1)
 
-    -- Positionner le contenu avec padding
     imgui.set_cursor_pos(Vector2f.new(pad_x, pad_y))
 
     -- 1. FORCE POS
@@ -231,11 +237,6 @@ local function draw_single_line_content()
         imgui.combo("##EmptyP1", 1, { "No P1 files" })
     else
         local f1_changed, new_idx1 = imgui.combo("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1)
-        if auto_load_first_time and #file_system.saved_combos_paths_p1 > 0 then
-            auto_load_first_time = false
-            f1_changed = true
-            new_idx1 = file_system.selected_file_idx_p1
-        end
         if f1_changed then
             file_system.selected_file_idx_p1 = new_idx1
             load_and_start_trial(0)
@@ -243,99 +244,76 @@ local function draw_single_line_content()
     end
     imgui.pop_item_width()
 
-    -- 3. DROPDOWN P2
-    imgui.same_line(0, sp)
-    imgui.push_item_width(dd_w)
-    if #file_system.saved_combos_display_p2 == 0 then
-        imgui.combo("##EmptyP2", 1, { "No P2 files" })
-    else
-        local f2_changed, new_idx2 = imgui.combo("##FilesP2", file_system.selected_file_idx_p2, file_system.saved_combos_display_p2)
-        if f2_changed then
-            file_system.selected_file_idx_p2 = new_idx2
-            load_and_start_trial(1)
-        end
-    end
-    imgui.pop_item_width()
-
-    -- 4. SLOT 1 (L) : RECORD P1 / STOP & SAVE / RESET
+    -- 3. BOUTONS (Dynamiques pour combler le vide)
     imgui.same_line(0, sp)
     local is_demo_active = (ctx.demo_state and ctx.demo_state.is_playing)
-    if trial_state.is_playing or is_demo_active then
-        if styled_sf6_button("RESET (" .. sc("L") .. ")", false, absolute_btn_w, true) then
-            if is_demo_active then
-                if ctx.start_demo then ctx.start_demo() end -- Relance la démo
-            else
-                ctx.reset_trial_steps_and_load(trial_state.playing_player)
-                ctx.apply_forced_position()
-            end
-        end
-    elseif trial_state.is_recording then
-        if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, absolute_btn_w, true) then stop_recording_and_save() end
-    else
-        if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, absolute_btn_w, true) then start_recording(0) end
-    end
 
-    -- 5. SLOT 2 (U) : START TRIAL P1 / STOP TRIAL
-    imgui.same_line(0, sp)
-    if trial_state.is_playing or is_demo_active then
-        if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, absolute_btn_w, true) then
-            trial_state.is_playing = false
-            if ctx.stop_demo then ctx.stop_demo() end -- Arrête tout
-        end
-    elseif not trial_state.is_recording then
-        local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-        if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, absolute_btn_w, true) then
-            if is_p1_active then trial_state.is_playing = false
-            else load_and_start_trial(0) end
-        end
-    end
-
-    -- 6. SLOT 3 (D) : RECORD P2 / CANCEL / DEMO
-    imgui.same_line(0, sp)
-    if trial_state.is_playing or is_demo_active then
-        if styled_sf6_button("DEMO (" .. sc("D") .. ")", is_demo_active, absolute_btn_w, true) then
-            if is_demo_active then
-                if ctx.stop_demo then ctx.stop_demo() end -- Toggle: arrête la démo
-            else
-                if ctx.start_demo then ctx.start_demo() end
-            end
-        end
-    elseif trial_state.is_recording then
-        if styled_sf6_button("CANCEL (" .. sc("U") .. ")", false, absolute_btn_w, true) then cancel_recording() end
-    else
-        if styled_sf6_button("RECORD P2 (" .. sc("D") .. ")", false, absolute_btn_w, true) then start_recording(1) end
-    end
-
-    -- 7. SLOT 4 (R) : START TRIAL P2 / SWITCH POS
-    if trial_state.is_playing or is_demo_active then
+    if trial_state.is_recording then
+        -- Mode Record
+        if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, dynamic_rec_w, true) then stop_recording_and_save() end
         imgui.same_line(0, sp)
-        if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, absolute_btn_w, true) then
+        if styled_sf6_button("CANCEL (" .. sc("U") .. ")", false, dynamic_rec_w, true) then cancel_recording() end
+    else
+        -- Mode Normal : Utilisation de actual_btn_w pour forcer l'étirement
+        if trial_state.is_playing or is_demo_active then
+            if styled_sf6_button("RESET (" .. sc("L") .. ")", false, actual_btn_w, true) then
+                if is_demo_active then
+                    if ctx.start_demo then ctx.start_demo() end 
+                else
+                    ctx.reset_trial_steps_and_load(trial_state.playing_player)
+                    ctx.apply_forced_position()
+                end
+            end
+        else
+            if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, actual_btn_w, true) then start_recording(0) end
+        end
+
+        imgui.same_line(0, sp)
+        if trial_state.is_playing or is_demo_active then
+            if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, actual_btn_w, true) then
+                trial_state.is_playing = false
+                if ctx.stop_demo then ctx.stop_demo() end 
+            end
+        elseif not trial_state.is_recording then
+            local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
+            if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, actual_btn_w, true) then
+                if is_p1_active then trial_state.is_playing = false
+                else load_and_start_trial(0) end
+            end
+        end
+
+        imgui.same_line(0, sp)
+        if trial_state.is_playing or is_demo_active then
+            if styled_sf6_button("DEMO (" .. sc("D") .. ")", is_demo_active, actual_btn_w, true) then
+                if is_demo_active then
+                    if ctx.stop_demo then ctx.stop_demo() end 
+                else
+                    if ctx.start_demo then ctx.start_demo() end
+                end
+            end
+        else
+            if styled_sf6_button("RECORD P2 (" .. sc("D") .. ")", false, actual_btn_w, true) then start_recording(1) end
+        end
+
+        imgui.same_line(0, sp)
+        if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, actual_btn_w, true) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             ctx.save_d2d_config()
-            ctx.apply_forced_position()
-            if is_demo_active then
-                if ctx.start_demo then ctx.start_demo() end -- Relance la démo depuis la nouvelle pos
-            else
-                ctx.reset_trial_steps_and_load(trial_state.playing_player)
-            end
-            if ctx.reset_visuals then ctx.reset_visuals() end
-        end
-    elseif not trial_state.is_recording then
-        imgui.same_line(0, sp)
-        local is_p2_active = (trial_state.is_playing and trial_state.playing_player == 1)
-        local is_p2_disabled = (d2d_cfg.forced_position_idx ~= 1)
-        if is_p2_disabled and imgui.begin_disabled then imgui.begin_disabled(true) end
-        if styled_sf6_button(is_p2_active and "STOP TRIAL P2 (" .. sc("R") .. ")" or "START TRIAL P2 (" .. sc("R") .. ")", is_p2_active, absolute_btn_w, true, is_p2_disabled) then
-            if not is_p2_disabled then
-                if is_p2_active then trial_state.is_playing = false
-                else load_and_start_trial(1) end
+            
+            -- On applique physiquement la position UNIQUEMENT si un trial ou une démo est en cours
+            if is_demo_active or trial_state.is_playing then
+                ctx.apply_forced_position()
+                if is_demo_active then
+                    if ctx.start_demo then ctx.start_demo() end 
+                else
+                    ctx.reset_trial_steps_and_load(trial_state.playing_player)
+                end
+                if ctx.reset_visuals then ctx.reset_visuals() end
             end
         end
-        if is_p2_disabled and imgui.begin_disabled then imgui.end_disabled() end
-    end
-
-    -- 8. CHECKBOX (tout à droite avec padding)
+	end
+    -- 7. CHECKBOX
     imgui.same_line(w_width - cb_reserve - pad_x)
     local changed, new_val = imgui.checkbox("##close_float_sl", show_trial_overlay)
     if changed then show_trial_overlay = new_val end
@@ -346,19 +324,14 @@ local function draw_combo_trials_content(is_floating)
     local size = imgui.get_window_size()
     local w_width = (size.x > 50) and size.x or (sw * 0.44)
 
-    -- =====================================
-    -- CALCUL DES LARGEURS EXACTES DES BOUTONS
-    -- =====================================
     local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc("L") .. ")", "CANCEL (" .. sc("U") .. ")", "RECORD P1 (" .. sc("L") .. ")", "RECORD P2 (" .. sc("D") .. ")", "RESET (" .. sc("L") .. ")", "DEMO (" .. sc("D") .. ")" }, is_floating)
-    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "START TRIAL P2 (" .. sc("R") .. ")", "STOP TRIAL P2 (" .. sc("R") .. ")", "SWITCH POS (" .. sc("R") .. ")" }, is_floating)
+    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "SWITCH POS (" .. sc("R") .. ")" }, is_floating)
 
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
     local spacing_cols = 20 * (sh / 1080.0)
     local spacing_x = 8.0
 
-    -- Seuil intelligent pour basculer en 3 colonnes : il faut assez de place pour tout afficher sans écraser
     local min_inline_w = 150 + (absolute_btn_w * 2) + (spacing_cols * 3)
-
     local mode_all_inline = w_width >= min_inline_w
     local mode_all_stacked = w_width < (absolute_btn_w * 1.5)
     local mode_col2_3_inline = not mode_all_inline and not mode_all_stacked
@@ -369,18 +342,29 @@ local function draw_combo_trials_content(is_floating)
     local col3_x, col2_x, col1_w
 
     if mode_all_inline then
-        col3_x = math.max(w_width - play_btn_w - spacing_cols, 10)
-        col2_x = math.max(col3_x - rec_btn_w - spacing_cols, 10)
-        col1_w = math.max(col2_x - spacing_cols, 150)
+        if trial_state.is_recording then
+            -- Mode 'Replay & Recording Settings' en Record : Colonne 3 vide, Colonne 2 prend tout le reste
+            col1_w = math.max(150, (w_width - (spacing_cols * 3)) / 3)
+            col2_x = col1_w + spacing_cols
+            col3_x = w_width -- Ignoré
+            rec_btn_w = w_width - col2_x - spacing_cols
+        else
+            col3_x = math.max(w_width - play_btn_w - spacing_cols, 10)
+            col2_x = math.max(col3_x - rec_btn_w - spacing_cols, 10)
+            col1_w = math.max(col2_x - spacing_cols, 150)
+        end
     else
         col1_w = w_width - (40 * (sh / 1080.0))
         if mode_col2_3_inline then
-            -- Mode intermédiaire (côte à côte) : la moitié du dropdown
-            local half_w = (col1_w - spacing_x) / 2
-            rec_btn_w = half_w
-            play_btn_w = half_w
+            if trial_state.is_recording then
+                -- Make recording buttons dynamically fill the entire column width
+                rec_btn_w = col1_w
+            else
+                local half_w = (col1_w - spacing_x) / 2
+                rec_btn_w = half_w
+                play_btn_w = half_w
+            end
         elseif mode_all_stacked then
-            -- Mode tout empilé (vertical max) : 100% de la largeur du dropdown !
             rec_btn_w = col1_w
             play_btn_w = col1_w
         end
@@ -392,51 +376,22 @@ local function draw_combo_trials_content(is_floating)
     imgui.begin_group()
     if not is_floating then imgui.text_colored("1. MANAGEMENT", COLORS.Cyan) end
 
-    -- Largeur totale
     imgui.push_item_width(col1_w)
-    local c_launch, v_launch = imgui.combo("##Forced-Position", d2d_cfg.forced_position_idx,
-        file_system.forced_position_options)
+    local c_launch, v_launch = imgui.combo("##Forced-Position", d2d_cfg.forced_position_idx, file_system.forced_position_options)
     if c_launch then
         d2d_cfg.forced_position_idx = v_launch; save_d2d_config()
     end
     imgui.pop_item_width()
 
-    -- Calcul de la largeur divisée (Espacement fixe sécurisé)
-    local spacing_x = 8.0
-    local file_dd_w = mode_all_stacked and col1_w or ((col1_w - spacing_x) / 2)
-
-    -- DROPDOWN P1
-    imgui.push_item_width(file_dd_w)
+    -- DROPDOWN P1 (Prend désormais toute la largeur dispo, fini le dropdown P2)
+    imgui.push_item_width(col1_w)
     if #file_system.saved_combos_display_p1 == 0 then
         imgui.combo("##EmptyP1", 1, { "No P1 files" })
     else
-        local f1_changed, new_idx1 = imgui.combo("##FilesP1", file_system.selected_file_idx_p1,
-            file_system.saved_combos_display_p1)
-        if auto_load_first_time and #file_system.saved_combos_paths_p1 > 0 then
-            auto_load_first_time = false
-            f1_changed = true
-            new_idx1 = file_system.selected_file_idx_p1
-        end
-
+        local f1_changed, new_idx1 = imgui.combo("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1)
         if f1_changed then
             file_system.selected_file_idx_p1 = new_idx1
             load_and_start_trial(0)
-        end
-    end
-    imgui.pop_item_width()
-
-    if not mode_all_stacked then imgui.same_line() end
-
-    -- DROPDOWN P2
-    imgui.push_item_width(file_dd_w)
-    if #file_system.saved_combos_display_p2 == 0 then
-        imgui.combo("##EmptyP2", 1, { "No P2 files" })
-    else
-        local f2_changed, new_idx2 = imgui.combo("##FilesP2", file_system.selected_file_idx_p2,
-            file_system.saved_combos_display_p2)
-        if f2_changed then
-            file_system.selected_file_idx_p2 = new_idx2
-            load_and_start_trial(1)
         end
     end
     imgui.pop_item_width()
@@ -446,11 +401,7 @@ local function draw_combo_trials_content(is_floating)
     -- =====================================
     -- Colonne 2 : RECORDING
     -- =====================================
-    if mode_all_inline then
-        imgui.same_line(col2_x)
-    else
-        imgui.spacing(); imgui.separator(); imgui.spacing()
-    end
+    if mode_all_inline then imgui.same_line(col2_x) else imgui.spacing(); imgui.separator(); imgui.spacing() end
 
     imgui.begin_group()
     if not is_floating then imgui.text_colored("2. RECORDING", COLORS.White) end
@@ -478,11 +429,8 @@ local function draw_combo_trials_content(is_floating)
             stop_recording_and_save()
         end
         
-        if mode_all_stacked then 
-            imgui.spacing() 
-        else 
-            imgui.same_line() 
-        end
+        -- Toujours forcer l'empilement (stack) avec un espacement en mode fenêtré
+        imgui.spacing()
         
         if styled_sf6_button("CANCEL (" .. sc("U") .. ")", false, rec_btn_w, is_floating) then
             cancel_recording()
@@ -501,77 +449,49 @@ local function draw_combo_trials_content(is_floating)
     -- =====================================
     -- Colonne 3 : PLAYBACK
     -- =====================================
-    if mode_all_stacked then
-        imgui.spacing(); imgui.separator(); imgui.spacing()
-    elseif mode_col2_3_inline then
-        -- Alignement naturel sous le 2e dropdown
-        local spacing_x = 8.0
-        imgui.same_line(0, spacing_x)
-    else
-        imgui.same_line(col3_x)
-    end
+    if mode_all_stacked then imgui.spacing(); imgui.separator(); imgui.spacing()
+    elseif mode_col2_3_inline then imgui.same_line(0, spacing_x)
+    else imgui.same_line(col3_x) end
 
     imgui.begin_group()
     if not is_floating then imgui.text_colored("3. PLAYBACK (TRIAL)", COLORS.White) end
 
-    local is_demo_active = (ctx.demo_state and ctx.demo_state.is_playing)
     if trial_state.is_playing or is_demo_active then
         if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, play_btn_w, is_floating) then
             trial_state.is_playing = false
             if ctx.stop_demo then ctx.stop_demo() end
         end
-        
-        -- SUPPRESSION DU 'else imgui.same_line()' ICI POUR LE RETOUR À LA LIGNE
-        if mode_all_stacked then imgui.spacing() end
-        
+    elseif not trial_state.is_recording then
+        local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
+        if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, is_floating) then
+            if is_p1_active then trial_state.is_playing = false
+            else load_and_start_trial(0) end
+        end
+    end
+    
+    if mode_all_stacked then imgui.spacing() end
+    
+    -- SWITCH POS (Invisible en record)
+    if not trial_state.is_recording then
         if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, play_btn_w, is_floating) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             ctx.save_d2d_config()
-            ctx.apply_forced_position()
-            if is_demo_active then
-                if ctx.start_demo then ctx.start_demo() end
-            else
-                if ctx.reset_trial_steps_and_load then ctx.reset_trial_steps_and_load(trial_state.playing_player) end
-            end
-            if ctx.reset_visuals then ctx.reset_visuals() end
-        end
-    elseif not trial_state.is_recording then
-        local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-        if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, is_floating) then
-            if is_p1_active then
-                trial_state.is_playing = false
-            else
-                load_and_start_trial(0)
-            end
-        end
-
-        if mode_all_stacked then imgui.spacing() end
-
-        local is_p2_active = (trial_state.is_playing and trial_state.playing_player == 1)
-        local is_p2_disabled = (d2d_cfg.forced_position_idx ~= 1)
-
-        if is_p2_disabled then
-            if imgui.begin_disabled then imgui.begin_disabled(true) end
-        end
-
-        if styled_sf6_button(is_p2_active and "STOP TRIAL P2 (" .. sc("R") .. ")" or "START TRIAL P2 (" .. sc("R") .. ")", is_p2_active, play_btn_w, is_floating, is_p2_disabled) then
-            if not is_p2_disabled then
-                if is_p2_active then
-                    trial_state.is_playing = false
+            
+            local is_demo_active = (ctx.demo_state and ctx.demo_state.is_playing)
+            -- On applique physiquement la position UNIQUEMENT si un trial ou une démo est en cours
+            if is_demo_active or trial_state.is_playing then
+                ctx.apply_forced_position()
+                if is_demo_active then
+                    if ctx.start_demo then ctx.start_demo() end
                 else
-                    load_and_start_trial(1)
+                    if ctx.reset_trial_steps_and_load then ctx.reset_trial_steps_and_load(trial_state.playing_player) end
                 end
+                if ctx.reset_visuals then ctx.reset_visuals() end
             end
-        end
-
-        if is_p2_disabled then
-            if imgui.begin_disabled then imgui.end_disabled() end
         end
     end
-
     imgui.end_group()
-
     imgui.spacing()
 end
 
@@ -836,10 +756,15 @@ re.on_frame(function()
                 draw_single_line_content()
             else
                 -- MODE NORMAL : Header + contenu classique
-                local btn_w = 180 * (sh / 1080.0)
-                local two_btns_w = (btn_w * 2) + 20
-                local mode_all_stacked = w_width < (btn_w * 1.5)
-                local mode_all_inline = (w_width / 2.0) >= (two_btns_w * 0.5)
+                -- Calculate exact actual width to synchronize header transition with UI layout
+                local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc("L") .. ")", "CANCEL (" .. sc("U") .. ")", "RECORD P1 (" .. sc("L") .. ")", "RECORD P2 (" .. sc("D") .. ")", "RESET (" .. sc("L") .. ")", "DEMO (" .. sc("D") .. ")" }, true)
+                local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "SWITCH POS (" .. sc("R") .. ")" }, true)
+                local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
+                local spacing_cols = 20 * (sh / 1080.0)
+
+                local min_inline_w = 150 + (absolute_btn_w * 2) + (spacing_cols * 3)
+                local mode_all_inline = w_width >= min_inline_w
+                local mode_all_stacked = w_width < (absolute_btn_w * 1.5)
                 local mode_col2_3_inline = not mode_all_inline and not mode_all_stacked
 
                 local header_txt = "COMBO TRIALS : REPLAY & RECORDING SETTINGS"
