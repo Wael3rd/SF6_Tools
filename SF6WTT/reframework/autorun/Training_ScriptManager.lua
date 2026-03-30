@@ -202,8 +202,9 @@ local function apply_infinite_visibility(control, should_hide)
     if not control then return end
     local name = control:call("get_Name")
     if name and string.match(name:lower(), "infinite") then
+        -- We only force it invisible when needed. 
+        -- We do NOT force it visible, letting the native game logic handle the ticking timer.
         control:call("set_ForceInvisible", should_hide)
-        if not should_hide then control:call("set_Visible", true) end
     end
     local child = control:call("get_Child")
     while child do

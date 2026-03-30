@@ -236,44 +236,28 @@ local function apply_teleport_exact(attacker_id, distance)
 
     local p1 = sP.mcPlayer[0]
     local p2 = sP.mcPlayer[1]
-    if not p1 or not p2 or not p1.pos or not p2.pos then return end
+    if not p1 or not p2 then return end
 
-    local p1_border = (attacker_id == 1)
-    local p2_border = (attacker_id == 0)
+    -- Border logic based on who is attacking
+    local p1_offset = (attacker_id == 1) and get_col_width(p1) or 0.0
+    local p2_offset = (attacker_id == 0) and get_col_width(p2) or 0.0
 
-    local p1_offset = p1_border and get_col_width(p1) or 0.0
-    local p2_offset = p2_border and get_col_width(p2) or 0.0
+    -- Symmetrical placement perfectly avoids sfix floating point drift
+    local total_center_dist = distance + p1_offset + p2_offset
+    
+    -- Surgical precision: compute in raw sfix units to prevent division drift (1 cm = 65536 units)
+    local raw_total = math.floor((total_center_dist * 65536.0) + 0.5)
+    local raw_p2 = math.floor(raw_total / 2.0)
+    local raw_p1 = -(raw_total - raw_p2)
 
-    local total_dist = distance + p1_offset + p2_offset
-
-    -- Convert sfix values to cm for calculation
-    local p1_curr_cm = p1.pos.x.v / 65536.0
-    local p2_curr_cm = p2.pos.x.v / 65536.0
+    local p1_pos_double = raw_p1 / 65536.0
+    local p2_pos_double = raw_p2 / 65536.0
 
     local sfix_type = sdk.find_type_definition("via.sfix")
-    if not sfix_type then return end
-    local sfix_from_double = sfix_type:get_method("From(System.Double)")
-
-    local STAGE_LIMIT = 765.0
-    local attacker_curr = (attacker_id == 0) and p1_curr_cm or p2_curr_cm
-    local defender_curr = (attacker_id == 0) and p2_curr_cm or p1_curr_cm
-
-    -- Calculate theoretical attacker position based on direction
-    local dir = (attacker_curr < defender_curr) and -1.0 or 1.0
-    local target_attacker_x = defender_curr + (total_dist * dir)
-
-    -- Clamp attacker to stage boundaries and calculate overflow distance
-    local new_attacker_x = math.max(-STAGE_LIMIT, math.min(STAGE_LIMIT, target_attacker_x))
-    local overflow = target_attacker_x - new_attacker_x
-    local new_defender_x = defender_curr - overflow
-
-    -- Apply new positions
-    if attacker_id == 0 then
-        if p1.POS_SETx then p1:POS_SETx(sfix_from_double:call(nil, new_attacker_x)) end
-        if overflow ~= 0 and p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, new_defender_x)) end
-    else
-        if p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, new_attacker_x)) end
-        if overflow ~= 0 and p1.POS_SETx then p1:POS_SETx(sfix_from_double:call(nil, new_defender_x)) end
+    if sfix_type then
+        local sfix_from_double = sfix_type:get_method("From(System.Double)")
+        if p1 and p1.POS_SETx then p1:POS_SETx(sfix_from_double:call(nil, p1_pos_double)) end
+        if p2 and p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, p2_pos_double)) end
     end
 end
 
@@ -339,8 +323,8 @@ local function load_advanced_data()
     debug_dist_color = 0xFF00FF00
 end
 
-local function get_player_limits(pi, esf_key)
-    local char_name = get_real_name(esf_key)
+local function get_player_limits(pi, p_data)
+    local char_name = p_data.adv_name or get_real_name(p_data.real_name)
     local cdata = advanced_data[char_name]
     if not cdata then return fallback_spacing end
     
@@ -684,6 +668,33 @@ local function update_player_cache(pi, cache_table)
         else cache_table.facing_right = (pi == 0) end
         local detected = detected_infos[pi] or { name="?" }
         cache_table.real_name = detected.name
+        
+        local char_name = esf_names_map[detected.name] or detected.name
+        cache_table.adv_name = char_name
+        
+        if char_name == "Alex" and p.mpActParam ~= nil and p.mpActParam.ActionPart ~= nil then
+            local eng = p.mpActParam.ActionPart._Engine
+            if eng ~= nil then
+                local a_id = eng:get_ActionID()
+                if a_id == 957 
+				or a_id == 960 
+				or a_id == 970 
+				or a_id == 964 
+				or a_id == 962 
+				or a_id == 973 
+				or a_id == 976 
+				or a_id == 977 
+				or a_id == 980 
+				or a_id == 982 
+				or a_id == 967 
+				or a_id == 968 
+				or a_id == 969 
+				or a_id == 971 
+				or a_id == 972 
+				or a_id == 978 
+				then cache_table.adv_name = "Alex_Prowler" end
+            end
+        end
         cache_table.valid = true
     else cache_table.valid = false end
 end
@@ -913,7 +924,7 @@ local function get_advanced_zone_label(pi, char_name, dist_cc, prefix, show_titl
     local space = (prefix and prefix ~= "") and (prefix .. " ") or ""
     
     for _, mv in ipairs(sorted) do
-        if dist_cc <= mv.ar / 100.0 then
+        if dist_cc <= (mv.ar / 100.0) + 0.0001 then
             local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
             
             local zone_name = "Zone"
@@ -955,12 +966,12 @@ local function get_opp_zone_info(cache_data, opponent_data)
     if cache_data.id == 0 then is_adv = config.p1_advanced_mode else is_adv = config.p2_advanced_mode end
     
     if is_adv then
-        local char_name = get_real_name(cache_data.real_name)
+        local char_name = cache_data.adv_name or get_real_name(cache_data.real_name)
         local txt, col = get_advanced_zone_label(cache_data.id, char_name, dist_target, prefix, show_t, show_n)
         if txt then return txt, col end
     end
     
-    local limits = get_player_limits(cache_data.id, cache_data.real_name)
+    local limits = get_player_limits(cache_data.id, cache_data)
     local sorted = get_sorted_thresholds(limits, show_t, show_n, prefix)
     
     local text_str = ""
@@ -1036,7 +1047,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
     local is_adv = false
     if owner_data.id == 0 then is_adv = config.p1_advanced_mode else is_adv = config.p2_advanced_mode end
     if is_adv then
-        local char_name = get_real_name(owner_data.real_name)
+        local char_name = owner_data.adv_name or get_real_name(owner_data.real_name)
         local cdata = advanced_data[char_name]
         
         if cdata and cdata.moves and #cdata.moves > 0 and dist_target then
@@ -1068,7 +1079,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
                     end
                 end
                 
-                if dist_target <= mv_dist then
+                if dist_target <= mv_dist + 0.0001 then
                     cur_col = col
                     out_of_range = false
                     break
@@ -1097,7 +1108,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
                 end
                 
                 if settings.show_numbers then
-                    local txt = string.format("%.2f", dist_target * 100)
+                    local txt = string.format("%.5f", dist_target * 100)
                     local mid_x = (x_origin + x_end) / 2
                     local final_col = settings.color_text and cur_col or colors.White
                     table.insert(numbers_to_draw, { txt = txt, x = mid_x, y = y, col = final_col, off_y = settings.number_off_y })
@@ -1107,7 +1118,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
         end
     end
 
-    local limits = get_player_limits(owner_data.id, owner_data.real_name)
+    local limits = get_player_limits(owner_data.id, owner_data)
     if edge_target and dist_target and limits then
         local sorted = get_sorted_thresholds(limits)
         local prev_dist = 0
@@ -1146,7 +1157,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
             end
             
             if settings.show_numbers then
-                local txt = string.format("%.2f", dist_target * 100)
+                local txt = string.format("%.5f", dist_target * 100)
                 local mid_x = (x_origin + x_final) / 2
                 local final_col = settings.color_text and cur_col or colors.White
                 table.insert(numbers_to_draw, { txt = txt, x = mid_x, y = y, col = final_col, off_y = settings.number_off_y })
@@ -1161,7 +1172,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
     local is_adv = false
     if owner_data.id == 0 then is_adv = config.p1_advanced_mode else is_adv = config.p2_advanced_mode end
     if is_adv then
-        local char_name = get_real_name(owner_data.real_name)
+        local char_name = owner_data.adv_name or get_real_name(owner_data.real_name)
         local cdata = advanced_data[char_name]
         if cdata and cdata.moves and #cdata.moves > 0 then
             local _, screen_h = get_dynamic_screen_size()
@@ -1206,7 +1217,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
                         draw.line(lx, y_min, lx, y_max, col, scaled_thickness)
                         if config.adv_show_line_labels then
                             local prefs = get_char_prefs(owner_data.id, char_name)
-                            local label = mv.input .. " " .. string.format("%.2f", mv.ar)
+                            local label = mv.input .. " " .. string.format("%.5f", mv.ar)
                             if prefs.red and prefs.red.input == mv.input then label = "[R] " .. label end
                             if prefs.low and prefs.low.input == mv.input then label = "[L] " .. label end
                             local label_y
@@ -1224,7 +1235,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
                 if dist_target then
                     local c = colors.White
                     for _, mv in ipairs(sorted) do
-                        if dist_target <= (mv.ar / 100.0) then 
+                        if dist_target <= (mv.ar / 100.0) + 0.0001 then 
                             c = ar_to_color_abgr(mv.ar, ar_min, ar_max)
                             break 
                         end
@@ -1237,7 +1248,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
         end
     end
 
-    local limits = get_player_limits(owner_data.id, owner_data.real_name)
+    local limits = get_player_limits(owner_data.id, owner_data)
     if not limits then return end
     local sorted = get_sorted_thresholds(limits)
     
@@ -1312,7 +1323,7 @@ local function draw_debug_values(cache, opponent_cache, p_idx)
     imgui.separator()
     imgui.text("-- ZONE DATA --")
     imgui.text(string.format("Edge Dist: %.4f", z_dist_val))
-    local limits = get_player_limits(p_idx, cache.real_name)
+    local limits = get_player_limits(p_idx, cache)
     if limits then
         imgui.text(string.format("L:%.1f | R:%.1f | Y:%.1f", limits.low*100, limits.red*100, limits.yellow*100))
     else imgui.text("Using Fallback Limits") end
@@ -1326,13 +1337,29 @@ local p1_transient_timer, p2_transient_timer = 0, 0
 local p1_transient_text, p2_transient_text = "", ""
 
 local function trigger_transient(pi, vmode, adv)
-    local m_name = vmode_names[vmode] or "Unknown"
-    local a_str = adv and " (Advanced)" or " (Normal)"
-    if vmode == 7 then a_str = "" end
+    local text = ""
+    
+    -- 0. OFF
+    if vmode == 7 then 
+        text = "0. OFF"
+    -- 13. CUSTOM
+    elseif vmode == 8 then 
+        text = "13. CUSTOM " .. (adv and "(ADVANCED)" or "(NORMAL)")
+    -- 1-6 NORMAL / 7-12 ADVANCED
+    else
+        local num = vmode
+        if adv then num = num + 6 end
+        
+        local prefix = adv and "ADVANCED " or "NORMAL "
+        local m_name = vmode_names[vmode] and string.upper(vmode_names[vmode]) or "UNKNOWN"
+        
+        text = tostring(num) .. ". " .. prefix .. m_name
+    end
+
     if pi == 0 then 
-        p1_transient_text = m_name .. a_str; p1_transient_timer = 60
+        p1_transient_text = text; p1_transient_timer = 60
     else 
-        p2_transient_text = m_name .. a_str; p2_transient_timer = 60 
+        p2_transient_text = text; p2_transient_timer = 60 
     end
 end
 
@@ -1393,11 +1420,11 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
             imgui.separator()
 
             if prefs.red then 
-                imgui.text_colored(string.format("RED ZONE : [%s]  %.2f", prefs.red.input, prefs.red.ar), COL_RED)
+                imgui.text_colored(string.format("RED ZONE : [%s]", prefs.red.input), COL_RED)
                 imgui.same_line(); if imgui.button("APPLY##adv_red_"..pi) then apply_teleport_exact(pi, prefs.red.ar) end
             end
             if prefs.low then 
-                imgui.text_colored(string.format("LOW RANGE: [%s]  %.2f", prefs.low.input, prefs.low.ar), COL_LOW)
+                imgui.text_colored(string.format("LOW RANGE: [%s]", prefs.low.input), COL_LOW)
                 imgui.same_line(); if imgui.button("APPLY##adv_low_"..pi) then apply_teleport_exact(pi, prefs.low.ar) end
             end
             if prefs.red or prefs.low then imgui.separator() end
@@ -1414,7 +1441,7 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
 
                 local visible = is_move_visible(pi, rname, mv.input)
                 local chk_changed, chk_new = imgui.checkbox(
-                    string.format("%-8s  %.2f%s [%s]##chk_%s_%s_%d", mv.input, mv.ar, tag, gb_name, rname, mv.input, pi),
+                    string.format("%-8s %s [%s]##chk_%s_%s_%d", mv.input, tag, gb_name, rname, mv.input, pi),
                     visible)
 
                 if chk_changed then
@@ -1502,7 +1529,7 @@ local function draw_config_ui()
 --        c, config.p1_show_all = imgui.checkbox("SHOW ALL P1 OVERLAYS##p1_master", config.p1_show_all); if c then changed = true end
 --        imgui.separator()
         
-        local rname = get_real_name(detected_infos[0] and detected_infos[0].name or "?")
+        local rname = p1_cache.valid and p1_cache.adv_name or get_real_name(detected_infos[0] and detected_infos[0].name or "?")
         local cdata = advanced_data[rname]
         if cdata then
             c, config.p1_advanced_mode = imgui.checkbox("Enable Advanced Mode (Distance Logger)##p1", config.p1_advanced_mode); if c then changed = true end
@@ -1518,7 +1545,7 @@ local function draw_config_ui()
                     
                     if cdata.moves then
                         for i, mv in ipairs(cdata.moves) do
-                            table.insert(move_names, string.format("[%s] %.2f", mv.input, mv.ar))
+                            table.insert(move_names, string.format("[%s]", mv.input))
                             if active_red and active_red.input == mv.input then red_idx = i + 1 end
                             if active_low and active_low.input == mv.input then low_idx = i + 1 end
                         end
@@ -1633,7 +1660,7 @@ local function draw_config_ui()
 --        c, config.p2_show_all = imgui.checkbox("SHOW ALL P2 OVERLAYS##p2_master", config.p2_show_all); if c then changed = true end
 --        imgui.separator()
         
-        local rname = get_real_name(detected_infos[1] and detected_infos[1].name or "?")
+        local rname = p2_cache.valid and p2_cache.adv_name or get_real_name(detected_infos[1] and detected_infos[1].name or "?")
         local cdata = advanced_data[rname]
         if cdata then
             c, config.p2_advanced_mode = imgui.checkbox("Enable Advanced Mode (Distance Logger)##p2", config.p2_advanced_mode); if c then changed = true end
@@ -1649,7 +1676,7 @@ local function draw_config_ui()
                     
                     if cdata.moves then
                         for i, mv in ipairs(cdata.moves) do
-                            table.insert(move_names, string.format("[%s] %.2f", mv.input, mv.ar))
+                            table.insert(move_names, string.format("[%s]", mv.input))
                             if active_red and active_red.input == mv.input then red_idx = i + 1 end
                             if active_low and active_low.input == mv.input then low_idx = i + 1 end
                         end
@@ -1955,9 +1982,8 @@ re.on_frame(function()
         update_jump_state_logic(0, p1_cache)
         update_jump_state_logic(1, p2_cache)
 
-        p1_display = { id = 0, world_x = p1_cache.world_x, world_y = p1_cache.world_y, real_name = p1_cache.real_name, act_param = p1_cache.act_param, valid = true, facing_right = p1_cache.facing_right, head_screen_pos = p1_cache.head_screen_pos, root_screen_pos = p1_cache.root_screen_pos }
-        p2_display = { id = 1, world_x = p2_cache.world_x, world_y = p2_cache.world_y, real_name = p2_cache.real_name, act_param = p2_cache.act_param, valid = true, facing_right = p2_cache.facing_right, head_screen_pos = p2_cache.head_screen_pos, root_screen_pos = p2_cache.root_screen_pos }
-
+		p1_display = { id = 0, world_x = p1_cache.world_x, world_y = p1_cache.world_y, real_name = p1_cache.real_name, adv_name = p1_cache.adv_name, act_param = p1_cache.act_param, valid = true, facing_right = p1_cache.facing_right, head_screen_pos = p1_cache.head_screen_pos, root_screen_pos = p1_cache.root_screen_pos }
+        p2_display = { id = 1, world_x = p2_cache.world_x, world_y = p2_cache.world_y, real_name = p2_cache.real_name, adv_name = p2_cache.adv_name, act_param = p2_cache.act_param, valid = true, facing_right = p2_cache.facing_right, head_screen_pos = p2_cache.head_screen_pos, root_screen_pos = p2_cache.root_screen_pos }
         if config.use_attack_lock then
             if lock_states[0].active then
                  p1_display.world_x = lock_states[0].locked_x
@@ -2175,7 +2201,7 @@ re.on_frame(function()
                                 end
                             end
                             local target_pos = (active_pos_p1 == 2) and p1_display.root_screen_pos or p1_display.head_screen_pos
-                            if target_pos then draw_text_above_head_independent(p1_transient_text, target_pos, colors.Cyan, 0.0, trans_y, scale_factor, "center") end
+                            if target_pos then draw_text_above_head_independent(p1_transient_text, target_pos, colors.White, 0.0, trans_y, scale_factor, "center") end
                         end
                         
                         local p1_opp_h = config["p1_opp_zone_cursor_h_" .. draw_v_p1] or 0.5
@@ -2216,7 +2242,7 @@ re.on_frame(function()
                                 end
                             end
                             local target_pos = (active_pos_p2 == 2) and p2_display.root_screen_pos or p2_display.head_screen_pos
-                            if target_pos then draw_text_above_head_independent(p2_transient_text, target_pos, colors.Cyan, 0.0, trans_y, scale_factor, "center") end
+                            if target_pos then draw_text_above_head_independent(p2_transient_text, target_pos, colors.White, 0.0, trans_y, scale_factor, "center") end
                         end
                         
                         local p2_opp_h = config["p2_opp_zone_cursor_h_" .. draw_v_p2] or 0.5

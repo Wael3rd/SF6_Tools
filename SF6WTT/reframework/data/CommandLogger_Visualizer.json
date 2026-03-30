@@ -35,15 +35,15 @@
     },
     "combo_text_y_offset": 0.0,
     "enabled": true,
-    "fail_display_frames": 120,
+    "fail_display_frames": 60,
     "fail_reset_delay": 1.5,
     "float_pos": {
-        "x": 0.0890625,
-        "y": 0.9541666666666667
+        "x": 0.087109375,
+        "y": 0.9555555555555556
     },
     "float_size": {
-        "h": 0.04027777777777778,
-        "w": 0.821875
+        "h": 0.041666666666666664,
+        "w": 0.822265625
     },
     "font_size": 0.020999999716877937,
     "forced_position_idx": 3,
@@ -134,7 +134,7 @@
         "text_y_offset": -0.014499999582767487
     },
     "raw_max_history": 19,
-    "raw_p1": true,
+    "raw_p1": false,
     "raw_p2": false,
     "raw_pos_p1": {
         "x": 0.9610000252723694,

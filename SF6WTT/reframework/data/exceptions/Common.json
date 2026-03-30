@@ -83,6 +83,15 @@
         "is_holdable": false,
         "override_name": "> (LP+LK)"
     },
+    "336": {
+        "absorb_ids": "",
+        "force": false,
+        "hold_partial_check": true,
+        "ignore": true,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "DIE"
+    },
     "337": {
         "force": false,
         "ignore": true,

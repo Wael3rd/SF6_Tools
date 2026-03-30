@@ -113,9 +113,11 @@ local trial_state = {
     flip_inputs = false,   -- Définit si on doit inverser visuellement le cartouche
     _rec_gauges = nil,     -- Snapshot jauges au début du recording
     _rec_hit_type = nil,   -- CH/PC détecté au premier hit
-    _saved_vital_p2 = nil, -- Backup vital settings P2 avant le trial
-    _pending_vital_hp = nil,    -- HP exact à injecter via player object
-	_rec_pending_snapshot = 0,
+    _saved_vital_p1 = nil,
+    _saved_vital_p2 = nil,
+    _pending_victim_hp = nil,
+    _pending_attacker_hp = nil,
+    _rec_pending_snapshot = 0,
     _was_playing = false,   -- État précédent pour détecter les transitions
     _step1_wrong_pending = false, -- Première action : fail seulement si le coup touche
     _demo_backup_slot = nil,       -- Sandbox slot backup for demo
@@ -945,78 +947,125 @@ local function snapshot_gauges(attacker_idx)
     return result
 end
 
--- Force l'injection des HP exacts sur P2 via le player object
-local function inject_p2_vital(hp)
+-- Force l'injection des HP exacts sur un joueur
+local function inject_player_vital(player_idx, hp)
     pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
         if not gBattle then return end
         local sP = gBattle:get_field("Player"):get_data(nil)
         if not sP then return end
-        local p2 = sP:call("getPlayer", 1)
-        if not p2 then return end
-        p2.vital_new = hp
-        p2.vital_old = hp
-        p2.heal_new = hp
+        local p = sP:call("getPlayer", player_idx)
+        if not p then return end
+        p.vital_new = hp
+        p.vital_old = hp
+        p.heal_new = hp
     end)
 end
 
--- Applique la vie P2 = damage exact du combo, passe en mode sans recovery
+-- Applique la vie (Victime = damage du combo, Attaquant = HP enregistré à l'étape 1)
 local function apply_trial_vital()
     if not trial_state.sequence[1] then return end
+    
+    local expected_attacker_hp = trial_state.sequence[1].expected_hp
+    if expected_attacker_hp then
+        trial_state._pending_attacker_hp = expected_attacker_hp
+    end
+    
     local cs = trial_state.sequence[1].combo_stats
-    if not cs or not cs.damage or cs.damage <= 0 then return end
+    if cs and cs.damage and cs.damage > 0 then
+        trial_state._pending_victim_hp = cs.damage
+    end
 
-    -- Sauvegarder les settings vitaux actuels de P2
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
-        local tData = tm:get_field("_tData")
-        if not tData then return end
-        local ps = tData:get_field("ParameterSetting")
+        local ps = tm:get_field("_tData"):get_field("ParameterSetting")
         if not ps or not ps.PlayerDatas then return end
-        local p2d = ps.PlayerDatas[1]
-        trial_state._saved_vital_p2 = {
-            Vital_Type = p2d.Vital_Type,
-            Is_Vital_Infinity = p2d.Is_Vital_Infinity,
-            Is_Vital_No_Recovery = p2d.Is_Vital_No_Recovery,
-            Is_Vital_Recovery_Timer = p2d.Is_Vital_Recovery_Timer
-        }
-        -- Mode sans recovery : la vie ne remonte pas toute seule
-        p2d.Vital_Type = 2
-        p2d.Is_Vital_Infinity = false
-        p2d.Is_Vital_No_Recovery = true
-        p2d.Is_Vital_Recovery_Timer = false
-    end)
+        
+        -- Backup P1 (Index 0 in Training Menu)
+        local p1d = ps.PlayerDatas[0]
+        if not trial_state._saved_vital_p1 then
+            trial_state._saved_vital_p1 = {
+                Vital_Type = p1d.Vital_Type, Is_Vital_Infinity = p1d.Is_Vital_Infinity,
+                Is_Vital_No_Recovery = p1d.Is_Vital_No_Recovery, Is_Vital_Recovery_Timer = p1d.Is_Vital_Recovery_Timer,
+                Is_KO = p1d.Is_KO, Is_Point_Lock = p1d.Is_Point_Lock
+            }
+        end
 
-    -- Activer l'injection (continue tant que current_step == 1)
-    trial_state._pending_vital_hp = cs.damage
+        -- Backup P2 (Index 1 in Training Menu)
+        local p2d = ps.PlayerDatas[1]
+        if not trial_state._saved_vital_p2 then
+            trial_state._saved_vital_p2 = {
+                Vital_Type = p2d.Vital_Type, Is_Vital_Infinity = p2d.Is_Vital_Infinity,
+                Is_Vital_No_Recovery = p2d.Is_Vital_No_Recovery, Is_Vital_Recovery_Timer = p2d.Is_Vital_Recovery_Timer,
+                Is_KO = p2d.Is_KO, Is_Point_Lock = p2d.Is_Point_Lock
+            }
+        end
+
+        local attacker_idx = trial_state.playing_player
+        local victim_idx = 1 - attacker_idx
+
+        if trial_state._pending_attacker_hp then
+            local ad = ps.PlayerDatas[attacker_idx]
+            ad.Vital_Type = 2
+            ad.Is_Vital_Recovery_Timer = false
+            ad.Is_Vital_Infinity = false
+            ad.Is_Vital_No_Recovery = true
+        end
+
+        if trial_state._pending_victim_hp then
+            local vd = ps.PlayerDatas[victim_idx]
+            vd.Vital_Type = 2
+            vd.Is_Vital_Recovery_Timer = false
+            vd.Is_Vital_Infinity = false
+            vd.Is_Vital_No_Recovery = true
+            vd.Is_KO = true
+            vd.Is_Point_Lock = true
+        end
+    end)
 end
 
 -- Relance l'injection HP (après un fail / reset)
--- Si forced pos actif : le refresh va écraser les HP → l'injection continue reprend automatiquement (current_step == 1)
--- Si forced pos off : écriture directe immédiate
 local function reinject_trial_vital()
-    if trial_state._pending_vital_hp and trial_state._pending_vital_hp > 0 then
-        inject_p2_vital(trial_state._pending_vital_hp)
+    local attacker_idx = trial_state.playing_player
+    local victim_idx = 1 - attacker_idx
+    if trial_state._pending_victim_hp and trial_state._pending_victim_hp > 0 then
+        inject_player_vital(victim_idx, trial_state._pending_victim_hp)
+    end
+    if trial_state._pending_attacker_hp and trial_state._pending_attacker_hp > 0 then
+        inject_player_vital(attacker_idx, trial_state._pending_attacker_hp)
     end
 end
 
--- Restaure les settings vitaux P2 à leur valeur d'origine
+-- Restaure les settings vitaux aux valeurs d'origine
 local function restore_trial_vital()
-    trial_state._pending_vital_hp = nil
+    trial_state._pending_victim_hp = nil
+    trial_state._pending_attacker_hp = nil
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
-        local tData = tm:get_field("_tData")
-        if not tData then return end
-        local ps = tData:get_field("ParameterSetting")
+        local ps = tm:get_field("_tData"):get_field("ParameterSetting")
         if not ps or not ps.PlayerDatas then return end
+        
+        if trial_state._saved_vital_p1 then
+            local p1d = ps.PlayerDatas[0]
+            p1d.Vital_Type = trial_state._saved_vital_p1.Vital_Type
+            p1d.Is_Vital_Infinity = trial_state._saved_vital_p1.Is_Vital_Infinity
+            p1d.Is_Vital_No_Recovery = trial_state._saved_vital_p1.Is_Vital_No_Recovery
+            p1d.Is_Vital_Recovery_Timer = trial_state._saved_vital_p1.Is_Vital_Recovery_Timer
+            p1d.Is_KO = trial_state._saved_vital_p1.Is_KO
+            p1d.Is_Point_Lock = trial_state._saved_vital_p1.Is_Point_Lock
+            trial_state._saved_vital_p1 = nil
+        end
+
         if trial_state._saved_vital_p2 then
             local p2d = ps.PlayerDatas[1]
             p2d.Vital_Type = trial_state._saved_vital_p2.Vital_Type
             p2d.Is_Vital_Infinity = trial_state._saved_vital_p2.Is_Vital_Infinity
             p2d.Is_Vital_No_Recovery = trial_state._saved_vital_p2.Is_Vital_No_Recovery
             p2d.Is_Vital_Recovery_Timer = trial_state._saved_vital_p2.Is_Vital_Recovery_Timer
+            p2d.Is_KO = trial_state._saved_vital_p2.Is_KO
+            p2d.Is_Point_Lock = trial_state._saved_vital_p2.Is_Point_Lock
             trial_state._saved_vital_p2 = nil
         end
     end)
@@ -1045,6 +1094,27 @@ local function set_dummy_counter_type(counter_val)
             end
         end
     end)
+end
+
+local function save_dummy_counter_type()
+    trial_state._saved_counter_type = 0
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        local ps = tm:get_field("_tData"):get_field("ParameterSetting")
+        local p2d = ps.PlayerDatas[1]
+        if p2d.PanishCounter_Type == 1 then
+            trial_state._saved_counter_type = 2
+        elseif p2d.NormalCounter_Type == 1 then
+            trial_state._saved_counter_type = 1
+        end
+    end)
+end
+
+local function restore_dummy_counter_type()
+    if trial_state._saved_counter_type ~= nil then
+        set_dummy_counter_type(trial_state._saved_counter_type)
+        trial_state._saved_counter_type = nil
+    end
 end
 
 local function capture_current_positions()
@@ -1136,16 +1206,20 @@ local function apply_forced_position(skip_mirror)
     local pos1, pos2, raw1, raw2
 
     if d2d_cfg.forced_position_idx == 1 then
-        -- En mode OFF pendant un trial actif : ne rien faire, garder la position actuelle
-        if trial_state.is_playing then return end
-        -- Sinon (état initial) : capturer et sauvegarder la position courante
-        local p1, p2, r1, r2 = capture_current_positions()
-        if not r1 or not r2 then return end
-        pos1, pos2, raw1, raw2 = p1, p2, r1, r2
-        trial_state.start_pos_p1 = p1
-        trial_state.start_pos_p2 = p2
-        trial_state.start_pos_p1_raw = r1
-        trial_state.start_pos_p2_raw = r2
+        if trial_state.is_playing and trial_state.live_start_pos_p1 then
+            pos1 = trial_state.live_start_pos_p1
+            pos2 = trial_state.live_start_pos_p2
+            raw1 = trial_state.live_start_pos_p1_raw
+            raw2 = trial_state.live_start_pos_p2_raw
+        else
+            local p1, p2, r1, r2 = capture_current_positions()
+            if not r1 or not r2 then return end
+            pos1, pos2, raw1, raw2 = p1, p2, r1, r2
+            trial_state.start_pos_p1 = p1
+            trial_state.start_pos_p2 = p2
+            trial_state.start_pos_p1_raw = r1
+            trial_state.start_pos_p2_raw = r2
+        end
     else
         if not trial_state.start_pos_p1 or not trial_state.start_pos_p2 then return end
         
@@ -1275,6 +1349,10 @@ local function clear_combo_state()
     trial_state.start_pos_p2 = nil
     trial_state.start_pos_p1_raw = nil
     trial_state.start_pos_p2_raw = nil
+    trial_state.live_start_pos_p1 = nil
+    trial_state.live_start_pos_p2 = nil
+    trial_state.live_start_pos_p1_raw = nil
+    trial_state.live_start_pos_p2_raw = nil
 end
 
 -- =========================================================
@@ -1320,6 +1398,8 @@ local function start_trial(player_idx)
     trial_state.current_step = 1
     trial_state._was_playing = false
 
+    trial_state.live_start_pos_p1, trial_state.live_start_pos_p2, trial_state.live_start_pos_p1_raw, trial_state.live_start_pos_p2_raw = capture_current_positions()
+
     -- NOUVEAU : Reset total de l'affichage (Log texte + D2D Raw et Animé)
     players[player_idx].log = {}
     players[player_idx].input_history_queue = {}
@@ -1327,6 +1407,8 @@ local function start_trial(player_idx)
         pcall(function() ComboTrials_D2D.reset_anim() end)
         pcall(function() ComboTrials_D2D.reset_raw() end)
     end
+
+    save_dummy_counter_type()
 
     -- READ AND INJECT COUNTER STATE
     local hit_t = nil
@@ -1434,6 +1516,8 @@ end
 
 local function reset_trial_steps()
     trial_state.current_step = 1
+	trial_state.ui_visual_step = 1     --- NOUVEAU
+    trial_state.floating_info = nil    --- NOUVEAU
     trial_state._step1_wrong_pending = false
     for _, item in ipairs(trial_state.sequence) do
         item.actual_combo = 0
@@ -1698,10 +1782,110 @@ local function evaluate_charge_status(char_name, frames, c_min, c_max, p_min, p_
     end
 end
 
+-- =========================================================
+-- SKIP K.O. & ROUND END ANIMATIONS (Porté de ReplayLabs)
+-- =========================================================
+local function setup_hook(type_name, method_name, pre_func, post_func)
+    local type_def = sdk.find_type_definition(type_name)
+    if type_def then
+        local method = type_def:get_method(method_name)
+        if method then
+            pcall(function() sdk.hook(method, pre_func, post_func) end)
+        end
+    end
+end
+
+setup_hook("app.battle.bBattleFlow", "updateKO", nil, function(retval)
+    if trial_state.is_playing or trial_state.is_recording or (demo_state and demo_state.is_playing) then
+        -- Force le reset automatique (remise en position) dès que le K.O. est détecté
+        if trial_state.is_playing and trial_state.success_timer == 0 then
+            trial_state.success_timer = 1 
+        end
+        return sdk.to_ptr(2) -- 2 = Skip animation
+    end
+    return retval
+end)
+
+setup_hook("app.battle.bBattleFlow", "updateRoundResult", nil, function(retval)
+    if trial_state.is_playing or trial_state.is_recording or (demo_state and demo_state.is_playing) then
+        return sdk.to_ptr(2)
+    end
+    return retval
+end)
+
+local function build_fail_dump()
+    local dump = {
+        timestamp = os.date("%Y-%m-%d %H:%M:%S"),
+        fail_reason_ui = trial_state.fail_reason,
+        failed_at_step = trial_state.current_step,
+        expected_sequence = {},
+        player_recent_inputs = {}
+    }
+    
+    -- 1. Capture of the expected sequence up to the fail
+    for i, step in ipairs(trial_state.sequence) do
+        local s = {
+            step = i,
+            id = step.id,
+            motion = step.motion,
+            expected_combo = step.expected_combo,
+            is_holdable = step.is_holdable,
+            delay_from_prev = step.delay_from_prev
+        }
+        if i == trial_state.current_step then
+            s.STATUS = "<-- FAILED HERE"
+            if trial_state.active_universal_hold then
+                s.hold_error_details = {
+                    expected_status = trial_state.active_universal_hold.expected_status,
+                    expected_frames = trial_state.active_universal_hold.expected_frames,
+                    actual_frames = trial_state.active_universal_hold.frames,
+                    charge_min = trial_state.active_universal_hold.charge_min,
+                    charge_max = trial_state.active_universal_hold.charge_max
+                }
+            end
+        end
+        table.insert(dump.expected_sequence, s)
+    end
+    
+    -- 2. Capture of the player's last 15 actions
+    local p_state = players[trial_state.playing_player]
+    if p_state and p_state.log then
+        for i = 1, math.min(15, #p_state.log) do
+            local l = p_state.log[i]
+            table.insert(dump.player_recent_inputs, {
+                log_index = i,
+                id = l.id,
+                name = l.name,
+                motion = l.motion,
+                real_input = l.real_input,
+                frame_diff = l.frame_diff,
+                intentional = l.intentional,
+                hold_frames = l.hold_frames,
+                charge_status = l.charge_status,
+                combo_count = l.combo_count,
+                is_ignored = l.is_ignored,
+                ignore_reason = l.ignore_reason
+            })
+        end
+    end
+    
+    return dump
+end
+
 re.on_frame(function()
     if _G.CurrentTrainerMode ~= 4 then
-        -- Restauration si on quitte le mode Combo Trials pendant un trial
-        if trial_state._pending_vital_hp then restore_trial_vital() end
+        -- Clean shutdown if switching scripts during an active Trial/Demo
+        if trial_state.is_playing or (demo_state and demo_state.is_playing) then
+            trial_state.is_playing = false
+            trial_state._was_playing = false
+            if demo_state then demo_state.is_playing = false end
+            
+            restore_trial_vital()
+            restore_dummy_counter_type()
+            apply_current_position_refresh()
+        elseif trial_state.is_recording then
+            cancel_recording()
+        end
         return
     end
 
@@ -1729,6 +1913,7 @@ re.on_frame(function()
     elseif not now_playing and trial_state._was_playing then
         -- Transition ON → OFF : Restaurer la vie P2 et refresh sur la position ACTUELLE exacte
         restore_trial_vital()
+        restore_dummy_counter_type()
         apply_current_position_refresh()
     end
     trial_state._was_playing = now_playing
@@ -1786,9 +1971,21 @@ re.on_frame(function()
     local player_obj = gBattle:get_field("Player"):get_data(nil)
     if not player_obj then return end
 
-    -- MISE À JOUR DYNAMIQUE DE L'ORIENTATION (Tant que le combo n'a pas démarré)
+    -- INJECTION HP EXACT VIA PLAYER OBJECT
+    -- Injecte en continu tant que le trial attend le premier coup (current_step == 1)
+    -- Après un refresh (forced pos), attend que le refresh finisse d'abord
     if trial_state.is_playing and trial_state.current_step == 1 then
-        update_trial_flip_state()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if tm and tm:get_field("_IsReqRefresh") == false then
+            local attacker_idx = trial_state.playing_player
+            local victim_idx = 1 - attacker_idx
+            if trial_state._pending_victim_hp then
+                inject_player_vital(victim_idx, trial_state._pending_victim_hp)
+            end
+            if trial_state._pending_attacker_hp then
+                inject_player_vital(attacker_idx, trial_state._pending_attacker_hp)
+            end
+        end
     end
 
     for p_idx = 0, 1 do
@@ -1804,13 +2001,20 @@ re.on_frame(function()
             end
 
             if trial_state.fail_timer and trial_state.fail_timer > 0 then
+                -- CAPTURE: Take a snapshot on the very first frame of the fail state
+                -- if not trial_state._fail_captured then
+                --     trial_state.last_fail_dump = build_fail_dump()
+                --     trial_state._fail_captured = true
+                -- end
+
                 trial_state.fail_timer = trial_state.fail_timer - 1
                 if trial_state.fail_timer <= 0 then
                     trial_state.fail_reason = nil
+                    trial_state._fail_captured = false
                     reset_trial_steps()
                 end
             end
-        end
+		end
 
         if p_state.profile_name ~= p_state.last_profile_name then
             p_state.last_profile_name = p_state.profile_name
@@ -1945,11 +2149,15 @@ end
                     if prev_step then
                         prev_step.actual_combo = current_combo
                         prev_step.has_hit = true
-                        -- Si un projectile touche pendant le playback, on l'ajoute pour tolérer le décalage
                         if hit_is_projectile then prev_step.is_projectile_hit = true end
+
+                        -- Fait avancer UNIQUEMENT le compteur [ACTION X / Y] à l'impact
+                        trial_state.ui_visual_step = trial_state.current_step
+                        trial_state.floating_info = nil -- <-- Vide le texte en attendant le prochain input
                     end
+                
                 end
-            end
+				end
 
             -- Capture CH/PC en continu pendant tout le premier hit (Evite de rater les lights)
             if (current_combo or 0) == 1 and trial_state.is_recording and p_idx == trial_state.recording_player then
@@ -1998,6 +2206,10 @@ end
                         local last_validated_idx = trial_state.current_step - 1
                         if last_validated_idx >= 1 then
                             local last_validated = trial_state.sequence[last_validated_idx]
+                            
+                            local current_expected = trial_state.sequence[trial_state.current_step]
+                            local is_reset_expected = current_expected and current_expected.expected_combo == 0
+                            
                             if last_validated and last_validated.expected_combo and last_validated.expected_combo > 0 then
                                 if is_hold_pending then
                                     trial_state.fail_timer = d2d_cfg.fail_display_frames or 120
@@ -2014,7 +2226,7 @@ end
                                         trial_state.fail_reason = "HOLD TIMING" .. diff_str .. " (Combo Drop)"
                                     end
                                     trial_state.active_universal_hold = nil
-                                elseif not opponent_knocked_down then
+                                elseif not opponent_knocked_down and not is_reset_expected then
                                     trial_state.fail_timer = d2d_cfg.fail_display_frames or 120
                                     if last_validated.last_frame_diff and last_validated.last_frame_diff < -2 then
                                         trial_state.fail_reason = string.format("TOO EARLY (%df)", math.abs(last_validated.last_frame_diff))
@@ -2036,9 +2248,44 @@ end
                         end
                     end
                 end
-            end
+                
+                -- TIMEOUT CONTINUOUS DETECTION (Triggers if player does nothing or gets hit)
+                if trial_state.success_timer == 0 and not is_hold_pending and not (trial_state.fail_timer and trial_state.fail_timer > 0) then
+                    local expected = trial_state.sequence[trial_state.current_step]
+                    if expected and trial_state.current_step > 1 then
+                        local last_played = trial_state.last_played_frame or engine_frame_count
+                        local frames_since = engine_frame_count - last_played
+                        local delay = expected.delay_from_prev or 0
+                        
+                        -- 60 frames (~1 sec) tolerance after the ideal timing
+                        if frames_since > (delay + 60) then
+                            trial_state.fail_timer = d2d_cfg.fail_display_frames or 120
+                            
+                            if expected.expected_hp ~= nil and p_char.vital_new ~= expected.expected_hp then
+                                if expected.expected_combo == 0 then
+                                    trial_state.fail_reason = "SETUP INTERRUPTED (Got hit)"
+                                else
+                                    local prev_step = trial_state.sequence[trial_state.current_step - 1]
+                                    if prev_step and prev_step.expected_combo == 0 then
+                                        trial_state.fail_reason = "MEATY INTERRUPTED (Got hit)"
+                                    else
+                                        trial_state.fail_reason = "INTERRUPTED (Got hit)"
+                                    end
+                                end
+                            else
+                                local prev_step = trial_state.sequence[trial_state.current_step - 1]
+                                if prev_step and prev_step.expected_combo == 0 then
+                                    trial_state.fail_reason = "MEATY TOO LATE (Missed Input)"
+                                else
+                                    trial_state.fail_reason = "TOO LATE (Missed Input)"
+                                end
+                            end
+                        end
+                    end
+                end
+			end
 
--- GESTION CONTINUE DE LA CHARGE
+            -- GESTION CONTINUE DE LA CHARGE
             if #p_state.log > 0 then
                 local current_log = p_state.log[1]
                 if current_log.is_holdable and current_log.is_holding then
@@ -2172,7 +2419,8 @@ end
                             engine_frame = p_state.buffer_start_frame,
                             buffer_hold_frames = p_state.buffer_hold_frames,
                             p1 = p_state.buffer_p1, p2 = p_state.buffer_p2,
-                            r1 = p_state.buffer_r1, r2 = p_state.buffer_r2
+                            r1 = p_state.buffer_r1, r2 = p_state.buffer_r2,
+                            current_hp = p_state.buffer_current_hp
                         })
                     end
                 end
@@ -2184,6 +2432,7 @@ end
                 p_state.buffer_direct_input = direct_input
                 p_state.buffer_b_type = b_type
                 p_state.buffer_hold_frames = 0
+                p_state.buffer_current_hp = p_char.vital_new
                 -- Snapshot immédiat des positions à la frame exacte de l'input
                 local _p1, _p2, _r1, _r2 = capture_current_positions()
                 p_state.buffer_p1 = _p1; p_state.buffer_p2 = _p2
@@ -2209,7 +2458,8 @@ end
                     engine_frame = p_state.buffer_start_frame,
                     buffer_hold_frames = p_state.buffer_hold_frames,
                     p1 = p_state.buffer_p1, p2 = p_state.buffer_p2,
-                    r1 = p_state.buffer_r1, r2 = p_state.buffer_r2
+                    r1 = p_state.buffer_r1, r2 = p_state.buffer_r2,
+                    current_hp = p_state.buffer_current_hp
                 })
             end
 
@@ -2296,7 +2546,8 @@ end
                 end
 
                 if not is_continuation then
-                local is_trackable = falselocal is_trackable = false
+                local is_trackable = false
+				local is_trackable = false
                     local is_ignored = false
                     local ignore_reason = ""
 
@@ -2530,6 +2781,7 @@ end
                             table.insert(trial_state.sequence, {
                                 id = act_id,
                                 motion = motion_str,
+                                expected_hp = process_act.current_hp,
                                 is_holdable = is_holdable,
                                 dual_threshold = dual_threshold,
                                 charge_min = charge_min,
@@ -2593,6 +2845,23 @@ end
                                         trial_state.last_played_frame = engine_frame_count
                                         local frame_diff = actual_delay - (expected.delay_from_prev or 0)
 
+                                        -- Affichage IMMÉDIAT du timing à la frame d'input
+                                        if frame_diff < 0 then
+                                            trial_state.floating_info = string.format("%d frames too early", math.abs(frame_diff))
+                                            trial_state.floating_color = 0xFF00FFAD -- Vert-Jaune (ABGR)
+                                        elseif frame_diff > 0 then
+                                            trial_state.floating_info = string.format("%d frames too late", frame_diff)
+                                            trial_state.floating_color = 0xFF00A5FF -- Orange clair (ABGR)
+                                        else
+                                            trial_state.floating_info = "Perfect timing"
+                                            trial_state.floating_color = 0xFF00FFFF -- Jaune pur (ABGR)
+                                        end
+
+                                        -- Si c'est un setup sans hit attendu, on valide l'étape visuelle tout de suite
+                                        if expected.expected_combo == 0 then
+                                            trial_state.ui_visual_step = trial_state.current_step + 1
+                                        end
+
                                         local combo_ok = true
                                         if trial_state.current_step > 1 then
                                             local prev_step = trial_state.sequence[trial_state.current_step - 1]
@@ -2601,6 +2870,14 @@ end
                                                 if not skip_strict_check and (current_combo or 0) ~= prev_step.expected_combo then
                                                     if opponent_knocked_down and (current_combo or 0) == 0 and prev_step.expected_combo == 0 then
                                                         combo_ok = true
+                                                    elseif prev_step.expected_combo == 0 and (current_combo or 0) > 0 then
+                                                        combo_ok = true
+                                                    elseif expected and expected.expected_combo == 0 then
+                                                        -- RESET TOLERANCE 2.0 (Standing Reset / Oki):
+                                                        -- The sequence intends for the combo to drop to 0 after this move.
+                                                        -- So it doesn't matter if the combo counter is still running (early input) 
+                                                        -- or has just naturally dropped to 0. Both states are valid.
+                                                        combo_ok = true
                                                     else
                                                         combo_ok = false
                                                     end
@@ -2608,7 +2885,15 @@ end
                                             end
                                         end
 
-                                        if combo_ok then
+                                        local hp_ok = true
+                                        if expected.expected_hp ~= nil and process_act.current_hp ~= nil then
+                                            -- Validation de l'Oki Setup : la vie doit correspondre EXACTEMENT à la frame de l'input
+                                            if process_act.current_hp ~= expected.expected_hp then
+                                                hp_ok = false
+                                            end
+                                        end
+
+                                        if combo_ok and hp_ok then
                                             trial_step_idx = trial_state.current_step
                                             trial_state.sequence[trial_step_idx].has_hit = false
                                             trial_state.sequence[trial_step_idx].last_frame_diff = frame_diff
@@ -2631,10 +2916,22 @@ end
                                                 }
                                             end
                                         else
-                                            trial_state.fail_timer = d2d_cfg.fail_display_frames or 120
-                                            if frame_diff < -2 then
-                                                trial_state.fail_reason = string.format("TOO EARLY (%df)",
-                                                    math.abs(frame_diff))
+                                            trial_state.fail_timer = d2d_cfg.fail_display_frames or 20
+                                            if not hp_ok then
+                                                local custom_reason = "WRONG HP (Setup Dropped)"
+                                                local prev_step = trial_state.sequence[trial_state.current_step - 1]
+                                                if prev_step and prev_step.expected_combo == 0 and prev_step.last_frame_diff then
+                                                    if prev_step.last_frame_diff > 2 then
+                                                        custom_reason = string.format("SETUP TOO LATE (%df)", prev_step.last_frame_diff)
+                                                    elseif prev_step.last_frame_diff < -2 then
+                                                        custom_reason = string.format("SETUP TOO EARLY (%df)", math.abs(prev_step.last_frame_diff))
+                                                    else
+                                                        custom_reason = "MEATY TIMING FAILED"
+                                                    end
+                                                end
+                                                trial_state.fail_reason = custom_reason
+                                            elseif frame_diff < -2 then
+                                                trial_state.fail_reason = string.format("TOO EARLY (%df)", math.abs(frame_diff))
                                             elseif frame_diff > 2 then
                                                 trial_state.fail_reason = string.format("TOO LATE (%df)", frame_diff)
                                             else
@@ -2873,6 +3170,21 @@ ctx.save_d2d_config = save_d2d_config
 ctx.get_exc_filename = get_exc_filename
 ctx.ui_state = ui_state
 ctx.apply_forced_position = apply_forced_position
+ctx.dump_last_fail = function()
+    if not trial_state.last_fail_dump then return nil end
+    local char_name = players[trial_state.playing_player].profile_name or "Unknown"
+    local ts = os.date("%Y%m%d_%H%M%S")
+    local fname = char_name .. "_FAIL_" .. ts .. ".json"
+    
+    if fs.create_dir then 
+        pcall(fs.create_dir, "CustomCombos")
+        pcall(fs.create_dir, "CustomCombos/Fails") 
+    end
+    
+    local path = "CustomCombos/Fails/" .. fname
+    json.dump_file(path, trial_state.last_fail_dump)
+    return path
+end
 ctx.reset_visuals = function()
     ComboTrials_D2D.reset_anim()
     ComboTrials_D2D.reset_raw()
@@ -2977,6 +3289,8 @@ local function start_demo()
     demo_state.current_step = 1
     demo_state.p1_mask = 0
     
+	save_dummy_counter_type()
+	
     local hit_t = trial_state.sequence[1].combo_stats and trial_state.sequence[1].combo_stats.hit_type
     if hit_t == "PC" then set_dummy_counter_type(2)
     elseif hit_t == "CH" then set_dummy_counter_type(1)
@@ -3064,51 +3378,43 @@ local _load_count   = 0
 -- end)
 
 
-
 local _ss_hooked = false
 re.on_frame(function()
-    _real_frame = _real_frame + 1
-
     if not _ss_hooked then
-        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
-        if not tm then return end
         _ss_hooked = true
-        local td = tm:get_type_definition()
-
-        local save_methods = { "SnapShoted", "ToStorage", "Save", "SaveSaveData", "RequestSaveData" }
-        local load_methods = { "FromStorage", "Load", "LoadSaveData", "RequestLoadData", "RollBack" }
-
-        for _, name in ipairs(save_methods) do
-            local m = td:get_method(name)
-            if m then
-                pcall(function()
-                    sdk.hook(m, function(args)
-                        if _pending_restore > 0 then return end -- on est en cours de restore, ignorer
-                        _save_pending      = true
-                        _save_fired_at     = _real_frame
-                        _save_step_at_fire = trial_state.current_step
-                        dbg("Save() " .. name .. " step=" .. tostring(trial_state.current_step))
-                    end, nil)
-                end)
+        local td = sdk.find_type_definition("app.training.TrainingManager")
+        if td then
+            local save_methods = { "requestSaveState", "SaveKeyData" }
+            local load_methods = { "requestLoadState" }
+            
+            for _, name in ipairs(save_methods) do
+                local m = td:get_method(name)
+                if m then
+                    pcall(function()
+                        sdk.hook(m, function(args)
+                            if _pending_restore > 0 then return end
+                            _save_pending      = true
+                            _save_fired_at     = _real_frame
+                            _save_step_at_fire = trial_state.current_step
+                            dbg("Save() " .. name .. " step=" .. tostring(trial_state.current_step))
+                        end, function(retval) return retval end)
+                    end)
+                end
             end
-        end
 
-        for _, name in ipairs(load_methods) do
-            local m = td:get_method(name)
-            if m then
-                pcall(function()
-                    sdk.hook(m, function(args)
-                        _load_count   = _load_count + 1
-                        _load_display = os.date("%H:%M:%S") ..
-                            " [" .. name .. "] snapshot=" .. tostring(_trial_snapshot and _trial_snapshot.step or "nil")
-                        _save_pending = false
-                        dbg("Load() " ..
-                            name .. " snapshot=" .. tostring(_trial_snapshot and _trial_snapshot.step or "nil"))
-                        if _trial_snapshot and trial_state.is_playing then
-                            _pending_restore = 8
-                        end
-                    end, nil)
-                end)
+            for _, name in ipairs(load_methods) do
+                local m = td:get_method(name)
+                if m then
+                    pcall(function()
+                        sdk.hook(m, function(args)
+                            _load_count   = _load_count + 1
+                            _save_pending = false
+                            if _trial_snapshot and trial_state.is_playing then
+                                _pending_restore = 8
+                            end
+                        end, function(retval) return retval end)
+                    end)
+                end
             end
         end
     end
@@ -3277,3 +3583,4 @@ if cplayer_type then
         )
     end
 end
+

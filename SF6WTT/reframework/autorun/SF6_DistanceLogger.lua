@@ -241,8 +241,8 @@ local function save_advanced_data()
         table.insert(lines, string.format('    "%s": {', char_name))
         
         local props = {}
-        if cdata.red then table.insert(props, string.format('        "red": { "input": "%s", "ar": %.2f }', cdata.red.input, cdata.red.ar)) end
-        if cdata.low then table.insert(props, string.format('        "low": { "input": "%s", "ar": %.2f }', cdata.low.input, cdata.low.ar)) end
+        if cdata.red then table.insert(props, string.format('        "red": { "input": "%s", "ar": %.5f }', cdata.red.input, cdata.red.ar)) end
+        if cdata.low then table.insert(props, string.format('        "low": { "input": "%s", "ar": %.5f }', cdata.low.input, cdata.low.ar)) end
         local y_off = cdata.yellow_offset or 50
         table.insert(props, string.format('        "yellow_offset": %d', y_off))
         
@@ -254,7 +254,7 @@ local function save_advanced_data()
                 local gb = mv.guard_bit or 0
                 local isc = mv.is_cancelable and "true" or "false"
                 local issc = mv.is_super_cancelable and "true" or "false"
-                table.insert(lines, string.format('            { "input": "%s", "ar": %.2f, "guard_bit": %d, "is_cancelable": %s, "is_super_cancelable": %s }%s', mv.input, mv.ar, gb, isc, issc, comma))
+                table.insert(lines, string.format('            { "input": "%s", "ar": %.5f, "guard_bit": %d, "is_cancelable": %s, "is_super_cancelable": %s }%s', mv.input, mv.ar, gb, isc, issc, comma))
             end
             table.insert(lines, '        ]')
         else
@@ -308,7 +308,7 @@ local function log_move(char_name, input, ar, guard_bit, is_cancelable, is_super
     end
     sort_moves(cdata)
     save_advanced_data()
-    status_msg = string.format("LOG: %s -> %.2f", input, ar)
+    status_msg = string.format("LOG: %s -> %.5f", input, ar)
     status_timer = 150
 end
 
@@ -374,8 +374,14 @@ local function apply_teleport_exact(distance)
     local p2_offset = tp_p2_border and get_col_width(p2) or 0.0
 
     local total_center_dist = distance + p1_offset + p2_offset
-    local p1_pos_double = -(total_center_dist / 2.0)
-    local p2_pos_double = (total_center_dist / 2.0)
+    
+    -- Surgical precision: compute in raw sfix units to prevent division drift (1 cm = 65536 units)
+    local raw_total = math.floor((total_center_dist * 65536.0) + 0.5)
+    local raw_p2 = math.floor(raw_total / 2.0)
+    local raw_p1 = -(raw_total - raw_p2)
+
+    local p1_pos_double = raw_p1 / 65536.0
+    local p2_pos_double = raw_p2 / 65536.0
 
     local sfix_type = sdk.find_type_definition("via.sfix")
     if sfix_type then
@@ -384,7 +390,7 @@ local function apply_teleport_exact(distance)
         if p2 and p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, p2_pos_double)) end
     end
 
-    status_msg = string.format("APPLIED: %.2f (P1:%s P2:%s)", distance, tp_p1_border and "B" or "C", tp_p2_border and "B" or "C")
+    status_msg = string.format("APPLIED: %.5f (P1:%s P2:%s)", distance, tp_p1_border and "B" or "C", tp_p2_border and "B" or "C")
     status_timer = 150
 end
 
@@ -445,7 +451,34 @@ re.on_frame(function()
 
                     -- ADVANCED TRACKING
                     local st        = adv_state[i]
-                    local cname_adv = detected_infos[i].name
+                    local cname_adv = esf_names_map[detected_infos[i].key] or detected_infos[i].name
+                    
+                    if cname_adv == "Alex" and p.mpActParam ~= nil and p.mpActParam.ActionPart ~= nil then
+                        local eng = p.mpActParam.ActionPart._Engine
+                        if eng ~= nil then
+                            local act_id = eng:get_ActionID()
+							if act_id == 972 -- LP en prowler
+							or act_id == 971 -- LP en prowler
+							or act_id == 970 -- LP en prowler
+                            or act_id == 957 
+							or act_id == 960 
+							or act_id == 964 
+							or act_id == 962 
+							or act_id == 973 
+							or act_id == 976 
+							or act_id == 977 
+							or act_id == 980 
+							or act_id == 982 
+							or act_id == 967 
+							or act_id == 968 
+							or act_id == 969 
+							or act_id == 978 
+							
+							
+							then cname_adv = "Alex_Prowler" end
+                        end
+                    end
+                    detected_infos[i].name = cname_adv
 
                     -- Front montant bouton : nouveau appui (pas maintien)
                     local btn_text     = get_btn_text(bv)
@@ -485,28 +518,51 @@ re.on_frame(function()
                         end
                     end
 
-                    -- Action ID
+                    -- Action ID & Margin Frame
                     local cur_act_id = -1
+                    local cur_frame = 0
+                    local margin_frame = 0
+                    
                     if p.mpActParam ~= nil and p.mpActParam.ActionPart ~= nil then
                         local eng = p.mpActParam.ActionPart._Engine
                         if eng ~= nil then
                             cur_act_id = eng:get_ActionID()
+                            local f_act = eng:get_ActionFrame()
+                            local f_mar = eng:get_MarginFrame()
+                            
+                            -- Extract float values via ToString() just like read_sfix
+                            if f_act then cur_frame = math.floor(tonumber(f_act:call("ToString()")) or 0) end
+                            if f_mar then margin_frame = math.floor(tonumber(f_mar:call("ToString()")) or 0) end
                         end
                     end
                     detected_infos[i].cur_act_id = cur_act_id
 
-                    if cur_act_id ~= -1 and cur_act_id ~= st.act_id then
-                        -- Log si l'action qui se termine avait des hitboxes
+                    -- Check if action changed OR if we perfectly hit the margin frame
+                    local action_changed = (cur_act_id ~= -1 and cur_act_id ~= st.act_id)
+                    local margin_reached = (margin_frame > 0 and cur_frame == margin_frame)
+
+                    if action_changed or (margin_reached and not st.margin_logged) then
+                        -- Log if the action had hitboxes
                         if st.logging_active
                            and st.had_hitbox and st.peak_ar > 0.01
                            and st.last_attack_input ~= "5"
                            and cname_adv ~= "Wait..." then
                             log_move(cname_adv, st.last_attack_input, st.peak_ar, st.peak_guard_bit, st.is_cancelable, st.is_super_cancelable)
                         end
-                        st.act_id        = cur_act_id
-                        st.had_hitbox    = false
-                        st.is_cancelable = false
-                        st.is_super_cancelable = false
+                        
+                        -- Reset states when action ID completely changes
+                        if action_changed then
+                            st.act_id        = cur_act_id
+                            st.had_hitbox    = false
+                            st.is_cancelable = false
+                            st.is_super_cancelable = false
+                            st.margin_logged = false
+                        end
+                        
+                        -- Prevent duplicate logging on the same margin frame
+                        if margin_reached then
+                            st.margin_logged = true
+                        end
                     end
 
                     if full_input ~= "5" then detected_infos[i].live_input = full_input end
@@ -653,7 +709,7 @@ function draw_main_content(is_overlay)
         imgui.same_line()
         if imgui.button("180") then teleport_target_dist = 180; apply_teleport_exact(180) end
 
-        imgui.text_colored(string.format("Current Dist: %.2f", origin_dist), COL_GREEN)
+        imgui.text_colored(string.format("Current Dist: %.5f", origin_dist), COL_GREEN)
     end
     imgui.separator()
 
@@ -689,7 +745,7 @@ function draw_main_content(is_overlay)
                 jump_data_store[key].cross_up_st = origin_dist; save_jump_data()
             end
             if jump_info and jump_info.cross_up_st then
-                imgui.same_line(); imgui.text(string.format("(%.2f)", jump_info.cross_up_st))
+                imgui.same_line(); imgui.text(string.format("(%.5f)", jump_info.cross_up_st))
             end
 
             imgui.same_line()
@@ -698,7 +754,7 @@ function draw_main_content(is_overlay)
                 jump_data_store[key].cross_up_cr = origin_dist; save_jump_data()
             end
             if jump_info and jump_info.cross_up_cr then
-                imgui.same_line(); imgui.text(string.format("(%.2f)", jump_info.cross_up_cr))
+                imgui.same_line(); imgui.text(string.format("(%.5f)", jump_info.cross_up_cr))
             end
 
             imgui.separator()
@@ -720,10 +776,10 @@ function draw_main_content(is_overlay)
                     end
                 end
 
-                if cdata.low then imgui.text_colored(string.format("LOW    [%s]  :  %.2f", cdata.low.input, cdata.low.ar), COL_LOW)
+                if cdata.low then imgui.text_colored(string.format("LOW    [%s]  :  %.5f", cdata.low.input, cdata.low.ar), COL_LOW)
                 else imgui.text_colored("LOW    [--]  :  --", COL_LOW) end
 
-                if cdata.red then imgui.text_colored(string.format("RED    [%s]  :  %.2f", cdata.red.input, cdata.red.ar), COL_RED)
+                if cdata.red then imgui.text_colored(string.format("RED    [%s]  :  %.5f", cdata.red.input, cdata.red.ar), COL_RED)
                 else imgui.text_colored("RED    [--]  :  --", COL_RED) end
 
                 local y_off = cdata.yellow_offset or 50
@@ -738,7 +794,7 @@ function draw_main_content(is_overlay)
 
                 if base_ar then
                     local yellow_val = base_ar + y_off
-                    imgui.text_colored(string.format("YELLOW [%s]  :  %.2f  (+%d)", base_input, yellow_val, y_off), COL_YELLOW)
+                    imgui.text_colored(string.format("YELLOW [%s]  :  %.5f  (+%d)", base_input, yellow_val, y_off), COL_YELLOW)
                 else
                     imgui.text_colored(string.format("YELLOW [--]  :  --  (+%d)", y_off), COL_YELLOW)
                 end
@@ -751,11 +807,12 @@ function draw_main_content(is_overlay)
 
                 local st_ui = adv_state[i]
                 imgui.text_colored(string.format("Act ID : %d", info.cur_act_id), COL_GREY)
-                imgui.text(string.format("Live   : [%s]  AR: %.2f", info.live_input, info.last_ar))
+                -- Update Live and Memos display to 5 decimal places for surgical precision
+                imgui.text(string.format("Live   : [%s]  AR: %.5f", info.live_input, info.last_ar))
                 
                 local cancel_info = st_ui.is_cancelable and "  [C]" or ""
                 local super_cancel_info = st_ui.is_super_cancelable and "  [SC]" or ""
-                imgui.text_colored(string.format("Memos  : [%s]  AR: %.2f  (Grd:%s)%s%s", st_ui.last_attack_input, st_ui.peak_ar, get_guard_type_name(st_ui.peak_guard_bit), cancel_info, super_cancel_info), COL_CYAN)
+                imgui.text_colored(string.format("Memos  : [%s]  AR: %.5f  (Grd:%s)%s%s", st_ui.last_attack_input, st_ui.peak_ar, get_guard_type_name(st_ui.peak_guard_bit), cancel_info, super_cancel_info), COL_CYAN)
 
                 local st_btn = adv_state[i]
                 local btn_label = st_btn.logging_active and "STOP LOG##"..i or "START LOG##"..i
@@ -804,14 +861,14 @@ function draw_main_content(is_overlay)
                                         entry.ar = new_ar_val
                                     end
                                     save_advanced_data()
-                                    status_msg = string.format("Modifié → [%s] %.2f", entry.input, entry.ar)
+                                    status_msg = string.format("Modifié → [%s] %.5f", entry.input, entry.ar)
                                     status_timer = 150
                                     edit_state.key = nil
                                 end
                                 imgui.same_line()
                                 if imgui.button("Annuler##can"..edit_key) then edit_state.key = nil end
                             else
-                                local row_text = string.format("  [%s] [%s]  AR: %.2f", entry.input, gb_name, entry.ar)
+                                local row_text = string.format("  [%s] [%s]  AR: %.5f", entry.input, gb_name, entry.ar)
                                 if is_red and is_low then imgui.text_colored(row_text .. "  [R][L]", 0xFFEE88FF)
                                 elseif is_red then imgui.text_colored(row_text .. "  [R]", COL_RED)
                                 elseif is_low then imgui.text_colored(row_text .. "  [L]", COL_LOW)
@@ -821,21 +878,42 @@ function draw_main_content(is_overlay)
                                 if entry.is_super_cancelable then imgui.same_line(); imgui.text_colored(" [SC]", COL_RED) end
                                 if is_max_for_gb then imgui.same_line(); imgui.text_colored(" ★ [MAX " .. gb_name .. "]", COL_GOLD) end
 
+                                -- New Action Buttons
+                                imgui.same_line()
+                                if imgui.button("APPLY##tp"..edit_key) then apply_teleport_exact(entry.ar) end
+                                
+                                -- imgui.same_line()
+                                -- if imgui.button("-0.00001##min"..edit_key) then
+                                    -- entry.ar = entry.ar - 0.00001
+                                    -- if is_red then cdata.red.ar = entry.ar end
+                                    -- if is_low then cdata.low.ar = entry.ar end
+                                    -- save_advanced_data()
+                                -- end
+
+                                -- imgui.same_line()
+                                -- if imgui.button("+0.00001##plus"..edit_key) then
+                                    -- entry.ar = entry.ar + 0.00001
+                                    -- if is_red then cdata.red.ar = entry.ar end
+                                    -- if is_low then cdata.low.ar = entry.ar end
+                                    -- save_advanced_data()
+                                -- end
+
+                                -- Existing Action Buttons
                                 imgui.same_line()
                                 if imgui.button("Edit##ed"..edit_key) then
                                     edit_state.key = edit_key
                                     edit_state.buf = entry.input
-                                    edit_state.ar_buf = string.format("%.2f", entry.ar)
+                                    edit_state.ar_buf = string.format("%.5f", entry.ar)
                                 end
                                 imgui.same_line()
                                 if imgui.button("R##sr"..i.."_"..idx) then
                                     cdata.red = { input = entry.input, ar = entry.ar }; save_advanced_data()
-                                    status_msg = string.format("RED = [%s] %.2f", entry.input, entry.ar); status_timer = 150
+                                    status_msg = string.format("RED = [%s] %.5f", entry.input, entry.ar); status_timer = 150
                                 end
                                 imgui.same_line()
                                 if imgui.button("L##sl"..i.."_"..idx) then
                                     cdata.low = { input = entry.input, ar = entry.ar }; save_advanced_data()
-                                    status_msg = string.format("LOW = [%s] %.2f", entry.input, entry.ar); status_timer = 150
+                                    status_msg = string.format("LOW = [%s] %.5f", entry.input, entry.ar); status_timer = 150
                                 end
                                 imgui.same_line()
                                 if imgui.button("X##del"..i.."_"..idx) then to_delete = idx end

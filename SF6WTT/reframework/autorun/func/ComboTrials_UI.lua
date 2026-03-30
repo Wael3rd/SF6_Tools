@@ -600,8 +600,22 @@ re.on_frame(function()
                 line1 = "[ DEMO STARTING ]"
                 col1 = 0xFFFFFF00 -- Cyan
             else
-                line1 = "[ TRIAL FOR P" .. tostring(trial_state.playing_player + 1) .. " ]"
-                col1 = 0xFF00FFFF -- Jaune
+                local total_steps = #trial_state.sequence
+                if total_steps > 0 then
+                    -- Utilisation de l'étape visuelle retardée
+                    local display_step = trial_state.ui_visual_step or 1
+                    local current = math.min(display_step, total_steps)
+                    line1 = string.format("[ ACTION %d / %d ]", current, total_steps)
+                else
+                    line1 = "[ TRIAL FOR P" .. tostring(trial_state.playing_player + 1) .. " ]"
+                end
+
+                if trial_state.floating_info then
+                    line1 = line1 .. "  |  " .. trial_state.floating_info
+                    col1 = trial_state.floating_color or 0xFF00FFFF
+                else
+                    col1 = 0xFF00FFFF -- Jaune par défaut
+                end
             end
             show_our_hud = true
         end
@@ -1545,8 +1559,27 @@ re.on_draw_ui(function()
             imgui.text(string.format("%d px width  x  %d px height", res_w, res_h))
             imgui.unindent(20)
             imgui.spacing()
+
+            -- BOUTON DE DUMP DE FAIL (Apparaît uniquement si un fail est en mémoire)
+            --[[
+            if ctx.trial_state and ctx.trial_state.last_fail_dump then
+                imgui.separator()
+                imgui.spacing()
+                imgui.text_colored("Dernier Trial Echoue !", COLORS.Red)
+                if styled_button("Dump Fail Data to JSON", UI_THEME.btn_red) then
+                    if ctx.dump_last_fail then
+                        local path = ctx.dump_last_fail()
+                        if path then
+                            print("[ComboTrials] Fail dump saved to: " .. path)
+                        end
+                    end
+                end
+                imgui.spacing()
+            end
+            ]]--
         end
 
+        -- IMPORTANT : Closes the tree_node and the if block
         imgui.tree_pop()
     end
 end)
