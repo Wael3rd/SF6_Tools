@@ -1141,7 +1141,7 @@ local function capture_current_positions()
 end
 
 -- Calcule la direction vers laquelle regarde le joueur actif au début du trial
-local function update_trial_flip_state()
+local function update_trial_flip_state(skip_mirror)
     local r1, r2
 
     if d2d_cfg.forced_position_idx == 1 then
@@ -1176,9 +1176,9 @@ local function update_trial_flip_state()
         end
 
         -- Inversion mathématique automatique si on a choisi MIRRORED
-        if d2d_cfg.forced_position_idx == 3 then
-            r1 = (r1 < 0) and math.abs(r1) or -math.abs(r1)
-            r2 = (r2 < 0) and math.abs(r2) or -math.abs(r2)
+        if d2d_cfg.forced_position_idx == 3 and not skip_mirror then
+            r1 = -r1
+            r2 = -r2
         end
     end
 
@@ -1194,6 +1194,9 @@ end
 
 
 local function apply_forced_position(skip_mirror)
+    -- SYNCHRONIZATION: Always update visual flip state before injecting position
+    update_trial_flip_state(skip_mirror)
+
     local tm = sdk.get_managed_singleton("app.training.TrainingManager")
     if not tm then return end
 
