@@ -345,43 +345,91 @@ load_jump_data(); load_ui_config(); load_advanced_data()
 -- =========================================================
 -- 4. TELEPORT LOGIC (UPDATED: POS_SETx & via.sfix)
 -- =========================================================
-local function apply_teleport_exact(distance)
+local pending_tp = { active = false, distance = 0.0, attempts = 0, expected_c2c = 0.0 }
+
+local function apply_teleport_exact(distance, is_retry)
     local gb = sdk.find_type_definition("gBattle")
     if not gb then return end
     
     local sP = gb:get_field("Player"):get_data(nil)
     if not sP or not sP.mcPlayer then return end
 
-    local function get_col_width(player)
+    local function get_front_edge_offset(player, is_on_left)
         if not player or not player.pos or not player.mpActParam or not player.mpActParam.Collision then return 0.0 end
-        local width = 0.0
         local col = player.mpActParam.Collision
+        local px = player.pos.x.v / 6553600.0
+        local best_offset = 0.0
+        local found = false
+        
         if col.Infos and col.Infos._items then
             for j, r in pairs(col.Infos._items) do
                 if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
-                    local size_x = r.SizeX.v / 6553600.0
-                    if size_x > width then width = size_x end
+                    local box_x = 0.0
+                    if r.OffsetX and r.OffsetX.v then box_x = r.OffsetX.v / 6553600.0 end
+                    local size_x = 0.0
+                    if r.SizeX and r.SizeX.v then size_x = r.SizeX.v / 6553600.0 end
+                    
+                    if is_on_left then
+                        local right_edge = box_x + size_x
+                        local offset = right_edge - px
+                        if not found or offset > best_offset then best_offset = offset; found = true end
+                    else
+                        local left_edge = box_x - size_x
+                        local offset = px - left_edge
+                        if not found or offset > best_offset then best_offset = offset; found = true end
+                    end
                 end
             end
         end
-        return width * 100.0 -- Convert to cm
+        if not found then return 0.0 end
+        return best_offset * 100.0 -- Convert to cm
     end
 
     local p1 = sP.mcPlayer[0]
     local p2 = sP.mcPlayer[1]
+    if not p1 or not p2 then return end
 
-    local p1_offset = tp_p1_border and get_col_width(p1) or 0.0
-    local p2_offset = tp_p2_border and get_col_width(p2) or 0.0
+    local px1_raw = p1.pos.x.v
+    local px2_raw = p2.pos.x.v
+    local p1_is_left = px1_raw < px2_raw
+
+    local p1_offset = tp_p1_border and get_front_edge_offset(p1, p1_is_left) or 0.0
+    local p2_offset = tp_p2_border and get_front_edge_offset(p2, not p1_is_left) or 0.0
 
     local total_center_dist = distance + p1_offset + p2_offset
     
-    -- Surgical precision: compute in raw sfix units to prevent division drift (1 cm = 65536 units)
-    local raw_total = math.floor((total_center_dist * 65536.0) + 0.5)
-    local raw_p2 = math.floor(raw_total / 2.0)
-    local raw_p1 = -(raw_total - raw_p2)
+    -- [CRITICAL FIX] : Integer-based calculation to prevent 0.00001 precision loss
+    local raw_total_dist = math.floor((total_center_dist * 65536.0) + 0.5)
+    local current_mid_raw = math.floor((px1_raw + px2_raw) / 2.0)
+    local half_raw = math.floor(raw_total_dist / 2.0)
 
-    local p1_pos_double = raw_p1 / 65536.0
-    local p2_pos_double = raw_p2 / 65536.0
+    local p1_target_raw, p2_target_raw
+    if p1_is_left then
+        p1_target_raw = current_mid_raw - half_raw
+        p2_target_raw = p1_target_raw + raw_total_dist -- Guarantees mathematically perfect distance
+    else
+        p2_target_raw = current_mid_raw - half_raw
+        p1_target_raw = p2_target_raw + raw_total_dist -- Guarantees mathematically perfect distance
+    end
+
+    -- Stage boundary protection (Approx 730 cm = 47841280 raw units)
+    local max_bound_raw = 47841280
+    local left_edge_raw = math.min(p1_target_raw, p2_target_raw)
+    local right_edge_raw = math.max(p1_target_raw, p2_target_raw)
+    
+    if left_edge_raw < -max_bound_raw then
+        local shift = -max_bound_raw - left_edge_raw
+        p1_target_raw = p1_target_raw + shift
+        p2_target_raw = p2_target_raw + shift
+    elseif right_edge_raw > max_bound_raw then
+        local shift = right_edge_raw - max_bound_raw
+        p1_target_raw = p1_target_raw - shift
+        p2_target_raw = p2_target_raw - shift
+    end
+
+    -- 65536 is a power of 2, so dividing by it creates a flawless IEEE 754 float.
+    local p1_pos_double = p1_target_raw / 65536.0
+    local p2_pos_double = p2_target_raw / 65536.0
 
     local sfix_type = sdk.find_type_definition("via.sfix")
     if sfix_type then
@@ -390,8 +438,15 @@ local function apply_teleport_exact(distance)
         if p2 and p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, p2_pos_double)) end
     end
 
-    status_msg = string.format("APPLIED: %.5f (P1:%s P2:%s)", distance, tp_p1_border and "B" or "C", tp_p2_border and "B" or "C")
-    status_timer = 150
+    if not is_retry then
+        pending_tp.active = true
+        pending_tp.distance = distance
+        pending_tp.expected_c2c = total_center_dist
+        pending_tp.attempts = 0
+        
+        status_msg = string.format("APPLIED: %.5f (P1:%s P2:%s)", distance, tp_p1_border and "B" or "C", tp_p2_border and "B" or "C")
+        status_timer = 150
+    end
 end
 
 -- =========================================================
@@ -434,6 +489,21 @@ re.on_frame(function()
             if p1 then p1_x_dist = get_pos_x_dist(p1) end
             if p2 then p2_x_dist = get_pos_x_dist(p2) end
             origin_dist = abs(p1_x_dist - p2_x_dist)
+
+			-- [TELEPORT RETRY LOGIC] Ensures strict adherence to target distance
+            if pending_tp.active and p1 and p2 then
+                local current_c2c = origin_dist
+                if math.abs(current_c2c - pending_tp.expected_c2c) > 0.5 then -- > 0.5 cm error tolerance
+                    pending_tp.attempts = pending_tp.attempts + 1
+                    if pending_tp.attempts < 15 then -- Max 15 frames retry
+                        apply_teleport_exact(pending_tp.distance, true)
+                    else
+                        pending_tp.active = false
+                    end
+                else
+                    pending_tp.active = false
+                end
+            end
 
             for i=0,1 do
                 local p = sP.mcPlayer[i]

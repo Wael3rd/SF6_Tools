@@ -125,8 +125,8 @@
             { "input": "2LK", "ar": 114.00000, "guard_bit": 6, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "4HK", "ar": 109.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2HP", "ar": 108.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
-            { "input": "2LP", "ar": 105.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "5LP", "ar": 105.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
+            { "input": "2LP", "ar": 105.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "5MP", "ar": 104.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "4MP", "ar": 82.62483, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false }
         ]
@@ -171,8 +171,8 @@
             { "input": "5LK", "ar": 123.94194, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2MP", "ar": 122.54399, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2LK", "ar": 122.00000, "guard_bit": 6, "is_cancelable": false, "is_super_cancelable": false },
-            { "input": "2LP", "ar": 118.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "5MP", "ar": 118.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
+            { "input": "2LP", "ar": 118.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "5LP", "ar": 104.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "4HK", "ar": 96.20999, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false }
         ]
@@ -330,8 +330,8 @@
             { "input": "4HP", "ar": 123.09703, "guard_bit": 7, "is_cancelable": true, "is_super_cancelable": true },
             { "input": "2KK", "ar": 119.40004, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2HP", "ar": 113.20801, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
-            { "input": "5LK", "ar": 113.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2LK", "ar": 113.00000, "guard_bit": 6, "is_cancelable": false, "is_super_cancelable": false },
+            { "input": "5LK", "ar": 113.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2MP", "ar": 108.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2LP", "ar": 98.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "5LP", "ar": 97.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false }
@@ -483,8 +483,8 @@
             { "input": "2LK", "ar": 133.00000, "guard_bit": 6, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2MP", "ar": 129.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "4MK", "ar": 122.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
-            { "input": "2LP", "ar": 109.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "4HP", "ar": 109.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
+            { "input": "2LP", "ar": 109.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "5LP", "ar": 101.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2HP", "ar": 89.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false }
         ]
@@ -560,7 +560,7 @@
     },
     "Ryu": {
         "red": { "input": "6HP", "ar": 187.66136 },
-        "low": { "input": "2MK", "ar": 148.24000 },
+        "low": { "input": "2MK", "ar": 148.24290 },
         "yellow_offset": 50,
         "moves": [
             { "input": "6HK", "ar": 192.43614, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },

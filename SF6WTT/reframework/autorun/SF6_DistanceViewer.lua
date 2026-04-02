@@ -226,6 +226,7 @@ load_settings()
 -- [TELEPORT SYSTEM]
 -- =========================================================
 local pending_tp = { active = false, attacker_id = 0, distance = 0.0, attempts = 0, expected_c2c = 0.0 }
+local shared_combat = { p1_front_offset = 0.0, p2_front_offset = 0.0, p1_edge_x = nil, p1_dist = nil, p2_edge_x = nil, p2_dist = nil }
 
 local function apply_teleport_exact(attacker_id, distance, is_retry)
     local gb = sdk.find_type_definition("gBattle")
@@ -234,81 +235,57 @@ local function apply_teleport_exact(attacker_id, distance, is_retry)
     local sP = gb:get_field("Player"):get_data(nil)
     if not sP or not sP.mcPlayer then return end
 
-    local function get_front_edge_offset(player, is_p1)
-        if not player or not player.pos or not player.mpActParam or not player.mpActParam.Collision then return 0.0 end
-        local col = player.mpActParam.Collision
-        local px = player.pos.x.v / 6553600.0
-        local best_offset = 0.0
-        local found = false
-        
-        if col.Infos and col.Infos._items then
-            for j, r in pairs(col.Infos._items) do
-                if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
-                    local box_x = 0.0
-                    if r.OffsetX and r.OffsetX.v then box_x = r.OffsetX.v / 6553600.0 end
-                    local size_x = 0.0
-                    if r.SizeX and r.SizeX.v then size_x = r.SizeX.v / 6553600.0 end
-                    
-                    if is_p1 then
-                        local right_edge = box_x + size_x
-                        local offset = right_edge - px
-                        if not found or offset > best_offset then best_offset = offset; found = true end
-                    else
-                        local left_edge = box_x - size_x
-                        local offset = px - left_edge
-                        if not found or offset > best_offset then best_offset = offset; found = true end
-                    end
-                end
-            end
-        end
-        if not found then return 0.0 end
-        return best_offset * 100.0 -- Convert to cm
-    end
-
     local p1 = sP.mcPlayer[0]
     local p2 = sP.mcPlayer[1]
     if not p1 or not p2 then return end
 
-    local p1_offset = (attacker_id == 1) and get_front_edge_offset(p1, true) or 0.0
-    local p2_offset = (attacker_id == 0) and get_front_edge_offset(p2, false) or 0.0
+    local px1_raw = p1.pos.x.v
+    local px2_raw = p2.pos.x.v
+    local p1_is_left = px1_raw < px2_raw
+
+    -- LECTURE DIRECTE DU CACHE GLOBAL
+    local p1_offset = (attacker_id == 1) and shared_combat.p1_front_offset or 0.0
+    local p2_offset = (attacker_id == 0) and shared_combat.p2_front_offset or 0.0
 
     local total_center_dist = distance + p1_offset + p2_offset
 
-    -- 1. GET CURRENT POSITIONS TO MAINTAIN RELATIVE MIDPOINT
-    local px1_cm = p1.pos.x.v / 65536.0
-    local px2_cm = p2.pos.x.v / 65536.0
-    local current_mid_cm = (px1_cm + px2_cm) / 2.0
+    local raw_total_dist = math.floor((total_center_dist * 65536.0) + 0.5)
+    local current_mid_raw = math.floor((px1_raw + px2_raw) / 2.0)
+    local half_raw = math.floor(raw_total_dist / 2.0)
 
-    local p1_is_left = px1_cm < px2_cm
-    local half_dist = total_center_dist / 2.0
-
-    local p1_target_cm = p1_is_left and (current_mid_cm - half_dist) or (current_mid_cm + half_dist)
-    local p2_target_cm = p1_is_left and (current_mid_cm + half_dist) or (current_mid_cm - half_dist)
-
-    -- 2. STAGE BOUNDARY PROTECTION (Approx 730 cm from center)
-    -- Shift the midpoint if the required distance pushes someone into the wall
-    local max_bound = 730.0
-    local left_edge = math.min(p1_target_cm, p2_target_cm)
-    local right_edge = math.max(p1_target_cm, p2_target_cm)
-    
-    if left_edge < -max_bound then
-        local shift = -max_bound - left_edge
-        p1_target_cm = p1_target_cm + shift
-        p2_target_cm = p2_target_cm + shift
-    elseif right_edge > max_bound then
-        local shift = right_edge - max_bound
-        p1_target_cm = p1_target_cm - shift
-        p2_target_cm = p2_target_cm - shift
+    local p1_target_raw, p2_target_raw
+    if p1_is_left then
+        p1_target_raw = current_mid_raw - half_raw
+        p2_target_raw = p1_target_raw + raw_total_dist 
+    else
+        p2_target_raw = current_mid_raw - half_raw
+        p1_target_raw = p2_target_raw + raw_total_dist 
     end
+
+    local max_bound_raw = 47841280
+    local left_edge_raw = math.min(p1_target_raw, p2_target_raw)
+    local right_edge_raw = math.max(p1_target_raw, p2_target_raw)
+    
+    if left_edge_raw < -max_bound_raw then
+        local shift = -max_bound_raw - left_edge_raw
+        p1_target_raw = p1_target_raw + shift
+        p2_target_raw = p2_target_raw + shift
+    elseif right_edge_raw > max_bound_raw then
+        local shift = right_edge_raw - max_bound_raw
+        p1_target_raw = p1_target_raw - shift
+        p2_target_raw = p2_target_raw - shift
+    end
+
+    local p1_pos_double = p1_target_raw / 65536.0
+    local p2_pos_double = p2_target_raw / 65536.0
 
     local sfix_type = sdk.find_type_definition("via.sfix")
     if sfix_type then
         local sfix_from_double = sfix_type:get_method("From(System.Double)")
-        if p1 and p1.POS_SETx then p1:POS_SETx(sfix_from_double:call(nil, p1_target_cm)) end
-        if p2 and p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, p2_target_cm)) end
+        if p1 and p1.POS_SETx then p1:POS_SETx(sfix_from_double:call(nil, p1_pos_double)) end
+        if p2 and p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, p2_pos_double)) end
     end
     
-    -- Start auto-retry monitor
     if not is_retry then
         pending_tp.active = true
         pending_tp.attacker_id = attacker_id
@@ -958,24 +935,115 @@ local function world_to_screen_optimized(wx, wy, wz)
     return draw.world_to_screen(temp_world_vec)
 end
 
-local function get_closest_edge(reference_world_x, target_act_param)
-    if not target_act_param or not target_act_param.Collision then return nil, nil end
-    local col = target_act_param.Collision
-    local best_edge_x = nil; local min_dist = 999999.0
-    if col.Infos and col.Infos._items then
-        for j, r in pairs(col.Infos._items) do
-            if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
-                local box_center_x = r.OffsetX.v / 6553600
-                local size_x = (r.SizeX.v / 6553600) 
-                local left = box_center_x - size_x; local right = box_center_x + size_x
-                local d_left = math.abs(reference_world_x - left)
-                if d_left < min_dist then min_dist = d_left; best_edge_x = left end
-                local d_right = math.abs(reference_world_x - right)
-                if d_right < min_dist then min_dist = d_right; best_edge_x = right end
+-- =========================================================
+-- [MASTER COLLISION CACHE] - Single Detection Engine
+-- =========================================================
+
+local function update_combat_distances()
+    if not p1_cache.valid or not p2_cache.valid then return end
+    
+    local function analyze_boxes(player_obj, is_on_left, ref_x)
+        local front_offset = 0.0
+        local closest_edge = nil
+        local min_dist = 999999.0
+        
+        if not player_obj or not player_obj.mpActParam or not player_obj.mpActParam.Collision then return 0.0, nil, nil end
+        local col = player_obj.mpActParam.Collision
+        local px = player_obj.pos.x.v / 6553600.0
+        
+        if col.Infos and col.Infos._items then
+            for _, r in pairs(col.Infos._items) do
+                if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
+                    local box_x = (r.OffsetX and r.OffsetX.v) and (r.OffsetX.v / 6553600.0) or 0.0
+                    local size_x = (r.SizeX and r.SizeX.v) and (r.SizeX.v / 6553600.0) or 0.0
+                    
+                    local right_edge = box_x + size_x
+                    local left_edge = box_x - size_x
+                    
+                    -- Front offset for Teleport calculation
+                    local off = is_on_left and (right_edge - px) or (px - left_edge)
+                    if off > front_offset then front_offset = off end
+                    
+                    -- Distance to opponent center for UI drawing
+                    local d_left = math.abs(ref_x - left_edge)
+                    local d_right = math.abs(ref_x - right_edge)
+                    if d_left < min_dist then min_dist = d_left; closest_edge = left_edge end
+                    if d_right < min_dist then min_dist = d_right; closest_edge = right_edge end
+                end
             end
         end
+        return front_offset * 100.0, closest_edge, min_dist
     end
-    return best_edge_x, min_dist
+
+    local p1_is_left = p1_cache.world_x < p2_cache.world_x
+    
+    -- Analyze once for P1, once for P2
+    local p1_off, edge_for_p2, dist_for_p2 = analyze_boxes(p1_cache.obj, p1_is_left, p2_cache.world_x)
+    shared_combat.p1_front_offset = p1_off
+    shared_combat.p2_edge_x = edge_for_p2
+    shared_combat.p2_dist = dist_for_p2
+    
+    local p2_off, edge_for_p1, dist_for_p1 = analyze_boxes(p2_cache.obj, not p1_is_left, p1_cache.world_x)
+    shared_combat.p2_front_offset = p2_off
+    shared_combat.p1_edge_x = edge_for_p1
+    shared_combat.p1_dist = dist_for_p1
+end
+
+local function get_closest_edge(reference_world_x, target_act_param)
+    -- L'UI demande la distance, on redirige instantanément vers le cache sans refaire de boucle
+    if math.abs(reference_world_x - p1_cache.world_x) < 0.001 then
+        return shared_combat.p1_edge_x, shared_combat.p1_dist
+    else
+        return shared_combat.p2_edge_x, shared_combat.p2_dist
+    end
+end
+
+local function evaluate_player_zone(pi, cache_data, opponent_data)
+    local _, dist_target = get_closest_edge(cache_data.world_x, opponent_data.act_param)
+    if not dist_target then return { name = "Out Range", color = colors.Grey } end
+
+    local is_adv = (pi == 0) and config.p1_advanced_mode or config.p2_advanced_mode
+    local char_name = cache_data.adv_name or get_real_name(cache_data.real_name)
+    
+    -- La Source de Vérité absorbe l'erreur de 1 millimètre du moteur 3D ici.
+    local epsilon = 0.001 
+    
+    if is_adv then
+        local cdata = advanced_data[char_name]
+        if cdata and cdata.moves then
+            local prefs = get_char_prefs(pi, char_name)
+            local ar_min, ar_max = get_ar_range(pi, char_name)
+            local sorted = {}
+            for _, m in ipairs(cdata.moves) do
+                if is_move_visible(pi, char_name, m.input) then table.insert(sorted, m) end
+            end
+            table.sort(sorted, function(a, b) return a.ar < b.ar end)
+            
+            for _, mv in ipairs(sorted) do
+                if dist_target <= (mv.ar / 100.0) + epsilon then
+                    local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
+                    local zone_name = "{" .. mv.input .. "}"
+                    local prefix = (pi == 0) and "P1" or "P2"
+                    if prefs.red and prefs.red.input == mv.input then zone_name = prefix .. " Red Zone\n" .. zone_name
+                    elseif prefs.low and prefs.low.input == mv.input then zone_name = prefix .. " Low Range\n" .. zone_name end
+                    return { name = zone_name, color = col }
+                end
+            end
+        end
+    else
+        local limits = get_player_limits(pi, cache_data)
+        if limits then
+            local sorted = get_sorted_thresholds(limits, true, true, (pi == 0) and "P1" or "P2")
+            for _, zone in ipairs(sorted) do
+				if dist_target <= zone.dist + 0.0000001 then
+					text_str = zone.name
+					text_col = zone.color
+					break
+				end
+			end
+        end
+    end
+    return { name = ((pi == 0) and "P1" or "P2") .. " Green Zone", color = colors.Green }
 end
 
 local function draw_text_safe(text, x, y, color, size) 
@@ -1096,7 +1164,7 @@ local function get_advanced_zone_label(pi, char_name, dist_cc, prefix, show_titl
     local space = (prefix and prefix ~= "") and (prefix .. " ") or ""
     
     for _, mv in ipairs(sorted) do
-        if dist_cc <= (mv.ar / 100.0) + 0.0001 then
+        if dist_cc <= (mv.ar / 100.0) + 0.0000001 then
             local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
             
             local zone_name = ""
@@ -1104,14 +1172,14 @@ local function get_advanced_zone_label(pi, char_name, dist_cc, prefix, show_titl
             elseif prefs.low and prefs.low.input == mv.input then zone_name = "Low Range" end
             
             if show_title and show_name then
-        return space .. zone_name .. "\n{" .. mv.input .. "}", col
-    elseif show_title and not show_name then
-        return space .. zone_name, col
-    elseif not show_title and show_name then
-        return space .. "{" .. mv.input .. "}", col
-    else
-        return "", col
-    end
+                return space .. zone_name .. "\n{" .. mv.input .. "}", col
+            elseif show_title and not show_name then
+                return space .. zone_name, col
+            elseif not show_title and show_name then
+                return space .. "{" .. mv.input .. "}", col
+            else
+                return "", col
+            end
         end
     end
     
@@ -1152,7 +1220,7 @@ local function get_opp_zone_info(cache_data, opponent_data)
     local text_col = colors.Green
     
     for _, zone in ipairs(sorted) do
-        if dist_target <= zone.dist then
+        if dist_target <= zone.dist + 0.0000001 then
             text_str = zone.name
             text_col = zone.color
             break
@@ -1249,7 +1317,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
                     end
                 end
                 
-                if dist_target <= mv_dist + 0.0001 then
+                if dist_target <= mv_dist + 0.0000001 then
                     cur_col = col
                     out_of_range = false
                     break
@@ -1301,6 +1369,10 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
                 local x_end = get_x(d_end)
                 if x_start and x_end then draw_thick_line(x_start, y, x_end, y, scaled_thickness, zone.color) end
             end
+            if dist_target <= zone.dist + 0.0000001 then 
+                prev_dist = dist_target -- Empêche la ligne verte de s'écrire par dessus
+                break 
+            end
             prev_dist = zone.dist
         end
         
@@ -1317,7 +1389,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
         if x_final and x_origin then
             local cur_col = colors.Green
             for _, zone in ipairs(sorted) do
-                if dist_target <= zone.dist then cur_col = zone.color; break end
+                if dist_target <= zone.dist + 0.0000001 then cur_col = zone.color; break end
             end
             
             if settings.vertical_mode == 1 then
@@ -1417,7 +1489,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
                 if dist_target then
                     local c = colors.White
                     for _, mv in ipairs(sorted) do
-                        if dist_target <= (mv.ar / 100.0) + 0.0001 then 
+                        if dist_target <= (mv.ar / 100.0) + 0.0000001 then 
                             c = ar_to_color_abgr(mv.ar, ar_min, ar_max)
                             break 
                         end
@@ -1470,7 +1542,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
         if dist_target then
             local c = colors.Green
             for _, zone in ipairs(sorted) do
-                if dist_target <= zone.dist then c = zone.color; break end
+                if dist_target <= zone.dist + 0.0000001 then c = zone.color; break end
             end
             local x = get_screen_x(dist_target)
             if x then draw_thick_line(x, y_min, x, y_max, scaled_thickness, c) end
@@ -2203,6 +2275,13 @@ re.on_frame(function()
     if should_update then
         update_player_cache(0, p1_cache)
         update_player_cache(1, p2_cache)
+        update_combat_distances() -- <<< NOTRE DÉTECTION UNIQUE
+		
+		-- [SSOT] Détection unique des zones stockée dans le cache
+        if p1_cache.valid and p2_cache.valid then
+            p1_cache.active_zone = evaluate_player_zone(0, p1_cache, p2_cache)
+            p2_cache.active_zone = evaluate_player_zone(1, p2_cache, p1_cache)
+        end
         
         -- [TELEPORT RETRY LOGIC] Ensures strict adherence to target distance
         if pending_tp.active and p1_cache.valid and p2_cache.valid then
@@ -2623,7 +2702,7 @@ re.on_frame(function()
             imgui.same_line()
             if imgui.button("Reload Data") then load_advanced_data() end
             imgui.same_line()
-            local chg_em, new_em = imgui.checkbox("EXPERT MODE", config.expert_mode_enabled)
+            local chg_em, new_em = imgui.checkbox("EXPERT MODE ", config.expert_mode_enabled)
             if chg_em then config.expert_mode_enabled = new_em; save_settings() end
             
             if chg_ov then
@@ -2659,7 +2738,7 @@ re.on_draw_ui(function()
         imgui.same_line()
         if imgui.button("Reload Data") then load_advanced_data() end
         imgui.same_line()
-        local chg_em, new_em = imgui.checkbox("EXPERT MODE", config.expert_mode_enabled)
+        local chg_em, new_em = imgui.checkbox("EXPERT MODE ", config.expert_mode_enabled)
         if chg_em then config.expert_mode_enabled = new_em; save_settings() end
 
         if not config.show_debug_window then
