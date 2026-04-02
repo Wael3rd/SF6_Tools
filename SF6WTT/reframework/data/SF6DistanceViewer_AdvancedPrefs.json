@@ -60,23 +60,23 @@
                 "input": "5HP"
             },
             "visibility": {
-                "2HK": false,
-                "2HP": false,
-                "2LK": false,
-                "2LP": false,
-                "2MK": false,
-                "2MP": false,
-                "4HK": false,
-                "4HP": false,
-                "5HK": false,
+                "2HK": true,
+                "2HP": true,
+                "2LK": true,
+                "2LP": true,
+                "2MK": true,
+                "2MP": true,
+                "4HK": true,
+                "4HP": true,
+                "5HK": true,
                 "5HP": true,
-                "5LK": false,
-                "5LP": false,
-                "5MK": false,
-                "5MP": false,
-                "6HK": false,
+                "5LK": true,
+                "5LP": true,
+                "5MK": true,
+                "5MP": true,
+                "6HK": true,
                 "6HP": true,
-                "6MP": false
+                "6MP": true
             },
             "yellow_offset": 100
         },
@@ -102,7 +102,6 @@
                 "ar": 193.8503,
                 "input": "6HK"
             },
-            "visibility": null,
             "yellow_offset": 50
         },
         "Ryu": {

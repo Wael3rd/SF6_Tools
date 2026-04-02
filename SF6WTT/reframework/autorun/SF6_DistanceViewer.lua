@@ -98,7 +98,13 @@ local config = {
     p1_opp_zone_root_off_x = 150.0, p1_opp_zone_root_off_y = 200.0,
     p1_opp_zone_fixed_x = 0.0, p1_opp_zone_fixed_y = 0.0,
     p1_opp_zone_cursor_off_x = 15.0,
-    p1_opp_zone_cursor_h_1 = 0.425, p1_opp_zone_cursor_h_2 = 0.85, p1_opp_zone_cursor_h_3 = 0.16, p1_opp_zone_cursor_h_4 = 0.425,
+    -- =======================================================
+    -- [TWEAKS MANUELS P1] (Valeurs de 0.0 à 1.0 = Hauteur écran)
+    -- h_1 = Mode Distance Only (1)
+    -- Le texte se dessine "vers le haut" depuis cette coordonnée.
+    -- =======================================================
+    p1_opp_zone_cursor_h_1 = 0.48, p1_opp_zone_cursor_h_2 = 0.85, p1_opp_zone_cursor_h_3 = 0.16, p1_opp_zone_cursor_h_4 = 0.45,
+    p1_opp_zone_cursor_input_h_1 = 0.80, p1_opp_zone_cursor_input_h_2 = 0.90, p1_opp_zone_cursor_input_h_3 = 0.20, p1_opp_zone_cursor_input_h_4 = 0.49,
     
     -- P1 TEXT: MY ZONE
     p1_my_zone_show = false,
@@ -138,7 +144,11 @@ local config = {
     p2_opp_zone_root_off_x = 160.0, p2_opp_zone_root_off_y = 600.0,
     p2_opp_zone_fixed_x = 0.42, p2_opp_zone_fixed_y = 0.145,
     p2_opp_zone_cursor_off_x = 15.0,
-    p2_opp_zone_cursor_h_1 = 0.58, p2_opp_zone_cursor_h_2 = 0.85, p2_opp_zone_cursor_h_3 = 0.16, p2_opp_zone_cursor_h_4 = 0.58,
+	-- =======================================================
+    -- [TWEAKS MANUELS P2] (Valeurs de 0.0 à 1.0 = Hauteur écran)
+    -- =======================================================
+    p2_opp_zone_cursor_h_1 = 0.51, p2_opp_zone_cursor_h_2 = 0.85, p2_opp_zone_cursor_h_3 = 0.16, p2_opp_zone_cursor_h_4 = 0.51,
+    p2_opp_zone_cursor_input_h_1 = 0.55, p2_opp_zone_cursor_input_h_2 = 0.90, p2_opp_zone_cursor_input_h_3 = 0.20, p2_opp_zone_cursor_input_h_4 = 0.55,
     
     -- P2 TEXT: MY ZONE
     p2_my_zone_show = false,
@@ -215,52 +225,96 @@ load_settings()
 -- =========================================================
 -- [TELEPORT SYSTEM]
 -- =========================================================
-local function apply_teleport_exact(attacker_id, distance)
+local pending_tp = { active = false, attacker_id = 0, distance = 0.0, attempts = 0, expected_c2c = 0.0 }
+
+local function apply_teleport_exact(attacker_id, distance, is_retry)
     local gb = sdk.find_type_definition("gBattle")
     if not gb then return end
 
     local sP = gb:get_field("Player"):get_data(nil)
     if not sP or not sP.mcPlayer then return end
 
-    local function get_col_width(player)
+    local function get_front_edge_offset(player, is_p1)
         if not player or not player.pos or not player.mpActParam or not player.mpActParam.Collision then return 0.0 end
-        local width = 0.0
         local col = player.mpActParam.Collision
+        local px = player.pos.x.v / 6553600.0
+        local best_offset = 0.0
+        local found = false
+        
         if col.Infos and col.Infos._items then
             for j, r in pairs(col.Infos._items) do
                 if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
-                    local size_x = r.SizeX.v / 6553600.0
-                    if size_x > width then width = size_x end
+                    local box_x = 0.0
+                    if r.OffsetX and r.OffsetX.v then box_x = r.OffsetX.v / 6553600.0 end
+                    local size_x = 0.0
+                    if r.SizeX and r.SizeX.v then size_x = r.SizeX.v / 6553600.0 end
+                    
+                    if is_p1 then
+                        local right_edge = box_x + size_x
+                        local offset = right_edge - px
+                        if not found or offset > best_offset then best_offset = offset; found = true end
+                    else
+                        local left_edge = box_x - size_x
+                        local offset = px - left_edge
+                        if not found or offset > best_offset then best_offset = offset; found = true end
+                    end
                 end
             end
         end
-        return width * 100.0 -- Convert to cm
+        if not found then return 0.0 end
+        return best_offset * 100.0 -- Convert to cm
     end
 
     local p1 = sP.mcPlayer[0]
     local p2 = sP.mcPlayer[1]
     if not p1 or not p2 then return end
 
-    -- Border logic based on who is attacking
-    local p1_offset = (attacker_id == 1) and get_col_width(p1) or 0.0
-    local p2_offset = (attacker_id == 0) and get_col_width(p2) or 0.0
+    local p1_offset = (attacker_id == 1) and get_front_edge_offset(p1, true) or 0.0
+    local p2_offset = (attacker_id == 0) and get_front_edge_offset(p2, false) or 0.0
 
-    -- Symmetrical placement perfectly avoids sfix floating point drift
     local total_center_dist = distance + p1_offset + p2_offset
-    
-    -- Surgical precision: compute in raw sfix units to prevent division drift (1 cm = 65536 units)
-    local raw_total = math.floor((total_center_dist * 65536.0) + 0.5)
-    local raw_p2 = math.floor(raw_total / 2.0)
-    local raw_p1 = -(raw_total - raw_p2)
 
-    local p1_pos_double = raw_p1 / 65536.0
-    local p2_pos_double = raw_p2 / 65536.0
+    -- 1. GET CURRENT POSITIONS TO MAINTAIN RELATIVE MIDPOINT
+    local px1_cm = p1.pos.x.v / 65536.0
+    local px2_cm = p2.pos.x.v / 65536.0
+    local current_mid_cm = (px1_cm + px2_cm) / 2.0
+
+    local p1_is_left = px1_cm < px2_cm
+    local half_dist = total_center_dist / 2.0
+
+    local p1_target_cm = p1_is_left and (current_mid_cm - half_dist) or (current_mid_cm + half_dist)
+    local p2_target_cm = p1_is_left and (current_mid_cm + half_dist) or (current_mid_cm - half_dist)
+
+    -- 2. STAGE BOUNDARY PROTECTION (Approx 730 cm from center)
+    -- Shift the midpoint if the required distance pushes someone into the wall
+    local max_bound = 730.0
+    local left_edge = math.min(p1_target_cm, p2_target_cm)
+    local right_edge = math.max(p1_target_cm, p2_target_cm)
+    
+    if left_edge < -max_bound then
+        local shift = -max_bound - left_edge
+        p1_target_cm = p1_target_cm + shift
+        p2_target_cm = p2_target_cm + shift
+    elseif right_edge > max_bound then
+        local shift = right_edge - max_bound
+        p1_target_cm = p1_target_cm - shift
+        p2_target_cm = p2_target_cm - shift
+    end
 
     local sfix_type = sdk.find_type_definition("via.sfix")
     if sfix_type then
         local sfix_from_double = sfix_type:get_method("From(System.Double)")
-        if p1 and p1.POS_SETx then p1:POS_SETx(sfix_from_double:call(nil, p1_pos_double)) end
-        if p2 and p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, p2_pos_double)) end
+        if p1 and p1.POS_SETx then p1:POS_SETx(sfix_from_double:call(nil, p1_target_cm)) end
+        if p2 and p2.POS_SETx then p2:POS_SETx(sfix_from_double:call(nil, p2_target_cm)) end
+    end
+    
+    -- Start auto-retry monitor
+    if not is_retry then
+        pending_tp.active = true
+        pending_tp.attacker_id = attacker_id
+        pending_tp.distance = distance
+        pending_tp.expected_c2c = total_center_dist
+        pending_tp.attempts = 0
     end
 end
 
@@ -1076,9 +1130,7 @@ local function get_opp_zone_info(cache_data, opponent_data)
     if cache_data.id == 0 then prefix = "P1"
     elseif cache_data.id == 1 then prefix = "P2" end
 
-    local show_t, show_n = true, true
-    if cache_data.id == 0 then show_t = config.p1_opp_zone_show_title; show_n = config.p1_opp_zone_show_name
-    elseif cache_data.id == 1 then show_t = config.p2_opp_zone_show_title; show_n = config.p2_opp_zone_show_name end
+    local show_t, show_n = true, true -- Forcé à TRUE pour toujours avoir Titre + Coup
 
     local is_adv = false
     if cache_data.id == 0 then is_adv = config.p1_advanced_mode else is_adv = config.p2_advanced_mode end
@@ -1634,9 +1686,40 @@ local function draw_config_ui()
             end
         end
         imgui.spacing()
-    end
+    end -- Fin du bloc "HELP & INFO"
 
-    if config.expert_mode_enabled then
+        -- ==========================================
+        -- [NOUVEAU] MENU DE TELEPORTATION RAPIDE (Mode Non-Expert)
+        -- ==========================================
+        if not config.expert_mode_enabled then
+            if styled_header("--- QUICK TELEPORT ---", UI_THEME.hdr_rules) then
+                local function draw_quick_tp(pi, cache)
+                    local rname = cache.valid and cache.adv_name or get_real_name(detected_infos[pi] and detected_infos[pi].name or "?")
+                    local limits = get_player_limits(pi, cache)
+                    
+                    local p_color = (pi == 0) and UI_THEME.hdr_session_1.hover or UI_THEME.hdr_session_2.hover
+                    imgui.text_colored(string.format("PLAYER %d (%s) :", pi + 1, rname), p_color)
+                    
+                    if limits and limits.red and limits.low and limits.yellow then
+                        local d_low = limits.low * 100.0
+                        local d_red = limits.red * 100.0
+                        local d_yel = limits.yellow * 100.0
+
+                        if imgui.button(string.format(" LOW ##qtp_%d", pi)) then apply_teleport_exact(pi, d_low) end
+                        imgui.same_line()
+                        if imgui.button(string.format(" RED ##qtp_%d", pi)) then apply_teleport_exact(pi, d_red) end
+                        imgui.same_line()
+                        if imgui.button(string.format(" YELLOW ##qtp_%d", pi)) then apply_teleport_exact(pi, d_yel) end
+                    end
+                    imgui.spacing()
+                end
+
+                draw_quick_tp(0, p1_cache)
+                draw_quick_tp(1, p2_cache)
+            end
+        end
+
+        if config.expert_mode_enabled then
         -- ==========================================
         -- 1. GLOBAL SETTINGS (Font, Thickness, Attack Lock)
         -- ==========================================
@@ -2121,6 +2204,21 @@ re.on_frame(function()
         update_player_cache(0, p1_cache)
         update_player_cache(1, p2_cache)
         
+        -- [TELEPORT RETRY LOGIC] Ensures strict adherence to target distance
+        if pending_tp.active and p1_cache.valid and p2_cache.valid then
+            local current_c2c = math.abs(p1_cache.world_x - p2_cache.world_x) * 100.0
+            if math.abs(current_c2c - pending_tp.expected_c2c) > 0.5 then -- > 0.5 cm error tolerance
+                pending_tp.attempts = pending_tp.attempts + 1
+                if pending_tp.attempts < 15 then -- Max 15 frames retry (0.25s)
+                    apply_teleport_exact(pending_tp.attacker_id, pending_tp.distance, true)
+                else
+                    pending_tp.active = false -- Abort to prevent hard soft-lock
+                end
+            else
+                pending_tp.active = false -- Perfect distance reached
+            end
+        end
+        
         if config.use_attack_lock then
             process_attack_lock(0, p1_cache)
             process_attack_lock(1, p2_cache)
@@ -2260,7 +2358,7 @@ re.on_frame(function()
             local base_size = custom_font.loaded_size
             if base_size > 0 then
                 
-                local function draw_text_element(cache, opponent, enabled, color_text, pos_mode, txt_func, head_off_x, head_off_y, root_off_x, root_off_y, fix_x, fix_y, cursor_off_x, cursor_off_y, v_mode_self, v_mode_opp, is_opp_zone)
+                local function draw_text_element(cache, opponent, enabled, color_text, pos_mode, txt_func, head_off_x, head_off_y, root_off_x, root_off_y, fix_x, fix_y, cursor_off_x, cursor_off_y, cursor_input_off_y, v_mode_self, v_mode_opp, is_opp_zone)
                     if enabled then
                         local txt, col = txt_func(cache, opponent)
                         if txt == "" then return end
@@ -2303,7 +2401,23 @@ re.on_frame(function()
                             local y_min, y_max = 0, screen_h
                             if active_v_mode == 2 then y_max = screen_h / 2 elseif active_v_mode == 3 then y_min = screen_h / 2 end
                             
-                            local target_y = y_min + ((y_max - y_min) * (cursor_off_y or 0.5))
+                            -- ==========================================
+                            -- [HARDCODED TWEAKS] 
+                            -- Bypasses JSON entirely. (0.0 to 1.0 = Screen Height)
+                            -- P1 Line is at 0.45 | P2 Line is at 0.55
+                            -- ==========================================
+                            local title_offset = 0.5
+                            local input_offset = 0.5
+                            if cursor_owner.id == 0 then
+                                title_offset = 0.445  -- <<< P1 TITLE (e.g. "RED ZONE")
+                                input_offset = 0.495  -- <<< P1 INPUT ICONS
+                            else
+                                title_offset = 0.545  -- <<< P2 TITLE (e.g. "RED ZONE")
+                                input_offset = 0.595  -- <<< P2 INPUT ICONS
+                            end
+                            -- ==========================================
+                            
+                            local target_y = y_min + ((y_max - y_min) * title_offset)
                             
                             local _, dist_target = get_closest_edge(cursor_owner.world_x, cursor_target.act_param)
                             if dist_target then
@@ -2311,17 +2425,28 @@ re.on_frame(function()
                                 local origin_x = cursor_owner.world_x + ((config.marker_origin_shift or 0.0) * dir)
                                 local s = world_to_screen_optimized(origin_x + (dist_target * dir), 1.0, 0)
                                 if s then
-                                    local lines = {}
-                                    for s_str in string.gmatch(txt, "[^\r\n]+") do table.insert(lines, s_str) end
-                                    local total_height = 0
-                                    for _, line in ipairs(lines) do total_height = total_height + imgui.calc_text_size(line).y end
-                                    
-                                    local target_pos = { x = s.x, y = target_y + (total_height / 2) }
-                                    
                                     local directed_off_x = cursor_off_x or 0.0
                                     directed_off_x = cache.facing_right and -directed_off_x or directed_off_x
                                     
-                                    draw_text_above_head_independent(txt, target_pos, col, directed_off_x, 0.0, scale_factor, align, cursor_target.facing_right)
+                                    if string.find(txt, "\n") then
+                                        local title_part, input_part = string.match(txt, "^(.-)\n(.*)$")
+                                        if title_part and input_part then
+                                            -- 1. TITLE
+                                            local pos1 = { x = s.x, y = target_y }
+                                            draw_text_above_head_independent(title_part, pos1, col, directed_off_x, 0.0, scale_factor, align, cursor_target.facing_right)
+                                            
+                                            -- 2. INPUT ICONS
+                                            local target_y_input = y_min + ((y_max - y_min) * input_offset)
+                                            local pos2 = { x = s.x, y = target_y_input }
+                                            draw_text_above_head_independent(input_part, pos2, col, directed_off_x, 0.0, scale_factor, align, cursor_target.facing_right)
+                                        else
+                                            local pos_single = { x = s.x, y = target_y }
+                                            draw_text_above_head_independent(txt, pos_single, col, directed_off_x, 0.0, scale_factor, align, cursor_target.facing_right)
+                                        end
+                                    else
+                                        local pos_single = { x = s.x, y = target_y }
+                                        draw_text_above_head_independent(txt, pos_single, col, directed_off_x, 0.0, scale_factor, align, cursor_target.facing_right)
+                                    end
                                 end
                             end
                         else
@@ -2408,9 +2533,10 @@ re.on_frame(function()
                             if target_pos then draw_text_above_head_independent(p1_transient_text, target_pos, colors.White, 0.0, trans_y, scale_factor, "center", p1_display.facing_right) end
                         end
                         
-                        local p1_opp_h = config["p1_opp_zone_cursor_h_" .. draw_v_p1] or 0.5
-                        draw_text_element(p1_display, p2_display, config.p1_opp_zone_show, config.p1_opp_zone_color_text, active_pos_p1, get_opp_zone_info, p1_head_x, p1_head_y, p1_root_x, p1_root_y, config.p1_opp_zone_fixed_x, config.p1_opp_zone_fixed_y, config.p1_opp_zone_cursor_off_x, p1_opp_h, draw_v_p1, draw_v_p2, false)
-                    end
+						local p1_opp_h = config["p1_opp_zone_cursor_h_" .. draw_v_p1] or 0.5
+                        local p1_opp_input_h = config["p1_opp_zone_cursor_input_h_" .. draw_v_p1] or 0.475
+                        draw_text_element(p1_display, p2_display, config.p1_opp_zone_show, config.p1_opp_zone_color_text, active_pos_p1, get_opp_zone_info, p1_head_x, p1_head_y, p1_root_x, p1_root_y, config.p1_opp_zone_fixed_x, config.p1_opp_zone_fixed_y, config.p1_opp_zone_cursor_off_x, p1_opp_h, p1_opp_input_h, draw_v_p1, draw_v_p2, false)
+						end
 
                     -- ====== P2 TEXTS ======
                     if config.p2_show_all then
@@ -2449,8 +2575,9 @@ re.on_frame(function()
                             if target_pos then draw_text_above_head_independent(p2_transient_text, target_pos, colors.White, 0.0, trans_y, scale_factor, "center", p2_display.facing_right) end
                         end
                         
-                        local p2_opp_h = config["p2_opp_zone_cursor_h_" .. draw_v_p2] or 0.5
-                        draw_text_element(p2_display, p1_display, config.p2_opp_zone_show, config.p2_opp_zone_color_text, active_pos_p2, get_opp_zone_info, p2_head_x, p2_head_y, p2_root_x, p2_root_y, config.p2_opp_zone_fixed_x, config.p2_opp_zone_fixed_y, config.p2_opp_zone_cursor_off_x, p2_opp_h, draw_v_p2, draw_v_p1, false)
+						local p2_opp_h = config["p2_opp_zone_cursor_h_" .. draw_v_p2] or 0.5
+                        local p2_opp_input_h = config["p2_opp_zone_cursor_input_h_" .. draw_v_p2] or 0.52
+                        draw_text_element(p2_display, p1_display, config.p2_opp_zone_show, config.p2_opp_zone_color_text, active_pos_p2, get_opp_zone_info, p2_head_x, p2_head_y, p2_root_x, p2_root_y, config.p2_opp_zone_fixed_x, config.p2_opp_zone_fixed_y, config.p2_opp_zone_cursor_off_x, p2_opp_h, p2_opp_input_h, draw_v_p2, draw_v_p1, false)						
                     end
                 end
                 
