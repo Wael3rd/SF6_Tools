@@ -1,7 +1,6 @@
 {
     "0": {
         "Alex": {
-            "visibility": null,
             "yellow_offset": 50
         },
         "Alex_Prowler": {
@@ -9,7 +8,6 @@
                 "ar": 314.25732,
                 "input": "6HP"
             },
-            "visibility": null,
             "yellow_offset": 100
         },
         "Cammy": {
@@ -28,53 +26,70 @@
                 "input": "5HP (HOLD)"
             },
             "visibility": {
-                "2HK": true,
-                "2HK (HOLD)": true,
-                "2HP": true,
-                "2HP (HOLD)": true,
-                "2LK": true,
-                "2LP": true,
-                "2MK": true,
-                "2MP": true,
-                "4HP": true,
-                "4HP (HOLD)": true,
-                "5HK": true,
-                "5HK (HOLD)": true,
-                "5HP": true,
+                "2HK": false,
+                "2HK (HOLD)": false,
+                "2HP": false,
+                "2HP (HOLD)": false,
+                "2LK": false,
+                "2LP": false,
+                "2MK": false,
+                "2MP": false,
+                "4HP": false,
+                "4HP (HOLD)": false,
+                "5HK": false,
+                "5HK (HOLD)": false,
+                "5HP": false,
                 "5HP (HOLD)": true,
-                "5LK": true,
-                "5LP": true,
-                "5MK": true,
-                "5MP": true
+                "5LK": false,
+                "5LP": false,
+                "5MK": false,
+                "5MP": false,
+                "6HK": false,
+                "6HK (HOLD)": false,
+                "6MP": false
             },
             "yellow_offset": 50
         },
         "Ryu": {
             "low": {
-                "ar": 179.31,
-                "input": "2HK"
+                "ar": 148.2429,
+                "input": "2MK"
             },
             "red": {
-                "ar": 154.51,
+                "ar": 154.506,
                 "input": "5HP"
             },
             "visibility": {
-                "2HK": true,
-                "2HP": true,
-                "2LP": true,
-                "2MK": true,
-                "2MP": true,
-                "5HK": true,
+                "2HK": false,
+                "2HP": false,
+                "2LK": false,
+                "2LP": false,
+                "2MK": false,
+                "2MP": false,
+                "4HK": false,
+                "4HP": false,
+                "5HK": false,
                 "5HP": true,
-                "5LK": true,
-                "5LP": true,
-                "5MK": true,
-                "5MP": true,
-                "6HK": true,
+                "5LK": false,
+                "5LP": false,
+                "5MK": false,
+                "5MP": false,
+                "6HK": false,
                 "6HP": true,
-                "6MP": true
+                "6MP": false
             },
-            "yellow_offset": 75
+            "yellow_offset": 100
+        },
+        "Sagat": {
+            "low": {
+                "ar": 147.96745,
+                "input": "2MP"
+            },
+            "red": {
+                "ar": 217.16302,
+                "input": "5HP"
+            },
+            "yellow_offset": 50
         }
     },
     "1": {
@@ -84,9 +99,10 @@
                 "input": "2MK"
             },
             "red": {
-                "ar": 223.45,
-                "input": "6MK"
+                "ar": 193.8503,
+                "input": "6HK"
             },
+            "visibility": null,
             "yellow_offset": 50
         },
         "Ryu": {

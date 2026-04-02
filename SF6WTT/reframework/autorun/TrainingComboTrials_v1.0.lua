@@ -2774,6 +2774,26 @@ end
                             if #trial_state.sequence > 0 then
                                 local prev_step = trial_state.sequence[#trial_state.sequence]
                                 prev_step.expected_combo = current_combo
+                                
+                                -- WHIFF DETECTION : Tagge dynamiquement le coup précédent s'il n'a pas touché
+                                if not prev_step.has_hit then
+                                    local p_id = prev_step.id or 0
+                                    local is_mov = (p_id == 17 or p_id == 18 or p_id == 36 or p_id == 37 or p_id == 38 or p_id == 739 or p_id == 740)
+                                    local m_str = prev_step.motion and prev_step.motion:upper() or ""
+                                    local is_parry = m_str:match("PARRY")
+                                    local is_dash = m_str:match("DASH") or m_str:match("66") or m_str:match("44") or m_str:match("DRIVE RUSH") or m_str:match("DRC")
+                                    
+                                    if not is_mov and not is_parry and not is_dash and not m_str:match("WHIFF") then
+                                        prev_step.motion = prev_step.motion .. " (WHIFF)"
+                                        -- Met à jour le Live Log pour l'affichage en temps réel
+                                        if p_state.log and #p_state.log > 0 then
+                                            local log_to_update = p_state.log[1]
+                                            if log_to_update and log_to_update.id == prev_step.id then
+                                                log_to_update.motion = log_to_update.motion .. " (WHIFF)"
+                                            end
+                                        end
+                                    end
+                                end
 							end
 
                             local last_rec = trial_state.last_recorded_frame or engine_frame_count
@@ -3111,13 +3131,26 @@ function save_trial_sequence()
     if #trial_state.sequence > 0 and #p_state.log > 0 then
         local last_step = trial_state.sequence[#trial_state.sequence]
         for _, log_entry in ipairs(p_state.log) do
-            if log_entry.trial_step_idx == #trial_state.sequence then
-                last_step.expected_combo = log_entry.combo_count or 0
-                break
-            end
-        end
+                    if log_entry.trial_step_idx == #trial_state.sequence then
+                        last_step.expected_combo = log_entry.combo_count or 0
+                        break
+                    end
+                end
 
-        if trial_state.start_pos_p1 and trial_state.start_pos_p2 then
+                -- FINAL WHIFF DETECTION : Applique le tag sur le tout dernier coup enregistré
+                if not last_step.has_hit then
+                    local p_id = last_step.id or 0
+                    local is_mov = (p_id == 17 or p_id == 18 or p_id == 36 or p_id == 37 or p_id == 38 or p_id == 739 or p_id == 740)
+                    local m_str = last_step.motion and last_step.motion:upper() or ""
+                    local is_parry = m_str:match("PARRY")
+                    local is_dash = m_str:match("DASH") or m_str:match("66") or m_str:match("44") or m_str:match("DRIVE RUSH") or m_str:match("DRC")
+                    
+                    if not is_mov and not is_parry and not is_dash and not m_str:match("WHIFF") then
+                        last_step.motion = last_step.motion .. " (WHIFF)"
+                    end
+                end
+
+                if trial_state.start_pos_p1 and trial_state.start_pos_p2 then
             trial_state.sequence[1].start_pos_p1 = trial_state.start_pos_p1
             trial_state.sequence[1].start_pos_p2 = trial_state.start_pos_p2
             trial_state.sequence[1].start_pos_p1_raw = trial_state.start_pos_p1_raw

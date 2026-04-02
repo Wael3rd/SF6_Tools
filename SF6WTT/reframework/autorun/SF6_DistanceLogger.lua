@@ -473,6 +473,7 @@ re.on_frame(function()
 							or act_id == 968 
 							or act_id == 969 
 							or act_id == 978 
+							or act_id == 993 
 							
 							
 							then cname_adv = "Alex_Prowler" end

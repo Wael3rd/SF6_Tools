@@ -42,10 +42,10 @@ local function get_char_prefs(pi, char_name)
 end
 load_advanced_prefs()
 
-local VMODE_FULL = 1
+local VMODE_NONE = 1
 local VMODE_TOP_HALF = 2
 local VMODE_BOTTOM_HALF = 3
-local VMODE_NONE = 4
+local VMODE_FULL = 4
 
 local config = { 
     use_attack_lock = false,
@@ -60,6 +60,8 @@ local config = {
     number_font_size = 20,
     zone_opacity = 15,
 	ui_scale = 1.25,
+	icon_scale = 1.0,
+    icon_offset_y = 0.0,
 
     -- Advanced Mode Data
     p1_advanced_mode = false,
@@ -151,6 +153,7 @@ local config = {
 	func_button = 16384,
     -- Window State
     show_debug_window = true,
+	expert_mode_enabled = false,
     window_pos_x = 20.0, window_pos_y = 20.0,
     p1_tree_open = false, p2_tree_open = false,
     adv_show_line_labels = true
@@ -488,16 +491,16 @@ local function get_sorted_thresholds(limits, show_title, show_name, prefix)
     local space = (prefix and prefix ~= "") and (prefix .. " ") or ""
     
     local function make_name(title, input)
-        if show_title and show_name then
-            if input then return space .. title .. "\n(" .. input .. ")" else return space .. title end
-        elseif show_title and not show_name then
-            return space .. title
-        elseif not show_title and show_name then
-            if input then return space .. input .. " Zone" else return space .. title end
-        else
-            return ""
+            if show_title and show_name then
+                if input then return space .. title .. "\n{" .. input .. "}" else return space .. title end
+            elseif show_title and not show_name then
+                return space .. title
+            elseif not show_title and show_name then
+                if input then return space .. "{" .. input .. "}" else return space .. title end
+            else
+                return ""
+            end
         end
-    end
 
     local arr = {
         { name = make_name("Low Range", limits.low_input), dist = limits.low, color = colors.Purple, fill = get_dynamic_color(colors.Purple) },
@@ -561,6 +564,73 @@ local function try_load_font()
             ui_font.obj = font_ui; ui_font.loaded_size = target_size_ui; ui_font.status = "OK ("..target_size_ui.."px)"
         else ui_font.status = "File Not Found" end
     end
+end
+
+-- =========================================================
+-- [INPUT ICONS CACHE & D2D QUEUE]
+-- =========================================================
+local d2d_icons = {}
+local d2d_queue = {}
+local icons_to_draw = {} -- Déclaré en global ici !
+local d2d_initialized = false
+
+local function init_d2d_icons()
+    local folder = "buttonsAndArrows/"
+    local keys = {"1","2","3","4","5","6","7","8","9","lp","mp","hp","lk","mk","hk","HOLD","THROW"}
+    for _, k in ipairs(keys) do d2d_icons[k] = d2d.Image.new(folder .. k .. ".png") end
+    d2d_initialized = true
+end
+
+local function draw_d2d_icons()
+    if not d2d_initialized then init_d2d_icons() end
+    for _, item in ipairs(d2d_queue) do
+        local img = d2d_icons[item.key]
+        if img then d2d.image(img, item.x, item.y, item.size, item.size) end
+    end
+    d2d_queue = {} -- CRITICAL: Clear queue ONLY after drawing to sync D2D/ImGui
+end
+d2d.register(init_d2d_icons, draw_d2d_icons)
+
+local function flip_numpad(dir_str, facing_right)
+    -- In SF6, the "facing_right" boolean based on BitValue 128 is actually true when facing LEFT.
+    -- We invert the inputs ONLY when facing left (facing_right == true).
+    if not facing_right then return dir_str end
+    
+    local map = { ["1"]="3", ["3"]="1", ["4"]="6", ["6"]="4", ["7"]="9", ["9"]="7" }
+    return map[dir_str] or dir_str
+end
+
+local function parse_input_string(input_str, facing_right)
+    local icons = {}
+    local strength = ""
+    
+    -- 1. HOLD specific catch
+    if string.upper(input_str):find("HOLD") or input_str:find("%[") then
+        table.insert(icons, "HOLD")
+    end
+
+    
+    -- 2. Direction logic (Ignore neutral "5", flip if facing left)
+    local dir = input_str:match("%d+")
+    if dir and dir ~= "5" then
+        dir = flip_numpad(dir, facing_right)
+        table.insert(icons, dir)
+    end
+    
+    -- 3. Strict button extraction (lp, mp, hp, lk, mk, hk)
+    local btn = string.lower(input_str):match("[lmh][pk]")
+    if btn then 
+        table.insert(icons, btn)
+        strength = string.upper(string.sub(btn, 1, 1))
+    end
+
+    -- 4. THROW specific catch
+    if string.upper(input_str):find("THROW") or input_str:find("%[") then
+        table.insert(icons, "THROW")
+    end
+
+    
+    return icons, strength
 end
 
 local debug_dist_status = "Not Loaded"
@@ -692,6 +762,7 @@ local function update_player_cache(pi, cache_table)
 				or a_id == 971 
 				or a_id == 972 
 				or a_id == 978 
+				or a_id == 993 
 				then cache_table.adv_name = "Alex_Prowler" end
             end
         end
@@ -858,8 +929,9 @@ local function draw_text_safe(text, x, y, color, size)
     draw.text(text, x, y, color, size) 
 end
 
-local function draw_text_above_head_independent(text, pos, color, offset_x, offset_y, scale_factor, align)
+local function draw_text_above_head_independent(text, pos, color, offset_x, offset_y, scale_factor, align, facing_right)
     if text == "" or not pos then return end
+    
     local off_x = offset_x * scale_factor
     local off_y = offset_y * scale_factor
 
@@ -869,31 +941,77 @@ local function draw_text_above_head_independent(text, pos, color, offset_x, offs
     local total_height = 0
     for _, line in ipairs(lines) do total_height = total_height + imgui.calc_text_size(line).y end
     
-    local current_y = pos.y - off_y - total_height
+    -- Absolute Y coordinate with nearest-pixel rounding
+    local current_y = math.floor(pos.y - off_y - total_height + 0.5)
     
     for _, line in ipairs(lines) do
-        local text_width = imgui.calc_text_size(line).x
         local text_height = imgui.calc_text_size(line).y
+        local icon_size = math.floor(text_height * (config.icon_scale or 1.0) + 0.5)
         
-        local x_pos
-        if align == "left" then
-            x_pos = pos.x + off_x -- Point d'ancrage = bord gauche
-        elseif align == "right" then
-            x_pos = pos.x - text_width + off_x -- Point d'ancrage = bord droit
+        -- CALCULATE TRUE WIDTH ACCOUNTING FOR ICON SIZE
+        local true_width = 0
+        local before_txt, input_core, after_txt = string.match(line, "^(.-){(.-)}(.*)$")
+        local parsed_icons, parsed_strength
+        
+        if input_core then
+            parsed_icons, parsed_strength = parse_input_string(input_core, facing_right)
+            local icon_letter_gap = 4 -- <<< CHANGE THIS VALUE FOR SPACING
+            
+            if before_txt and before_txt ~= "" then true_width = true_width + imgui.calc_text_size(before_txt).x end
+            true_width = true_width + (#parsed_icons * icon_size)
+            if #parsed_icons > 0 and parsed_strength ~= "" then true_width = true_width + icon_letter_gap end
+            if parsed_strength ~= "" then true_width = true_width + imgui.calc_text_size(parsed_strength).x + 5 end
+            if after_txt and after_txt ~= "" then true_width = true_width + imgui.calc_text_size(after_txt).x end
         else
-            x_pos = pos.x - (text_width / 2) + off_x -- Centré
+            true_width = imgui.calc_text_size(line).x
         end
         
-        imgui.set_cursor_pos(Vector2f.new(x_pos + 2, current_y + 2))
-        imgui.text_colored(line, 0xFF000000)
-        imgui.set_cursor_pos(Vector2f.new(x_pos, current_y))
-        imgui.text_colored(line, color)
+        -- Absolute X coordinate with nearest-pixel rounding
+        local x_pos
+        if align == "left" then x_pos = math.floor(pos.x + off_x + 0.5)
+        elseif align == "right" then x_pos = math.floor(pos.x - true_width + off_x + 0.5)
+        else x_pos = math.floor(pos.x - (true_width / 2.0) + off_x + 0.5) end
         
-        current_y = current_y + text_height
+        if input_core then
+            local current_x = x_pos
+            if before_txt and before_txt ~= "" then
+                local b_w = math.floor(imgui.calc_text_size(before_txt).x + 0.5)
+                imgui.set_cursor_pos(Vector2f.new(current_x + 2, current_y + 2)); imgui.text_colored(before_txt, 0xFF000000)
+                imgui.set_cursor_pos(Vector2f.new(current_x, current_y)); imgui.text_colored(before_txt, color)
+                current_x = current_x + b_w
+            end
+            
+            local y_with_offset = math.floor(current_y + ((config.icon_offset_y or 0.0) * scale_factor) + 0.5)
+            
+            for _, icon_key in ipairs(parsed_icons) do
+                table.insert(d2d_queue, { key = icon_key, x = current_x, y = y_with_offset, size = icon_size })
+                current_x = current_x + icon_size
+            end
+            
+            local icon_letter_gap = 8 -- <<< SAME VALUE HERE
+            if #parsed_icons > 0 and parsed_strength ~= "" then current_x = current_x + icon_letter_gap end
+            
+            if parsed_strength ~= "" then
+                local s_w = math.floor(imgui.calc_text_size(parsed_strength).x + 0.5)
+                imgui.set_cursor_pos(Vector2f.new(current_x + 2, current_y + 2)); imgui.text_colored(parsed_strength, 0xFF000000)
+                imgui.set_cursor_pos(Vector2f.new(current_x, current_y)); imgui.text_colored(parsed_strength, color)
+                current_x = current_x + s_w + 5
+            end
+            
+            if after_txt and after_txt ~= "" then
+                imgui.set_cursor_pos(Vector2f.new(current_x + 2, current_y + 2)); imgui.text_colored(after_txt, 0xFF000000)
+                imgui.set_cursor_pos(Vector2f.new(current_x, current_y)); imgui.text_colored(after_txt, color)
+            end
+        else
+            imgui.set_cursor_pos(Vector2f.new(x_pos + 2, current_y + 2)); imgui.text_colored(line, 0xFF000000)
+            imgui.set_cursor_pos(Vector2f.new(x_pos, current_y)); imgui.text_colored(line, color)
+        end
+        current_y = current_y + math.floor(text_height + 0.5)
     end
 end
 
 local function get_crossup_info(cache_data, opponent_data)
+    if not cache_data.valid or not opponent_data.valid then return "", colors.Grey end
     if not cache_data.valid or not opponent_data.valid then return "", colors.Grey end
     local real_distance = math.abs(cache_data.world_x - opponent_data.world_x) * 100
     local frames = jump_data_store[cache_data.real_name]
@@ -927,19 +1045,19 @@ local function get_advanced_zone_label(pi, char_name, dist_cc, prefix, show_titl
         if dist_cc <= (mv.ar / 100.0) + 0.0001 then
             local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
             
-            local zone_name = "Zone"
+            local zone_name = ""
             if prefs.red and prefs.red.input == mv.input then zone_name = "Red Zone"
             elseif prefs.low and prefs.low.input == mv.input then zone_name = "Low Range" end
             
             if show_title and show_name then
-                return space .. zone_name .. "\n(" .. mv.input .. ")", col
-            elseif show_title and not show_name then
-                return space .. zone_name, col
-            elseif not show_title and show_name then
-                return space .. mv.input .. " Zone", col
-            else
-                return "", col
-            end
+        return space .. zone_name .. "\n{" .. mv.input .. "}", col
+    elseif show_title and not show_name then
+        return space .. zone_name, col
+    elseif not show_title and show_name then
+        return space .. "{" .. mv.input .. "}", col
+    else
+        return "", col
+    end
         end
     end
     
@@ -1101,11 +1219,11 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
 
             local x_end = get_x(dist_target)
             if x_end and x_origin then
-                if settings.vertical_mode == 4 then
-                    local center_y = y + (settings.end_marker_offset_y * scale_factor)
-                    local half_size = (settings.end_marker_size * scale_factor) / 2.0
-                    draw_thick_line(x_end, center_y - half_size, x_end, center_y + half_size, scaled_thickness, cur_col)
-                end
+                if settings.vertical_mode == 1 then
+                local center_y = y + (settings.end_marker_offset_y * scale_factor)
+                local half_size = (settings.end_marker_size * scale_factor) / 2.0
+                draw_thick_line(x_end, center_y - half_size, x_end, center_y + half_size, scaled_thickness, cur_col)
+            end
                 
                 if settings.show_numbers then
                     local txt = string.format("%.5f", dist_target * 100)
@@ -1150,7 +1268,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
                 if dist_target <= zone.dist then cur_col = zone.color; break end
             end
             
-            if settings.vertical_mode == 4 then
+            if settings.vertical_mode == 1 then
                 local center_y = y + (settings.end_marker_offset_y * scale_factor)
                 local half_size = (settings.end_marker_size * scale_factor) / 2.0
                 draw_thick_line(x_final, center_y - half_size, x_final, center_y + half_size, scaled_thickness, cur_col)
@@ -1217,14 +1335,26 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
                         draw.line(lx, y_min, lx, y_max, col, scaled_thickness)
                         if config.adv_show_line_labels then
                             local prefs = get_char_prefs(owner_data.id, char_name)
-                            local label = mv.input .. " " .. string.format("%.5f", mv.ar)
-                            if prefs.red and prefs.red.input == mv.input then label = "[R] " .. label end
-                            if prefs.low and prefs.low.input == mv.input then label = "[L] " .. label end
+                            local tag = ""
+                            if prefs.red and prefs.red.input == mv.input then tag = "[R] " end
+                            if prefs.low and prefs.low.input == mv.input then tag = "[L] " end
+                            
                             local label_y
                             if label_toggle then label_y = y_min + 5
                             else label_y = y_min + scaled_font_size * 1.5 end
                             label_toggle = not label_toggle
-                            draw_text_safe(label, lx + 4, label_y, col, scaled_font_size)
+                            
+                            -- Store separated data for ImGui rendering instead of draw_text_safe
+                            table.insert(icons_to_draw, {
+                                raw_input = mv.input,
+                                dist_text = string.format("%.5f", mv.ar),
+                                tag = tag,
+                                x = lx + 4,
+                                y = label_y,
+                                size = scaled_font_size,
+                                color = col,
+                                facing_right = owner_data.facing_right -- Stockage de la direction
+                            })
                         end
                     end
                 end
@@ -1331,7 +1461,7 @@ local function draw_debug_values(cache, opponent_cache, p_idx)
     imgui.separator()
 end
 
-local vmode_names = { "Full Screen", "Top Half", "Bottom Half", "Distance Only", "On Head", "On Root", "OFF", "CUSTOM" }
+local vmode_names = { "Distance Only", "Top Half", "Bottom Half", "Full Screen", "On Head", "On Root", "OFF", "CUSTOM" }
 
 local p1_transient_timer, p2_transient_timer = 0, 0
 local p1_transient_text, p2_transient_text = "", ""
@@ -1472,8 +1602,15 @@ local function draw_config_ui()
     -- ==========================================
     if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
         imgui.text("SHORTCUTS (Keyboard / Gamepad):")
-        imgui.text("- [5] or (Func) + LB/L1 : Cycle P1 Modes (Normal -> Advanced -> OFF)")
-        imgui.text("- [6] or (Func) + RB/R1 : Cycle P2 Modes (Normal -> Advanced -> OFF)")
+        
+        if not config.expert_mode_enabled then
+            imgui.text("- [5] or (Func) + LB/L1 : Toggle P1 Mode (ON / OFF)")
+            imgui.text("- [6] or (Func) + RB/R1 : Toggle P2 Mode (ON / OFF)")
+        else
+            imgui.text("- [5] or (Func) + LB/L1 : Cycle P1 Modes (Normal -> Advanced -> OFF)")
+            imgui.text("- [6] or (Func) + RB/R1 : Cycle P2 Modes (Normal -> Advanced -> OFF)")
+        end
+        
         imgui.text("- [7] or (Func) + Triangle/Y : Toggle UI Window")
         
         if _G.TrainingFuncButton ~= nil then
@@ -1499,11 +1636,11 @@ local function draw_config_ui()
         imgui.spacing()
     end
 
-
-    -- ==========================================
-    -- 1. GLOBAL SETTINGS (Font, Thickness, Attack Lock)
-    -- ==========================================
-    if styled_header("--- GLOBAL SETTINGS ---", UI_THEME.hdr_rules) then
+    if config.expert_mode_enabled then
+        -- ==========================================
+        -- 1. GLOBAL SETTINGS (Font, Thickness, Attack Lock)
+        -- ==========================================
+        if styled_header("--- GLOBAL SETTINGS ---", UI_THEME.hdr_rules) then
         local c_fs, v_fs = safe_input_int("Master Font Quality (Px)", config.stats_font_size)
         if c_fs then config.stats_font_size = v_fs; save_settings(); try_load_font() end
 
@@ -1518,6 +1655,12 @@ local function draw_config_ui()
 
         local changed_op, new_op = imgui.drag_int("Zone Opacity (%)", config.zone_opacity, 1, 0, 100)
         if changed_op then config.zone_opacity = new_op; save_settings() end
+		
+		local c_is, v_is = imgui.drag_float("Icon Scale", config.icon_scale or 1.0, 0.05, 0.5, 3.0)
+        if c_is then config.icon_scale = v_is; save_settings() end
+
+        local c_ioy, v_ioy = imgui.drag_float("Icon Y Offset", config.icon_offset_y or 0.0, 1.0, -100.0, 100.0)
+        if c_ioy then config.icon_offset_y = v_ioy; save_settings() end
     end
 
 	
@@ -1601,16 +1744,16 @@ local function draw_config_ui()
 
             if res1 then 
                 config.p1_vertical_mode = index1
-                if index1 == 4 then
+                if index1 == 1 then
                     config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false
-                    config.p1_show_horizontal_lines = true; config.p1_show_numbers = true
+                    config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true
                 elseif index1 == 5 or index1 == 6 then
                     config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = false; config.p1_show_numbers = false
                 elseif index1 == 7 then
                     config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = false; config.p1_show_numbers = false; config.p1_opp_zone_show = false; config.p1_crossup_show = false
                 elseif index1 == 8 and config.p1_has_custom then
                     config.p1_fill_bg = config.p1_custom_fill_bg; config.p1_show_markers = config.p1_custom_show_markers; config.p1_show_vertical_cursor = config.p1_custom_show_cursor; config.p1_show_horizontal_lines = config.p1_custom_show_hz; config.p1_show_numbers = config.p1_custom_show_numbers; config.p1_opp_zone_show = config.p1_custom_show_text; config.p1_crossup_show = config.p1_custom_show_text
-                elseif index1 >= 1 and index1 <= 3 then
+                elseif index1 >= 2 and index1 <= 4 then
                     config.p1_fill_bg = true; config.p1_show_markers = true; config.p1_show_vertical_cursor = true; config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true
                 end
                 trigger_transient(0, config.p1_vertical_mode, config.p1_advanced_mode); changed = true 
@@ -1622,7 +1765,7 @@ local function draw_config_ui()
             c, config.p1_show_vertical_cursor = imgui.checkbox("Cursor##p1", config.p1_show_vertical_cursor); if c then changed_any = true end; imgui.same_line()
             c, config.p1_show_horizontal_lines = imgui.checkbox("Distance##p1", config.p1_show_horizontal_lines); if c then changed_any = true end; imgui.same_line()
             local c_num1, v_num1 = imgui.checkbox("Numbers##p1", config.p1_show_numbers); if c_num1 then config.p1_show_numbers = v_num1; changed_any = true end; imgui.same_line()
-            local c_txt1, v_txt1 = imgui.checkbox("Text##p1", config.p1_opp_zone_show)
+            local c_txt1, v_txt1 = imgui.checkbox("Text ##p1", config.p1_opp_zone_show)
             if c_txt1 then config.p1_opp_zone_show = v_txt1; changed_any = true end
             
             -- Options indépendantes du Custom
@@ -1643,7 +1786,7 @@ local function draw_config_ui()
             -- end
 
             if changed_any then
-                if config.p1_vertical_mode >= 1 and config.p1_vertical_mode <= 3 then config.p1_custom_base_mode = config.p1_vertical_mode end
+                if config.p1_vertical_mode >= 2 and config.p1_vertical_mode <= 4 then config.p1_custom_base_mode = config.p1_vertical_mode end
                 config.p1_vertical_mode = 8; config.p1_has_custom = true
                 config.p1_custom_fill_bg = config.p1_fill_bg; config.p1_custom_show_markers = config.p1_show_markers; config.p1_custom_show_cursor = config.p1_show_vertical_cursor; config.p1_custom_show_hz = config.p1_show_horizontal_lines; config.p1_custom_show_numbers = config.p1_show_numbers; config.p1_custom_show_text = config.p1_opp_zone_show
                 changed = true; trigger_transient(0, config.p1_vertical_mode, config.p1_advanced_mode)
@@ -1731,16 +1874,16 @@ local function draw_config_ui()
 
             if res2 then 
                 config.p2_vertical_mode = index2
-                if index2 == 4 then
+                if index2 == 1 then
                     config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false
-                    config.p2_show_horizontal_lines = true; config.p2_show_numbers = true
+                    config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true
                 elseif index2 == 5 or index2 == 6 then
                     config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = false; config.p2_show_numbers = false
                 elseif index2 == 7 then
                     config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = false; config.p2_show_numbers = false; config.p2_opp_zone_show = false; config.p2_crossup_show = false
                 elseif index2 == 8 and config.p2_has_custom then
                     config.p2_fill_bg = config.p2_custom_fill_bg; config.p2_show_markers = config.p2_custom_show_markers; config.p2_show_vertical_cursor = config.p2_custom_show_cursor; config.p2_show_horizontal_lines = config.p2_custom_show_hz; config.p2_show_numbers = config.p2_custom_show_numbers; config.p2_opp_zone_show = config.p2_custom_show_text; config.p2_crossup_show = config.p2_custom_show_text
-                elseif index2 >= 1 and index2 <= 3 then
+                elseif index2 >= 2 and index2 <= 4 then
                     config.p2_fill_bg = true; config.p2_show_markers = true; config.p2_show_vertical_cursor = true; config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true
                 end
                 trigger_transient(1, config.p2_vertical_mode, config.p2_advanced_mode); changed = true 
@@ -1752,7 +1895,7 @@ local function draw_config_ui()
             c, config.p2_show_vertical_cursor = imgui.checkbox("Cursor##p2", config.p2_show_vertical_cursor); if c then changed_any = true end; imgui.same_line()
             c, config.p2_show_horizontal_lines = imgui.checkbox("Distance##p2", config.p2_show_horizontal_lines); if c then changed_any = true end; imgui.same_line()
             local c_num2, v_num2 = imgui.checkbox("Numbers##p2", config.p2_show_numbers); if c_num2 then config.p2_show_numbers = v_num2; changed_any = true end; imgui.same_line()
-            local c_txt2, v_txt2 = imgui.checkbox("Text##p2", config.p2_opp_zone_show)
+            local c_txt2, v_txt2 = imgui.checkbox("Text ##p2", config.p2_opp_zone_show)
             if c_txt2 then config.p2_opp_zone_show = v_txt2; changed_any = true end
             
             -- Options indépendantes du Custom
@@ -1773,7 +1916,7 @@ local function draw_config_ui()
             -- end
 
             if changed_any then
-                if config.p2_vertical_mode >= 1 and config.p2_vertical_mode <= 3 then config.p2_custom_base_mode = config.p2_vertical_mode end
+                if config.p2_vertical_mode >= 2 and config.p2_vertical_mode <= 4 then config.p2_custom_base_mode = config.p2_vertical_mode end
                 config.p2_vertical_mode = 8; config.p2_has_custom = true
                 config.p2_custom_fill_bg = config.p2_fill_bg; config.p2_custom_show_markers = config.p2_show_markers; config.p2_custom_show_cursor = config.p2_show_vertical_cursor; config.p2_custom_show_hz = config.p2_show_horizontal_lines; config.p2_custom_show_numbers = config.p2_show_numbers; config.p2_custom_show_text = config.p2_opp_zone_show
                 changed = true; trigger_transient(1, config.p2_vertical_mode, config.p2_advanced_mode)
@@ -1798,6 +1941,8 @@ local function draw_config_ui()
         draw_debug_values(p1_cache, p2_cache, 0)
         draw_debug_values(p2_cache, p1_cache, 1)
     end
+    
+    end -- FIN DU BLOC "if not config.simple_mode_enabled"
 end
 
 -- =========================================================
@@ -1893,30 +2038,42 @@ local function handle_viewer_shortcuts()
         changed = true
     end
 
-    -- Cycle P1 Modes (Normal / Advanced / OFF)
+    -- Cycle P1 Modes
     if is_pressed(PAD_LB) or kb_pressed(KB_5) then
-        local next_v, next_a = get_next_cycle(config.p1_vertical_mode, config.p1_advanced_mode, config.p1_has_custom)
+        local next_v, next_a
+        if not config.expert_mode_enabled then
+            next_v = (config.p1_vertical_mode == 1) and 7 or 1
+            next_a = false
+        else
+            next_v, next_a = get_next_cycle(config.p1_vertical_mode, config.p1_advanced_mode, config.p1_has_custom)
+        end
         config.p1_vertical_mode = next_v; config.p1_advanced_mode = next_a
         
-        if next_v == 4 then config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = true; config.p1_show_numbers = true
+        if next_v == 1 then config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true
         elseif next_v == 5 or next_v == 6 then config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = false; config.p1_show_numbers = false
         elseif next_v == 7 then config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = false; config.p1_show_numbers = false; config.p1_opp_zone_show = false; config.p1_crossup_show = false
         elseif next_v == 8 then config.p1_fill_bg = config.p1_custom_fill_bg; config.p1_show_markers = config.p1_custom_show_markers; config.p1_show_vertical_cursor = config.p1_custom_show_cursor; config.p1_show_horizontal_lines = config.p1_custom_show_hz; config.p1_show_numbers = config.p1_custom_show_numbers; config.p1_opp_zone_show = config.p1_custom_show_text; config.p1_crossup_show = config.p1_custom_show_text
-        elseif next_v >= 1 and next_v <= 3 then config.p1_fill_bg = true; config.p1_show_markers = true; config.p1_show_vertical_cursor = true; config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true end
+        elseif next_v >= 2 and next_v <= 4 then config.p1_fill_bg = true; config.p1_show_markers = true; config.p1_show_vertical_cursor = true; config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true end
         
         trigger_transient(0, config.p1_vertical_mode, config.p1_advanced_mode); changed = true
     end
 
-    -- Cycle P2 Modes (Normal / Advanced / OFF)
+    -- Cycle P2 Modes
     if is_pressed(PAD_RB) or kb_pressed(KB_6) then
-        local next_v, next_a = get_next_cycle(config.p2_vertical_mode, config.p2_advanced_mode, config.p2_has_custom)
+        local next_v, next_a
+        if not config.expert_mode_enabled then
+            next_v = (config.p2_vertical_mode == 1) and 7 or 1
+            next_a = false
+        else
+            next_v, next_a = get_next_cycle(config.p2_vertical_mode, config.p2_advanced_mode, config.p2_has_custom)
+        end
         config.p2_vertical_mode = next_v; config.p2_advanced_mode = next_a
         
-        if next_v == 4 then config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = true; config.p2_show_numbers = true
+        if next_v == 1 then config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true
         elseif next_v == 5 or next_v == 6 then config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = false; config.p2_show_numbers = false
         elseif next_v == 7 then config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = false; config.p2_show_numbers = false; config.p2_opp_zone_show = false; config.p2_crossup_show = false
         elseif next_v == 8 then config.p2_fill_bg = config.p2_custom_fill_bg; config.p2_show_markers = config.p2_custom_show_markers; config.p2_show_vertical_cursor = config.p2_custom_show_cursor; config.p2_show_horizontal_lines = config.p2_custom_show_hz; config.p2_show_numbers = config.p2_custom_show_numbers; config.p2_opp_zone_show = config.p2_custom_show_text; config.p2_crossup_show = config.p2_custom_show_text
-        elseif next_v >= 1 and next_v <= 3 then config.p2_fill_bg = true; config.p2_show_markers = true; config.p2_show_vertical_cursor = true; config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true end
+        elseif next_v >= 2 and next_v <= 4 then config.p2_fill_bg = true; config.p2_show_markers = true; config.p2_show_vertical_cursor = true; config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true end
         
         trigger_transient(1, config.p2_vertical_mode, config.p2_advanced_mode); changed = true
     end
@@ -1977,7 +2134,7 @@ re.on_frame(function()
     local p1_display = nil
     local p2_display = nil
     local numbers_to_draw = {}
-
+	
     if p1_cache.valid and p2_cache.valid then
         update_jump_state_logic(0, p1_cache)
         update_jump_state_logic(1, p2_cache)
@@ -2050,6 +2207,53 @@ re.on_frame(function()
     local win_flags = 1 | 2 | 4 | 8 | 512 | 786432 | 128
 
     if imgui.begin_window("CrossUpOverlay", true, win_flags) then
+	-- Render vertically stored labels/icons
+        if #icons_to_draw > 0 then
+            for _, item in ipairs(icons_to_draw) do
+                local current_x = item.x
+                
+                if item.tag and item.tag ~= "" then
+                    imgui.set_cursor_pos(Vector2f.new(current_x + 2, item.y + 2))
+                    imgui.text_colored(item.tag, 0xFF000000)
+                    imgui.set_cursor_pos(Vector2f.new(current_x, item.y))
+                    imgui.text_colored(item.tag, item.color)
+                    current_x = current_x + imgui.calc_text_size(item.tag).x + 5
+                end
+                
+                if item.raw_input then
+                    local icons, strength = parse_input_string(item.raw_input, item.facing_right)
+                    
+                    local icon_size = math.floor(item.size * (config.icon_scale or 1.0) + 0.5)
+                    local y_with_offset = math.floor(item.y + ((config.icon_offset_y or 0.0) * scale_factor) + 0.5)
+                    local current_x = math.floor(current_x + 0.5)
+                    
+                    for _, icon_key in ipairs(icons) do
+                        table.insert(d2d_queue, { key = icon_key, x = current_x, y = y_with_offset, size = icon_size })
+                        current_x = current_x + icon_size
+                    end
+                    
+                    local icon_letter_gap = 4 -- <<< CHANGE THIS VALUE FOR SPACING (Vertical mode)
+                    if #icons > 0 and strength ~= "" then current_x = current_x + icon_letter_gap end
+                    
+                    if strength ~= "" then
+                        local final_y = math.floor(item.y + 0.5)
+                        imgui.set_cursor_pos(Vector2f.new(current_x + 2, final_y + 2))
+                        imgui.text_colored(strength, 0xFF000000)
+                        imgui.set_cursor_pos(Vector2f.new(current_x, final_y))
+                        imgui.text_colored(strength, item.color)
+                        current_x = current_x + math.floor(imgui.calc_text_size(strength).x + 0.5) + 5
+                    end
+                end
+                
+                if item.dist_text then
+                    imgui.set_cursor_pos(Vector2f.new(current_x + 5, item.y + 2))
+                    imgui.text_colored(item.dist_text, 0xFF000000)
+                    imgui.set_cursor_pos(Vector2f.new(current_x + 5, item.y))
+                    imgui.text_colored(item.dist_text, item.color)
+                end
+            end
+            icons_to_draw = {}
+        end
         if custom_font.obj then imgui.push_font(custom_font.obj) end
 
         if p1_cache.valid and p2_cache.valid then
@@ -2117,7 +2321,7 @@ re.on_frame(function()
                                     local directed_off_x = cursor_off_x or 0.0
                                     directed_off_x = cache.facing_right and -directed_off_x or directed_off_x
                                     
-                                    draw_text_above_head_independent(txt, target_pos, col, directed_off_x, 0.0, scale_factor, align)
+                                    draw_text_above_head_independent(txt, target_pos, col, directed_off_x, 0.0, scale_factor, align, cursor_target.facing_right)
                                 end
                             end
                         else
@@ -2129,7 +2333,7 @@ re.on_frame(function()
                                 if align == "center" then
                                     directed_off_x = cache.facing_right and directed_off_x or -directed_off_x
                                 end
-                                draw_text_above_head_independent(txt, target_pos, col, directed_off_x, active_off_y, scale_factor, align)
+                                draw_text_above_head_independent(txt, target_pos, col, directed_off_x, active_off_y, scale_factor, align, cursor_target.facing_right)
                             end
                         end
                     end
@@ -2160,7 +2364,7 @@ re.on_frame(function()
                         local off_x = opp_off_x or 0.0
                         local directed_off_x = cache.facing_right and off_x or -off_x
                         
-                        draw_text_above_head_independent(txt, target_pos, col, directed_off_x, off_y, scale_factor, align)
+                        draw_text_above_head_independent(txt, target_pos, col, directed_off_x, off_y, scale_factor, align, cache.facing_right)
                         
                         local total_cross_h = 0
                         for s in string.gmatch(txt, "[^\r\n]+") do total_cross_h = total_cross_h + imgui.calc_text_size(s).y end
@@ -2201,7 +2405,7 @@ re.on_frame(function()
                                 end
                             end
                             local target_pos = (active_pos_p1 == 2) and p1_display.root_screen_pos or p1_display.head_screen_pos
-                            if target_pos then draw_text_above_head_independent(p1_transient_text, target_pos, colors.White, 0.0, trans_y, scale_factor, "center") end
+                            if target_pos then draw_text_above_head_independent(p1_transient_text, target_pos, colors.White, 0.0, trans_y, scale_factor, "center", p1_display.facing_right) end
                         end
                         
                         local p1_opp_h = config["p1_opp_zone_cursor_h_" .. draw_v_p1] or 0.5
@@ -2242,7 +2446,7 @@ re.on_frame(function()
                                 end
                             end
                             local target_pos = (active_pos_p2 == 2) and p2_display.root_screen_pos or p2_display.head_screen_pos
-                            if target_pos then draw_text_above_head_independent(p2_transient_text, target_pos, colors.White, 0.0, trans_y, scale_factor, "center") end
+                            if target_pos then draw_text_above_head_independent(p2_transient_text, target_pos, colors.White, 0.0, trans_y, scale_factor, "center", p2_display.facing_right) end
                         end
                         
                         local p2_opp_h = config["p2_opp_zone_cursor_h_" .. draw_v_p2] or 0.5
@@ -2278,13 +2482,23 @@ re.on_frame(function()
             first_draw = false
         end
 
-        if imgui.begin_window("SF6 DISTANCE VIEWER", true, 0) then
+        -- Flag 64 = ImGuiWindowFlags_AlwaysAutoResize (Forces window to wrap content tightly)
+        local window_flags = 64
+        if not config.expert_mode_enabled then
+            window_flags = 64
+        end
+
+        if imgui.begin_window("SF6 DISTANCE VIEWER", true, window_flags) then
             if ui_font.obj then imgui.push_font(ui_font.obj) end
             
             -- Checkbox to hide the floating window from within itself
             local chg_ov, new_ov = imgui.checkbox("Floating Window", config.show_debug_window)
             imgui.same_line()
             if imgui.button("Reload Data") then load_advanced_data() end
+            imgui.same_line()
+            local chg_em, new_em = imgui.checkbox("EXPERT MODE", config.expert_mode_enabled)
+            if chg_em then config.expert_mode_enabled = new_em; save_settings() end
+            
             if chg_ov then
                 config.show_debug_window = new_ov
                 save_settings()
@@ -2315,9 +2529,11 @@ re.on_draw_ui(function()
             first_draw = true
             save_settings()
         end
-							imgui.same_line()
+        imgui.same_line()
         if imgui.button("Reload Data") then load_advanced_data() end
-
+        imgui.same_line()
+        local chg_em, new_em = imgui.checkbox("EXPERT MODE", config.expert_mode_enabled)
+        if chg_em then config.expert_mode_enabled = new_em; save_settings() end
 
         if not config.show_debug_window then
             imgui.separator()
