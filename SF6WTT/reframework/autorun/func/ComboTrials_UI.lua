@@ -107,7 +107,38 @@ local font_attempted = false
 -- =========================================================
 -- FONCTION BOUTONS (Caméléon : Néon ou Natif)
 -- =========================================================
-local function styled_sf6_button(label, is_active, width, is_floating, is_disabled)
+-- Couleurs code couleur barres de vie SF6 (ABGR)
+-- ABGR format: 0xAABBGGRR
+local P1_COLORS = {
+    text   = 0xFF4444FF,  -- Rouge (bordure)
+    base   = 0xFF141464,  -- Rouge sombre
+    hover  = 0xFF28288C,  -- Rouge moyen
+    active = 0xFF3C3CB4,  -- Rouge vif
+    border = 0xFFFFFFFF,  -- Texte blanc
+}
+local P2_COLORS = {
+    text   = 0xFFFF4444,  -- Bleu (bordure)
+    base   = 0xFF641414,  -- Bleu sombre
+    hover  = 0xFF8C2828,  -- Bleu moyen
+    active = 0xFFB43C3C,  -- Bleu vif
+    border = 0xFFFFFFFF,  -- Texte blanc
+}
+local TRIAL_COLORS = {
+    text   = 0xFF44FF44,  -- Vert (bordure)
+    base   = 0xFF146414,  -- Vert sombre
+    hover  = 0xFF288C28,  -- Vert moyen
+    active = 0xFF3CB43C,  -- Vert vif
+    border = 0xFFFFFFFF,  -- Texte blanc
+}
+local SWITCH_COLORS = {
+    text   = 0xFF00A5FF,  -- Orange (bordure)
+    base   = 0xFF0A4878,  -- Orange sombre
+    hover  = 0xFF1A6CA0,  -- Orange moyen
+    active = 0xFF2890CC,  -- Orange vif
+    border = 0xFFFFFFFF,  -- Texte blanc
+}
+
+local function styled_sf6_button(label, is_active, width, is_floating, is_disabled, color_override)
     width = width or 0
 
     -- MODE DOCKÉ (Menu Debug natif)
@@ -124,32 +155,34 @@ local function styled_sf6_button(label, is_active, width, is_floating, is_disabl
     -- MODE FLOTTANT (Néon SF6)
     if sf6_btn_font then imgui.push_font(sf6_btn_font) end
 
-    if is_active then
-        -- Check if it's a RECORD action or SAVE action
+    if color_override then
+        -- CUSTOM COLOR always takes priority
+        imgui.push_style_color(5, color_override.text)
+        imgui.push_style_color(21, color_override.base)
+        imgui.push_style_color(22, color_override.hover)
+        imgui.push_style_color(23, color_override.active)
+        imgui.push_style_color(0, color_override.border)
+    elseif is_active then
         if label:upper():match("RECORD") or label:upper():match("SAVE") then
-            -- RED Colors (ABGR format)
-            imgui.push_style_color(5, 0xFFFFFFFF)  -- Text Color
-            imgui.push_style_color(21, 0xFF2222AA) -- Button Background (Dark Red)
-            imgui.push_style_color(22, 0xFF3333DD) -- Hover (Brighter Red)
-            imgui.push_style_color(23, 0xFF5555FF) -- Active / Pressed (Brightest Red)
-            imgui.push_style_color(0, 0xFFAAAAFF)  -- Border
+            imgui.push_style_color(5, 0xFFFFFFFF)
+            imgui.push_style_color(21, 0xFF2222AA)
+            imgui.push_style_color(22, 0xFF3333DD)
+            imgui.push_style_color(23, 0xFF5555FF)
+            imgui.push_style_color(0, 0xFFAAAAFF)
         else
-            -- GREEN Colors (ABGR format - TRIAL active)
-            imgui.push_style_color(5, 0xFFFFFFFF)  -- Text Color
-            imgui.push_style_color(21, 0xFF228B22) -- Button Background (Forest Green)
-            imgui.push_style_color(22, 0xFF32CD32) -- Hover (Lime Green)
-            imgui.push_style_color(23, 0xFF55FF55) -- Active / Pressed (Light Green)
-            imgui.push_style_color(0, 0xFFAAFFAA)  -- Border
+            imgui.push_style_color(5, 0xFFFFFFFF)
+            imgui.push_style_color(21, 0xFF228B22)
+            imgui.push_style_color(22, 0xFF32CD32)
+            imgui.push_style_color(23, 0xFF55FF55)
+            imgui.push_style_color(0, 0xFFAAFFAA)
         end
     elseif is_disabled then
-        -- INACTIVE / DISABLED: GRAY Colors
-        imgui.push_style_color(5, 0xFFEEEEEE)  -- Text Color (White-ish)
-        imgui.push_style_color(21, 0xFF333333) -- Button Background (Dark Gray)
-        imgui.push_style_color(22, 0xFF555555) -- Hover (Mid Gray)
-        imgui.push_style_color(23, 0xFF777777) -- Active / Pressed (Lighter Gray)
-        imgui.push_style_color(0, 0xFF777777)  -- Border
+        imgui.push_style_color(5, 0xFFEEEEEE)
+        imgui.push_style_color(21, 0xFF333333)
+        imgui.push_style_color(22, 0xFF555555)
+        imgui.push_style_color(23, 0xFF777777)
+        imgui.push_style_color(0, 0xFF777777)
     else
-        -- INACTIVE BUT CLICKABLE: ORIGINAL PURPLE
         imgui.push_style_color(5, 0xFFFF33CC)
         imgui.push_style_color(21, 0xFF330055)
         imgui.push_style_color(22, 0xFF660088)
@@ -210,8 +243,9 @@ local function draw_single_line_content()
     local actual_btn_w = math.max(absolute_btn_w, remaining_for_btns / 4)
 
     local dynamic_rec_w = actual_btn_w
-    if trial_state.is_recording then
-        -- In record mode, distribute the massive 4-button space into 2
+    local is_demo_active_early = (ctx.demo_state and ctx.demo_state.is_playing)
+    if trial_state.is_recording or is_demo_active_early then
+        -- In record/demo mode, distribute the massive 4-button space into 2
         dynamic_rec_w = (actual_btn_w * 4 + sp * 2) / 2
     end
 
@@ -250,65 +284,59 @@ local function draw_single_line_content()
 
     if trial_state.is_recording then
         -- Mode Record
-        if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, dynamic_rec_w, true) then stop_recording_and_save() end
+        if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, dynamic_rec_w, true, false, TRIAL_COLORS) then stop_recording_and_save() end
         imgui.same_line(0, sp)
-        if styled_sf6_button("CANCEL (" .. sc("U") .. ")", false, dynamic_rec_w, true) then cancel_recording() end
+        if styled_sf6_button("CANCEL (" .. sc("U") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then cancel_recording() end
+    elseif is_demo_active then
+        -- MODE DEMO : 2 boutons (même largeur que record)
+        if styled_sf6_button("RESTART DEMO (" .. sc("L") .. ")", false, dynamic_rec_w, true, false, TRIAL_COLORS) then
+            if ctx.start_demo then ctx.start_demo() end
+        end
+        imgui.same_line(0, sp)
+        if styled_sf6_button("QUIT DEMO (" .. sc("U") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then
+            if ctx.stop_demo then ctx.stop_demo() end
+        end
     else
-        -- Mode Normal : Utilisation de actual_btn_w pour forcer l'étirement
-        if trial_state.is_playing or is_demo_active then
-            if styled_sf6_button("RESET (" .. sc("L") .. ")", false, actual_btn_w, true) then
-                if is_demo_active then
-                    if ctx.start_demo then ctx.start_demo() end 
-                else
-                    ctx.reset_trial_steps_and_load(trial_state.playing_player)
-                    ctx.apply_forced_position()
-                end
+        -- Mode Normal / Playing
+        if trial_state.is_playing then
+            if styled_sf6_button("RESET (" .. sc("L") .. ")", false, actual_btn_w, true, false, P1_COLORS) then
+                ctx.reset_trial_steps_and_load(trial_state.playing_player)
+                ctx.apply_forced_position()
             end
         else
-            if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, actual_btn_w, true) then start_recording(0) end
+            if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, actual_btn_w, true, false, P1_COLORS) then start_recording(0) end
         end
 
         imgui.same_line(0, sp)
-        if trial_state.is_playing or is_demo_active then
-            if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, actual_btn_w, true) then
+        if trial_state.is_playing then
+            if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, actual_btn_w, true, false, TRIAL_COLORS) then
                 trial_state.is_playing = false
-                if ctx.stop_demo then ctx.stop_demo() end 
             end
         elseif not trial_state.is_recording then
             local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-            if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, actual_btn_w, true) then
+            if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, actual_btn_w, true, false, TRIAL_COLORS) then
                 if is_p1_active then trial_state.is_playing = false
                 else load_and_start_trial(0) end
             end
         end
 
         imgui.same_line(0, sp)
-        if trial_state.is_playing or is_demo_active then
-            if styled_sf6_button("DEMO (" .. sc("D") .. ")", is_demo_active, actual_btn_w, true) then
-                if is_demo_active then
-                    if ctx.stop_demo then ctx.stop_demo() end 
-                else
-                    if ctx.start_demo then ctx.start_demo() end
-                end
+        if trial_state.is_playing then
+            if styled_sf6_button("DEMO (" .. sc("D") .. ")", false, actual_btn_w, true, false, P2_COLORS) then
+                if ctx.start_demo then ctx.start_demo() end
             end
         else
-            if styled_sf6_button("RECORD P2 (" .. sc("D") .. ")", false, actual_btn_w, true) then start_recording(1) end
+            if styled_sf6_button("RECORD P2 (" .. sc("D") .. ")", false, actual_btn_w, true, false, P2_COLORS) then start_recording(1) end
         end
 
         imgui.same_line(0, sp)
-        if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, actual_btn_w, true) then
+        if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, actual_btn_w, true, false, SWITCH_COLORS) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             ctx.save_d2d_config()
-            
-            -- On applique physiquement la position UNIQUEMENT si un trial ou une démo est en cours
-            if is_demo_active or trial_state.is_playing then
+            if trial_state.is_playing then
                 ctx.apply_forced_position()
-                if is_demo_active then
-                    if ctx.start_demo then ctx.start_demo() end 
-                else
-                    ctx.reset_trial_steps_and_load(trial_state.playing_player)
-                end
+                ctx.reset_trial_steps_and_load(trial_state.playing_player)
                 if ctx.reset_visuals then ctx.reset_visuals() end
             end
         end
@@ -417,7 +445,7 @@ local function draw_combo_trials_content(is_floating)
             end
         end
         if mode_all_stacked then imgui.spacing() end
-        if styled_sf6_button("DEMO (" .. sc("D") .. ")", is_demo_active, rec_btn_w, is_floating) then
+        if styled_sf6_button("DEMO (" .. sc("D") .. ")", is_demo_active, rec_btn_w, is_floating, false, P2_COLORS) then
             if is_demo_active then
                 if ctx.stop_demo then ctx.stop_demo() end
             else
@@ -425,22 +453,22 @@ local function draw_combo_trials_content(is_floating)
             end
         end
     elseif trial_state.is_recording then
-        if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, rec_btn_w, is_floating) then
+        if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, rec_btn_w, is_floating, false, TRIAL_COLORS) then
             stop_recording_and_save()
         end
-        
+
         -- Toujours forcer l'empilement (stack) avec un espacement en mode fenêtré
         imgui.spacing()
-        
-        if styled_sf6_button("CANCEL (" .. sc("U") .. ")", false, rec_btn_w, is_floating) then
+
+        if styled_sf6_button("CANCEL (" .. sc("U") .. ")", false, rec_btn_w, is_floating, false, P1_COLORS) then
             cancel_recording()
         end
     else
-        if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, rec_btn_w, is_floating) then
+        if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, rec_btn_w, is_floating, false, P1_COLORS) then
             start_recording(0)
         end
         if mode_all_stacked then imgui.spacing() end
-        if styled_sf6_button("RECORD P2 (" .. sc("D") .. ")", false, rec_btn_w, is_floating) then
+        if styled_sf6_button("RECORD P2 (" .. sc("D") .. ")", false, rec_btn_w, is_floating, false, P2_COLORS) then
             start_recording(1)
         end
     end
@@ -457,13 +485,13 @@ local function draw_combo_trials_content(is_floating)
     if not is_floating then imgui.text_colored("3. PLAYBACK (TRIAL)", COLORS.White) end
 
     if trial_state.is_playing or is_demo_active then
-        if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, play_btn_w, is_floating) then
+        if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, play_btn_w, is_floating, false, TRIAL_COLORS) then
             trial_state.is_playing = false
             if ctx.stop_demo then ctx.stop_demo() end
         end
     elseif not trial_state.is_recording then
         local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-        if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, is_floating) then
+        if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, is_floating, false, TRIAL_COLORS) then
             if is_p1_active then trial_state.is_playing = false
             else load_and_start_trial(0) end
         end
@@ -473,7 +501,7 @@ local function draw_combo_trials_content(is_floating)
     
     -- SWITCH POS (Invisible en record)
     if not trial_state.is_recording then
-        if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, play_btn_w, is_floating) then
+        if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, play_btn_w, is_floating, false, SWITCH_COLORS) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             ctx.save_d2d_config()
@@ -849,7 +877,7 @@ end)
 -- =========================================================
 -- DESSIN DU MENU UI GLOBAL
 -- =========================================================
-re.on_draw_ui(function()
+local function draw_combo_trials_menu_ui()
     if _G.CurrentTrainerMode ~= 4 then return end
     if imgui.tree_node("TRAINING COMBO TRIALS") then
         local p_state = players[ui_state.viewed_player]
@@ -1560,6 +1588,31 @@ re.on_draw_ui(function()
             imgui.unindent(20)
             imgui.spacing()
 
+            -- LIVE POSITIONS
+            imgui.text_colored("Live Positions (raw sfix):", 0xFF00FFFF)
+            pcall(function()
+                local gB = sdk.find_type_definition("gBattle")
+                if not gB then return end
+                local sP = gB:get_field("Player"):get_data(nil)
+                if not sP or not sP.mcPlayer then return end
+                local p1x = sP.mcPlayer[0].pos.x.v or 0
+                local p2x = sP.mcPlayer[1].pos.x.v or 0
+                imgui.indent(20)
+                imgui.text(string.format("P1: %d  (%.2f cm)", p1x, p1x / 65536.0))
+                imgui.text(string.format("P2: %d  (%.2f cm)", p2x, p2x / 65536.0))
+                imgui.unindent(20)
+            end)
+            imgui.text_colored("Saved Trial Positions:", 0xFF00FFFF)
+            imgui.indent(20)
+            imgui.text(string.format("start_pos_p1_raw: %s", tostring(trial_state.start_pos_p1_raw)))
+            imgui.text(string.format("start_pos_p2_raw: %s", tostring(trial_state.start_pos_p2_raw)))
+            imgui.text(string.format("exact_inject_r1: %s", tostring(trial_state.exact_inject_r1)))
+            imgui.text(string.format("exact_inject_r2: %s", tostring(trial_state.exact_inject_r2)))
+            imgui.text(string.format("pending_exact_pos: %s", tostring(trial_state.pending_exact_pos)))
+            imgui.text(string.format("forced_position_idx: %d", d2d_cfg.forced_position_idx))
+            imgui.unindent(20)
+            imgui.spacing()
+
             -- BOUTON DE DUMP DE FAIL (Apparaît uniquement si un fail est en mémoire)
             --[[
             if ctx.trial_state and ctx.trial_state.last_fail_dump then
@@ -1582,7 +1635,13 @@ re.on_draw_ui(function()
         -- IMPORTANT : Closes the tree_node and the if block
         imgui.tree_pop()
     end
-end)
+end
+
+-- Register in floating window hub + keep standard menu entry
+if _G.FloatingScriptUI then
+    _G.FloatingScriptUI.register("TRAINING COMBO TRIALS", draw_combo_trials_menu_ui)
+end
+re.on_draw_ui(draw_combo_trials_menu_ui)
 
 -- =========================================================
 -- Public API

@@ -159,7 +159,7 @@ local config = {
     p2_my_zone_fixed_x = 0.75, p2_my_zone_fixed_y = 0.20,
     
     -- Global
-    marker_thickness = 5.0, marker_origin_shift = 0.0, 
+    marker_thickness = 5.0, marker_origin_shift = 0.0,
 	func_button = 16384,
     -- Window State
     show_debug_window = true,
@@ -218,8 +218,6 @@ local function load_settings()
         end
     end 
 end
-load_settings()
-
 load_settings()
 
 -- =========================================================
@@ -469,7 +467,7 @@ local function bitand(a, b)
     return r
 end
 
-local colors = { Green=0xFF00FF00, Yellow=0xFF00FFFF, Red=0xFF0000FF, Purple=0xFFFF00FF, White=0xFFFFFFFF, Black=0xFF000000, Cyan=0xFF00FFFF, Grey=0xFFAAAAAA }
+local colors = { Green=0xFF00FF00, Yellow=0xFF00FFFF, Orange=0xFF00A5FF, Red=0xFF0000FF, Purple=0xFFFF00FF, White=0xFFFFFFFF, Black=0xFF000000, Cyan=0xFF00FFFF, Grey=0xFFAAAAAA }
 
 local function get_dynamic_color(base_color_abgr)
     local alpha = math.floor((config.zone_opacity / 100.0) * 255)
@@ -482,7 +480,7 @@ local shadow_color = 0x80000000
 -- [THEMED UI - Same style as Distance Logger]
 -- =========================================================
 local COL_RED    = 0xFF4444FF
-local COL_LOW    = 0xFFCC44BB
+local COL_ORANGE = 0xFF00A5FF
 local COL_YELLOW = 0xFF00FFFF
 local COL_GREEN  = 0xFF00FF00
 local COL_CYAN   = 0xFFFFFF00
@@ -534,8 +532,8 @@ local function get_sorted_thresholds(limits, show_title, show_name, prefix)
         end
 
     local arr = {
-        { name = make_name("Low Range", limits.low_input), dist = limits.low, color = colors.Purple, fill = get_dynamic_color(colors.Purple) },
-        { name = make_name("Red Zone", limits.red_input), dist = limits.red, color = colors.Red, fill = get_dynamic_color(colors.Red) },
+        { name = make_name("Red Zone", limits.low_input), dist = limits.low, color = colors.Red, fill = get_dynamic_color(colors.Red) },
+        { name = make_name("Orange Zone", limits.red_input), dist = limits.red, color = colors.Orange, fill = get_dynamic_color(colors.Orange) },
         { name = make_name("Yellow Zone", nil), dist = limits.yellow, color = colors.Yellow, fill = get_dynamic_color(colors.Yellow) }
     }
     table.sort(arr, function(a, b) return a.dist < b.dist end)
@@ -604,6 +602,8 @@ local d2d_icons = {}
 local d2d_queue = {}
 local icons_to_draw = {} -- Déclaré en global ici !
 local d2d_initialized = false
+
+
 
 local function init_d2d_icons()
     local folder = "buttonsAndArrows/"
@@ -715,11 +715,11 @@ if t_med then
 end
 
 local function get_char_top_screen_pos(player_obj)
-    if not player_obj then return nil end
+    if not player_obj then return nil, 0 end
     local root_x = 0; local root_y = 0
     if player_obj.pos and player_obj.pos.x and player_obj.pos.y then
         root_x = player_obj.pos.x.v / 6553600.0; root_y = player_obj.pos.y.v / 6553600.0
-    else return nil end
+    else return nil, 0 end
 
     local highest_y = -999.0; local found_dynamic_box = false
     local act_param = player_obj.mpActParam
@@ -737,8 +737,8 @@ local function get_char_top_screen_pos(player_obj)
 
     local final_y = 0
     if found_dynamic_box then final_y = highest_y + 0.1 else final_y = root_y + 2.0 end
-    if draw and draw.world_to_screen then return draw.world_to_screen(Vector3f.new(root_x, final_y, 0)) end
-    return nil
+    if draw and draw.world_to_screen then return draw.world_to_screen(Vector3f.new(root_x, final_y, 0)), final_y end
+    return nil, final_y
 end
 
 local function get_char_root_screen_pos(player_obj)
@@ -760,7 +760,7 @@ local function update_player_cache(pi, cache_table)
     cache_table.obj = p
     if p.pos and p.pos.x and p.pos.x.v and p.pos.y and p.pos.y.v then 
         cache_table.world_x = p.pos.x.v/6553600.0; cache_table.world_y = p.pos.y.v/6553600.0; cache_table.act_param = p.mpActParam
-        cache_table.head_screen_pos = get_char_top_screen_pos(p)
+        cache_table.head_screen_pos, cache_table.head_world_y = get_char_top_screen_pos(p)
         cache_table.root_screen_pos = get_char_root_screen_pos(p)
         
         local bit_val = p.BitValue
@@ -977,29 +977,37 @@ local function update_combat_distances()
 
     local p1_is_left = p1_cache.world_x < p2_cache.world_x
     
+    -- [CRITICAL FIX] : Prise en compte du Lock pour calculer la distance depuis l'origine gelée
+    local p1_ref_x = p1_cache.world_x
+    local p2_ref_x = p2_cache.world_x
+    if config.use_attack_lock then
+        if lock_states[0].active then p1_ref_x = lock_states[0].locked_x end
+        if lock_states[1].active then p2_ref_x = lock_states[1].locked_x end
+    end
+    
     -- Analyze once for P1, once for P2
-    local p1_off, edge_for_p2, dist_for_p2 = analyze_boxes(p1_cache.obj, p1_is_left, p2_cache.world_x)
+    local p1_off, edge_for_p2, dist_for_p2 = analyze_boxes(p1_cache.obj, p1_is_left, p2_ref_x)
     shared_combat.p1_front_offset = p1_off
     shared_combat.p2_edge_x = edge_for_p2
     shared_combat.p2_dist = dist_for_p2
     
-    local p2_off, edge_for_p1, dist_for_p1 = analyze_boxes(p2_cache.obj, not p1_is_left, p1_cache.world_x)
+    local p2_off, edge_for_p1, dist_for_p1 = analyze_boxes(p2_cache.obj, not p1_is_left, p1_ref_x)
     shared_combat.p2_front_offset = p2_off
     shared_combat.p1_edge_x = edge_for_p1
     shared_combat.p1_dist = dist_for_p1
 end
 
-local function get_closest_edge(reference_world_x, target_act_param)
-    -- L'UI demande la distance, on redirige instantanément vers le cache sans refaire de boucle
-    if math.abs(reference_world_x - p1_cache.world_x) < 0.001 then
+local function get_closest_edge(player_id)
+    if player_id == 0 then
         return shared_combat.p1_edge_x, shared_combat.p1_dist
     else
         return shared_combat.p2_edge_x, shared_combat.p2_dist
     end
 end
 
+
 local function evaluate_player_zone(pi, cache_data, opponent_data)
-    local _, dist_target = get_closest_edge(cache_data.world_x, opponent_data.act_param)
+    local _, dist_target = get_closest_edge(cache_data.id)
     if not dist_target then return { name = "Out Range", color = colors.Grey } end
 
     local is_adv = (pi == 0) and config.p1_advanced_mode or config.p2_advanced_mode
@@ -1024,8 +1032,8 @@ local function evaluate_player_zone(pi, cache_data, opponent_data)
                     local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
                     local zone_name = "{" .. mv.input .. "}"
                     local prefix = (pi == 0) and "P1" or "P2"
-                    if prefs.red and prefs.red.input == mv.input then zone_name = prefix .. " Red Zone\n" .. zone_name
-                    elseif prefs.low and prefs.low.input == mv.input then zone_name = prefix .. " Low Range\n" .. zone_name end
+                    if prefs.red and prefs.red.input == mv.input then zone_name = prefix .. " Orange Zone\n" .. zone_name
+                    elseif prefs.low and prefs.low.input == mv.input then zone_name = prefix .. " Red Zone\n" .. zone_name end
                     return { name = zone_name, color = col }
                 end
             end
@@ -1168,8 +1176,8 @@ local function get_advanced_zone_label(pi, char_name, dist_cc, prefix, show_titl
             local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
             
             local zone_name = ""
-            if prefs.red and prefs.red.input == mv.input then zone_name = "Red Zone"
-            elseif prefs.low and prefs.low.input == mv.input then zone_name = "Low Range" end
+            if prefs.red and prefs.red.input == mv.input then zone_name = "Orange Zone"
+            elseif prefs.low and prefs.low.input == mv.input then zone_name = "Red Zone" end
             
             if show_title and show_name then
                 return space .. zone_name .. "\n{" .. mv.input .. "}", col
@@ -1191,7 +1199,7 @@ local function get_opp_zone_info(cache_data, opponent_data)
     if not cache_data.valid or not opponent_data.valid then return "", colors.Grey end
     
     -- MY ZONE LOGIC: On évalue sa propre position par rapport à la zone de l'adversaire
-    local _, dist_target = get_closest_edge(cache_data.world_x, opponent_data.act_param)
+    local _, dist_target = get_closest_edge(cache_data.id)
     if not dist_target then return "No Data", colors.Grey end
 
     local prefix = "My"
@@ -1273,7 +1281,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
     elseif settings.vertical_mode == 3 then y_min = screen_h / 2 end
     local y = y_min + ((y_max - y_min) * settings.line_height)
     
-    local edge_target, dist_target = get_closest_edge(owner_data.world_x, target_data.act_param)
+    local edge_target, dist_target = get_closest_edge(owner_data.id)
     local direction = 1
     if edge_target and edge_target < owner_data.world_x then direction = -1 end
 
@@ -1462,12 +1470,12 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
                             local tag = ""
                             if prefs.red and prefs.red.input == mv.input then tag = "[R] " end
                             if prefs.low and prefs.low.input == mv.input then tag = "[L] " end
-                            
+
                             local label_y
                             if label_toggle then label_y = y_min + 5
                             else label_y = y_min + scaled_font_size * 1.5 end
                             label_toggle = not label_toggle
-                            
+
                             -- Store separated data for ImGui rendering instead of draw_text_safe
                             table.insert(icons_to_draw, {
                                 raw_input = mv.input,
@@ -1485,7 +1493,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
             end
 
             if settings.show_vertical_cursor then
-                local _, dist_target = get_closest_edge(owner_data.world_x, target_data.act_param)
+                local _, dist_target = get_closest_edge(owner_data.id)
                 if dist_target then
                     local c = colors.White
                     for _, mv in ipairs(sorted) do
@@ -1518,7 +1526,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
         local s = world_to_screen_optimized(origin_x + (dist_val * dir), 1.0, 0)
         return s and s.x or nil
     end
-    
+
     if settings.fill_bg then
         local prev_x = get_screen_x(0)
         for _, zone in ipairs(sorted) do
@@ -1538,7 +1546,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
     end
     
     if settings.show_vertical_cursor then
-        local _, dist_target = get_closest_edge(owner_data.world_x, target_data.act_param)
+        local _, dist_target = get_closest_edge(owner_data.id)
         if dist_target then
             local c = colors.Green
             for _, zone in ipairs(sorted) do
@@ -1552,7 +1560,7 @@ end
 local function draw_debug_values(cache, opponent_cache, p_idx)
     if not cache.valid or not opponent_cache.valid then return end
     local current_dist = math.abs(cache.world_x - opponent_cache.world_x) * 100
-    local _, zone_dist = get_closest_edge(cache.world_x, opponent_cache.act_param)
+    local _, zone_dist = get_closest_edge(cache.id)
     local z_dist_val = (zone_dist or 0) * 100
     
     local frames = jump_data_store[cache.real_name]
@@ -1579,7 +1587,7 @@ local function draw_debug_values(cache, opponent_cache, p_idx)
     imgui.text(string.format("Edge Dist: %.4f", z_dist_val))
     local limits = get_player_limits(p_idx, cache)
     if limits then
-        imgui.text(string.format("L:%.1f | R:%.1f | Y:%.1f", limits.low*100, limits.red*100, limits.yellow*100))
+        imgui.text(string.format("R:%.1f | O:%.1f | Y:%.1f", limits.low*100, limits.red*100, limits.yellow*100))
     else imgui.text("Using Fallback Limits") end
     
     imgui.separator()
@@ -1674,11 +1682,11 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
             imgui.separator()
 
             if prefs.red then 
-                imgui.text_colored(string.format("RED ZONE : [%s]", prefs.red.input), COL_RED)
+                imgui.text_colored(string.format("ORANGE ZONE : [%s]", prefs.red.input), COL_ORANGE)
                 imgui.same_line(); if imgui.button("APPLY##adv_red_"..pi) then apply_teleport_exact(pi, prefs.red.ar) end
             end
             if prefs.low then 
-                imgui.text_colored(string.format("LOW RANGE: [%s]", prefs.low.input), COL_LOW)
+                imgui.text_colored(string.format("RED ZONE: [%s]", prefs.low.input), COL_RED)
                 imgui.same_line(); if imgui.button("APPLY##adv_low_"..pi) then apply_teleport_exact(pi, prefs.low.ar) end
             end
             if prefs.red or prefs.low then imgui.separator() end
@@ -1686,8 +1694,8 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
             for _, mv in ipairs(cdata.moves) do
                 local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
                 local tag = ""
-                if prefs.red and prefs.red.input == mv.input then tag = " [R]" end
-                if prefs.low and prefs.low.input == mv.input then tag = tag .. " [L]" end
+                if prefs.red and prefs.red.input == mv.input then tag = " [O]" end
+                if prefs.low and prefs.low.input == mv.input then tag = tag .. " [R]" end
 
                 local gb_val = mv.guard_bit or 0
                 local gb_name = get_guard_type_name(gb_val)
@@ -1719,6 +1727,73 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
 end
 
 
+
+-- Store last mouse click coordinates
+local debug_mouse_x, debug_mouse_y = 0.0, 0.0
+
+local function get_p_cycle(has_custom)
+    local c = {}
+    for i=1,6 do table.insert(c, {v=i, a=false}) end
+    if has_custom then table.insert(c, {v=8, a=false}) end
+    for i=1,6 do table.insert(c, {v=i, a=true}) end
+    if has_custom then table.insert(c, {v=8, a=true}) end
+    table.insert(c, {v=7, a=false})
+    return c
+end
+
+local function get_next_cycle(vmode, adv, has_custom)
+    local c = get_p_cycle(has_custom)
+    local cur = #c
+    if vmode == 7 then cur = #c else
+        for i=1,#c-1 do
+            if c[i].v == vmode and c[i].a == adv then cur = i; break end
+        end
+    end
+    local nxt = cur + 1; if nxt > #c then nxt = 1 end
+    return c[nxt].v, c[nxt].a
+end
+
+-- Apply display flags for a given vertical mode
+local function apply_mode_flags(p, v)
+    if v == 1 then
+        config[p.."_fill_bg"] = false; config[p.."_show_markers"] = false; config[p.."_show_vertical_cursor"] = false
+        config[p.."_show_horizontal_lines"] = true; config[p.."_show_numbers"] = true
+        config[p.."_opp_zone_show"] = true; config[p.."_crossup_show"] = true
+    elseif v == 5 or v == 6 then
+        config[p.."_fill_bg"] = false; config[p.."_show_markers"] = false; config[p.."_show_vertical_cursor"] = false
+        config[p.."_show_horizontal_lines"] = false; config[p.."_show_numbers"] = false
+    elseif v == 7 then
+        config[p.."_fill_bg"] = false; config[p.."_show_markers"] = false; config[p.."_show_vertical_cursor"] = false
+        config[p.."_show_horizontal_lines"] = false; config[p.."_show_numbers"] = false
+        config[p.."_opp_zone_show"] = false; config[p.."_crossup_show"] = false
+    elseif v == 8 then
+        config[p.."_fill_bg"] = config[p.."_custom_fill_bg"]; config[p.."_show_markers"] = config[p.."_custom_show_markers"]
+        config[p.."_show_vertical_cursor"] = config[p.."_custom_show_cursor"]
+        config[p.."_show_horizontal_lines"] = config[p.."_custom_show_hz"]; config[p.."_show_numbers"] = config[p.."_custom_show_numbers"]
+        config[p.."_opp_zone_show"] = config[p.."_custom_show_text"]; config[p.."_crossup_show"] = config[p.."_custom_show_text"]
+    elseif v >= 2 and v <= 4 then
+        config[p.."_fill_bg"] = true; config[p.."_show_markers"] = true; config[p.."_show_vertical_cursor"] = true
+        config[p.."_show_horizontal_lines"] = true; config[p.."_show_numbers"] = true
+        config[p.."_opp_zone_show"] = true; config[p.."_crossup_show"] = true
+    end
+    config[p.."_show_all"] = (v ~= 7)
+end
+
+local function cycle_player_display(p)
+    local next_v, next_a
+    if not config.expert_mode_enabled then
+        next_v = (config[p.."_vertical_mode"] == 1) and 7 or 1
+        next_a = false
+    else
+        next_v, next_a = get_next_cycle(config[p.."_vertical_mode"], config[p.."_advanced_mode"], config[p.."_has_custom"])
+    end
+    config[p.."_vertical_mode"] = next_v; config[p.."_advanced_mode"] = next_a
+    apply_mode_flags(p, next_v)
+
+    local pi = (p == "p1") and 0 or 1
+    trigger_transient(pi, next_v, next_a)
+    save_settings()
+end
 
 local function draw_config_ui()
     -- ==========================================
@@ -1764,6 +1839,14 @@ local function draw_config_ui()
         -- [NOUVEAU] MENU DE TELEPORTATION RAPIDE (Mode Non-Expert)
         -- ==========================================
         if not config.expert_mode_enabled then
+		            if styled_header("--- BASIC DISPLAY ---", UI_THEME.hdr_session_2) then
+                local c_p1, v_p1 = imgui.checkbox("DISPLAY P1 DISTANCE", config.p1_vertical_mode ~= 7)
+                if c_p1 then cycle_player_display("p1") end
+
+                local c_p2, v_p2 = imgui.checkbox("DISPLAY P2 DISTANCE", config.p2_vertical_mode ~= 7)
+                if c_p2 then cycle_player_display("p2") end
+            end
+            -- CODE A COMMENTER WAEL
             if styled_header("--- QUICK TELEPORT ---", UI_THEME.hdr_rules) then
                 local function draw_quick_tp(pi, cache)
                     local rname = cache.valid and cache.adv_name or get_real_name(detected_infos[pi] and detected_infos[pi].name or "?")
@@ -1777,9 +1860,9 @@ local function draw_config_ui()
                         local d_red = limits.red * 100.0
                         local d_yel = limits.yellow * 100.0
 
-                        if imgui.button(string.format(" LOW ##qtp_%d", pi)) then apply_teleport_exact(pi, d_low) end
+                        if imgui.button(string.format(" RED ##qtp_%d", pi)) then apply_teleport_exact(pi, d_low) end
                         imgui.same_line()
-                        if imgui.button(string.format(" RED ##qtp_%d", pi)) then apply_teleport_exact(pi, d_red) end
+                        if imgui.button(string.format(" ORANGE ##qtp_%d", pi)) then apply_teleport_exact(pi, d_red) end
                         imgui.same_line()
                         if imgui.button(string.format(" YELLOW ##qtp_%d", pi)) then apply_teleport_exact(pi, d_yel) end
                     end
@@ -1789,6 +1872,9 @@ local function draw_config_ui()
                 draw_quick_tp(0, p1_cache)
                 draw_quick_tp(1, p2_cache)
             end
+            -- FIN DE CODE A COMMENTER WAEL 2
+            
+
         end
 
         if config.expert_mode_enabled then
@@ -1850,7 +1936,7 @@ local function draw_config_ui()
                     end
                     
                     local chg_r, nv_r = imgui.combo("##p1_red_combo", red_idx, move_names)
-                    imgui.same_line(); imgui.text_colored("Red Zone Move", COL_RED)
+                    imgui.same_line(); imgui.text_colored("Orange Zone Move", COL_ORANGE)
                     imgui.same_line(); if imgui.button("APPLY##tp_p1_red") and nv_r > 1 then apply_teleport_exact(0, cdata.moves[nv_r-1].ar) end
                     if chg_r then 
                         if nv_r == 1 then prefs.red = nil else prefs.red = { input = cdata.moves[nv_r-1].input, ar = cdata.moves[nv_r-1].ar } end
@@ -1859,7 +1945,7 @@ local function draw_config_ui()
                     end
                     
                     local chg_l, nv_l = imgui.combo("##p1_low_combo", low_idx, move_names)
-                    imgui.same_line(); imgui.text_colored("Low Range Move", COL_LOW)
+                    imgui.same_line(); imgui.text_colored("Red Zone Move", COL_RED)
                     imgui.same_line(); if imgui.button("APPLY##tp_p1_low") and nv_l > 1 then apply_teleport_exact(0, cdata.moves[nv_l-1].ar) end
                     if chg_l then
                         if nv_l == 1 then prefs.low = nil else prefs.low = { input = cdata.moves[nv_l-1].input, ar = cdata.moves[nv_l-1].ar } end
@@ -1981,7 +2067,7 @@ local function draw_config_ui()
                     end
                     
                     local chg_r, nv_r = imgui.combo("##p2_red_combo", red_idx, move_names)
-                    imgui.same_line(); imgui.text_colored("Red Zone Move", COL_RED)
+                    imgui.same_line(); imgui.text_colored("Orange Zone Move", COL_ORANGE)
                     imgui.same_line(); if imgui.button("APPLY##tp_p2_red") and nv_r > 1 then apply_teleport_exact(1, cdata.moves[nv_r-1].ar) end
                     if chg_r then 
                         if nv_r == 1 then prefs.red = nil else prefs.red = { input = cdata.moves[nv_r-1].input, ar = cdata.moves[nv_r-1].ar } end
@@ -1990,7 +2076,7 @@ local function draw_config_ui()
                     end
                     
                     local chg_l, nv_l = imgui.combo("##p2_low_combo", low_idx, move_names)
-                    imgui.same_line(); imgui.text_colored("Low Range Move", COL_LOW)
+                    imgui.same_line(); imgui.text_colored("Red Zone Move", COL_RED)
                     imgui.same_line(); if imgui.button("APPLY##tp_p2_low") and nv_l > 1 then apply_teleport_exact(1, cdata.moves[nv_l-1].ar) end
                     if chg_l then
                         if nv_l == 1 then prefs.low = nil else prefs.low = { input = cdata.moves[nv_l-1].input, ar = cdata.moves[nv_l-1].ar } end
@@ -2087,6 +2173,16 @@ local function draw_config_ui()
     -- 5. DEBUG VALUES (Live)
     -- ==========================================
     if styled_header("--- DEBUG VALUES (Live) ---", UI_THEME.hdr_debug) then
+        -- Capture left mouse click (0) and update coordinates
+        if imgui.is_mouse_clicked(0) then
+            local mouse_pos = imgui.get_mouse()
+            debug_mouse_x = mouse_pos.x
+            debug_mouse_y = mouse_pos.y
+        end
+        
+        imgui.text_colored(string.format("Last Click Pos: X: %.1f | Y: %.1f", debug_mouse_x, debug_mouse_y), COL_CYAN)
+        imgui.separator()
+
         imgui.text_colored("[LOAD STATUS]", COL_GREY)
         imgui.text("Dist Config: "); imgui.same_line(); imgui.text_colored(debug_dist_status, debug_dist_color)
         imgui.text("Jump File: "); imgui.same_line(); imgui.text_colored(debug_jump_status, debug_jump_color)
@@ -2139,28 +2235,6 @@ local function is_kb_down(vk)
     return ok and result
 end
 
-local function get_p_cycle(has_custom)
-    local c = {}
-    for i=1,6 do table.insert(c, {v=i, a=false}) end
-    if has_custom then table.insert(c, {v=8, a=false}) end
-    for i=1,6 do table.insert(c, {v=i, a=true}) end
-    if has_custom then table.insert(c, {v=8, a=true}) end
-    table.insert(c, {v=7, a=false})
-    return c
-end
-
-local function get_next_cycle(vmode, adv, has_custom)
-    local c = get_p_cycle(has_custom)
-    local cur = #c
-    if vmode == 7 then cur = #c else
-        for i=1,#c-1 do
-            if c[i].v == vmode and c[i].a == adv then cur = i; break end
-        end
-    end
-    local nxt = cur + 1; if nxt > #c then nxt = 1 end
-    return c[nxt].v, c[nxt].a
-end
-
 local function handle_viewer_shortcuts()
     local active_buttons = get_hardware_pad_mask()
     local kb_now = { [KB_5] = is_kb_down(KB_5), [KB_6] = is_kb_down(KB_6), [KB_7] = is_kb_down(KB_7) }
@@ -2195,42 +2269,12 @@ local function handle_viewer_shortcuts()
 
     -- Cycle P1 Modes
     if is_pressed(PAD_LB) or kb_pressed(KB_5) then
-        local next_v, next_a
-        if not config.expert_mode_enabled then
-            next_v = (config.p1_vertical_mode == 1) and 7 or 1
-            next_a = false
-        else
-            next_v, next_a = get_next_cycle(config.p1_vertical_mode, config.p1_advanced_mode, config.p1_has_custom)
-        end
-        config.p1_vertical_mode = next_v; config.p1_advanced_mode = next_a
-        
-        if next_v == 1 then config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true
-        elseif next_v == 5 or next_v == 6 then config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = false; config.p1_show_numbers = false
-        elseif next_v == 7 then config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = false; config.p1_show_numbers = false; config.p1_opp_zone_show = false; config.p1_crossup_show = false
-        elseif next_v == 8 then config.p1_fill_bg = config.p1_custom_fill_bg; config.p1_show_markers = config.p1_custom_show_markers; config.p1_show_vertical_cursor = config.p1_custom_show_cursor; config.p1_show_horizontal_lines = config.p1_custom_show_hz; config.p1_show_numbers = config.p1_custom_show_numbers; config.p1_opp_zone_show = config.p1_custom_show_text; config.p1_crossup_show = config.p1_custom_show_text
-        elseif next_v >= 2 and next_v <= 4 then config.p1_fill_bg = true; config.p1_show_markers = true; config.p1_show_vertical_cursor = true; config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true end
-        
-        trigger_transient(0, config.p1_vertical_mode, config.p1_advanced_mode); changed = true
+        cycle_player_display("p1"); changed = true
     end
 
     -- Cycle P2 Modes
     if is_pressed(PAD_RB) or kb_pressed(KB_6) then
-        local next_v, next_a
-        if not config.expert_mode_enabled then
-            next_v = (config.p2_vertical_mode == 1) and 7 or 1
-            next_a = false
-        else
-            next_v, next_a = get_next_cycle(config.p2_vertical_mode, config.p2_advanced_mode, config.p2_has_custom)
-        end
-        config.p2_vertical_mode = next_v; config.p2_advanced_mode = next_a
-        
-        if next_v == 1 then config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true
-        elseif next_v == 5 or next_v == 6 then config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = false; config.p2_show_numbers = false
-        elseif next_v == 7 then config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = false; config.p2_show_numbers = false; config.p2_opp_zone_show = false; config.p2_crossup_show = false
-        elseif next_v == 8 then config.p2_fill_bg = config.p2_custom_fill_bg; config.p2_show_markers = config.p2_custom_show_markers; config.p2_show_vertical_cursor = config.p2_custom_show_cursor; config.p2_show_horizontal_lines = config.p2_custom_show_hz; config.p2_show_numbers = config.p2_custom_show_numbers; config.p2_opp_zone_show = config.p2_custom_show_text; config.p2_crossup_show = config.p2_custom_show_text
-        elseif next_v >= 2 and next_v <= 4 then config.p2_fill_bg = true; config.p2_show_markers = true; config.p2_show_vertical_cursor = true; config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true end
-        
-        trigger_transient(1, config.p2_vertical_mode, config.p2_advanced_mode); changed = true
+        cycle_player_display("p2"); changed = true
     end
 
     if changed then save_settings() end
@@ -2308,8 +2352,45 @@ re.on_frame(function()
     end
     
     local scale_factor = sh / 1080.0
+    
+    -- Helper: check if point is inside a character's bounding box
+    local function check_char_click(mx, my, cache)
+        if not cache.valid or not cache.head_screen_pos or not cache.root_screen_pos then return false end
+        local top = cache.head_screen_pos.y
+        local bot = cache.root_screen_pos.y
+        local cx = cache.root_screen_pos.x
+        local h = bot - top
+        local w = math.abs(h * 0.55) -- Largeur estimée à 55% de la hauteur
+        return mx >= (cx - w/2) and mx <= (cx + w/2) and my >= top and my <= bot
+    end
+
+    -- Skip mouse clicks if hovering an imgui window (REFramework menu, floating windows, etc.)
+    local imgui_hovered = false
+    pcall(function() imgui_hovered = imgui.is_window_hovered(8) end)  -- 8 = AnyWindow
+
+    -- [LEFT-CLICK: CYCLE DISPLAY ON CHARACTER (same as keyboard shortcut)]
+    if imgui.is_mouse_clicked(0) and not imgui_hovered then
+        local m = imgui.get_mouse()
+        if check_char_click(m.x, m.y, p1_cache) then
+            cycle_player_display("p1")
+        end
+        if check_char_click(m.x, m.y, p2_cache) then
+            cycle_player_display("p2")
+        end
+    end
+
+    -- [RIGHT-CLICK ON P1/P2: TOGGLE DEBUG WINDOW (like pressing 7)]
+    if imgui.is_mouse_clicked(1) and not imgui_hovered then
+        local m = imgui.get_mouse()
+        if check_char_click(m.x, m.y, p1_cache) or check_char_click(m.x, m.y, p2_cache) then
+            config.show_debug_window = not config.show_debug_window
+            save_settings()
+        end
+    end
+
     local p1_display = nil
     local p2_display = nil
+    local numbers_to_draw = {}
     local numbers_to_draw = {}
 	
     if p1_cache.valid and p2_cache.valid then
@@ -2318,14 +2399,25 @@ re.on_frame(function()
 
 		p1_display = { id = 0, world_x = p1_cache.world_x, world_y = p1_cache.world_y, real_name = p1_cache.real_name, adv_name = p1_cache.adv_name, act_param = p1_cache.act_param, valid = true, facing_right = p1_cache.facing_right, head_screen_pos = p1_cache.head_screen_pos, root_screen_pos = p1_cache.root_screen_pos }
         p2_display = { id = 1, world_x = p2_cache.world_x, world_y = p2_cache.world_y, real_name = p2_cache.real_name, adv_name = p2_cache.adv_name, act_param = p2_cache.act_param, valid = true, facing_right = p2_cache.facing_right, head_screen_pos = p2_cache.head_screen_pos, root_screen_pos = p2_cache.root_screen_pos }
+        
         if config.use_attack_lock then
             if lock_states[0].active then
                  p1_display.world_x = lock_states[0].locked_x
                  p1_display.world_y = lock_states[0].locked_y
+                 -- On recalcule la position 2D du texte basée sur la coordonnée gelée
+                 p1_display.root_screen_pos = world_to_screen_optimized(lock_states[0].locked_x, lock_states[0].locked_y, 0)
+                 if p1_cache.head_world_y then
+                     p1_display.head_screen_pos = world_to_screen_optimized(lock_states[0].locked_x, p1_cache.head_world_y, 0)
+                 end
             end
             if lock_states[1].active then
                  p2_display.world_x = lock_states[1].locked_x
                  p2_display.world_y = lock_states[1].locked_y
+                 -- On recalcule la position 2D du texte basée sur la coordonnée gelée
+                 p2_display.root_screen_pos = world_to_screen_optimized(lock_states[1].locked_x, lock_states[1].locked_y, 0)
+                 if p2_cache.head_world_y then
+                     p2_display.head_screen_pos = world_to_screen_optimized(lock_states[1].locked_x, p2_cache.head_world_y, 0)
+                 end
             end
         end
         
@@ -2498,7 +2590,7 @@ re.on_frame(function()
                             
                             local target_y = y_min + ((y_max - y_min) * title_offset)
                             
-                            local _, dist_target = get_closest_edge(cursor_owner.world_x, cursor_target.act_param)
+                            local _, dist_target = get_closest_edge(cursor_owner.id)
                             if dist_target then
                                 local dir = 1; if cursor_target.world_x < cursor_owner.world_x then dir = -1 end
                                 local origin_x = cursor_owner.world_x + ((config.marker_origin_shift or 0.0) * dir)
@@ -2703,8 +2795,29 @@ re.on_frame(function()
             if imgui.button("Reload Data") then load_advanced_data() end
             imgui.same_line()
             local chg_em, new_em = imgui.checkbox("EXPERT MODE ", config.expert_mode_enabled)
-            if chg_em then config.expert_mode_enabled = new_em; save_settings() end
-            
+            if chg_em then
+                config.expert_mode_enabled = new_em
+                for _, p in ipairs({"p1", "p2"}) do
+                    if not new_em then
+                        -- Expert → Normal: save expert mode, reset to 1 unless OFF
+                        config[p.."_saved_expert_vmode"] = config[p.."_vertical_mode"]
+                        config[p.."_saved_expert_adv"] = config[p.."_advanced_mode"]
+                        if config[p.."_vertical_mode"] ~= 7 then
+                            config[p.."_vertical_mode"] = 1; config[p.."_advanced_mode"] = false
+                            apply_mode_flags(p, 1)
+                        end
+                    else
+                        -- Normal → Expert: if ON restore saved expert mode, if OFF stay OFF
+                        if config[p.."_vertical_mode"] ~= 7 and config[p.."_saved_expert_vmode"] and config[p.."_saved_expert_vmode"] ~= 7 then
+                            config[p.."_vertical_mode"] = config[p.."_saved_expert_vmode"]
+                            config[p.."_advanced_mode"] = config[p.."_saved_expert_adv"]
+                            apply_mode_flags(p, config[p.."_vertical_mode"])
+                        end
+                    end
+                end
+                save_settings()
+            end
+
             if chg_ov then
                 config.show_debug_window = new_ov
                 save_settings()
@@ -2727,7 +2840,7 @@ re.on_frame(function()
     collectgarbage("step", 1)
 end)
 
-re.on_draw_ui(function()
+local function draw_distance_viewer_menu_ui()
     if imgui.tree_node("SF6 DISTANCE VIEWER") then
         local changed_ov, new_ov = imgui.checkbox("FLOATING WINDOW", config.show_debug_window)
         if changed_ov then
@@ -2739,7 +2852,26 @@ re.on_draw_ui(function()
         if imgui.button("Reload Data") then load_advanced_data() end
         imgui.same_line()
         local chg_em, new_em = imgui.checkbox("EXPERT MODE ", config.expert_mode_enabled)
-        if chg_em then config.expert_mode_enabled = new_em; save_settings() end
+        if chg_em then
+            config.expert_mode_enabled = new_em
+            for _, p in ipairs({"p1", "p2"}) do
+                if not new_em then
+                    config[p.."_saved_expert_vmode"] = config[p.."_vertical_mode"]
+                    config[p.."_saved_expert_adv"] = config[p.."_advanced_mode"]
+                    if config[p.."_vertical_mode"] ~= 7 then
+                        config[p.."_vertical_mode"] = 1; config[p.."_advanced_mode"] = false
+                        apply_mode_flags(p, 1)
+                    end
+                else
+                    if config[p.."_vertical_mode"] ~= 7 and config[p.."_saved_expert_vmode"] and config[p.."_saved_expert_vmode"] ~= 7 then
+                        config[p.."_vertical_mode"] = config[p.."_saved_expert_vmode"]
+                        config[p.."_advanced_mode"] = config[p.."_saved_expert_adv"]
+                        apply_mode_flags(p, config[p.."_vertical_mode"])
+                    end
+                end
+            end
+            save_settings()
+        end
 
         if not config.show_debug_window then
             imgui.separator()
@@ -2749,4 +2881,6 @@ re.on_draw_ui(function()
 
         imgui.tree_pop()
     end
-end)
+end
+
+re.on_draw_ui(draw_distance_viewer_menu_ui)

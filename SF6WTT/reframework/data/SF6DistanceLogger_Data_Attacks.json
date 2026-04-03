@@ -51,9 +51,9 @@
         "yellow_offset": 50,
         "moves": [
             { "input": "2LPLK", "ar": 268.91983, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
+            { "input": "5HK", "ar": 230.24052, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": true },
             { "input": "2HP", "ar": 230.24052, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": true },
             { "input": "5HK (HOLD)", "ar": 230.24052, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
-            { "input": "5HK", "ar": 230.24052, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": true },
             { "input": "6HK", "ar": 220.08521, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": true },
             { "input": "5HP (HOLD)", "ar": 203.39801, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2HK", "ar": 188.34224, "guard_bit": 6, "is_cancelable": false, "is_super_cancelable": false },
@@ -86,8 +86,8 @@
         ]
     },
     "Blanka": {
-        "red": { "input": "2HP", "ar": 213.72000 },
-        "low": { "input": "3HP", "ar": 310.06000 },
+        "red": { "input": "2HP", "ar": 213.72200 },
+        "low": { "input": "3HP", "ar": 310.05701 },
         "yellow_offset": 50,
         "moves": [
             { "input": "3HP", "ar": 310.05701, "guard_bit": 6, "is_cancelable": false, "is_super_cancelable": false },
@@ -291,12 +291,11 @@
         ]
     },
     "JP": {
-        "red": { "input": "5MP", "ar": 190.27933 },
-        "low": { "input": "3HP", "ar": 241.44810 },
+        "red": { "input": "3HP", "ar": 241.44810 },
+        "low": { "input": "5HP", "ar": 158.00000 },
         "yellow_offset": 50,
         "moves": [
             { "input": "3HP", "ar": 241.44810, "guard_bit": 6, "is_cancelable": false, "is_super_cancelable": false },
-            { "input": "5MP", "ar": 190.27933, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "6HK", "ar": 186.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "2MK", "ar": 174.00000, "guard_bit": 6, "is_cancelable": false, "is_super_cancelable": false },
             { "input": "5HK", "ar": 162.00000, "guard_bit": 7, "is_cancelable": false, "is_super_cancelable": false },

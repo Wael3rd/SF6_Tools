@@ -313,7 +313,27 @@ re.on_frame(function()
     end
 
     handle_input()
-    
+
+    -- [LEFT-CLICK ON TIMER: CYCLE TRAINING MODE]
+    local imgui_hovered = false
+    pcall(function() imgui_hovered = imgui.is_window_hovered(8) end)
+    if imgui.is_mouse_clicked(0) and not imgui_hovered then
+        local sw, sh = 1920, 1080
+        pcall(function()
+            local ds = imgui.get_display_size()
+            if ds then sw = ds.x; sh = ds.y end
+        end)
+        local m = imgui.get_mouse()
+        local tz_x1 = sw * 0.430
+        local tz_y1 = sh * 0.0
+        local tz_x2 = tz_x1 + sw * 0.140
+        local tz_y2 = tz_y1 + sh * 0.160
+        if m.x >= tz_x1 and m.x <= tz_x2 and m.y >= tz_y1 and m.y <= tz_y2 then
+            _G.CurrentTrainerMode = _G.CurrentTrainerMode + 1
+            if _G.CurrentTrainerMode > 4 then _G.CurrentTrainerMode = 0 end
+        end
+    end
+
     if is_binding_mode then return end
     
     -- CHECK AUTOMATIC GUARD SWITCHING
@@ -359,20 +379,34 @@ re.on_draw_ui(function()
         imgui.separator()
         
         -- BUTTON CONFIG
-        imgui.text("Shortcut Configuration:")
         if is_binding_mode then
-            imgui.text_colored(">>> PRESS ANY BUTTON... <<<", 0xFF00FFFF)
+            imgui.spacing()
+            imgui.push_style_color(5, 0xFF00FFFF)
+            imgui.push_style_color(21, 0xFF005555)
+            imgui.push_style_color(22, 0xFF007777)
+            imgui.push_style_color(23, 0xFF009999)
+            imgui.push_style_color(0, 0xFF00FFFF)
+            imgui.button(">>> PRESS ANY BUTTON ON YOUR CONTROLLER... <<<", Vector2f.new(-1, 40))
+            imgui.pop_style_color(5)
+            imgui.spacing()
         else
             local btn_name = "ID: " .. tostring(config.func_button)
             if config.func_button == 16384 then btn_name = "SELECT / BACK" end
             if config.func_button == 8192 then btn_name = "R3 / RS" end
             if config.func_button == 4096 then btn_name = "L3 / LS" end
-            
-            imgui.text("Current Function Button: " .. btn_name)
-            if imgui.button("CHANGE FUNCTION BUTTON") then
+
+            imgui.spacing()
+            imgui.push_style_color(5, 0xFFFFFFFF)
+            imgui.push_style_color(21, 0xFFCC6600)
+            imgui.push_style_color(22, 0xFFFF8800)
+            imgui.push_style_color(23, 0xFFFFAA33)
+            imgui.push_style_color(0, 0xFFFFCC66)
+            if imgui.button("CHANGE FUNCTION BUTTON  [" .. btn_name .. "]", Vector2f.new(-1, 35)) then
                 is_binding_mode = true
-                last_input_mask = 0 
+                last_input_mask = 0
             end
+            imgui.pop_style_color(5)
+            imgui.spacing()
         end
         imgui.text_colored("Mode Switch Shortcut: [Function] + [Square / X]", 0xFF00FF00)
         

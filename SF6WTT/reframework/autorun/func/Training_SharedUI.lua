@@ -210,4 +210,116 @@ function UI.draw_standard_hud(window_name, cfg, session, mode_label, show_timer,
     imgui.pop_style_var(2); imgui.pop_style_color(1)
 end
 
+-- ==========================================
+-- DYNAMIC SHORTCUT LABEL (pad vs keyboard)
+-- ==========================================
+function UI.sc(pad_key)
+    local kb = false
+    pcall(function()
+        local igm = sdk.get_managed_singleton("app.InputGuideManager")
+        if igm then kb = (igm:call("GetMode", 0) == 2) end
+    end)
+    local map = { L = "1", U = "2", D = "3", R = "4" }
+    return kb and (map[pad_key] or pad_key) or pad_key
+end
+
+-- Training scripts: buttons left to right = D(1), U(2), R(3), L(4)
+function UI.sc_t(pad_key)
+    local kb = false
+    pcall(function()
+        local igm = sdk.get_managed_singleton("app.InputGuideManager")
+        if igm then kb = (igm:call("GetMode", 0) == 2) end
+    end)
+    local map = { D = "1", U = "2", R = "3", L = "4" }
+    return kb and (map[pad_key] or pad_key) or pad_key
+end
+
+-- ==========================================
+-- SHORTCUT BUTTON COLORS
+-- ==========================================
+-- ABGR format: 0xAABBGGRR
+UI.SC_COLORS = {
+    c1 = { text = 0xFF4444FF, base = 0xFF141464, hover = 0xFF28288C, active = 0xFF3C3CB4, border = 0xFFFFFFFF },  -- RED
+    c2 = { text = 0xFF44FF44, base = 0xFF146414, hover = 0xFF288C28, active = 0xFF3CB43C, border = 0xFFFFFFFF },  -- GREEN
+    c3 = { text = 0xFFFF4444, base = 0xFF641414, hover = 0xFF8C2828, active = 0xFFB43C3C, border = 0xFFFFFFFF },  -- BLUE
+    c4 = { text = 0xFF00A5FF, base = 0xFF0A4878, hover = 0xFF1A6CA0, active = 0xFF2890CC, border = 0xFFFFFFFF },  -- ORANGE
+}
+
+function UI.sc_button(label, colors, width)
+    imgui.push_style_color(5,  colors.text)
+    imgui.push_style_color(21, colors.base)
+    imgui.push_style_color(22, colors.hover)
+    imgui.push_style_color(23, colors.active)
+    imgui.push_style_color(0,  colors.border)
+    local clicked = imgui.button(label, width and Vector2f.new(width, 0) or nil)
+    imgui.pop_style_color(5)
+    return clicked
+end
+
+-- ==========================================
+-- FLOATING SESSION WINDOW (ComboTrials style)
+-- ==========================================
+local float_ui_font = nil    -- Window font (same as ComboTrials custom_ui_font)
+local float_btn_font = nil   -- Button font (same as ComboTrials sf6_btn_font)
+local float_font_attempted = false
+local float_last_sh = 0
+
+function UI.begin_floating_window(window_name)
+    local sw, sh = UI.get_screen_size()
+
+    -- Load fonts (same as ComboTrials: ui=20, btn=SF6_college 22)
+    if not float_font_attempted or sh ~= float_last_sh then
+        float_font_attempted = true
+        float_last_sh = sh
+        local font_scale = sh / 1080.0
+        pcall(function() float_ui_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", math.max(10, math.floor(20 * font_scale))) end)
+        pcall(function() float_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * font_scale))) end)
+    end
+
+    -- Exact same style as ComboTrials floating window
+    imgui.push_style_color(2,  0x00000000)   -- WindowBg transparent
+    imgui.push_style_color(5,  0x00000000)   -- Border transparent
+    imgui.push_style_color(7,  0xAA220044)   -- Border accent
+    imgui.push_style_color(8,  0xCC6600AA)   -- Title bar
+    imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))  -- WindowPadding (same as ComboTrials)
+
+    if float_ui_font then imgui.push_font(float_ui_font) end
+
+    -- Hardcoded size and position (same as ComboTrials)
+    imgui.set_next_window_size(Vector2f.new(sw * 0.8215, sh * 0.0444), 1)  -- Always
+    imgui.set_next_window_pos(Vector2f.new(sw * 0.0898, sh * 0.9535), 1)   -- Always
+    local visible = imgui.begin_window(window_name, true, 9)  -- 9 = NoTitleBar + NoScrollbar
+    return visible, sw, sh
+end
+
+function UI.end_floating_window()
+    imgui.end_window()
+    if float_ui_font then imgui.pop_font() end
+    imgui.pop_style_var(1)
+    imgui.pop_style_color(4)
+end
+
+-- Draw dark background (same as ComboTrials progress_bar trick)
+function UI.draw_floating_bg()
+    local w = imgui.get_window_size()
+    imgui.set_cursor_pos(Vector2f.new(-10, -10))
+    imgui.push_style_color(7, 0xFF220000)
+    pcall(function() imgui.progress_bar(0.0, Vector2f.new(w.x + 20, w.y + 20)) end)
+    imgui.pop_style_color(1)
+end
+
+-- SF6 neon button (identical to styled_sf6_button in floating mode with sf6_btn_font)
+function UI.sf6_button(label, colors, width)
+    if float_btn_font then imgui.push_font(float_btn_font) end
+    imgui.push_style_color(5,  colors.text)    -- Border
+    imgui.push_style_color(21, colors.base)    -- Button
+    imgui.push_style_color(22, colors.hover)   -- ButtonHovered
+    imgui.push_style_color(23, colors.active)  -- ButtonActive
+    imgui.push_style_color(0,  colors.border)  -- Text
+    local clicked = imgui.button(label, Vector2f.new(width or 0, 0))
+    imgui.pop_style_color(5)
+    if float_btn_font then imgui.pop_font() end
+    return clicked
+end
+
 return UI

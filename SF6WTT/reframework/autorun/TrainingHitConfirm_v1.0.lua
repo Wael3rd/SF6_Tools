@@ -148,7 +148,8 @@ local user_config = {
     show_index = true,
     p1 = { frame_type = true, status_type = true, frame_number = false, start_frame = false, end_frame = false, main_gauge = false },
     p2 = { frame_type = true, status_type = true, frame_number = false, start_frame = false, end_frame = false, main_gauge = false },
-    show_damage = true, show_hitstop = true, show_status_label = true
+    show_damage = true, show_hitstop = true, show_status_label = true,
+    show_floating = true
 }
 
 local work_tables = { trigger = {}, success = {}, dmg_hit = {}, dmg_block = {}, break_list = {}, light_btns = {} }
@@ -833,37 +834,43 @@ local function handle_input()
         end
     end
 
-    -- 2. RIGHT = 4 : START / PAUSE
-    if is_action(BTN_RIGHT, 0x33) then
-        if not session.is_running and not session.is_time_up then 
+    -- POSITION 3 (key 3): START when not running, STOP when running
+    -- Pad: BTN_RIGHT=start/pause, BTN_LEFT=stop/reset (unchanged)
+    local pos3_kb = kb_pressed(0x33)
+    local pos3_pad = is_func_held and pad_pressed(BTN_RIGHT)
+    local pos4_kb = kb_pressed(0x34)
+    local pos4_pad = is_func_held and pad_pressed(BTN_LEFT)
+
+    if not session.is_running and not session.is_time_up then
+        if pos3_kb or pos3_pad then
             reset_session_stats()
             session.time_rem = user_config.timer_minutes * 60
             session.is_running = true; session.is_paused = false
             set_feedback(TEXTS.started, COLORS.Green, 1.0)
-        elseif session.is_running then
-            session.is_paused = not session.is_paused
-            set_feedback(session.is_paused and TEXTS.paused or TEXTS.resumed, COLORS.Yellow, 1.0)
+        end
+    elseif session.is_running then
+        if pos3_kb or pos4_pad then
+            export_session_stats(); reset_session_stats()
+            session.is_running = false
+            set_feedback(TEXTS.stopped_export, COLORS.Red, 1.5)
+        end
+    elseif session.is_time_up then
+        if pos3_kb or pos4_pad then
+            reset_session_stats()
+            set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
         end
     end
 
-    -- 3. LEFT = 1 : STOP & EXPORT OR RESET
-    if is_action(BTN_LEFT, 0x34) then
-        -- TIME UP -> JUST RESET
-        if session.is_time_up then
+    -- Action: RESET / PAUSE (position 4 = key 4)
+    if not session.is_running and not session.is_time_up then
+        if pos4_kb or pos4_pad then
             reset_session_stats()
             set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
-            
-        -- MANUAL STOP WITH DATA -> EXPORT + RESET
-        elseif session.total > 0 then
-            export_session_stats()
-            reset_session_stats()
-            session.is_running = false
-            set_feedback(TEXTS.stopped_export, COLORS.Red, 1.5)
-            
-        -- NO DATA -> JUST RESET
-        else
-            reset_session_stats()
-            set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
+        end
+    elseif session.is_running then
+        if pos4_kb or pos3_pad then
+            session.is_paused = not session.is_paused
+            set_feedback(session.is_paused and TEXTS.paused or TEXTS.resumed, COLORS.Yellow, 1.0)
         end
     end
 
@@ -1065,6 +1072,69 @@ local function draw_hud_overlay()
     end)
 end
 
+-- SESSION BUTTONS — DOCKED
+local function draw_session_buttons_docked()
+    local sc = SharedUI.sc_t
+    local SC = SharedUI.SC_COLORS
+    if SharedUI.sc_button("TIMER - (1)##dk_hc", SC.c1) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
+    imgui.same_line()
+    if SharedUI.sc_button("TIMER + (2)##dk_hc", SC.c2) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
+    imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " MIN"); imgui.same_line(300)
+    if SharedUI.sc_button("RESET (4)##dk_hc", SC.c4) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
+    imgui.spacing()
+    if not session.is_running then
+        if SharedUI.sc_button("START SESSION (3)##dk_hc", SC.c3) then
+            session.is_running = true; session.is_paused = false; reset_session_stats()
+            session.time_rem = user_config.timer_minutes * 60; set_feedback(TEXTS.started, COLORS.Green, 1.0)
+        end
+    else
+        if SharedUI.sc_button("STOP & EXPORT (3)##dk_hc", SC.c3) then export_session_stats(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0) end
+        imgui.same_line()
+        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (4)##dk_hc", SC.c4) then session.is_paused = not session.is_paused end
+    end
+end
+
+-- SESSION BUTTONS — FLOATING (single-line)
+local function draw_session_floating()
+    local visible, sw, sh = SharedUI.begin_floating_window("Hit Confirm##float")
+    if not visible then user_config.show_floating = false; save_conf(); SharedUI.end_floating_window(); return end
+    local sc = SharedUI.sc_t
+    local SC = SharedUI.SC_COLORS
+    local w_width = imgui.get_window_size().x
+    local sp = 4 * (sh / 1080.0)
+    local pad_x = sw * 0.01
+    SharedUI.draw_floating_bg()
+    local all_labels = { "TIMER - (1)", "TIMER + (2)", "START (3)", "STOP (3)", "PAUSE (3)", "RESET (4)" }
+    local max_w = 0
+    for _, t in ipairs(all_labels) do local tw = imgui.calc_text_size(t).x; if tw > max_w then max_w = tw end end
+    local cb_size = imgui.calc_text_size("W").y + 6
+    local remaining = w_width - (pad_x * 2) - cb_size - 10 - (sp * 4)
+    local actual_w = math.max(max_w + 20, remaining / 4)
+    imgui.set_cursor_pos(Vector2f.new(pad_x, sh * 0.01))
+    if SharedUI.sf6_button("TIMER - (1)##fl_hc", SC.c1, actual_w) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
+    imgui.same_line(0, sp)
+    if SharedUI.sf6_button("TIMER + (2)##fl_hc", SC.c2, actual_w) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
+    imgui.same_line(0, sp)
+    if not session.is_running then
+        if SharedUI.sf6_button("START (3)##fl_hc", SC.c3, actual_w) then
+            session.is_running = true; session.is_paused = false; reset_session_stats()
+            session.time_rem = user_config.timer_minutes * 60; set_feedback(TEXTS.started, COLORS.Green, 1.0)
+        end
+    else
+        if SharedUI.sf6_button("STOP (3)##fl_hc", SC.c3, actual_w) then export_session_stats(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0) end
+    end
+    imgui.same_line(0, sp)
+    if session.is_running then
+        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (4)##fl_hc", SC.c4, actual_w) then session.is_paused = not session.is_paused end
+    else
+        if SharedUI.sf6_button("RESET (4)##fl_hc", SC.c4, actual_w) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
+    end
+    imgui.same_line(w_width - cb_size - 10 - pad_x)
+    local changed, new_val = imgui.checkbox("##close_hc", user_config.show_floating)
+    if changed then user_config.show_floating = new_val; save_conf() end
+    SharedUI.end_floating_window()
+end
+
 re.on_frame(function()
     if DEPENDANT_ON_MANAGER and (_G.CurrentTrainerMode ~= 2) then return end
     
@@ -1094,40 +1164,27 @@ re.on_frame(function()
     if should_draw_hud then
         draw_hud_overlay()
     end
+
+    -- FLOATING SESSION WINDOW
+    if user_config.show_floating and _G.CurrentTrainerMode == 2 then
+        draw_session_floating()
+    end
 end)
 
 re.on_draw_ui(function()
     if DEPENDANT_ON_MANAGER and _G.CurrentTrainerMode ~= 2 then return end
 
-    -- On garde le menu de config ici (imgui standard)
     if imgui.tree_node("Hit Confirm Trainer (V7.3 Heavy DR Fail)") then
-        
-        if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
-            imgui.text("SHORTCUTS (Hold FUNCTION):")
-            imgui.text("- (Func) + UP / DOWN : Adjust Timer"); 
-            imgui.text("- (Func) + LEFT : Stop / Export / Reset"); 
-            imgui.text("- (Func) + RIGHT : Start / Pause")
-        end
 
         if styled_header("--- SESSION CONFIGURATION ---", UI_THEME.hdr_session) then
-            imgui.text("DURATION:"); imgui.same_line(); 
-            if styled_button("-##min", UI_THEME.btn_neutral) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
-            imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " MIN"); imgui.same_line(); 
-            if styled_button("+##min", UI_THEME.btn_neutral) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
-            
-            imgui.same_line(250)
-            if styled_button("RESET", UI_THEME.btn_red) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
+            local c_fl, v_fl = imgui.checkbox("Detacher en fenetre flottante", user_config.show_floating)
+            if c_fl then user_config.show_floating = v_fl; save_conf() end
 
-            imgui.spacing()
-            if not session.is_running then
-                if styled_button("START SESSION", UI_THEME.btn_green) then 
-                    session.is_running = true; session.is_paused = false; reset_session_stats(); 
-                    session.time_rem = user_config.timer_minutes * 60; session.is_running = true; set_feedback(TEXTS.started, COLORS.Green, 1.0) 
-                end
+            if user_config.show_floating then
+                imgui.text_colored("Cette section est actuellement detachee en fenetre flottante.", COLORS.DarkGrey)
             else
-                if styled_button("STOP & EXPORT", UI_THEME.btn_red) then export_session_stats(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0) end
-                imgui.same_line(); 
-                if styled_button(session.is_paused and "RESUME" or "PAUSE", UI_THEME.btn_neutral) then session.is_paused = not session.is_paused end
+                imgui.separator(); imgui.spacing()
+                draw_session_buttons_docked()
             end
         end
 

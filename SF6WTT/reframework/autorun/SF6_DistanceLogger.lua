@@ -722,12 +722,12 @@ end)
 -- SHARED DRAW FUNCTION & THEMES
 -- =========================================================
 local COL_RED    = 0xFF4444FF
-local COL_LOW    = 0xFFCC44BB
+local COL_ORANGE = 0xFF00A5FF
 local COL_YELLOW = 0xFF00FFFF
 local COL_GREEN  = 0xFF00FF00
 local COL_CYAN   = 0xFFFFFF00
 local COL_GREY   = 0xFF888888
-local COL_GOLD   = 0xFF00D5FF 
+local COL_GOLD   = 0xFF00D5FF
 
 local UI_THEME = {
     hdr_info    = { base = 0xFFDB9834, hover = 0xFFE6A94D, active = 0xFFC78320 },
@@ -847,11 +847,11 @@ function draw_main_content(is_overlay)
                     end
                 end
 
-                if cdata.low then imgui.text_colored(string.format("LOW    [%s]  :  %.5f", cdata.low.input, cdata.low.ar), COL_LOW)
-                else imgui.text_colored("LOW    [--]  :  --", COL_LOW) end
-
-                if cdata.red then imgui.text_colored(string.format("RED    [%s]  :  %.5f", cdata.red.input, cdata.red.ar), COL_RED)
+                if cdata.low then imgui.text_colored(string.format("RED    [%s]  :  %.5f", cdata.low.input, cdata.low.ar), COL_RED)
                 else imgui.text_colored("RED    [--]  :  --", COL_RED) end
+
+                if cdata.red then imgui.text_colored(string.format("ORANGE [%s]  :  %.5f", cdata.red.input, cdata.red.ar), COL_ORANGE)
+                else imgui.text_colored("ORANGE [--]  :  --", COL_ORANGE) end
 
                 local y_off = cdata.yellow_offset or 50
                 local base_ar = nil
@@ -940,9 +940,9 @@ function draw_main_content(is_overlay)
                                 if imgui.button("Annuler##can"..edit_key) then edit_state.key = nil end
                             else
                                 local row_text = string.format("  [%s] [%s]  AR: %.5f", entry.input, gb_name, entry.ar)
-                                if is_red and is_low then imgui.text_colored(row_text .. "  [R][L]", 0xFFEE88FF)
-                                elseif is_red then imgui.text_colored(row_text .. "  [R]", COL_RED)
-                                elseif is_low then imgui.text_colored(row_text .. "  [L]", COL_LOW)
+                                if is_red and is_low then imgui.text_colored(row_text .. "  [O][R]", 0xFFEE88FF)
+                                elseif is_red then imgui.text_colored(row_text .. "  [O]", COL_ORANGE)
+                                elseif is_low then imgui.text_colored(row_text .. "  [R]", COL_RED)
                                 else imgui.text(row_text) end
 
                                 if entry.is_cancelable then imgui.same_line(); imgui.text_colored(" [C]", COL_GREEN) end
@@ -977,14 +977,14 @@ function draw_main_content(is_overlay)
                                     edit_state.ar_buf = string.format("%.5f", entry.ar)
                                 end
                                 imgui.same_line()
-                                if imgui.button("R##sr"..i.."_"..idx) then
+                                if imgui.button("O##sr"..i.."_"..idx) then
                                     cdata.red = { input = entry.input, ar = entry.ar }; save_advanced_data()
-                                    status_msg = string.format("RED = [%s] %.5f", entry.input, entry.ar); status_timer = 150
+                                    status_msg = string.format("ORANGE = [%s] %.5f", entry.input, entry.ar); status_timer = 150
                                 end
                                 imgui.same_line()
-                                if imgui.button("L##sl"..i.."_"..idx) then
+                                if imgui.button("R##sl"..i.."_"..idx) then
                                     cdata.low = { input = entry.input, ar = entry.ar }; save_advanced_data()
-                                    status_msg = string.format("LOW = [%s] %.5f", entry.input, entry.ar); status_timer = 150
+                                    status_msg = string.format("RED = [%s] %.5f", entry.input, entry.ar); status_timer = 150
                                 end
                                 imgui.same_line()
                                 if imgui.button("X##del"..i.."_"..idx) then to_delete = idx end

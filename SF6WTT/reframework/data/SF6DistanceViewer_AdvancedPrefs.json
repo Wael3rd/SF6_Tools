@@ -16,6 +16,18 @@
             },
             "yellow_offset": 50
         },
+        "Luke": {
+            "low": {
+                "ar": 148.218,
+                "input": "2MK"
+            },
+            "red": {
+                "ar": 168.70044,
+                "input": "5HP"
+            },
+            "visibility": null,
+            "yellow_offset": 50
+        },
         "Marisa": {
             "low": {
                 "ar": 195.64099,
@@ -102,6 +114,18 @@
                 "ar": 193.8503,
                 "input": "6HK"
             },
+            "yellow_offset": 50
+        },
+        "JP": {
+            "low": {
+                "ar": 158.0,
+                "input": "5HP"
+            },
+            "red": {
+                "ar": 241.4481,
+                "input": "3HP"
+            },
+            "visibility": null,
             "yellow_offset": 50
         },
         "Ryu": {

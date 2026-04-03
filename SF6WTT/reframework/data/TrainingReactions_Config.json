@@ -12,6 +12,7 @@
     "playback_mode_auto": false,
     "session_mode": 1,
     "show_debug_panel": false,
+    "show_floating": true,
     "show_slot_stats": true,
     "slot_visibility": [
         true,
@@ -25,7 +26,7 @@
     ],
     "timer_font_size": 80,
     "timer_hud_y": -0.46,
-    "timer_minutes": 1,
+    "timer_minutes": 2,
     "timer_mode_enabled": true,
     "timer_offset_x": 0.0
 }

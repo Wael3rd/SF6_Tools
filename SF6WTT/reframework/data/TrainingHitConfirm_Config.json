@@ -37,6 +37,7 @@
         "show_block_pct": true,
         "show_damage": true,
         "show_early_detection": false,
+        "show_floating": true,
         "show_hit_pct": true,
         "show_hitstop": true,
         "show_index": true,
@@ -53,7 +54,7 @@
         "success_p1_gauge": 1,
         "timer_font_size": 80,
         "timer_hud_y": -0.46,
-        "timer_minutes": 2,
+        "timer_minutes": 5,
         "timer_mode_enabled": true,
         "timer_offset_x": 0.0
     }
