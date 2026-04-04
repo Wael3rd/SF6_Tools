@@ -1,5 +1,5 @@
 -- Training_ScriptManager.lua
--- v3.0 : Mappings de Garde Corrigés (0, 3, 4)
+-- v4.0 : Top floating bar + new cycling order
 
 local re = re
 local sdk = sdk
@@ -15,6 +15,9 @@ local config = {
     func_button = nil, -- No default: must be set by user via CHANGE FUNCTION BUTTON
     btn_colors = { c1 = 0xFFFF0000, c2 = 0xFF00FF00, c3 = 0xFF0000FF, c4 = 0xFFDC00FF },
     btn_alphas = { c1 = 200, c2 = 200, c3 = 200, c4 = 200 },
+    -- Top bar colors (ARGB)
+    top_colors = { switch = 0xFF0066FF, active = 0xFF01FF00, inactive = 0xFF666666 },
+    top_alphas = { switch = 170, active = 170, inactive = 120 },
 }
 
 -- ARGB -> ABGR conversion
@@ -59,6 +62,12 @@ local function load_config()
         if data.btn_alphas and type(data.btn_alphas) == "table" then
             for k, v in pairs(data.btn_alphas) do config.btn_alphas[k] = v end
         end
+        if data.top_colors and type(data.top_colors) == "table" then
+            for k, v in pairs(data.top_colors) do config.top_colors[k] = v end
+        end
+        if data.top_alphas and type(data.top_alphas) == "table" then
+            for k, v in pairs(data.top_alphas) do config.top_alphas[k] = v end
+        end
     end
     _G.TrainingFuncButton = config.func_button
     publish_button_colors()
@@ -83,14 +92,6 @@ local function is_in_training_mode()
     end
     return false
 end
-
--- ==========================================
--- 0. ONBOARDING MESSAGE (first entry only)
--- ==========================================
-local onboard_timer = 10 * 60  -- 10 seconds at 60fps
-local onboard_ever_entered = false  -- true once user enters any mode
-local onboard_font = nil
-local onboard_font_attempted = false
 
 -- ==========================================
 -- 0.1 GUARD CONTROL UTILITIES (SAFE PATTERN)
@@ -181,7 +182,20 @@ end
 -- 1. MODE MANAGEMENT (TRAINER MANAGER)
 -- ==========================================
 if _G.CurrentTrainerMode == nil then
-    _G.CurrentTrainerMode = 0 
+    _G.CurrentTrainerMode = 0
+end
+
+-- Cycling order: DISABLED → HIT CONFIRM → REACTION DRILLS → POST GUARD → CUSTOM COMBO TRIALS → DISABLED
+local MODE_CYCLE = { 0, 2, 1, 3, 4 }
+local MODE_CYCLE_INDEX = {} -- reverse lookup: mode_id → position in cycle
+for i, m in ipairs(MODE_CYCLE) do MODE_CYCLE_INDEX[m] = i end
+
+local function cycle_next_mode()
+    local cur = _G.CurrentTrainerMode or 0
+    local idx = MODE_CYCLE_INDEX[cur] or 1
+    idx = idx + 1
+    if idx > #MODE_CYCLE then idx = 1 end
+    _G.CurrentTrainerMode = MODE_CYCLE[idx]
 end
 
 -- Input Management (Gamepad & Keyboard)
@@ -238,8 +252,7 @@ local function handle_input()
 
     -- Trigger switch if either Pad combo or Keyboard '0' is pressed
     if (is_func_held and is_switch_pressed) or is_kb_0_pressed then
-        _G.CurrentTrainerMode = _G.CurrentTrainerMode + 1
-        if _G.CurrentTrainerMode > 4 then _G.CurrentTrainerMode = 0 end
+        cycle_next_mode()
     end
     
     last_input_mask = active_buttons
@@ -353,6 +366,75 @@ re.on_pre_gui_draw_element(function(element, context)
 end)
 
 -- ==========================================
+-- 3.5 TOP FLOATING BAR (mode switcher)
+-- ==========================================
+local SharedUI = require("func/Training_SharedUI")
+
+-- Top bar button colors (rebuilt from config)
+local SWITCH_COLOR  = build_sc_color(config.top_colors.switch, config.top_alphas.switch)
+local MODE_ACTIVE   = build_sc_color(config.top_colors.active, config.top_alphas.active)
+local MODE_INACTIVE = build_sc_color(config.top_colors.inactive, config.top_alphas.inactive)
+
+local function rebuild_top_colors()
+    SWITCH_COLOR  = build_sc_color(config.top_colors.switch, config.top_alphas.switch)
+    MODE_ACTIVE   = build_sc_color(config.top_colors.active, config.top_alphas.active)
+    MODE_INACTIVE = build_sc_color(config.top_colors.inactive, config.top_alphas.inactive)
+end
+
+local top_bar_width = 0.746
+local top_bar_height = 0.0444
+
+local MODE_BUTTONS = {
+    { id = 0, label = "DISABLED" },
+    { id = 2, label = "HIT CONFIRM" },
+    { id = 1, label = "REACTION DRILLS" },
+    { id = 3, label = "POST GUARD" },
+    { id = 4, label = "CUSTOM COMBO TRIALS" },
+}
+
+local function draw_top_floating_bar()
+    local visible, sw, sh = SharedUI.begin_floating_window_top("TrainingModeSwitch##top", top_bar_width, top_bar_height)
+    if not visible then
+        SharedUI.end_floating_window_top(); return
+    end
+    SharedUI.draw_floating_bg_top()
+
+    local sp = 4 * (sh / 1080.0)
+    local content_w = imgui.get_window_size().x - sw * 0.02  -- subtract WindowPadding (left+right)
+
+    -- Build switch label with dynamic shortcut (keyboard vs controller)
+    local switch_label
+    local fn = SharedUI.get_func_name()
+    if SharedUI.is_keyboard_mode() or not fn then
+        switch_label = "SWITCH (0)"
+    else
+        switch_label = "SWITCH (" .. fn .. " + SQUARE/X)"
+    end
+
+    -- Calculate button widths: use longest possible label for stable width
+    local switch_max = fn and ("SWITCH (" .. fn .. " + SQUARE/X)") or "SWITCH (0)"
+    local switch_w = imgui.calc_text_size(switch_max).x + 20
+    local remaining = content_w - switch_w - sp * #MODE_BUTTONS
+    local mode_w = remaining / #MODE_BUTTONS
+
+    imgui.set_cursor_pos(Vector2f.new(sw * 0.0075, sh * 0.01))
+    if SharedUI.sf6_button(switch_label .. "##sw_top", SWITCH_COLOR, switch_w) then
+        cycle_next_mode()
+    end
+
+    for _, btn in ipairs(MODE_BUTTONS) do
+        imgui.same_line(0, sp)
+        local is_active = (_G.CurrentTrainerMode == btn.id)
+        local colors = is_active and MODE_ACTIVE or MODE_INACTIVE
+        if SharedUI.sf6_button(btn.label .. "##top_" .. btn.id, colors, mode_w) then
+            _G.CurrentTrainerMode = btn.id
+        end
+    end
+
+    SharedUI.end_floating_window_top()
+end
+
+-- ==========================================
 -- 4. MAIN LOOP
 -- ==========================================
 re.on_frame(function()
@@ -363,6 +445,7 @@ re.on_frame(function()
             _G.CurrentTrainerMode = 0
         end
         _G.TrainingFloatingBar = nil
+        _G.TrainingFloatingBarTop = nil
         return
     end
 
@@ -371,87 +454,13 @@ re.on_frame(function()
     -- Clear D2D floating bar when no training mode is active
     if _G.CurrentTrainerMode == 0 then _G.TrainingFloatingBar = nil end
 
-    -- Track if user ever entered a mode (to hide onboarding permanently)
-    if _G.CurrentTrainerMode ~= 0 then onboard_ever_entered = true end
-
-    -- Onboarding message (disabled mode, first time only, 10 seconds)
-    if _G.CurrentTrainerMode == 0 and not onboard_ever_entered and onboard_timer > 0 then
-        onboard_timer = onboard_timer - 1
-        local sw, sh = 1920, 1080
-        pcall(function()
-            local ds = imgui.get_display_size()
-            if ds then sw = ds.x; sh = ds.y end
-        end)
-
-        -- Load font once
-        if not onboard_font_attempted then
-            onboard_font_attempted = true
-            local font_scale = sh / 1080.0
-            pcall(function() onboard_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * font_scale))) end)
-        end
-
-        -- Draw message at top (mirrored position of bottom bar)
-        local bar_h = sh * 0.0444
-        imgui.push_style_color(2, 0x00000000)
-        imgui.push_style_color(5, 0x00000000)
-        imgui.set_next_window_size(Vector2f.new(sw, bar_h), 1)
-        imgui.set_next_window_pos(Vector2f.new(0, 0), 1)
-        if imgui.begin_window("##onboard_msg", true, 15) then
-            local w = imgui.get_window_size()
-
-            if onboard_font then imgui.push_font(onboard_font) end
-            local msg = "CLICK ON THE TIMER TO SWITCH TRAINING MODES"
-            local tw = imgui.calc_text_size(msg).x
-            local th = imgui.calc_text_size(msg).y
-            imgui.set_cursor_pos(Vector2f.new((w.x - tw) / 2, (w.y - th) / 2))
-            imgui.text_colored(msg, 0xFFFFFFFF)
-            if onboard_font then imgui.pop_font() end
-
-            imgui.end_window()
-        end
-        imgui.pop_style_color(2)
-
-        -- Draw timer click zone highlight
-        local tz_x1 = sw * 0.430
-        local tz_y1 = sh * 0.04
-        local tz_w = sw * 0.140
-        local tz_h = sh * 0.084
-        imgui.push_style_color(2, 0x00000000)
-        imgui.push_style_color(5, 0xAAFF00FF)
-        imgui.push_style_var(3, 2.0)
-        imgui.set_next_window_size(Vector2f.new(tz_w, tz_h), 1)
-        imgui.set_next_window_pos(Vector2f.new(tz_x1, tz_y1), 1)
-        if imgui.begin_window("##onboard_zone", true, 15) then
-            imgui.end_window()
-        end
-        imgui.pop_style_var(1)
-        imgui.pop_style_color(2)
-    end
-
-    -- [LEFT-CLICK ON TIMER: CYCLE TRAINING MODE]
-    local imgui_hovered = false
-    pcall(function() imgui_hovered = imgui.is_window_hovered(8) end)
-    if imgui.is_mouse_clicked(0) and not imgui_hovered then
-        local sw, sh = 1920, 1080
-        pcall(function()
-            local ds = imgui.get_display_size()
-            if ds then sw = ds.x; sh = ds.y end
-        end)
-        local m = imgui.get_mouse()
-        local tz_x1 = sw * 0.430
-        local tz_y1 = sh * 0.045
-        local tz_x2 = tz_x1 + sw * 0.140
-        local tz_y2 = tz_y1 + sh * 0.084
-        if m.x >= tz_x1 and m.x <= tz_x2 and m.y >= tz_y1 and m.y <= tz_y2 then
-            _G.CurrentTrainerMode = _G.CurrentTrainerMode + 1
-            if _G.CurrentTrainerMode > 4 then _G.CurrentTrainerMode = 0 end
-        end
-    end
-
     if is_binding_mode then return end
-    
+
     -- CHECK AUTOMATIC GUARD SWITCHING
     update_guard_logic()
+
+    -- TOP FLOATING BAR
+    draw_top_floating_bar()
 
     local scripts_active = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3 or (_G.CurrentTrainerMode == 4 and _G.ComboTrials_HideNativeHUD))
     manage_ui_visibility(scripts_active)
@@ -493,11 +502,11 @@ re.on_draw_ui(function()
             local c0, v0 = imgui.checkbox("DISABLED", _G.CurrentTrainerMode == 0)
             if c0 and v0 then _G.CurrentTrainerMode = 0 end
 
-            local c1, v1 = imgui.checkbox("REACTION DRILLS", _G.CurrentTrainerMode == 1)
-            if c1 and v1 then _G.CurrentTrainerMode = 1 end
-
             local c2, v2 = imgui.checkbox("HIT CONFIRM", _G.CurrentTrainerMode == 2)
             if c2 and v2 then _G.CurrentTrainerMode = 2 end
+
+            local c1, v1 = imgui.checkbox("REACTION DRILLS", _G.CurrentTrainerMode == 1)
+            if c1 and v1 then _G.CurrentTrainerMode = 1 end
 
             local c3, v3 = imgui.checkbox("POST GUARD", _G.CurrentTrainerMode == 3)
             if c3 and v3 then _G.CurrentTrainerMode = 3 end
@@ -573,11 +582,10 @@ re.on_draw_ui(function()
         -- SECTION 3: HELP & SHORTCUTS
         -- ==========================================
         if styled_header("--- HELP & SHORTCUTS ---", UI_THEME.hdr_help) then
-            local SharedUI = require("func/Training_SharedUI")
             local fn = SharedUI.get_func_name()
 
             imgui.text_colored("HOW TO SWITCH MODES", 0xFF00FFFF)
-            imgui.text("  Click on the in-game Timer")
+            imgui.text("  Top bar: Click SWITCH or any mode button")
             imgui.text("  Keyboard: Press [0]")
             if fn then
                 imgui.text("  Controller: [" .. fn .. "] + [Square / X]")

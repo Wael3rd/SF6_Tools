@@ -615,6 +615,19 @@ local function d2d_draw()
         d2d.outline_rect(mx, my, mw, mh, 1, 0xFFFFAAFF)
     end
 
+    -- SF6 NEON BORDER for Training top floating bar (mode switcher)
+    local tfbt = _G.TrainingFloatingBarTop
+    if tfbt and tfbt.active and tfbt.w > 0 then
+        local mx, my, mw, mh = tfbt.x, tfbt.y, tfbt.w, tfbt.h
+        local header_h = math.floor(sh * 0.04)
+        d2d.fill_rect(mx, my, mw, mh, 0xFC110022)
+        d2d.fill_rect(mx, my, mw, header_h, 0x88440088)
+        d2d.fill_rect(mx, my, mw, 2, 0xFFFF00FF)
+        d2d.fill_rect(mx, my + header_h, mw, 2, 0xFFFF00FF)
+        d2d.outline_rect(mx - 2, my - 2, mw + 4, mh + 4, 2, 0x889900FF)
+        d2d.outline_rect(mx, my, mw, mh, 1, 0xFFFFAAFF)
+    end
+
     if _G.CurrentTrainerMode ~= 4 then return end
 
     ctx.cached_sw, ctx.cached_sh = sw, sh

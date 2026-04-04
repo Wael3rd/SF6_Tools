@@ -293,7 +293,7 @@ local function draw_single_line_content()
             if ctx.start_demo then ctx.start_demo() end
         end
         imgui.same_line(0, sp)
-        if styled_sf6_button("QUIT DEMO (" .. sc("U") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then
+        if styled_sf6_button("QUIT DEMO (" .. sc("R") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then
             if ctx.stop_demo then ctx.stop_demo() end
         end
     else

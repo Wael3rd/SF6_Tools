@@ -17,7 +17,7 @@ local last_hud_suffix = "Default"
 -- HUD DICTIONARY (Font, Size, Y Pos, X Pos)
 -- ==========================================
 UI.HUD_CONFIG = {
-    ["Default"] = { font = "SF6_college.ttf", size = 80, y = -0.46, x = 0.0 },  -- SF6		: OK
+    ["Default"] = { font = "SF6_college.ttf", size = 78, y = -0.45, x = 0.0 },  -- SF6		: OK
     ["_01"]     = { font = "SF6_college.ttf", size = 60, y = -0.42, x = 0.0 },  -- ??? 		: 
     ["_02"]     = { font = "SF6_college.ttf", size = 50, y = -0.39, x = 0.0 },  -- SSF2 	: OK
     ["_03"]     = { font = "SF6_college.ttf", size = 45, y = -0.441, x = 0.0 }, -- SFZ3 	: OK
@@ -221,6 +221,7 @@ local function is_keyboard_mode()
     end)
     return kb
 end
+UI.is_keyboard_mode = is_keyboard_mode
 
 function UI.sc(pad_key)
     local map = { L = "1", U = "2", D = "3", R = "4" }
@@ -360,6 +361,56 @@ function UI.end_floating_window()
     if float_ui_font then imgui.pop_font() end
     imgui.pop_style_var(1)   -- WindowPadding
     imgui.pop_style_color(4)
+end
+
+-- Top floating window (vertical mirror of the bottom one)
+function UI.begin_floating_window_top(window_name, width_pct, height_pct)
+    local sw, sh = UI.get_screen_size()
+    width_pct = width_pct or 1.0
+    height_pct = height_pct or 0.0444
+
+    -- Load fonts (reuses same font cache as bottom bar)
+    if not float_font_attempted or sh ~= float_last_sh then
+        float_font_attempted = true
+        float_last_sh = sh
+        local font_scale = sh / 1080.0
+        pcall(function() float_ui_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", math.max(10, math.floor(20 * font_scale))) end)
+        pcall(function() float_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * font_scale))) end)
+    end
+
+    imgui.push_style_color(2,  0x00000000)   -- WindowBg transparent
+    imgui.push_style_color(5,  0x00000000)   -- Border transparent
+    imgui.push_style_color(7,  0xAA220044)   -- Border accent
+    imgui.push_style_color(8,  0xCC6600AA)   -- Title bar
+    imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))  -- WindowPadding
+
+    if float_ui_font then imgui.push_font(float_ui_font) end
+
+    local target_w = sw * width_pct
+    local target_h = sh * height_pct
+    imgui.set_next_window_size(Vector2f.new(target_w, target_h), 1)
+    imgui.set_next_window_pos(Vector2f.new((sw - target_w) / 2, 0), 1)  -- Centered at top
+    local visible = imgui.begin_window(window_name, true, 15)
+    return visible, sw, sh
+end
+
+function UI.end_floating_window_top()
+    imgui.end_window()
+    if float_ui_font then imgui.pop_font() end
+    imgui.pop_style_var(1)
+    imgui.pop_style_color(4)
+end
+
+-- Draw dark background for top bar
+function UI.draw_floating_bg_top()
+    local w = imgui.get_window_size()
+    imgui.set_cursor_pos(Vector2f.new(-10, -10))
+    imgui.push_style_color(7, 0xFF220000)
+    pcall(function() imgui.progress_bar(0.0, Vector2f.new(w.x + 20, w.y + 20)) end)
+    imgui.pop_style_color(1)
+    -- Publish window rect for D2D neon border drawing
+    local pos = imgui.get_window_pos()
+    _G.TrainingFloatingBarTop = { x = pos.x, y = pos.y, w = w.x, h = w.y, active = true }
 end
 
 -- Draw dark background (same as ComboTrials progress_bar trick)

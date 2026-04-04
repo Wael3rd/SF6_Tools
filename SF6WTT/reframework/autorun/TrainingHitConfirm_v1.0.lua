@@ -45,6 +45,7 @@ local TEXTS = {
     safe_no_gap     = "SAFE: TRUE BLOCKSTRING",
     fail_optimal    = "FAIL: SUBOPTIMAL (NEED HEAVY)",
     perfect_dr      = "PERFECT: MED -> DR -> HEAVY",
+    perfect_dr_light = "PERFECT: LIGHT -> DR -> LIGHT",
     fail_heavy_dr   = "FAIL: HEAVY DR CANCEL", -- [NEW MESSAGE]
     
     started         = "STARTED!",
@@ -550,6 +551,7 @@ local function update_detection()
                     detection.dr_monitor.start_combo = detection.live_combo
                     detection.dr_monitor.gap_grace = 0
                     detection.dr_monitor.is_heavy = is_heavy_buffered -- Remember if it was heavy
+                    detection.dr_monitor.was_light = is_light_buffered -- Remember if initial hit was light
                 end
                 
                 if trig_hit and not detection.lockout then
@@ -628,12 +630,16 @@ local function update_detection()
                             if detection.live_combo > detection.dr_monitor.start_combo then
                                 -- Check Buffer instead of live input for robustness
                                 local is_heavy_buffered = (os.clock() - session.last_heavy_input_time < 0.4)
-                                
+                                local is_light_buffered_dr = (os.clock() - session.last_light_input_time < 0.4)
+                                -- Accept light after DR if the initial hit was also a light
+                                local is_valid = is_heavy_buffered or (detection.dr_monitor.was_light and is_light_buffered_dr)
+
                                 detection.dr_monitor.active = false; detection.monitor.active = false; detection.lockout = true
-                                if is_heavy_buffered then
+                                if is_valid then
+                                    local dr_msg = (detection.dr_monitor.was_light and not is_heavy_buffered) and TEXTS.perfect_dr_light or TEXTS.perfect_dr
                                     session.score = session.score + 1; session.hit_ok = session.hit_ok + 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
-                                    detection.mem_res[active_head_index] = { status = TEXTS.perfect_dr, time = detection.abs_clock }
-                                    set_feedback(TEXTS.perfect_dr, COLORS.Green, 2.0)
+                                    detection.mem_res[active_head_index] = { status = dr_msg, time = detection.abs_clock }
+                                    set_feedback(dr_msg, COLORS.Green, 2.0)
                                 else
                                     session.score = session.score - 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
                                     detection.mem_res[active_head_index] = { status = TEXTS.fail_optimal, time = detection.abs_clock }

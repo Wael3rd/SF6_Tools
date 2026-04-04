@@ -11,5 +11,15 @@
         "c3": 4278190335,
         "c4": 4292608255
     },
-    "func_button": 16384
+    "func_button": 16384,
+    "top_alphas": {
+        "active": 170,
+        "inactive": 120,
+        "switch": 170
+    },
+    "top_colors": {
+        "active": 4278320896,
+        "inactive": 4284900966,
+        "switch": 4278216447
+    }
 }
