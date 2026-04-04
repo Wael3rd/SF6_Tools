@@ -591,8 +591,8 @@ local function d2d_draw()
     local players = ctx.players
 
     if not d2d_cfg.enabled then return end
-    if _G.CurrentTrainerMode ~= 4 then return end
 
+    -- Hide D2D when game is paused (menu open)
     local pm = sdk.get_managed_singleton("app.PauseManager")
     if pm then
         local b = pm:get_field("_CurrentPauseTypeBit")
@@ -600,9 +600,26 @@ local function d2d_draw()
     end
 
     local sw, sh = d2d.surface_size()
+
+    -- SF6 NEON BORDER for Training floating bars (HitConfirm, Reactions, PostGuard)
+    -- Drawn before the mode-4 gate so it works in all training modes
+    local tfb = _G.TrainingFloatingBar
+    if tfb and tfb.active and tfb.w > 0 then
+        local mx, my, mw, mh = tfb.x, tfb.y, tfb.w, tfb.h
+        local header_h = math.floor(sh * 0.04)
+        d2d.fill_rect(mx, my, mw, mh, 0xFC110022)
+        d2d.fill_rect(mx, my, mw, header_h, 0x88440088)
+        d2d.fill_rect(mx, my, mw, 2, 0xFFFF00FF)
+        d2d.fill_rect(mx, my + header_h, mw, 2, 0xFFFF00FF)
+        d2d.outline_rect(mx - 2, my - 2, mw + 4, mh + 4, 2, 0x889900FF)
+        d2d.outline_rect(mx, my, mw, mh, 1, 0xFFFFAAFF)
+    end
+
+    if _G.CurrentTrainerMode ~= 4 then return end
+
     ctx.cached_sw, ctx.cached_sh = sw, sh
 
-    -- SF6 NEON MENU BACKGROUND
+    -- SF6 NEON MENU BACKGROUND (ComboTrials)
     local sf6_menu_state = ctx.sf6_menu_state
     if sf6_menu_state and sf6_menu_state.active and sf6_menu_state.w > 0 then
         local mx, my, mw, mh = sf6_menu_state.x, sf6_menu_state.y, sf6_menu_state.w, sf6_menu_state.h
@@ -614,6 +631,7 @@ local function d2d_draw()
         d2d.outline_rect(mx - 2, my - 2, mw + 4, mh + 4, 2, 0x889900FF)
         d2d.outline_rect(mx, my, mw, mh, 1, 0xFFFFAAFF)
     end
+
 
     local pixel_font_h = d2d_cfg.font_size * sh
     if math.abs(assets.last_pixel_size - pixel_font_h) > 1.0 or assets.font == nil then

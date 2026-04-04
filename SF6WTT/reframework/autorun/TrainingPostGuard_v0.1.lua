@@ -289,7 +289,7 @@ local function update_logic()
         if session.time_up_delay < 1.5 then 
              set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
         else
-             set_feedback("PRESS (FUNC) + LEFT TO RESET", COLORS.Yellow, 0)
+             set_feedback(SharedUI.reset_message(), COLORS.Yellow, 0)
         end
         return 
     end
@@ -525,9 +525,10 @@ local function handle_input()
         local pos4_kb = kb_pressed(0x34)
         local pos4_pad = is_func_held and pad_pressed(BTN_LEFT)
 
+        -- Position 3 (key 3 / FUNC+LEFT): RESET when idle, STOP when running
         if not session.is_running then
-            if pos3_kb or pos3_pad then
-                reset_session_stats(); session.is_running = true; set_feedback("SESSION STARTED", COLORS.Green, 1.0)
+            if pos3_kb or pos4_pad then
+                reset_session_stats(); set_feedback("RESET DONE", COLORS.White, 1.0)
             end
         else
             if pos3_kb or pos4_pad then
@@ -538,9 +539,10 @@ local function handle_input()
                 end
             end
         end
+        -- Position 4 (key 4 / FUNC+RIGHT): START when idle, PAUSE when running
         if not session.is_running then
-            if pos4_kb or pos4_pad then
-                reset_session_stats(); set_feedback("RESET DONE", COLORS.White, 1.0)
+            if pos4_kb or pos3_pad then
+                reset_session_stats(); session.is_running = true; set_feedback("SESSION STARTED", COLORS.Green, 1.0)
             end
         else
             if pos4_kb or pos3_pad then
@@ -625,20 +627,20 @@ end
 
 -- SESSION BUTTONS — DOCKED
 local function draw_session_buttons_docked()
-    local sc = SharedUI.sc_t
+    local sl = SharedUI.sc_label
     local SC = SharedUI.SC_COLORS
-    if SharedUI.sc_button("TIMER - (1)##dk_pg", SC.c1) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats() end
+    if SharedUI.sc_button("TIMER - (" .. sl("D") .. ")##dk_pg", SC.c1) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats() end
     imgui.same_line()
-    if SharedUI.sc_button("TIMER + (2)##dk_pg", SC.c2) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats() end
+    if SharedUI.sc_button("TIMER + (" .. sl("U") .. ")##dk_pg", SC.c2) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats() end
     imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " MIN"); imgui.same_line(300)
-    if SharedUI.sc_button("RESET (4)##dk_pg", SC.c4) then reset_session_stats() end
+    if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then reset_session_stats() end
     imgui.spacing()
     if not session.is_running then
-        if SharedUI.sc_button("START SESSION (3)##dk_pg", SC.c3) then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0) end
+        if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_pg", SC.c4) then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0) end
     else
-        if SharedUI.sc_button("STOP & EXPORT (3)##dk_pg", SC.c3) then export_stats(); session.is_running = false end
+        if SharedUI.sc_button("STOP & EXPORT (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then export_stats(); session.is_running = false end
         imgui.same_line()
-        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (4)##dk_pg", SC.c4) then session.is_paused = not session.is_paused end
+        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_pg", SC.c4) then session.is_paused = not session.is_paused end
     end
 end
 
@@ -646,33 +648,38 @@ end
 local function draw_session_floating()
     local visible, sw, sh = SharedUI.begin_floating_window("Post Guard##float")
     if not visible then user_config.show_floating = false; save_conf(); SharedUI.end_floating_window(); return end
-    local sc = SharedUI.sc_t
+    local sl = SharedUI.sc_label
     local SC = SharedUI.SC_COLORS
     local w_width = imgui.get_window_size().x
     local sp = 4 * (sh / 1080.0)
     local pad_x = sw * 0.01
     SharedUI.draw_floating_bg()
-    local all_labels = { "TIMER - (1)", "TIMER + (2)", "START (3)", "STOP (3)", "PAUSE (4)", "RESET (4)" }
+    local slm = SharedUI.sc_label_max
+    local all_labels = {
+        "TIMER - (" .. slm("D") .. ")", "TIMER + (" .. slm("U") .. ")",
+        "RESET (" .. slm("L") .. ")", "STOP (" .. slm("L") .. ")",
+        "START (" .. slm("R") .. ")", "PAUSE (" .. slm("R") .. ")"
+    }
     local max_w = 0
     for _, t in ipairs(all_labels) do local tw = imgui.calc_text_size(t).x; if tw > max_w then max_w = tw end end
     local cb_size = imgui.calc_text_size("W").y + 6
     local remaining = w_width - (pad_x * 2) - cb_size - 10 - (sp * 4)
     local actual_w = math.max(max_w + 20, remaining / 4)
     imgui.set_cursor_pos(Vector2f.new(pad_x, sh * 0.01))
-    if SharedUI.sf6_button("TIMER - (1)##fl_pg", SC.c1, actual_w) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats() end
+    if SharedUI.sf6_button("TIMER - (" .. sl("D") .. ")##fl_pg", SC.c1, actual_w) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats() end
     imgui.same_line(0, sp)
-    if SharedUI.sf6_button("TIMER + (2)##fl_pg", SC.c2, actual_w) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats() end
+    if SharedUI.sf6_button("TIMER + (" .. sl("U") .. ")##fl_pg", SC.c2, actual_w) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats() end
     imgui.same_line(0, sp)
     if not session.is_running then
-        if SharedUI.sf6_button("START (3)##fl_pg", SC.c3, actual_w) then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0) end
+        if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then reset_session_stats() end
     else
-        if SharedUI.sf6_button("STOP (3)##fl_pg", SC.c3, actual_w) then export_stats(); session.is_running = false end
+        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then export_stats(); session.is_running = false end
     end
     imgui.same_line(0, sp)
     if session.is_running then
-        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (4)##fl_pg", SC.c4, actual_w) then session.is_paused = not session.is_paused end
+        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##fl_pg", SC.c4, actual_w) then session.is_paused = not session.is_paused end
     else
-        if SharedUI.sf6_button("RESET (4)##fl_pg", SC.c4, actual_w) then reset_session_stats() end
+        if SharedUI.sf6_button("START (" .. sl("R", "4") .. ")##fl_pg", SC.c4, actual_w) then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0) end
     end
     imgui.same_line(w_width - cb_size - 10 - pad_x)
     local changed, new_val = imgui.checkbox("##close_pg", user_config.show_floating)
@@ -757,7 +764,7 @@ re.on_frame(function()
     end
 
     -- FLOATING SESSION WINDOW
-    if user_config.show_floating then
+    if should_draw and user_config.show_floating then
         draw_session_floating()
     end
 end)

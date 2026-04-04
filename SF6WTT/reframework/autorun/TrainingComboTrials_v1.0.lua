@@ -1539,7 +1539,25 @@ local function refresh_combo_list(recent_saved_player)
 
         local files = fs.glob("CustomCombos\\\\" .. char_name .. "\\\\.*json")
         if files then
-            table.sort(files, function(a, b) return a > b end)
+            -- Parse filename to extract sort keys: type (COMBO/OKI), damage, drive, SA
+            local function parse_sort_keys(filepath)
+                local fname = filepath:match("([^/\\]+)$") or ""
+                local is_oki = fname:find("_OKI_") and 1 or 0
+                local dmg = tonumber(fname:match("_(%d+)_D")) or 0
+                local drive = tonumber(fname:match("_D([%d%.]+)_SA")) or 0
+                local sa = tonumber(fname:match("_SA([%d%.]+)")) or 0
+                return is_oki, dmg, drive, sa
+            end
+            -- Sort: COMBO first, then by damage desc, drive desc, SA desc
+            table.sort(files, function(a, b)
+                local a_oki, a_dmg, a_dr, a_sa = parse_sort_keys(a)
+                local b_oki, b_dmg, b_dr, b_sa = parse_sort_keys(b)
+                if a_oki ~= b_oki then return a_oki < b_oki end
+                if a_dmg ~= b_dmg then return a_dmg > b_dmg end
+                if a_dr ~= b_dr then return a_dr > b_dr end
+                if a_sa ~= b_sa then return a_sa > b_sa end
+                return a < b
+            end)
             for _, filepath in ipairs(files) do
                 table.insert(path_list, filepath)
                 table.insert(display_list, filepath:match("([^/\\]+)$") or filepath)
@@ -1876,14 +1894,34 @@ re.on_frame(function()
             trial_state.is_playing = false
             trial_state._was_playing = false
             if demo_state then demo_state.is_playing = false end
-            
+
             restore_trial_vital()
             restore_dummy_counter_type()
             apply_current_position_refresh()
         elseif trial_state.is_recording then
             cancel_recording()
         end
+        trial_state._vital_initialized = false
         return
+    end
+
+    -- On first frame of Combo Trials mode: set both players to Refill (once)
+    if not trial_state._vital_initialized then
+        trial_state._vital_initialized = true
+        pcall(function()
+            local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+            if not tm then return end
+            local ps = tm:get_field("_tData"):get_field("ParameterSetting")
+            if not ps or not ps.PlayerDatas then return end
+            for i = 0, 1 do
+                local pd = ps.PlayerDatas[i]
+                pd.Is_Vital_Recovery_Timer = true
+                pd.Is_Vital_Infinity = false
+                pd.Is_Vital_No_Recovery = false
+                pd.Is_KO = false
+                pd.Is_Point_Lock = true
+            end
+        end)
     end
 
     -- DYNAMIC NATIVE HUD: Hide base game info ONLY during active record or playback
@@ -3214,11 +3252,39 @@ function save_trial_sequence()
         pcall(fs.create_dir, "CustomCombos"); pcall(fs.create_dir, "CustomCombos/" .. char_name)
     end
 
-    local ts = os.date("%Y%m%d_%H%M%S")
-    local fname = char_name .. "_combo_" .. ts .. ".json"
+    -- Filename: CharName_Damage_DriveBarSpent_SABarSpent[_OKI].json
+    local cs = trial_state.sequence[1] and trial_state.sequence[1].combo_stats
+    local dmg = (cs and cs.damage) or 0
+    local drive_spent = (cs and cs.drive_used) or 0
+    local sa_spent = (cs and cs.super_used) or 0
+    local drive_bars = string.format("%.1f", drive_spent / 10000)
+    local sa_bars = string.format("%.1f", sa_spent / 10000)
+    drive_bars = drive_bars:gsub("%.0$", "")
+    sa_bars = sa_bars:gsub("%.0$", "")
+
+    -- Detect OKI: combo was active (>0), drops to 0, then a later step hits
+    local has_oki = false
+    local saw_combo = false
+    local combo_dropped = false
+    for _, step in ipairs(trial_state.sequence) do
+        if (step.expected_combo or 0) > 0 then saw_combo = true end
+        if saw_combo and (step.expected_combo or 0) == 0 then combo_dropped = true end
+        if combo_dropped and step.has_hit then has_oki = true; break end
+    end
+
+    local type_tag = has_oki and "_OKI" or "_COMBO"
+    local fname = char_name .. type_tag .. "_" .. dmg .. "_D" .. drive_bars .. "_SA" .. sa_bars .. ".json"
     local path = "CustomCombos/" .. char_name .. "/" .. fname
-	
-	assign_groups(trial_state.sequence)
+
+    -- Avoid overwriting: append timestamp if file exists
+    local existing = json.load_file(path)
+    if existing then
+        local ts = os.date("%Y%m%d_%H%M%S")
+        fname = char_name .. type_tag .. "_" .. dmg .. "_D" .. drive_bars .. "_SA" .. sa_bars .. "_" .. ts .. ".json"
+        path = "CustomCombos/" .. char_name .. "/" .. fname
+    end
+
+    assign_groups(trial_state.sequence)
     json.dump_file(path, trial_state.sequence)
     refresh_combo_list(rec_p) -- Injecte l'ID du joueur qui vient de sauvegarder
 
@@ -3637,6 +3703,17 @@ if cplayer_type then
                 if p_id == 0 and trial_state.is_playing and trial_state.fail_timer and trial_state.fail_timer > 0 then
                     pcall(function()
                         local p1 = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil).mcPlayer[trial_state.playing_player]
+                        if p1 then
+                            p1:set_field("pl_input_new", 0)
+                            p1:set_field("pl_sw_new", 0)
+                        end
+                    end)
+                end
+
+                -- BLOCK P1 INPUTS when FUNC button is held (suppress game actions during shortcuts)
+                if p_id == 0 and _G.TrainingFuncHeld then
+                    pcall(function()
+                        local p1 = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil).mcPlayer[0]
                         if p1 then
                             p1:set_field("pl_input_new", 0)
                             p1:set_field("pl_sw_new", 0)

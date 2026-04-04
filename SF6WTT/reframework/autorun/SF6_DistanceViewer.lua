@@ -160,7 +160,7 @@ local config = {
     
     -- Global
     marker_thickness = 5.0, marker_origin_shift = 0.0,
-	func_button = 16384,
+	func_button = nil,
     -- Window State
     show_debug_window = true,
 	expert_mode_enabled = false,
@@ -1819,10 +1819,13 @@ local function draw_config_ui()
             if is_binding_mode then
                 imgui.text_colored("-- PRESS ANY GAMEPAD BUTTON TO BIND FUNC --", 0xFF00FFFF)
             else
-                local btn_name = "ID: " .. tostring(config.func_button)
-                if config.func_button == 16384 then btn_name = "SELECT / BACK" end
-                if config.func_button == 8192 then btn_name = "R3 / RS" end
-                if config.func_button == 4096 then btn_name = "L3 / LS" end
+                local btn_name = "NOT SET"
+                if config.func_button then
+                    btn_name = "ID: " .. tostring(config.func_button)
+                    if config.func_button == 16384 then btn_name = "SELECT / BACK" end
+                    if config.func_button == 8192 then btn_name = "R3 / RS" end
+                    if config.func_button == 4096 then btn_name = "L3 / LS" end
+                end
                 
                 imgui.text("Current Func Button: " .. btn_name)
                 imgui.same_line()
@@ -2251,8 +2254,11 @@ local function handle_viewer_shortcuts()
         return
     end
 
-    local func_btn = _G.TrainingFuncButton or config.func_button or 16384
-    local is_func_held = ((active_buttons & func_btn) == func_btn)
+    local func_btn = _G.TrainingFuncButton or config.func_button
+    local is_func_held = false
+    if func_btn and func_btn > 0 then
+        is_func_held = ((active_buttons & func_btn) == func_btn)
+    end
 
     local function is_pressed(target_mask)
         if not is_func_held then return false end

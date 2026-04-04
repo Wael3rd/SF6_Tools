@@ -24,16 +24,16 @@ local ui_state
 local dump_status = ""
 local exc_status = ""
 
--- Raccourcis dynamiques : pad (L/U/D/R) ou clavier (1/2/3/4)
--- InputGuideManager.GetMode(0) : 1=pad, 2=clavier
+-- Raccourcis dynamiques : pad (FUNC+DIR) ou clavier (1/2/3/4)
+-- ComboTrials mapping: L=1, U=2, D=3, R=4
+local SharedUI = require("func/Training_SharedUI")
+local CT_KB_MAP = { L = "1", U = "2", D = "3", R = "4" }
 local function sc(pad_key)
-    local kb = false
-    pcall(function()
-        local igm = sdk.get_managed_singleton("app.InputGuideManager")
-        if igm then kb = (igm:call("GetMode", 0) == 2) end
-    end)
-    local map = { L = "1", U = "2", D = "3", R = "4" }
-    return kb and (map[pad_key] or pad_key) or pad_key
+    return SharedUI.sc_label(pad_key, CT_KB_MAP[pad_key])
+end
+-- Always returns the pad label (longest) for stable button width calculation
+local function sc_max(pad_key)
+    return SharedUI.get_func_name() .. "+" .. ({ D = "DOWN", U = "UP", R = "RIGHT", L = "LEFT" })[pad_key] or pad_key
 end
 
 -- =========================================================
@@ -107,61 +107,60 @@ local font_attempted = false
 -- =========================================================
 -- FONCTION BOUTONS (Caméléon : Néon ou Natif)
 -- =========================================================
--- Couleurs code couleur barres de vie SF6 (ABGR)
--- ABGR format: 0xAABBGGRR
-local P1_COLORS = {
-    text   = 0xFF4444FF,  -- Rouge (bordure)
-    base   = 0xFF141464,  -- Rouge sombre
-    hover  = 0xFF28288C,  -- Rouge moyen
-    active = 0xFF3C3CB4,  -- Rouge vif
-    border = 0xFFFFFFFF,  -- Texte blanc
+-- Dynamic colors from Training Script Manager (_G.TrainingSCColors)
+-- Fallbacks in case ScriptManager hasn't loaded yet
+local SC_FALLBACKS = {
+    c1 = { text = 0xFF4444FF, base = 0x784444FF, hover = 0xA04444FF, active = 0xC84444FF, border = 0xFFFFFFFF },
+    c2 = { text = 0xFF44FF44, base = 0x7844FF44, hover = 0xA044FF44, active = 0xC844FF44, border = 0xFFFFFFFF },
+    c3 = { text = 0xFFFF4444, base = 0x78FF4444, hover = 0xA0FF4444, active = 0xC8FF4444, border = 0xFFFFFFFF },
+    c4 = { text = 0xFF00A5FF, base = 0x7800A5FF, hover = 0xA000A5FF, active = 0xC800A5FF, border = 0xFFFFFFFF },
 }
-local P2_COLORS = {
-    text   = 0xFFFF4444,  -- Bleu (bordure)
-    base   = 0xFF641414,  -- Bleu sombre
-    hover  = 0xFF8C2828,  -- Bleu moyen
-    active = 0xFFB43C3C,  -- Bleu vif
-    border = 0xFFFFFFFF,  -- Texte blanc
-}
-local TRIAL_COLORS = {
-    text   = 0xFF44FF44,  -- Vert (bordure)
-    base   = 0xFF146414,  -- Vert sombre
-    hover  = 0xFF288C28,  -- Vert moyen
-    active = 0xFF3CB43C,  -- Vert vif
-    border = 0xFFFFFFFF,  -- Texte blanc
-}
-local SWITCH_COLORS = {
-    text   = 0xFF00A5FF,  -- Orange (bordure)
-    base   = 0xFF0A4878,  -- Orange sombre
-    hover  = 0xFF1A6CA0,  -- Orange moyen
-    active = 0xFF2890CC,  -- Orange vif
-    border = 0xFFFFFFFF,  -- Texte blanc
-}
+local function get_sc(key) local g = _G.TrainingSCColors; return (g and g[key]) or SC_FALLBACKS[key] end
+
+-- P1=c1(red), TRIAL=c2(green), P2=c3(blue), SWITCH=c4(orange)
+-- These are now functions, called at render time to get live colors
+local function P1_COLORS()     return get_sc("c1") end
+local function TRIAL_COLORS()  return get_sc("c2") end
+local function P2_COLORS()     return get_sc("c3") end
+local function SWITCH_COLORS() return get_sc("c4") end
 
 local function styled_sf6_button(label, is_active, width, is_floating, is_disabled, color_override)
     width = width or 0
+    -- Resolve color_override: call it if it's a function
+    local co = color_override
+    if type(co) == "function" then co = co() end
 
     -- MODE DOCKÉ (Menu Debug natif)
     if not is_floating then
-        local style = is_active and UI_THEME.btn_green or UI_THEME.btn_neutral
-        imgui.push_style_color(21, style.base)
-        imgui.push_style_color(22, style.hover)
-        imgui.push_style_color(23, style.active)
-        local clicked = imgui.button(label, Vector2f.new(width, 0))
-        imgui.pop_style_color(3)
-        return clicked
+        if co then
+            imgui.push_style_color(5,  co.text)
+            imgui.push_style_color(21, co.base)
+            imgui.push_style_color(22, co.hover)
+            imgui.push_style_color(23, co.active)
+            imgui.push_style_color(0,  co.border)
+            local clicked = imgui.button(label, Vector2f.new(width, 0))
+            imgui.pop_style_color(5)
+            return clicked
+        else
+            local style = is_active and UI_THEME.btn_green or UI_THEME.btn_neutral
+            imgui.push_style_color(21, style.base)
+            imgui.push_style_color(22, style.hover)
+            imgui.push_style_color(23, style.active)
+            local clicked = imgui.button(label, Vector2f.new(width, 0))
+            imgui.pop_style_color(3)
+            return clicked
+        end
     end
 
     -- MODE FLOTTANT (Néon SF6)
     if sf6_btn_font then imgui.push_font(sf6_btn_font) end
 
-    if color_override then
-        -- CUSTOM COLOR always takes priority
-        imgui.push_style_color(5, color_override.text)
-        imgui.push_style_color(21, color_override.base)
-        imgui.push_style_color(22, color_override.hover)
-        imgui.push_style_color(23, color_override.active)
-        imgui.push_style_color(0, color_override.border)
+    if co then
+        imgui.push_style_color(5, co.text)
+        imgui.push_style_color(21, co.base)
+        imgui.push_style_color(22, co.hover)
+        imgui.push_style_color(23, co.active)
+        imgui.push_style_color(0, co.border)
     elseif is_active then
         if label:upper():match("RECORD") or label:upper():match("SAVE") then
             imgui.push_style_color(5, 0xFFFFFFFF)
@@ -213,7 +212,16 @@ end
 
 
 -- =========================================================
--- SINGLE LINE MODE : FORCE POS | P1 | P2 | SLOT 1 | SLOT 2 | SLOT 3 | SLOT 4 | ☑
+-- SWITCH POS LABEL (shows current state → next state)
+-- =========================================================
+local POS_LABELS = { "ANY POSITION", "EXACT POSITION", "MIRROR POSITION" }
+local function switch_pos_label()
+    local cur = d2d_cfg.forced_position_idx or 1
+    return POS_LABELS[cur] or "NO RESET"
+end
+
+-- =========================================================
+-- SINGLE LINE MODE
 -- =========================================================
 local function draw_single_line_content()
     local sw, sh = ctx.cached_sw, ctx.cached_sh
@@ -224,23 +232,22 @@ local function draw_single_line_content()
     local pad_y = sh * 0.01
 
     -- Largeurs sans les boutons P2
-    local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc("L") .. ")", "CANCEL (" .. sc("U") .. ")", "RECORD P1 (" .. sc("L") .. ")", "RECORD P2 (" .. sc("D") .. ")", "RESET (" .. sc("L") .. ")", "DEMO (" .. sc("D") .. ")" }, true)
-    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "SWITCH POS (" .. sc("R") .. ")" }, true)
-    
+    local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("U") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("D") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("D") .. ")" }, true)
+    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, true)
+
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
 
     local cb_size = imgui.calc_text_size("W").y + 6
     local cb_reserve = cb_size + 10
 
-    -- Répartition dynamique : 2 Dropdowns + 4 Boutons = 6 parts (L'espace vide est comblé)
-    local usable_w = w_width - (pad_x * 2) - cb_reserve - (sp * 6)
-    
-    -- 1. Fixed width for dropdowns (based on button text size to remain clean)
-    local dd_w = absolute_btn_w
-    
-    -- 2. The 4 buttons dynamically share ALL the remaining empty space
-    local remaining_for_btns = usable_w - (dd_w * 2)
-    local actual_btn_w = math.max(absolute_btn_w, remaining_for_btns / 4)
+    -- Répartition dynamique : boutons = taille fixe (texte), dropdown = tout le reste
+    local usable_w = w_width - (pad_x * 2) - cb_reserve - (sp * 5)
+
+    -- 1. Buttons take their natural text width (all same size, based on longest label)
+    local actual_btn_w = absolute_btn_w
+
+    -- 2. Dropdown takes ALL remaining space
+    local dd_w = usable_w - (actual_btn_w * 4)
 
     local dynamic_rec_w = actual_btn_w
     local is_demo_active_early = (ctx.demo_state and ctx.demo_state.is_playing)
@@ -258,14 +265,7 @@ local function draw_single_line_content()
 
     imgui.set_cursor_pos(Vector2f.new(pad_x, pad_y))
 
-    -- 1. FORCE POS
-    imgui.push_item_width(dd_w)
-    local c_launch, v_launch = imgui.combo("##Forced-Position", d2d_cfg.forced_position_idx, file_system.forced_position_options)
-    if c_launch then d2d_cfg.forced_position_idx = v_launch; save_d2d_config() end
-    imgui.pop_item_width()
-
-    -- 2. DROPDOWN P1
-    imgui.same_line(0, sp)
+    -- DROPDOWN COMBO FILES
     imgui.push_item_width(dd_w)
     if #file_system.saved_combos_display_p1 == 0 then
         imgui.combo("##EmptyP1", 1, { "No P1 files" })
@@ -330,7 +330,7 @@ local function draw_single_line_content()
         end
 
         imgui.same_line(0, sp)
-        if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, actual_btn_w, true, false, SWITCH_COLORS) then
+        if styled_sf6_button(switch_pos_label() .. " (" .. sc("R") .. ")", false, actual_btn_w, true, false, SWITCH_COLORS) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             ctx.save_d2d_config()
@@ -352,8 +352,8 @@ local function draw_combo_trials_content(is_floating)
     local size = imgui.get_window_size()
     local w_width = (size.x > 50) and size.x or (sw * 0.44)
 
-    local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc("L") .. ")", "CANCEL (" .. sc("U") .. ")", "RECORD P1 (" .. sc("L") .. ")", "RECORD P2 (" .. sc("D") .. ")", "RESET (" .. sc("L") .. ")", "DEMO (" .. sc("D") .. ")" }, is_floating)
-    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "SWITCH POS (" .. sc("R") .. ")" }, is_floating)
+    local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("U") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("D") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("D") .. ")" }, is_floating)
+    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, is_floating)
 
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
     local spacing_cols = 20 * (sh / 1080.0)
@@ -404,14 +404,7 @@ local function draw_combo_trials_content(is_floating)
     imgui.begin_group()
     if not is_floating then imgui.text_colored("1. MANAGEMENT", COLORS.Cyan) end
 
-    imgui.push_item_width(col1_w)
-    local c_launch, v_launch = imgui.combo("##Forced-Position", d2d_cfg.forced_position_idx, file_system.forced_position_options)
-    if c_launch then
-        d2d_cfg.forced_position_idx = v_launch; save_d2d_config()
-    end
-    imgui.pop_item_width()
-
-    -- DROPDOWN P1 (Prend désormais toute la largeur dispo, fini le dropdown P2)
+    -- DROPDOWN COMBO FILES (full width)
     imgui.push_item_width(col1_w)
     if #file_system.saved_combos_display_p1 == 0 then
         imgui.combo("##EmptyP1", 1, { "No P1 files" })
@@ -501,7 +494,7 @@ local function draw_combo_trials_content(is_floating)
     
     -- SWITCH POS (Invisible en record)
     if not trial_state.is_recording then
-        if styled_sf6_button("SWITCH POS (" .. sc("R") .. ")", false, play_btn_w, is_floating, false, SWITCH_COLORS) then
+        if styled_sf6_button(switch_pos_label() .. " (" .. sc("R") .. ")", false, play_btn_w, is_floating, false, SWITCH_COLORS) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             ctx.save_d2d_config()
@@ -583,8 +576,11 @@ re.on_frame(function()
     if res_cooldown > 0 then res_cooldown = res_cooldown - 1 end
     local is_resizing = (res_changed or res_cooldown > 0)
 
-    if not d2d_cfg.float_pos then d2d_cfg.float_pos = { x = 0.2, y = 0.2 } end
-    if not d2d_cfg.float_size then d2d_cfg.float_size = { w = 0.44, h = 0.20 } end
+    if not d2d_cfg.float_pos then d2d_cfg.float_pos = { x = 0.0, y = 0.2 } end
+    if not d2d_cfg.float_size then d2d_cfg.float_size = { w = 1.0, h = 0.20 } end
+    -- Force full screen width
+    d2d_cfg.float_pos.x = 0.0
+    d2d_cfg.float_size.w = 1.0
 
     -- RECHARGEMENT DES POLICES (Uniquement à la frame exacte du changement)
     if not font_attempted or res_changed then
@@ -738,27 +734,22 @@ re.on_frame(function()
         sf6_menu_state.active = true
 
         imgui.push_style_color(2, 0x00000000)
-        imgui.push_style_color(5, 0x00000000)
-        imgui.push_style_color(7, 0xAA220044)
+        imgui.push_style_color(5, 0xAA220044)   -- Border (visible contour)
+        imgui.push_style_color(7, 0xAA220044)   -- Border accent
         imgui.push_style_color(8, 0xCC6600AA)
-		--WAEL1
 		imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))
 		
-        local target_w  = d2d_cfg.float_size.w * sw
-        local target_h  = d2d_cfg.float_size.h * sh
+        -- Full width, fixed at bottom — forced every frame
+        local target_w = sw
+        local target_h = sh * 0.0444
 
-        -- FORÇAGE DYNAMIQUE DE LA TAILLE ET POSITION
-        local cond_size = (is_resizing or force_float_resize > 0) and 1 or (1 << 2)
-        local cond_pos  = is_resizing and 1 or (1 << 3)
-
-        if force_float_resize > 0 then force_float_resize = force_float_resize - 1 end
-
-        imgui.set_next_window_size(Vector2f.new(target_w, target_h), cond_size)
-        imgui.set_next_window_pos(Vector2f.new(d2d_cfg.float_pos.x * sw, d2d_cfg.float_pos.y * sh), cond_pos)
+        imgui.set_next_window_size(Vector2f.new(target_w, target_h), 1)  -- 1 = Always
+        imgui.set_next_window_pos(Vector2f.new(0, sh - target_h), 1)    -- 1 = Always
 
         if custom_ui_font then imgui.push_font(custom_ui_font) end
 
-        local visible = imgui.begin_window("ComboTrialsFloating", true, 9)
+        -- 9 = NoTitleBar(1) + NoScrollbar(8), + NoMove(4) + NoResize(2) = 15
+        local visible = imgui.begin_window("ComboTrialsFloating", true, 15)
 
         local pos = imgui.get_window_pos()
         local size = imgui.get_window_size()
@@ -789,8 +780,8 @@ re.on_frame(function()
             local w_width = size.x
 
             -- Calcul du seuil single-line
-            local rec_btn_w_check = get_max_text_width({ "STOP & SAVE (" .. sc("L") .. ")", "CANCEL (" .. sc("U") .. ")", "RECORD P1 (" .. sc("L") .. ")", "RECORD P2 (" .. sc("D") .. ")" }, true)
-            local play_btn_w_check = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "START TRIAL P2 (" .. sc("R") .. ")", "STOP TRIAL P2 (" .. sc("R") .. ")" }, true)
+            local rec_btn_w_check = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("U") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("D") .. ")" }, true)
+            local play_btn_w_check = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "START TRIAL P2 (" .. sc_max("R") .. ")", "STOP TRIAL P2 (" .. sc_max("R") .. ")" }, true)
             local min_single_line_w = 200 + (rec_btn_w_check + play_btn_w_check) * 2 + 150 * (sh / 1080.0)
 
             if w_width >= min_single_line_w then
@@ -799,8 +790,8 @@ re.on_frame(function()
             else
                 -- MODE NORMAL : Header + contenu classique
                 -- Calculate exact actual width to synchronize header transition with UI layout
-                local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc("L") .. ")", "CANCEL (" .. sc("U") .. ")", "RECORD P1 (" .. sc("L") .. ")", "RECORD P2 (" .. sc("D") .. ")", "RESET (" .. sc("L") .. ")", "DEMO (" .. sc("D") .. ")" }, true)
-                local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc("U") .. ")", "STOP TRIAL P1 (" .. sc("U") .. ")", "SWITCH POS (" .. sc("R") .. ")" }, true)
+                local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("U") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("D") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("D") .. ")" }, true)
+                local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, true)
                 local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
                 local spacing_cols = 20 * (sh / 1080.0)
 

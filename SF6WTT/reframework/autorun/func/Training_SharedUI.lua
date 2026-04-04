@@ -196,7 +196,7 @@ function UI.draw_standard_hud(window_name, cfg, session, mode_label, show_timer,
         local final_col = session.feedback and session.feedback.color or UI.COLORS.White
         
         if session.is_running and session.is_paused then
-            final_msg = "PAUSED : PRESS (FUNC) + RIGHT TO RESUME"
+            final_msg = UI.pause_message()
             final_col = UI.COLORS.Yellow
         end
         
@@ -213,37 +213,97 @@ end
 -- ==========================================
 -- DYNAMIC SHORTCUT LABEL (pad vs keyboard)
 -- ==========================================
-function UI.sc(pad_key)
+local function is_keyboard_mode()
     local kb = false
     pcall(function()
         local igm = sdk.get_managed_singleton("app.InputGuideManager")
         if igm then kb = (igm:call("GetMode", 0) == 2) end
     end)
+    return kb
+end
+
+function UI.sc(pad_key)
     local map = { L = "1", U = "2", D = "3", R = "4" }
-    return kb and (map[pad_key] or pad_key) or pad_key
+    return is_keyboard_mode() and (map[pad_key] or pad_key) or pad_key
 end
 
 -- Training scripts: buttons left to right = D(1), U(2), R(3), L(4)
 function UI.sc_t(pad_key)
-    local kb = false
-    pcall(function()
-        local igm = sdk.get_managed_singleton("app.InputGuideManager")
-        if igm then kb = (igm:call("GetMode", 0) == 2) end
-    end)
     local map = { D = "1", U = "2", R = "3", L = "4" }
-    return kb and (map[pad_key] or pad_key) or pad_key
+    return is_keyboard_mode() and (map[pad_key] or pad_key) or pad_key
 end
 
 -- ==========================================
--- SHORTCUT BUTTON COLORS
+-- FUNC BUTTON NAME + DYNAMIC MESSAGES
 -- ==========================================
--- ABGR format: 0xAABBGGRR
-UI.SC_COLORS = {
-    c1 = { text = 0xFF4444FF, base = 0xFF141464, hover = 0xFF28288C, active = 0xFF3C3CB4, border = 0xFFFFFFFF },  -- RED
-    c2 = { text = 0xFF44FF44, base = 0xFF146414, hover = 0xFF288C28, active = 0xFF3CB43C, border = 0xFFFFFFFF },  -- GREEN
-    c3 = { text = 0xFFFF4444, base = 0xFF641414, hover = 0xFF8C2828, active = 0xFFB43C3C, border = 0xFFFFFFFF },  -- BLUE
-    c4 = { text = 0xFF00A5FF, base = 0xFF0A4878, hover = 0xFF1A6CA0, active = 0xFF2890CC, border = 0xFFFFFFFF },  -- ORANGE
+local FUNC_NAMES = {
+    [16384] = "SELECT",
+    [8192]  = "R3",
+    [4096]  = "L3",
 }
+
+function UI.get_func_name()
+    local id = _G.TrainingFuncButton
+    if not id then return nil end
+    return FUNC_NAMES[id] or ("BTN " .. tostring(id))
+end
+
+-- Dynamic pause/reset messages adapting to keyboard vs controller
+function UI.pause_message()
+    local fn = UI.get_func_name()
+    if is_keyboard_mode() or not fn then
+        return "PAUSED : PRESS 4 TO RESUME"
+    end
+    return "PAUSED : PRESS (" .. fn .. ") + RIGHT TO RESUME"
+end
+
+function UI.reset_message()
+    local fn = UI.get_func_name()
+    if is_keyboard_mode() or not fn then
+        return "PRESS 3 TO RESET"
+    end
+    return "PRESS (" .. fn .. ") + LEFT TO RESET"
+end
+
+-- Dynamic shortcut label for button text: D/U/R/L → keyboard number or FUNC+DIR
+local DIR_NAMES = { D = "DOWN", U = "UP", R = "RIGHT", L = "LEFT" }
+local DIR_TO_KEY = { D = "1", U = "2", R = "3", L = "4" }
+
+function UI.sc_label(pad_dir, kb_key)
+    local fn = UI.get_func_name()
+    if is_keyboard_mode() or not fn then
+        return kb_key or DIR_TO_KEY[pad_dir] or pad_dir
+    else
+        return fn .. "+" .. (DIR_NAMES[pad_dir] or pad_dir)
+    end
+end
+
+-- Always returns pad label (longest) for stable button width calculations
+function UI.sc_label_max(pad_dir)
+    local fn = UI.get_func_name()
+    if not fn then return DIR_TO_KEY[pad_dir] or pad_dir end
+    return fn .. "+" .. (DIR_NAMES[pad_dir] or pad_dir)
+end
+
+-- ==========================================
+-- SHORTCUT BUTTON COLORS (read from Training_ScriptManager via _G)
+-- ==========================================
+-- Fallback defaults (ABGR) if ScriptManager hasn't loaded yet
+local SC_DEFAULTS = {
+    c1 = { text = 0xFF4444FF, base = 0x784444FF, hover = 0xA04444FF, active = 0xC84444FF, border = 0xFFFFFFFF },
+    c2 = { text = 0xFF44FF44, base = 0x7844FF44, hover = 0xA044FF44, active = 0xC844FF44, border = 0xFFFFFFFF },
+    c3 = { text = 0xFFFF4444, base = 0x78FF4444, hover = 0xA0FF4444, active = 0xC8FF4444, border = 0xFFFFFFFF },
+    c4 = { text = 0xFF00A5FF, base = 0x7800A5FF, hover = 0xA000A5FF, active = 0xC800A5FF, border = 0xFFFFFFFF },
+}
+
+-- Dynamic accessor: always reads live colors from _G (updated by ScriptManager)
+UI.SC_COLORS = setmetatable({}, {
+    __index = function(_, key)
+        local g = _G.TrainingSCColors
+        if g and g[key] then return g[key] end
+        return SC_DEFAULTS[key]
+    end
+})
 
 function UI.sc_button(label, colors, width)
     imgui.push_style_color(5,  colors.text)
@@ -276,26 +336,29 @@ function UI.begin_floating_window(window_name)
         pcall(function() float_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * font_scale))) end)
     end
 
-    -- Exact same style as ComboTrials floating window
+    -- Identical style to ComboTrials floating window
     imgui.push_style_color(2,  0x00000000)   -- WindowBg transparent
     imgui.push_style_color(5,  0x00000000)   -- Border transparent
     imgui.push_style_color(7,  0xAA220044)   -- Border accent
     imgui.push_style_color(8,  0xCC6600AA)   -- Title bar
-    imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))  -- WindowPadding (same as ComboTrials)
+    imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))  -- WindowPadding
 
     if float_ui_font then imgui.push_font(float_ui_font) end
 
-    -- Hardcoded size and position (same as ComboTrials)
-    imgui.set_next_window_size(Vector2f.new(sw * 0.8215, sh * 0.0444), 1)  -- Always
-    imgui.set_next_window_pos(Vector2f.new(sw * 0.0898, sh * 0.9535), 1)   -- Always
-    local visible = imgui.begin_window(window_name, true, 9)  -- 9 = NoTitleBar + NoScrollbar
+    -- Full width, same height as ComboTrials single-line bar, fixed at bottom
+    local target_h = sh * 0.0444
+    imgui.set_next_window_size(Vector2f.new(sw, target_h), 1)      -- Always
+    imgui.set_next_window_pos(Vector2f.new(0, sh - target_h), 1)   -- Always
+    -- 15 = NoTitleBar(1) + NoResize(2) + NoMove(4) + NoScrollbar(8)
+    local visible = imgui.begin_window(window_name, true, 15)
+    if not visible then _G.TrainingFloatingBar = nil end
     return visible, sw, sh
 end
 
 function UI.end_floating_window()
     imgui.end_window()
     if float_ui_font then imgui.pop_font() end
-    imgui.pop_style_var(1)
+    imgui.pop_style_var(1)   -- WindowPadding
     imgui.pop_style_color(4)
 end
 
@@ -306,6 +369,9 @@ function UI.draw_floating_bg()
     imgui.push_style_color(7, 0xFF220000)
     pcall(function() imgui.progress_bar(0.0, Vector2f.new(w.x + 20, w.y + 20)) end)
     imgui.pop_style_color(1)
+    -- Publish window rect for D2D neon border drawing
+    local pos = imgui.get_window_pos()
+    _G.TrainingFloatingBar = { x = pos.x, y = pos.y, w = w.x, h = w.y, active = true }
 end
 
 -- SF6 neon button (identical to styled_sf6_button in floating mode with sf6_btn_font)
