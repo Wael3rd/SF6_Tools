@@ -48,8 +48,8 @@ local STAT_COLORS = { pp = COL.pp, wp = COL.wp, hc = COL.hc, aa = COL.aa }
 local FULL_LABELS = { pp = "PERFECT PARRY", wp = "WHIFF PUNISH", hc = "HIT CONFIRM", aa = "ANTI AIR" }
 
 local counters = {
-    [0] = { pp = 0, wp = 0, hc = 0, hc_opp = 0, aa = 0 },
-    [1] = { pp = 0, wp = 0, hc = 0, hc_opp = 0, aa = 0 },
+    [0] = { pp = 0, wp = 0, hc = 0, aa = 0 },
+    [1] = { pp = 0, wp = 0, hc = 0, aa = 0 },
 }
 
 -- Per-player tracking
@@ -360,14 +360,12 @@ local function detect_events()
         end
 
         -- =====================
-        -- HIT CONFIRM (combo_cnt + light button detection)
-        -- Non-light: opportunity at combo 0→1, success at combo 1→2+
-        -- Light:     opportunity at combo 1→2, success at combo 2→3+
-        -- Displays as ratio: successes / opportunities
-        -- Uses _hc_active lock for the entire combo sequence
+        -- HIT CONFIRM SCORE (same logic as HitConfirm training)
+        -- +1 = confirmed hit into combo (success)
+        -- -1 = dropped combo or didn't confirm (fail)
+        -- Light threshold: combo 2→3+, Non-light: combo 1→2+
         -- =====================
         local my_combo = (p == 0) and matrix.p1_combo or matrix.p2_combo
-        local my_prev_combo = (p == 0) and matrix.prev_p1_combo or matrix.prev_p2_combo
 
         -- Track light button press for this player
         pcall(function()
@@ -378,41 +376,26 @@ local function detect_events()
         end)
         local is_light = (t_p._last_light_time and (os.clock() - t_p._last_light_time) < 0.25)
 
-        -- Combo starts (0→1): lock the whole sequence
+        -- Combo starts: lock and determine threshold
         if my_combo >= 1 and not t_p._hc_active then
             t_p._hc_active = true
             t_p._hc_is_light = is_light
-            t_p._hc_opp_counted = false
-            t_p._hc_confirmed = false
-            if not is_light then
-                -- Non-light: opportunity at first hit
-                counters[p].hc_opp = counters[p].hc_opp + 1
-                t_p._hc_opp_counted = true
-            end
+            t_p._hc_scored = false
+            t_p._hc_target = is_light and 3 or 2  -- light needs combo 3+, other needs 2+
         end
 
-        -- Combo reaches 2: light opportunity or non-light confirm
-        if my_combo >= 2 and t_p._hc_active then
-            if t_p._hc_is_light and not t_p._hc_opp_counted then
-                counters[p].hc_opp = counters[p].hc_opp + 1
-                t_p._hc_opp_counted = true
-            end
-            if not t_p._hc_is_light and not t_p._hc_confirmed then
-                counters[p].hc = counters[p].hc + 1
-                t_p._hc_confirmed = true
-            end
+        -- Combo reaches target = SUCCESS (+1)
+        if t_p._hc_active and not t_p._hc_scored and my_combo >= (t_p._hc_target or 2) then
+            counters[p].hc = counters[p].hc + 1
+            t_p._hc_scored = true
         end
 
-        -- Combo reaches 3+: light confirm
-        if my_combo >= 3 and t_p._hc_active then
-            if t_p._hc_is_light and not t_p._hc_confirmed then
-                counters[p].hc = counters[p].hc + 1
-                t_p._hc_confirmed = true
+        -- Combo drops to 0 = evaluate
+        if my_combo == 0 and t_p._hc_active then
+            if not t_p._hc_scored then
+                -- Had a hit but didn't confirm = FAIL (-1)
+                counters[p].hc = counters[p].hc - 1
             end
-        end
-
-        -- Combo fully reset to 0: unlock for next sequence
-        if my_combo == 0 then
             t_p._hc_active = false
         end
     end
@@ -437,7 +420,6 @@ re.on_draw_ui(function()
         if imgui.button("RESET ALL") then
             for p = 0, 1 do
                 for _, k in ipairs(STATS) do counters[p][k] = 0 end
-                counters[p].hc_opp = 0
             end
         end
 
@@ -445,11 +427,7 @@ re.on_draw_ui(function()
         for p = 0, 1 do
             imgui.text("--- P" .. (p+1) .. " ---")
             for _, k in ipairs(STATS) do
-                if k == "hc" then
-                    imgui.text("  " .. FULL_LABELS[k] .. ": " .. counters[p].hc .. "/" .. counters[p].hc_opp)
-                else
-                    imgui.text("  " .. FULL_LABELS[k] .. ": " .. counters[p][k])
-                end
+                imgui.text("  " .. FULL_LABELS[k] .. ": " .. counters[p][k])
             end
         end
 
@@ -553,13 +531,7 @@ local function d2d_draw()
             total = total + val
 
             local label = LABELS[k]
-            -- HC shows as ratio: successes/opportunities
-            local val_str
-            if k == "hc" then
-                val_str = tostring(val) .. "/" .. tostring(counters[p].hc_opp)
-            else
-                val_str = tostring(val)
-            end
+            local val_str = tostring(val)
             local col = STAT_COLORS[k]
 
             if p == 0 then
