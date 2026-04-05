@@ -185,9 +185,11 @@ local function read_frame_data()
     matrix.prev_p1_ft  = matrix.p1_ft
     matrix.prev_p1_gau = matrix.p1_gau
     matrix.prev_p1_dmg = matrix.p1_dmg
+    matrix.prev_p1_hs  = matrix.p1_hs
     matrix.prev_p2_ft  = matrix.p2_ft
     matrix.prev_p2_gau = matrix.p2_gau
     matrix.prev_p2_dmg = matrix.p2_dmg
+    matrix.prev_p2_hs  = matrix.p2_hs
 
     -- Read ALL fields from both items for debug mapping
     matrix.p1_ft  = tonumber(tostring(it1:get_field("FrameType")))  or 0
@@ -287,20 +289,20 @@ local function detect_events()
     local has_matrix = pcall(read_frame_data)
 
     -- =====================
-    -- PERFECT PARRY (from matrix + player data)
-    -- MainGauge=1 AND damage_type=34 on the parrying player
+    -- PERFECT PARRY (from player data)
+    -- hit_stop != 0 AND damage_type == 34 on the parrying player
     -- Edge detect: only count on transition (prev wasn't parry)
     -- =====================
     if has_matrix then
-        -- P1 perfect parry: P1 MainGauge=1 AND P1 damage_type=34
-        local p1_pp = (matrix.p1_gau == 1 and (matrix.p1_dmg or 0) == 34)
-        local p1_pp_prev = (matrix.prev_p1_gau == 1 and (matrix.prev_p1_dmg or 0) == 34)
+        -- P1 perfect parry: P1 hit_stop != 0 AND P1 damage_type == 34
+        local p1_pp = ((matrix.p1_hs or 0) ~= 0 and (matrix.p1_dmg or 0) == 34)
+        local p1_pp_prev = ((matrix.prev_p1_hs or 0) ~= 0 and (matrix.prev_p1_dmg or 0) == 34)
         if p1_pp and not p1_pp_prev then
             counters[0].pp = counters[0].pp + 1
         end
-        -- P2 perfect parry: P2 MainGauge=1 AND P2 damage_type=34
-        local p2_pp = (matrix.p2_gau == 1 and (matrix.p2_dmg or 0) == 34)
-        local p2_pp_prev = (matrix.prev_p2_gau == 1 and (matrix.prev_p2_dmg or 0) == 34)
+        -- P2 perfect parry: P2 hit_stop != 0 AND P2 damage_type == 34
+        local p2_pp = ((matrix.p2_hs or 0) ~= 0 and (matrix.p2_dmg or 0) == 34)
+        local p2_pp_prev = ((matrix.prev_p2_hs or 0) ~= 0 and (matrix.prev_p2_dmg or 0) == 34)
         if p2_pp and not p2_pp_prev then
             counters[1].pp = counters[1].pp + 1
         end
