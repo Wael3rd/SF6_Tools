@@ -33,6 +33,7 @@ local UI_THEME = {
 }
 
 local SharedUI = require("func/Training_SharedUI")
+local SessionRecap = require("func/Training_SessionRecap")
 
 local user_config = {
     timer_minutes = 1,
@@ -213,6 +214,7 @@ local function set_feedback(msg, color, duration)
 end
 
 local function reset_session_stats()
+    SessionRecap.hide()
     session.score = 0; session.total = 0; session.success_count = 0
     session.is_running = false; session.is_paused = false; session.is_time_up = false
     session.time_rem = user_config.timer_minutes * 60
@@ -302,7 +304,8 @@ local function update_logic()
         if not session.is_time_up then
             session.is_time_up = true 
             session.time_up_delay = 0 
-            export_stats() 
+            export_stats()
+            SessionRecap.show("POST GUARD", LOG_FILENAME, "postguard")
         end
         set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
         return
