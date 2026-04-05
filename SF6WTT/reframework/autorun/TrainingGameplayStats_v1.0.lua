@@ -642,6 +642,19 @@ re.on_draw_ui(function()
             matrix.p2_ft, matrix.p2_type or 0, matrix.p2_frame or 0, matrix.p2_sf or 0, matrix.p2_ef or 0, matrix.p2_gau))
         imgui.text(string.format("  dmg=%d  hs=%d  combo=%d  trade_dm=%s", matrix.p2_dmg or 0, matrix.p2_hs or 0, matrix.p2_combo or 0, tostring(matrix.p2_trade_dm)))
 
+        -- PP detection formula debug
+        imgui.spacing()
+        imgui.text("--- PP DETECTION ---")
+        for p = 0, 1 do
+            local dm   = (p == 0) and matrix.p1_trade_dm or matrix.p2_trade_dm
+            local dmg  = (p == 0) and (matrix.p1_dmg or 0) or (matrix.p2_dmg or 0)
+            local hs   = (p == 0) and (matrix.p1_hs or 0) or (matrix.p2_hs or 0)
+            local lock = track[p]._pp_locked and "LOCKED" or "READY"
+            local result = (dm and dmg == 34 and hs ~= 0) and ">>> PP!" or "no"
+            imgui.text(string.format("P%d: trade_dm=%s AND dmg=%d==34? AND hs=%d!=0?  [%s] => %s",
+                p + 1, tostring(dm), dmg, hs, lock, result))
+        end
+
         imgui.tree_pop()
     end
 end)
