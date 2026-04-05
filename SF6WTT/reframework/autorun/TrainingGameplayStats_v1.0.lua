@@ -187,10 +187,19 @@ local function read_frame_data()
     matrix.prev_p2_ft  = matrix.p2_ft
     matrix.prev_p2_gau = matrix.p2_gau
 
-    -- Read current (P1_FT = col1, P1_GAU = col3, P2_FT = col2, P2_GAU = col5)
+    -- Read ALL fields from both items for debug mapping
     matrix.p1_ft  = tonumber(tostring(it1:get_field("FrameType")))  or 0
+    matrix.p1_type = tonumber(tostring(it1:get_field("Type")))  or 0
+    matrix.p1_frame = tonumber(tostring(it1:get_field("Frame")))  or 0
+    matrix.p1_sf  = tonumber(tostring(it1:get_field("StartFrame")))  or 0
+    matrix.p1_ef  = tonumber(tostring(it1:get_field("EndFrame")))  or 0
     matrix.p1_gau = tonumber(tostring(it1:get_field("MainGauge"))) or 0
+
     matrix.p2_ft  = tonumber(tostring(it2:get_field("FrameType")))  or 0
+    matrix.p2_type = tonumber(tostring(it2:get_field("Type")))  or 0
+    matrix.p2_frame = tonumber(tostring(it2:get_field("Frame")))  or 0
+    matrix.p2_sf  = tonumber(tostring(it2:get_field("StartFrame")))  or 0
+    matrix.p2_ef  = tonumber(tostring(it2:get_field("EndFrame")))  or 0
     matrix.p2_gau = tonumber(tostring(it2:get_field("MainGauge"))) or 0
 
     matrix.debug_status = string.format("OK head=%d", active_head)
@@ -351,13 +360,18 @@ re.on_draw_ui(function()
             end
         end
 
-        -- Live matrix debug
+        -- Live matrix debug - ALL fields
         imgui.spacing()
         imgui.text("--- MATRIX LIVE ---")
         imgui.text("Status: " .. matrix.debug_status)
-        imgui.text(string.format("P1_FT: %d  (prev: %d)  |  P1_GAU: %d", matrix.p1_ft, matrix.prev_p1_ft, matrix.p1_gau))
-        imgui.text(string.format("P2_FT: %d  (prev: %d)  |  P2_GAU: %d", matrix.p2_ft, matrix.prev_p2_ft, matrix.p2_gau))
         imgui.text(string.format("Head IDX: %d  |  Lists: %s", matrix.last_head, (matrix.p1_list and matrix.p2_list) and "OK" or "nil"))
+        imgui.spacing()
+        imgui.text("P1 item fields:")
+        imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  StartFrame=%d  EndFrame=%d  MainGauge=%d",
+            matrix.p1_ft, matrix.p1_type or 0, matrix.p1_frame or 0, matrix.p1_sf or 0, matrix.p1_ef or 0, matrix.p1_gau))
+        imgui.text("P2 item fields:")
+        imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  StartFrame=%d  EndFrame=%d  MainGauge=%d",
+            matrix.p2_ft, matrix.p2_type or 0, matrix.p2_frame or 0, matrix.p2_sf or 0, matrix.p2_ef or 0, matrix.p2_gau))
 
         imgui.tree_pop()
     end
