@@ -415,15 +415,16 @@ local function detect_events()
         local t_o = track[opp]
 
         -- =====================
-        -- WHIFF PUNISH (PostGuard logic: opponent attacked on ground, returned to neutral = missed)
-        -- Score: +1 if P punishes (opponent goes hurt), -1 if missed (opponent returns neutral)
+        -- WHIFF PUNISH (only tracks opponent moves that WHIFF, not moves that connect)
+        -- Score: +1 if P punishes whiffed move, -1 if missed opportunity
+        -- Cancel tracking if opponent's attack actually hits player (not a whiff)
         -- =====================
         local opp_state = (opp == 0) and track[0].frame_st or track[1].frame_st
         local opp_pose  = (opp == 0) and (matrix.p1_pose_st or 0) or (matrix.p2_pose_st or 0)
+        local my_state  = (p == 0) and track[0].frame_st or track[1].frame_st
 
-        -- Opponent is grounded and attacking (not neutral, not block, not airborne)
-        if opp_pose < 2 and opp_state ~= STATE_NEUTRAL and opp_state ~= 10 and opp_state ~= 0 and not t_p._wp_tracking then
-            -- Check if opponent is in attack states (startup=7, active=13/14, recovery=8)
+        -- Opponent is grounded and attacking
+        if opp_pose < 2 and not t_p._wp_tracking then
             if opp_state == 7 or opp_state == 13 or opp_state == 14 or opp_state == STATE_RECOVER then
                 t_p._wp_tracking = true
                 t_p._wp_counted = false
@@ -431,7 +432,11 @@ local function detect_events()
         end
 
         if t_p._wp_tracking then
-            if opp_state == STATE_HURT then
+            -- If PLAYER got hit, opponent's move connected = NOT a whiff, cancel
+            if my_state == STATE_HURT or my_state == 10 then
+                t_p._wp_tracking = false
+                t_p._wp_counted = false
+            elseif opp_state == STATE_HURT then
                 -- Player punished the opponent = SUCCESS
                 if not t_p._wp_counted then
                     counters[p].wp = counters[p].wp + 1
