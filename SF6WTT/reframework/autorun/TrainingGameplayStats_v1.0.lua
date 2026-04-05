@@ -206,9 +206,11 @@ local function read_frame_data()
     matrix.p2_ef  = tonumber(tostring(it2:get_field("EndFrame")))  or 0
     matrix.p2_gau = tonumber(tostring(it2:get_field("MainGauge"))) or 0
 
-    -- Read DMG + HS from player objects (not from matrix items)
-    matrix.p1_dmg = 0; matrix.p1_hs = 0
-    matrix.p2_dmg = 0; matrix.p2_hs = 0
+    -- Read DMG, HS, COMBO from player objects (not from matrix items)
+    matrix.prev_p1_combo = matrix.p1_combo or 0
+    matrix.prev_p2_combo = matrix.p2_combo or 0
+    matrix.p1_dmg = 0; matrix.p1_hs = 0; matrix.p1_combo = 0
+    matrix.p2_dmg = 0; matrix.p2_hs = 0; matrix.p2_combo = 0
     pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
         if not gBattle then return end
@@ -219,10 +221,12 @@ local function read_frame_data()
         if p1_obj then
             local dt = p1_obj:get_field("damage_type"); if dt then matrix.p1_dmg = tonumber(tostring(dt)) or 0 end
             local hs = p1_obj:get_field("hit_stop"); if hs then matrix.p1_hs = tonumber(tostring(hs)) or 0 end
+            local cc = p1_obj:get_field("combo_cnt"); if cc then matrix.p1_combo = tonumber(tostring(cc)) or 0 end
         end
         if p2_obj then
             local dt = p2_obj:get_field("damage_type"); if dt then matrix.p2_dmg = tonumber(tostring(dt)) or 0 end
             local hs = p2_obj:get_field("hit_stop"); if hs then matrix.p2_hs = tonumber(tostring(hs)) or 0 end
+            local cc = p2_obj:get_field("combo_cnt"); if cc then matrix.p2_combo = tonumber(tostring(cc)) or 0 end
         end
     end)
 
@@ -335,26 +339,21 @@ local function detect_events()
         end
 
         -- =====================
-        -- HIT CONFIRM : player lands 2+ hits in a combo
-        -- Count when 2nd hit lands (opponent re-enters hurt after brief non-hurt in combo)
+        -- HIT CONFIRM (from combo_cnt on player objects)
+        -- combo_cnt goes from 1 to 2 = player confirmed their hit into combo
+        -- Uses lock to count only once per combo sequence
         -- =====================
-        if t_o.frame_st == STATE_HURT and t_o.prev_frame_st ~= STATE_HURT then
-            -- Opponent just got hit
-            if t_p.hc_pending then
-                -- 2nd+ hit in sequence = confirmed!
-                counters[p].hc = counters[p].hc + 1
-                t_p.hc_pending = false
-                t_p.in_combo = true
-            else
-                -- 1st hit - mark pending
-                t_p.hc_pending = true
-                t_p.in_combo = false
-            end
+        local my_combo = (p == 0) and matrix.p1_combo or matrix.p2_combo
+        local my_prev_combo = (p == 0) and matrix.prev_p1_combo or matrix.prev_p2_combo
+
+        -- Combo just reached 2 from 1 = confirmed
+        if my_combo >= 2 and my_prev_combo < 2 and not t_p._hc_locked then
+            counters[p].hc = counters[p].hc + 1
+            t_p._hc_locked = true
         end
-        -- Reset if opponent returns to neutral
-        if t_o.frame_st == STATE_NEUTRAL and t_o.prev_frame_st ~= STATE_NEUTRAL then
-            t_p.hc_pending = false
-            t_p.in_combo = false
+        -- Unlock when combo resets to 0
+        if my_combo == 0 then
+            t_p._hc_locked = false
         end
     end
 end
@@ -398,11 +397,11 @@ re.on_draw_ui(function()
         imgui.text("P1 item fields:")
         imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  SF=%d  EF=%d  MainGauge=%d",
             matrix.p1_ft, matrix.p1_type or 0, matrix.p1_frame or 0, matrix.p1_sf or 0, matrix.p1_ef or 0, matrix.p1_gau))
-        imgui.text(string.format("  damage_type=%d  hit_stop=%d", matrix.p1_dmg or 0, matrix.p1_hs or 0))
+        imgui.text(string.format("  damage_type=%d  hit_stop=%d  combo_cnt=%d", matrix.p1_dmg or 0, matrix.p1_hs or 0, matrix.p1_combo or 0))
         imgui.text("P2 item fields:")
         imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  SF=%d  EF=%d  MainGauge=%d",
             matrix.p2_ft, matrix.p2_type or 0, matrix.p2_frame or 0, matrix.p2_sf or 0, matrix.p2_ef or 0, matrix.p2_gau))
-        imgui.text(string.format("  damage_type=%d  hit_stop=%d", matrix.p2_dmg or 0, matrix.p2_hs or 0))
+        imgui.text(string.format("  damage_type=%d  hit_stop=%d  combo_cnt=%d", matrix.p2_dmg or 0, matrix.p2_hs or 0, matrix.p2_combo or 0))
 
         imgui.tree_pop()
     end
