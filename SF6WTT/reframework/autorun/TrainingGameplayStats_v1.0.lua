@@ -202,6 +202,26 @@ local function read_frame_data()
     matrix.p2_ef  = tonumber(tostring(it2:get_field("EndFrame")))  or 0
     matrix.p2_gau = tonumber(tostring(it2:get_field("MainGauge"))) or 0
 
+    -- Read DMG + HS from player objects (not from matrix items)
+    matrix.p1_dmg = 0; matrix.p1_hs = 0
+    matrix.p2_dmg = 0; matrix.p2_hs = 0
+    pcall(function()
+        local gBattle = sdk.find_type_definition("gBattle")
+        if not gBattle then return end
+        local pmgr = gBattle:get_field("Player"):get_data(nil)
+        if not pmgr then return end
+        local p1_obj = pmgr:call("getPlayer", 0)
+        local p2_obj = pmgr:call("getPlayer", 1)
+        if p1_obj then
+            local dt = p1_obj:get_field("damage_type"); if dt then matrix.p1_dmg = tonumber(tostring(dt)) or 0 end
+            local hs = p1_obj:get_field("hit_stop"); if hs then matrix.p1_hs = tonumber(tostring(hs)) or 0 end
+        end
+        if p2_obj then
+            local dt = p2_obj:get_field("damage_type"); if dt then matrix.p2_dmg = tonumber(tostring(dt)) or 0 end
+            local hs = p2_obj:get_field("hit_stop"); if hs then matrix.p2_hs = tonumber(tostring(hs)) or 0 end
+        end
+    end)
+
     matrix.debug_status = string.format("OK head=%d", active_head)
     return true
 end
@@ -367,11 +387,13 @@ re.on_draw_ui(function()
         imgui.text(string.format("Head IDX: %d  |  Lists: %s", matrix.last_head, (matrix.p1_list and matrix.p2_list) and "OK" or "nil"))
         imgui.spacing()
         imgui.text("P1 item fields:")
-        imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  StartFrame=%d  EndFrame=%d  MainGauge=%d",
+        imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  SF=%d  EF=%d  MainGauge=%d",
             matrix.p1_ft, matrix.p1_type or 0, matrix.p1_frame or 0, matrix.p1_sf or 0, matrix.p1_ef or 0, matrix.p1_gau))
+        imgui.text(string.format("  damage_type=%d  hit_stop=%d", matrix.p1_dmg or 0, matrix.p1_hs or 0))
         imgui.text("P2 item fields:")
-        imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  StartFrame=%d  EndFrame=%d  MainGauge=%d",
+        imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  SF=%d  EF=%d  MainGauge=%d",
             matrix.p2_ft, matrix.p2_type or 0, matrix.p2_frame or 0, matrix.p2_sf or 0, matrix.p2_ef or 0, matrix.p2_gau))
+        imgui.text(string.format("  damage_type=%d  hit_stop=%d", matrix.p2_dmg or 0, matrix.p2_hs or 0))
 
         imgui.tree_pop()
     end
