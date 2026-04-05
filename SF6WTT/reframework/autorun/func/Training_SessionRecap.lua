@@ -380,18 +380,17 @@ re.on_draw_ui(function()
         if imgui.button("Test Show (HitConfirm)") then
             M.show("HIT CONFIRM", "HitConfirm_SessionStats.txt", "hitconfirm")
         end
-        if imgui.button("Copy Debug to File") then
-            local f = io.open("SessionRecap_Debug.txt", "w")
-            if f then
-                f:write("Visible: " .. tostring(_visible) .. "\n")
-                f:write("Sessions: " .. #_sessions .. "\n")
-                f:write("Debug: " .. _debug_msg .. "\n")
-                for i, s in ipairs(_sessions) do
-                    f:write("  [" .. i .. "] " .. tostring(s.date) .. " | " .. tostring(s.pct) .. "% | " .. tostring(s.score) .. "/" .. tostring(s.total) .. "\n")
-                end
-                f:close()
-                _debug_msg = _debug_msg .. " | Copied to SessionRecap_Debug.txt"
+        if imgui.button("Copy Debug to Clipboard") then
+            local lines = {}
+            lines[#lines + 1] = "Visible: " .. tostring(_visible)
+            lines[#lines + 1] = "Sessions: " .. #_sessions
+            lines[#lines + 1] = "Debug: " .. _debug_msg
+            for i, s in ipairs(_sessions) do
+                lines[#lines + 1] = "  [" .. i .. "] " .. tostring(s.date) .. " | " .. tostring(s.pct) .. "% | " .. tostring(s.score) .. "/" .. tostring(s.total)
             end
+            local text = table.concat(lines, "\n")
+            pcall(imgui.set_clipboard_text, text)
+            _debug_msg = _debug_msg .. " | Copied!"
         end
         imgui.tree_pop()
     end
