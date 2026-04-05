@@ -391,18 +391,18 @@ local function detect_events()
 
     -- =====================
     -- PERFECT PARRY (from player data)
-    -- trade_dm_flag must TRANSITION from false→true (not just be true)
-    -- + dmg=34 AND hitstop!=0. Lock until trade_dm goes back to false.
+    -- trade_dm_flag + dmg=34 + hitstop!=0
+    -- Lock until hitstop returns to 0 (allows counting each hit in multi-hit parry)
     -- =====================
     if has_matrix then
         -- P1 perfect parry
-        if not matrix.p1_trade_dm then track[0]._pp_locked = false end
+        if (matrix.p1_hs or 0) == 0 then track[0]._pp_locked = false end
         if not track[0]._pp_locked and matrix.p1_trade_dm and (matrix.p1_dmg or 0) == 34 and (matrix.p1_hs or 0) ~= 0 then
             counters[0].pp = counters[0].pp + 1
             track[0]._pp_locked = true
         end
         -- P2 perfect parry
-        if not matrix.p2_trade_dm then track[1]._pp_locked = false end
+        if (matrix.p2_hs or 0) == 0 then track[1]._pp_locked = false end
         if not track[1]._pp_locked and matrix.p2_trade_dm and (matrix.p2_dmg or 0) == 34 and (matrix.p2_hs or 0) ~= 0 then
             counters[1].pp = counters[1].pp + 1
             track[1]._pp_locked = true
