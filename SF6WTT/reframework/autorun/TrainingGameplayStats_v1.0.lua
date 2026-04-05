@@ -48,8 +48,8 @@ local STAT_COLORS = { pp = COL.pp, wp = COL.wp, hc = COL.hc, aa = COL.aa }
 local FULL_LABELS = { pp = "PERFECT PARRY", wp = "WHIFF PUNISH", hc = "HIT CONFIRM", aa = "ANTI AIR" }
 
 local counters = {
-    [0] = { pp = 0, wp = 0, hc = 0, aa = 0 },
-    [1] = { pp = 0, wp = 0, hc = 0, aa = 0 },
+    [0] = { pp = 0, wp = 0, hc = 0, hc_opp = 0, aa = 0 },
+    [1] = { pp = 0, wp = 0, hc = 0, hc_opp = 0, aa = 0 },
 }
 
 -- Per-player tracking
@@ -264,6 +264,23 @@ end
 pcall(setup_hooks)
 
 -- =========================================================
+-- INPUT READING (for light button detection)
+-- =========================================================
+local MASK_LIGHT = 144  -- LP(16) + LK(128)
+
+local function read_game_input(player_index)
+    local gBattle = sdk.find_type_definition("gBattle")
+    if not gBattle then return 0 end
+    local pmgr = gBattle:get_field("Player"):get_data(nil)
+    if not pmgr then return 0 end
+    local p = pmgr:call("getPlayer", player_index)
+    if not p then return 0 end
+    local f_sw = p:get_type_definition():get_field("pl_sw_new")
+    if not f_sw then return 0 end
+    return f_sw:get_data(p) or 0
+end
+
+-- =========================================================
 -- DETECTION LOGIC
 -- =========================================================
 -- Matrix FT values: 7=startup, 8=recovery, 9=hurt/block, 13/14=active
@@ -343,21 +360,63 @@ local function detect_events()
         end
 
         -- =====================
-        -- HIT CONFIRM (from combo_cnt on player objects)
-        -- combo_cnt goes from 1 to 2 = player confirmed their hit into combo
-        -- Uses lock to count only once per combo sequence
+        -- HIT CONFIRM (combo_cnt + light button detection)
+        -- Non-light: opportunity at combo 0→1, success at combo 1→2+
+        -- Light:     opportunity at combo 1→2, success at combo 2→3+
+        -- Displays as ratio: successes / opportunities
         -- =====================
         local my_combo = (p == 0) and matrix.p1_combo or matrix.p2_combo
         local my_prev_combo = (p == 0) and matrix.prev_p1_combo or matrix.prev_p2_combo
 
-        -- Combo just reached 2 from 1 = confirmed
-        if my_combo >= 2 and my_prev_combo < 2 and not t_p._hc_locked then
-            counters[p].hc = counters[p].hc + 1
-            t_p._hc_locked = true
-        end
-        -- Unlock when combo resets to 0
-        if my_combo == 0 then
+        -- Track light button press for this player
+        pcall(function()
+            local input = read_game_input(p)
+            if (input & MASK_LIGHT) ~= 0 then
+                t_p._last_light_time = os.clock()
+            end
+        end)
+        local is_light = (t_p._last_light_time and (os.clock() - t_p._last_light_time) < 0.25)
+
+        -- Combo 0→1: first hit landed
+        if my_combo == 1 and my_prev_combo == 0 then
+            t_p._hc_is_light = is_light
+            t_p._hc_opp_counted = false
             t_p._hc_locked = false
+            if not is_light then
+                -- Non-light: opportunity starts now
+                counters[p].hc_opp = counters[p].hc_opp + 1
+                t_p._hc_opp_counted = true
+            end
+        end
+
+        -- Combo 1→2: second hit
+        if my_combo == 2 and my_prev_combo < 2 then
+            if t_p._hc_is_light then
+                -- Light: opportunity starts at 2nd hit
+                counters[p].hc_opp = counters[p].hc_opp + 1
+                t_p._hc_opp_counted = true
+            else
+                -- Non-light: 2nd hit = confirmed!
+                if not t_p._hc_locked then
+                    counters[p].hc = counters[p].hc + 1
+                    t_p._hc_locked = true
+                end
+            end
+        end
+
+        -- Combo 2→3+: for lights, this is the confirm
+        if my_combo >= 3 and my_prev_combo < 3 then
+            if t_p._hc_is_light and not t_p._hc_locked then
+                counters[p].hc = counters[p].hc + 1
+                t_p._hc_locked = true
+            end
+        end
+
+        -- Combo dropped without confirming
+        if my_combo == 0 and my_prev_combo > 0 then
+            t_p._hc_locked = false
+            t_p._hc_is_light = false
+            t_p._hc_opp_counted = false
         end
     end
 end
@@ -381,6 +440,7 @@ re.on_draw_ui(function()
         if imgui.button("RESET ALL") then
             for p = 0, 1 do
                 for _, k in ipairs(STATS) do counters[p][k] = 0 end
+                counters[p].hc_opp = 0
             end
         end
 
@@ -388,7 +448,11 @@ re.on_draw_ui(function()
         for p = 0, 1 do
             imgui.text("--- P" .. (p+1) .. " ---")
             for _, k in ipairs(STATS) do
-                imgui.text("  " .. FULL_LABELS[k] .. ": " .. counters[p][k])
+                if k == "hc" then
+                    imgui.text("  " .. FULL_LABELS[k] .. ": " .. counters[p].hc .. "/" .. counters[p].hc_opp)
+                else
+                    imgui.text("  " .. FULL_LABELS[k] .. ": " .. counters[p][k])
+                end
             end
         end
 
@@ -492,7 +556,13 @@ local function d2d_draw()
             total = total + val
 
             local label = LABELS[k]
-            local val_str = tostring(val)
+            -- HC shows as ratio: successes/opportunities
+            local val_str
+            if k == "hc" then
+                val_str = tostring(val) .. "/" .. tostring(counters[p].hc_opp)
+            else
+                val_str = tostring(val)
+            end
             local col = STAT_COLORS[k]
 
             if p == 0 then
