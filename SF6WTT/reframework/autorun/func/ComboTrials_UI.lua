@@ -27,13 +27,14 @@ local exc_status = ""
 -- Raccourcis dynamiques : pad (FUNC+DIR) ou clavier (1/2/3/4)
 -- ComboTrials mapping: L=1, U=2, D=3, R=4
 local SharedUI = require("func/Training_SharedUI")
-local CT_KB_MAP = { L = "1", U = "2", D = "3", R = "4" }
+local CT_KB_MAP = { L = "1", U = "2", D = "3", R = "4", A = "8" }
 local function sc(pad_key)
     return SharedUI.sc_label(pad_key, CT_KB_MAP[pad_key])
 end
 -- Always returns the pad label (longest) for stable button width calculation
 local function sc_max(pad_key)
-    return SharedUI.get_func_name() .. "+" .. ({ D = "DOWN", U = "UP", R = "RIGHT", L = "LEFT" })[pad_key] or pad_key
+    local dir_names = { D = "DOWN", U = "UP", R = "RIGHT", L = "LEFT", A = "CROSS" }
+    return (SharedUI.get_func_name() or "") .. "+" .. (dir_names[pad_key] or pad_key)
 end
 
 -- =========================================================
@@ -63,6 +64,38 @@ local UI_THEME = {
     btn_red     = { base = 0xFF0000CC, hover = 0xFF2222FF, active = 0xFF000099 },
     btn_orange  = { base = 0xFFFF8800, hover = 0xFFFFAA33, active = 0xFFCC6600 }
 }
+
+-- Combo dropdown ouvrable par raccourci (remplace imgui.combo pour ##FilesP1)
+local function combo_openable(label, current_idx, items, force_open)
+    local popup_id = label .. "_popup"
+    local preview = (items and items[current_idx]) or "---"
+
+    if force_open then
+        imgui.open_popup(popup_id)
+        _G.ComboTrials_OpenDropdown = false
+    end
+
+    -- Dessiner un bouton qui ressemble à un combo (avec flèche v)
+    local clicked = imgui.button(preview .. "  v" .. label)
+    if clicked then
+        imgui.open_popup(popup_id)
+    end
+
+    local changed = false
+    local new_idx = current_idx
+
+    if imgui.begin_popup(popup_id) then
+        for i = 1, #items do
+            if imgui.selectable(items[i], i == current_idx) then
+                new_idx = i
+                changed = true
+            end
+        end
+        imgui.end_popup()
+    end
+
+    return changed, new_idx
+end
 
 local function styled_button(label, style, text_col)
     imgui.push_style_color(21, style.base); imgui.push_style_color(22, style.hover); imgui.push_style_color(23,
@@ -270,7 +303,8 @@ local function draw_single_line_content()
     if #file_system.saved_combos_display_p1 == 0 then
         imgui.combo("##EmptyP1", 1, { "No P1 files" })
     else
-        local f1_changed, new_idx1 = imgui.combo("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1)
+        local should_open = (_G.ComboTrials_OpenDropdown == true)
+        local f1_changed, new_idx1 = combo_openable("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1, should_open)
         if f1_changed then
             file_system.selected_file_idx_p1 = new_idx1
             load_and_start_trial(0)
@@ -409,7 +443,8 @@ local function draw_combo_trials_content(is_floating)
     if #file_system.saved_combos_display_p1 == 0 then
         imgui.combo("##EmptyP1", 1, { "No P1 files" })
     else
-        local f1_changed, new_idx1 = imgui.combo("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1)
+        local should_open = (_G.ComboTrials_OpenDropdown == true)
+        local f1_changed, new_idx1 = combo_openable("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1, should_open)
         if f1_changed then
             file_system.selected_file_idx_p1 = new_idx1
             load_and_start_trial(0)
