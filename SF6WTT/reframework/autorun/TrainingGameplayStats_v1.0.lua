@@ -99,7 +99,75 @@ local function get_pose_st(player_index)
 end
 
 -- =========================================================
--- FRAME METER HOOKS (state tracking)
+-- FRAME DATA READING (from training matrix widget)
+-- =========================================================
+local matrix = {
+    p1_ft = 0, p1_gau = 0, prev_p1_ft = 0, prev_p1_gau = 0,
+    p2_ft = 0, p2_gau = 0, prev_p2_ft = 0, prev_p2_gau = 0,
+    last_head = -1
+}
+
+local function read_frame_data()
+    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
+    if not mgr then return false end
+    local dict = mgr:get_field("_ViewUIWigetDict")
+    local entries = dict and dict:get_field("_entries")
+    if not entries then return false end
+
+    local p1_list, p2_list
+    local count = entries:call("get_Count")
+    for i = 0, count - 1 do
+        local entry = entries:call("get_Item", i)
+        if entry:get_field("key") == 5 then
+            local widget = entry:get_field("value"):call("get_Item", 0)
+            local ss = widget:call("get_SSData")
+            local m_datas = ss:get_field("MeterDatas")
+            if m_datas and m_datas:call("get_Count") >= 2 then
+                p1_list = m_datas:call("get_Item", 0):get_field("FrameNumDatas")
+                p2_list = m_datas:call("get_Item", 1):get_field("FrameNumDatas")
+            end
+            break
+        end
+    end
+    if not p1_list or not p2_list then return false end
+
+    local buf_count = p1_list:call("get_Count")
+    if buf_count <= 0 then return false end
+
+    -- Find active head index
+    local next_idx = (matrix.last_head + 1) % buf_count
+    local head = -1
+    local it1 = p1_list:call("get_Item", next_idx)
+    local it2 = p2_list:call("get_Item", next_idx)
+    if it1 and it2 then
+        local ft1 = tonumber(tostring(it1:get_field("FrameType"))) or 0
+        local ft2 = tonumber(tostring(it2:get_field("FrameType"))) or 0
+        if ft1 ~= 0 or ft2 ~= 0 then head = next_idx end
+    end
+    if head == -1 then return false end -- no new frame
+
+    matrix.last_head = head
+    local item1 = p1_list:call("get_Item", head)
+    local item2 = p2_list:call("get_Item", head)
+    if not item1 or not item2 then return false end
+
+    -- Save previous
+    matrix.prev_p1_ft  = matrix.p1_ft
+    matrix.prev_p1_gau = matrix.p1_gau
+    matrix.prev_p2_ft  = matrix.p2_ft
+    matrix.prev_p2_gau = matrix.p2_gau
+
+    -- Read current
+    matrix.p1_ft  = tonumber(tostring(item1:get_field("FrameType")))  or 0
+    matrix.p1_gau = tonumber(tostring(item1:get_field("MainGauge"))) or 0
+    matrix.p2_ft  = tonumber(tostring(item2:get_field("FrameType")))  or 0
+    matrix.p2_gau = tonumber(tostring(item2:get_field("MainGauge"))) or 0
+
+    return true
+end
+
+-- =========================================================
+-- FRAME METER HOOKS (for WP, HC, AA detection)
 -- =========================================================
 local function setup_hooks()
     local t_fm = sdk.find_type_definition("app.training.UIWidget_TMFrameMeter")
@@ -125,46 +193,56 @@ end
 pcall(setup_hooks)
 
 -- =========================================================
--- DETECTION LOGIC (called each frame)
+-- DETECTION LOGIC
 -- =========================================================
--- Frame states: 0=neutral, 7=startup, 8=recovery, 9=hurt, 10=block, 13=active
+-- Matrix FT values: 7=startup, 8=recovery, 9=hurt/block, 13/14=active
+-- Matrix GAU values: 34=perfect parry
 local STATE_NEUTRAL  = 0
 local STATE_RECOVER  = 8
 local STATE_HURT     = 9
-local STATE_ACTIVE   = 13
-local ACT_PARRY      = 39
+local FT_ACTIVE_1    = 13
+local FT_ACTIVE_2    = 14
+local GAU_PARRY      = 34
+
+local function is_active(ft)
+    return ft == FT_ACTIVE_1 or ft == FT_ACTIVE_2
+end
 
 local function detect_events()
-    -- Read states
+    -- Read hook-based states (for WP, HC, AA)
     for p = 0, 1 do
         track[p].prev_act_st = track[p].act_st
         track[p].prev_frame_st = track[p].frame_st
         track[p].act_st = get_act_st(p)
         track[p].pose_st = get_pose_st(p)
     end
-
-    -- Assign frame states from hooks
     track[0].frame_st = p1_max_frame
     track[1].frame_st = p2_max_frame
     p1_max_frame = 0
     p2_max_frame = 0
 
+    -- Read matrix data (for PP detection)
+    local has_matrix = pcall(read_frame_data)
+
+    -- =====================
+    -- PERFECT PARRY (from matrix data)
+    -- Defender GAU=34, attacker FT transitions from active (13/14) to recovery (8)
+    -- =====================
+    if has_matrix then
+        -- P1 parrying (P1_GAU=34), P2 attacking (P2_FT 14->8)
+        if matrix.p1_gau == GAU_PARRY and is_active(matrix.prev_p2_ft) and matrix.p2_ft == STATE_RECOVER then
+            counters[0].pp = counters[0].pp + 1
+        end
+        -- P2 parrying (P2_GAU=34), P1 attacking (P1_FT 14->8)
+        if matrix.p2_gau == GAU_PARRY and is_active(matrix.prev_p1_ft) and matrix.p1_ft == STATE_RECOVER then
+            counters[1].pp = counters[1].pp + 1
+        end
+    end
+
     for p = 0, 1 do
         local opp = 1 - p
         local t_p = track[p]
         local t_o = track[opp]
-
-        -- =====================
-        -- PERFECT PARRY : player is in parry (act_st 39)
-        -- Count each parried hit by watching opponent's frame_st
-        -- transition to blockstun/hurt (= their attack got parried)
-        -- =====================
-        if t_p.act_st == ACT_PARRY or t_p.prev_act_st == ACT_PARRY then
-            -- Opponent's frame_st transitions into hurt/block = a hit was parried
-            if t_o.frame_st == STATE_HURT and t_o.prev_frame_st ~= STATE_HURT then
-                counters[p].pp = counters[p].pp + 1
-            end
-        end
 
         -- =====================
         -- WHIFF PUNISH : opponent was in recovery (8) and gets hurt (9)
