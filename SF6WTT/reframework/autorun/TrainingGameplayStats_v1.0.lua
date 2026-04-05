@@ -183,7 +183,35 @@ local matrix = {
 }
 
 local function read_frame_data()
-    -- Acquire lists once (same as HitConfirm detection.p1_list / detection.p2_list)
+    -- Read player data EVERY frame (combo, dmg, hs, trade_dm)
+    -- Same as HitConfirm which reads these at the top of update_detection()
+    matrix.prev_p1_combo = matrix.p1_combo or 0
+    matrix.prev_p2_combo = matrix.p2_combo or 0
+    matrix.p1_dmg = 0; matrix.p1_hs = 0; matrix.p1_combo = 0
+    matrix.p2_dmg = 0; matrix.p2_hs = 0; matrix.p2_combo = 0
+    matrix.p1_trade_dm = false; matrix.p2_trade_dm = false
+    pcall(function()
+        local gBattle = sdk.find_type_definition("gBattle")
+        if not gBattle then return end
+        local pmgr = gBattle:get_field("Player"):get_data(nil)
+        if not pmgr then return end
+        local p1_obj = pmgr:call("getPlayer", 0)
+        local p2_obj = pmgr:call("getPlayer", 1)
+        if p1_obj then
+            local dt = p1_obj:get_field("damage_type"); if dt then matrix.p1_dmg = tonumber(tostring(dt)) or 0 end
+            local hs = p1_obj:get_field("hit_stop"); if hs then matrix.p1_hs = tonumber(tostring(hs)) or 0 end
+            local cc = p1_obj:get_field("combo_cnt"); if cc then matrix.p1_combo = tonumber(tostring(cc)) or 0 end
+            local td = p1_obj:get_field("trade_dm_flag"); if td then matrix.p1_trade_dm = (tostring(td) == "true") end
+        end
+        if p2_obj then
+            local dt = p2_obj:get_field("damage_type"); if dt then matrix.p2_dmg = tonumber(tostring(dt)) or 0 end
+            local hs = p2_obj:get_field("hit_stop"); if hs then matrix.p2_hs = tonumber(tostring(hs)) or 0 end
+            local cc = p2_obj:get_field("combo_cnt"); if cc then matrix.p2_combo = tonumber(tostring(cc)) or 0 end
+            local td = p2_obj:get_field("trade_dm_flag"); if td then matrix.p2_trade_dm = (tostring(td) == "true") end
+        end
+    end)
+
+    -- Acquire matrix lists once
     if not matrix.p1_list or not matrix.p2_list then
         local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
         if not mgr then matrix.debug_status = "no TrainingManager"; return false end
@@ -277,33 +305,6 @@ local function read_frame_data()
     matrix.p2_sf  = tonumber(tostring(it2:get_field("StartFrame")))  or 0
     matrix.p2_ef  = tonumber(tostring(it2:get_field("EndFrame")))  or 0
     matrix.p2_gau = tonumber(tostring(it2:get_field("MainGauge"))) or 0
-
-    -- Read DMG, HS, COMBO, TRADE_DM from player objects
-    matrix.prev_p1_combo = matrix.p1_combo or 0
-    matrix.prev_p2_combo = matrix.p2_combo or 0
-    matrix.p1_dmg = 0; matrix.p1_hs = 0; matrix.p1_combo = 0
-    matrix.p2_dmg = 0; matrix.p2_hs = 0; matrix.p2_combo = 0
-    matrix.p1_trade_dm = false; matrix.p2_trade_dm = false
-    pcall(function()
-        local gBattle = sdk.find_type_definition("gBattle")
-        if not gBattle then return end
-        local pmgr = gBattle:get_field("Player"):get_data(nil)
-        if not pmgr then return end
-        local p1_obj = pmgr:call("getPlayer", 0)
-        local p2_obj = pmgr:call("getPlayer", 1)
-        if p1_obj then
-            local dt = p1_obj:get_field("damage_type"); if dt then matrix.p1_dmg = tonumber(tostring(dt)) or 0 end
-            local hs = p1_obj:get_field("hit_stop"); if hs then matrix.p1_hs = tonumber(tostring(hs)) or 0 end
-            local cc = p1_obj:get_field("combo_cnt"); if cc then matrix.p1_combo = tonumber(tostring(cc)) or 0 end
-            local td = p1_obj:get_field("trade_dm_flag"); if td then matrix.p1_trade_dm = (tostring(td) == "true") end
-        end
-        if p2_obj then
-            local dt = p2_obj:get_field("damage_type"); if dt then matrix.p2_dmg = tonumber(tostring(dt)) or 0 end
-            local hs = p2_obj:get_field("hit_stop"); if hs then matrix.p2_hs = tonumber(tostring(hs)) or 0 end
-            local cc = p2_obj:get_field("combo_cnt"); if cc then matrix.p2_combo = tonumber(tostring(cc)) or 0 end
-            local td = p2_obj:get_field("trade_dm_flag"); if td then matrix.p2_trade_dm = (tostring(td) == "true") end
-        end
-    end)
 
     matrix.debug_status = string.format("OK head=%d", active_head)
     return true
@@ -484,14 +485,7 @@ local function detect_events()
             end
         end
 
-        -- 5) COMBO DROP CHECK (before standard monitor, independent of has_reset_hs)
-        -- If we had a HIT trigger but combo drops to 0 → immediate fail
-        if mon.active and mon.type == "HIT" and live_combo == 0 and not hs.lockout then
-            counters[p].hc = counters[p].hc - 1
-            mon.active = false; hs.lockout = true
-        end
-
-        -- 6) STANDARD MONITOR (for ongoing evaluation)
+        -- 5) STANDARD MONITOR (exact same logic as HitConfirm)
         if mon.active and not hs.lockout then
             if live_hs == 0 then mon.has_reset_hs = true end
             if mon.has_reset_hs then
@@ -499,6 +493,10 @@ local function detect_events()
                     if live_combo >= mon.target_combo then
                         -- SUCCESS: confirmed hit into combo
                         counters[p].hc = counters[p].hc + 1
+                        mon.active = false; hs.lockout = true
+                    elseif live_combo == 0 then
+                        -- FAIL: dropped combo
+                        counters[p].hc = counters[p].hc - 1
                         mon.active = false; hs.lockout = true
                     end
                 elseif mon.type == "BLOCK" then
