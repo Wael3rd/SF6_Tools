@@ -27,6 +27,12 @@ local COL_BAR_ORG   = 0xFF00A5FF
 local COL_BAR_YEL   = 0xFF00FFFF
 local COL_BAR_GRN   = 0xFF00DD00
 local COL_SHADOW    = 0xFF000000
+local COL_CLOSE_BG  = 0x44FFFFFF
+local COL_CLOSE_HOV = 0x884444FF
+local COL_CLOSE_TXT = 0xFFDADADA
+
+-- Close button hit zone (updated each d2d frame)
+local _close_btn = { x = 0, y = 0, w = 0, h = 0 }
 
 local function bar_color(pct)
     if pct < 40 then return COL_BAR_RED
@@ -207,6 +213,33 @@ local function d2d_draw()
     d2d.text(_font, _title, tx + 1, ty + 1, COL_SHADOW)
     d2d.text(_font, _title, tx, ty, COL_HEADER)
 
+    -- Close button [X] en haut a droite
+    local btn_size = header_h * 0.65
+    local btn_x = panel_x + panel_w - pad - btn_size
+    local btn_y = panel_y + (header_h - btn_size) * 0.5
+    _close_btn.x = btn_x
+    _close_btn.y = btn_y
+    _close_btn.w = btn_size
+    _close_btn.h = btn_size
+
+    -- Hover detection (check mouse pos)
+    local is_hovered = false
+    pcall(function()
+        local m = imgui.get_mouse()
+        if m then
+            is_hovered = m.x >= btn_x and m.x <= btn_x + btn_size
+                     and m.y >= btn_y and m.y <= btn_y + btn_size
+        end
+    end)
+
+    d2d.fill_rect(btn_x, btn_y, btn_size, btn_size, is_hovered and COL_CLOSE_HOV or COL_CLOSE_BG)
+    d2d.outline_rect(btn_x, btn_y, btn_size, btn_size, 1, 0x66FFFFFF)
+    local x_label = "\xc3\x97" -- multiplication sign (x)
+    local x_tx = btn_x + btn_size * 0.25
+    local x_ty = btn_y + (btn_size - fh) * 0.5
+    d2d.text(_font, "X", x_tx + 1, x_ty + 1, COL_SHADOW)
+    d2d.text(_font, "X", x_tx, x_ty, COL_CLOSE_TXT)
+
     -- Colonnes
     local date_x    = panel_x + pad
     local bar_x     = panel_x + panel_w * 0.17
@@ -284,5 +317,19 @@ end
 if d2d and d2d.register then
     d2d.register(d2d_init, d2d_draw)
 end
+
+-- Click detection pour le bouton close (via imgui mouse)
+re.on_draw_ui(function()
+    if not _visible then return end
+    if imgui.is_mouse_clicked(0) then
+        local ok, m = pcall(imgui.get_mouse)
+        if ok and m then
+            local b = _close_btn
+            if m.x >= b.x and m.x <= b.x + b.w and m.y >= b.y and m.y <= b.y + b.h then
+                M.hide()
+            end
+        end
+    end
+end)
 
 return M
