@@ -380,6 +380,19 @@ re.on_draw_ui(function()
         if imgui.button("Test Show (HitConfirm)") then
             M.show("HIT CONFIRM", "HitConfirm_SessionStats.txt", "hitconfirm")
         end
+        if imgui.button("Copy Debug to File") then
+            local f = io.open("SessionRecap_Debug.txt", "w")
+            if f then
+                f:write("Visible: " .. tostring(_visible) .. "\n")
+                f:write("Sessions: " .. #_sessions .. "\n")
+                f:write("Debug: " .. _debug_msg .. "\n")
+                for i, s in ipairs(_sessions) do
+                    f:write("  [" .. i .. "] " .. tostring(s.date) .. " | " .. tostring(s.pct) .. "% | " .. tostring(s.score) .. "/" .. tostring(s.total) .. "\n")
+                end
+                f:close()
+                _debug_msg = _debug_msg .. " | Copied to SessionRecap_Debug.txt"
+            end
+        end
         imgui.tree_pop()
     end
 end)
