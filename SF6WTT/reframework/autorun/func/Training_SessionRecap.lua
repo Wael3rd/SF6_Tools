@@ -13,6 +13,7 @@ local _font = nil
 local _font_small = nil
 local _last_font_h = 0
 local _last_font_h_small = 0
+local _debug_msg = ""  -- debug pour diagnostiquer les problèmes de parsing
 
 -- Colors (ABGR : 0xAABBGGRR)
 local COL_BG        = 0xF0181818
@@ -151,9 +152,26 @@ local PARSERS = {
 
 function M.show(mode_name, stats_file, parser_type)
     local parser = PARSERS[parser_type]
-    if not parser then return end
+    if not parser then
+        _debug_msg = "ERROR: unknown parser type '" .. tostring(parser_type) .. "'"
+        return
+    end
+
+    -- Test si le fichier existe
+    local test_f = io.open(stats_file, "r")
+    if not test_f then
+        _debug_msg = "ERROR: file not found '" .. stats_file .. "'"
+        return
+    end
+    local file_content = test_f:read("*a")
+    test_f:close()
+    local line_count = 0
+    for _ in file_content:gmatch("[^\n]+") do line_count = line_count + 1 end
+    _debug_msg = "File OK: '" .. stats_file .. "' (" .. line_count .. " lines)"
+
     _sessions = parser(stats_file)
     local n = #_sessions
+    _debug_msg = _debug_msg .. " -> parsed " .. n .. " sessions"
     if n == 0 then return end
     _title = mode_name .. "  -  LAST " .. n .. " SESSION" .. (n > 1 and "S" or "")
     _visible = true
@@ -318,17 +336,35 @@ if d2d and d2d.register then
     d2d.register(d2d_init, d2d_draw)
 end
 
--- Click detection pour le bouton close (via imgui mouse)
-re.on_draw_ui(function()
+-- Click detection pour le bouton close (via re.on_frame, pas re.on_draw_ui)
+re.on_frame(function()
     if not _visible then return end
-    if imgui.is_mouse_clicked(0) then
-        local ok, m = pcall(imgui.get_mouse)
-        if ok and m then
-            local b = _close_btn
-            if m.x >= b.x and m.x <= b.x + b.w and m.y >= b.y and m.y <= b.y + b.h then
-                M.hide()
+    pcall(function()
+        if imgui.is_mouse_clicked(0) then
+            local m = imgui.get_mouse()
+            if m then
+                local b = _close_btn
+                if b.w > 0 and m.x >= b.x and m.x <= b.x + b.w and m.y >= b.y and m.y <= b.y + b.h then
+                    M.hide()
+                end
             end
         end
+    end)
+end)
+
+-- Debug info dans le menu REFramework
+re.on_draw_ui(function()
+    if imgui.tree_node("Session Recap Debug") then
+        imgui.text("Visible: " .. tostring(_visible))
+        imgui.text("Sessions: " .. #_sessions)
+        imgui.text("Debug: " .. _debug_msg)
+        if _visible and imgui.button("Close Recap") then
+            M.hide()
+        end
+        if imgui.button("Test Show (HitConfirm)") then
+            M.show("HIT CONFIRM", "HitConfirm_SessionStats.txt", "hitconfirm")
+        end
+        imgui.tree_pop()
     end
 end)
 
