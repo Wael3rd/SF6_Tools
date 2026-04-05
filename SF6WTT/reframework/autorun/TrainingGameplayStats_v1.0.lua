@@ -17,6 +17,7 @@ local cfg = {
     panel_width_pct = 0.13, -- largeur panneau (% ecran)
     panel_margin_pct = 0.02, -- marge depuis le bord
     panel_y_pct = 0.28,     -- position verticale (sous les barres de vie)
+    pp_postguard_mode = false, -- true = PostGuard detection (trade_dm only), false = custom (trade_dm + dmg=34 + hs!=0)
 }
 
 -- =========================================================
@@ -390,22 +391,31 @@ local function detect_events()
     local has_matrix = pcall(read_frame_data)
 
     -- =====================
-    -- PERFECT PARRY (from player data)
-    -- trade_dm_flag + dmg=34 + hitstop!=0
-    -- Lock until hitstop returns to 0 (allows counting each hit in multi-hit parry)
+    -- PERFECT PARRY
+    -- PostGuard mode: trade_dm_flag only (unlock when trade_dm goes false)
+    -- Custom mode: trade_dm + dmg=34 + hs!=0 (unlock when hs returns to 0)
     -- =====================
     if has_matrix then
-        -- P1 perfect parry
-        if (matrix.p1_hs or 0) == 0 then track[0]._pp_locked = false end
-        if not track[0]._pp_locked and matrix.p1_trade_dm and (matrix.p1_dmg or 0) == 34 and (matrix.p1_hs or 0) ~= 0 then
-            counters[0].pp = counters[0].pp + 1
-            track[0]._pp_locked = true
-        end
-        -- P2 perfect parry
-        if (matrix.p2_hs or 0) == 0 then track[1]._pp_locked = false end
-        if not track[1]._pp_locked and matrix.p2_trade_dm and (matrix.p2_dmg or 0) == 34 and (matrix.p2_hs or 0) ~= 0 then
-            counters[1].pp = counters[1].pp + 1
-            track[1]._pp_locked = true
+        for pp_p = 0, 1 do
+            local dm  = (pp_p == 0) and matrix.p1_trade_dm or matrix.p2_trade_dm
+            local dmg = (pp_p == 0) and (matrix.p1_dmg or 0) or (matrix.p2_dmg or 0)
+            local hs  = (pp_p == 0) and (matrix.p1_hs or 0) or (matrix.p2_hs or 0)
+
+            if cfg.pp_postguard_mode then
+                -- PostGuard: just trade_dm_flag, unlock when it goes false
+                if not dm then track[pp_p]._pp_locked = false end
+                if not track[pp_p]._pp_locked and dm then
+                    counters[pp_p].pp = counters[pp_p].pp + 1
+                    track[pp_p]._pp_locked = true
+                end
+            else
+                -- Custom: trade_dm + dmg=34 + hs!=0, unlock when hs=0
+                if hs == 0 then track[pp_p]._pp_locked = false end
+                if not track[pp_p]._pp_locked and dm and dmg == 34 and hs ~= 0 then
+                    counters[pp_p].pp = counters[pp_p].pp + 1
+                    track[pp_p]._pp_locked = true
+                end
+            end
         end
     end
 
@@ -605,6 +615,9 @@ re.on_draw_ui(function()
         local changed, val = imgui.checkbox("Show Overlay", cfg.visible)
         if changed then cfg.visible = val end
 
+        local pp_chg, pp_val = imgui.checkbox("PP: PostGuard mode (trade_dm only)", cfg.pp_postguard_mode)
+        if pp_chg then cfg.pp_postguard_mode = pp_val end
+
         if imgui.button("RESET ALL") then
             for p = 0, 1 do
                 for _, k in ipairs(STATS) do counters[p][k] = 0 end
@@ -644,15 +657,22 @@ re.on_draw_ui(function()
 
         -- PP detection formula debug
         imgui.spacing()
-        imgui.text("--- PP DETECTION ---")
+        local mode_label = cfg.pp_postguard_mode and "PostGuard (trade_dm only)" or "Custom (trade_dm + dmg=34 + hs!=0)"
+        imgui.text("--- PP DETECTION [" .. mode_label .. "] ---")
         for p = 0, 1 do
             local dm   = (p == 0) and matrix.p1_trade_dm or matrix.p2_trade_dm
             local dmg  = (p == 0) and (matrix.p1_dmg or 0) or (matrix.p2_dmg or 0)
             local hs   = (p == 0) and (matrix.p1_hs or 0) or (matrix.p2_hs or 0)
             local lock = track[p]._pp_locked and "LOCKED" or "READY"
-            local result = (dm and dmg == 34 and hs ~= 0) and ">>> PP!" or "no"
-            imgui.text(string.format("P%d: trade_dm=%s AND dmg=%d==34? AND hs=%d!=0?  [%s] => %s",
-                p + 1, tostring(dm), dmg, hs, lock, result))
+            local result
+            if cfg.pp_postguard_mode then
+                result = dm and ">>> PP!" or "no"
+                imgui.text(string.format("P%d: trade_dm=%s  [%s] => %s", p + 1, tostring(dm), lock, result))
+            else
+                result = (dm and dmg == 34 and hs ~= 0) and ">>> PP!" or "no"
+                imgui.text(string.format("P%d: trade_dm=%s AND dmg=%d==34? AND hs=%d!=0?  [%s] => %s",
+                    p + 1, tostring(dm), dmg, hs, lock, result))
+            end
         end
 
         imgui.tree_pop()
