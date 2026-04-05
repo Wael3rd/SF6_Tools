@@ -99,57 +99,87 @@ local function get_pose_st(player_index)
 end
 
 -- =========================================================
--- FRAME DATA READING (from training matrix widget)
+-- FRAME DATA READING (same approach as HitConfirm matrix)
 -- =========================================================
 local matrix = {
+    p1_list = nil, p2_list = nil,  -- persistent references
     p1_ft = 0, p1_gau = 0, prev_p1_ft = 0, prev_p1_gau = 0,
     p2_ft = 0, p2_gau = 0, prev_p2_ft = 0, prev_p2_gau = 0,
-    last_head = -1
+    last_head = -1,
+    is_new = false,
+    debug_status = "not initialized"
 }
 
 local function read_frame_data()
-    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
-    if not mgr then return false end
-    local dict = mgr:get_field("_ViewUIWigetDict")
-    local entries = dict and dict:get_field("_entries")
-    if not entries then return false end
+    -- Acquire lists once (same as HitConfirm detection.p1_list / detection.p2_list)
+    if not matrix.p1_list or not matrix.p2_list then
+        local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not mgr then matrix.debug_status = "no TrainingManager"; return false end
+        local dict = mgr:get_field("_ViewUIWigetDict")
+        local entries = dict and dict:get_field("_entries")
+        if not entries then matrix.debug_status = "no entries"; return false end
 
-    local p1_list, p2_list
-    local count = entries:call("get_Count")
-    for i = 0, count - 1 do
-        local entry = entries:call("get_Item", i)
-        if entry:get_field("key") == 5 then
-            local widget = entry:get_field("value"):call("get_Item", 0)
-            local ss = widget:call("get_SSData")
-            local m_datas = ss:get_field("MeterDatas")
-            if m_datas and m_datas:call("get_Count") >= 2 then
-                p1_list = m_datas:call("get_Item", 0):get_field("FrameNumDatas")
-                p2_list = m_datas:call("get_Item", 1):get_field("FrameNumDatas")
+        local count = entries:call("get_Count")
+        for i = 0, count - 1 do
+            local entry = entries:call("get_Item", i)
+            if entry:get_field("key") == 5 then
+                local widget = entry:get_field("value"):call("get_Item", 0)
+                local ss = widget:call("get_SSData")
+                local m_datas = ss:get_field("MeterDatas")
+                if m_datas and m_datas:call("get_Count") >= 2 then
+                    local item_p1 = m_datas:call("get_Item", 0)
+                    local item_p2 = m_datas:call("get_Item", 1)
+                    if item_p1 then matrix.p1_list = item_p1:get_field("FrameNumDatas") end
+                    if item_p2 then matrix.p2_list = item_p2:get_field("FrameNumDatas") end
+                end
+                break
             end
-            break
+        end
+        if not matrix.p1_list or not matrix.p2_list then
+            matrix.debug_status = "no FrameNumDatas"
+            return false
+        end
+        matrix.debug_status = "lists acquired"
+    end
+
+    -- Read from persistent lists (exact same logic as HitConfirm)
+    local buffer_count = matrix.p1_list:call("get_Count")
+    if buffer_count <= 0 then matrix.debug_status = "buffer empty"; return false end
+
+    local function check_active(idx)
+        if idx < 0 or idx >= buffer_count then return false end
+        local item1 = matrix.p1_list:call("get_Item", idx)
+        local item2 = matrix.p2_list:call("get_Item", idx)
+        if not item1 or not item2 then return false end
+        local ft1 = tonumber(tostring(item1:get_field("FrameType"))) or 0
+        local ft2 = tonumber(tostring(item2:get_field("FrameType"))) or 0
+        return (ft1 ~= 0 or ft2 ~= 0)
+    end
+
+    local active_head = -1
+    local next_idx = (matrix.last_head + 1) % buffer_count
+    matrix.is_new = false
+
+    if check_active(next_idx) then
+        active_head = next_idx
+        matrix.is_new = true
+    elseif check_active(matrix.last_head) then
+        active_head = matrix.last_head
+    else
+        -- Fallback: scan backwards for last active slot
+        for i = buffer_count - 1, 0, -1 do
+            if check_active(i) then active_head = i; break end
         end
     end
-    if not p1_list or not p2_list then return false end
 
-    local buf_count = p1_list:call("get_Count")
-    if buf_count <= 0 then return false end
+    if active_head == -1 then matrix.debug_status = "no active head"; return false end
+    matrix.last_head = active_head
 
-    -- Find active head index
-    local next_idx = (matrix.last_head + 1) % buf_count
-    local head = -1
-    local it1 = p1_list:call("get_Item", next_idx)
-    local it2 = p2_list:call("get_Item", next_idx)
-    if it1 and it2 then
-        local ft1 = tonumber(tostring(it1:get_field("FrameType"))) or 0
-        local ft2 = tonumber(tostring(it2:get_field("FrameType"))) or 0
-        if ft1 ~= 0 or ft2 ~= 0 then head = next_idx end
-    end
-    if head == -1 then return false end -- no new frame
+    if not matrix.is_new then return false end -- no new frame data
 
-    matrix.last_head = head
-    local item1 = p1_list:call("get_Item", head)
-    local item2 = p2_list:call("get_Item", head)
-    if not item1 or not item2 then return false end
+    local it1 = matrix.p1_list:call("get_Item", active_head)
+    local it2 = matrix.p2_list:call("get_Item", active_head)
+    if not it1 or not it2 then return false end
 
     -- Save previous
     matrix.prev_p1_ft  = matrix.p1_ft
@@ -157,12 +187,13 @@ local function read_frame_data()
     matrix.prev_p2_ft  = matrix.p2_ft
     matrix.prev_p2_gau = matrix.p2_gau
 
-    -- Read current
-    matrix.p1_ft  = tonumber(tostring(item1:get_field("FrameType")))  or 0
-    matrix.p1_gau = tonumber(tostring(item1:get_field("MainGauge"))) or 0
-    matrix.p2_ft  = tonumber(tostring(item2:get_field("FrameType")))  or 0
-    matrix.p2_gau = tonumber(tostring(item2:get_field("MainGauge"))) or 0
+    -- Read current (P1_FT = col1, P1_GAU = col3, P2_FT = col2, P2_GAU = col5)
+    matrix.p1_ft  = tonumber(tostring(it1:get_field("FrameType")))  or 0
+    matrix.p1_gau = tonumber(tostring(it1:get_field("MainGauge"))) or 0
+    matrix.p2_ft  = tonumber(tostring(it2:get_field("FrameType")))  or 0
+    matrix.p2_gau = tonumber(tostring(it2:get_field("MainGauge"))) or 0
 
+    matrix.debug_status = string.format("OK head=%d", active_head)
     return true
 end
 
@@ -323,9 +354,10 @@ re.on_draw_ui(function()
         -- Live matrix debug
         imgui.spacing()
         imgui.text("--- MATRIX LIVE ---")
+        imgui.text("Status: " .. matrix.debug_status)
         imgui.text(string.format("P1_FT: %d  (prev: %d)  |  P1_GAU: %d", matrix.p1_ft, matrix.prev_p1_ft, matrix.p1_gau))
         imgui.text(string.format("P2_FT: %d  (prev: %d)  |  P2_GAU: %d", matrix.p2_ft, matrix.prev_p2_ft, matrix.p2_gau))
-        imgui.text(string.format("Head IDX: %d", matrix.last_head))
+        imgui.text(string.format("Head IDX: %d  |  Lists: %s", matrix.last_head, (matrix.p1_list and matrix.p2_list) and "OK" or "nil"))
 
         imgui.tree_pop()
     end
