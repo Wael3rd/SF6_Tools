@@ -290,21 +290,21 @@ local function detect_events()
 
     -- =====================
     -- PERFECT PARRY (from player data)
-    -- hit_stop != 0 AND damage_type == 34 on the parrying player
-    -- Edge detect: only count on transition (prev wasn't parry)
+    -- dmg=34 AND hitstop!=0 → count 1 PP
+    -- Then ignore until hitstop returns to 0 (cooldown)
     -- =====================
     if has_matrix then
-        -- P1 perfect parry: P1 hit_stop != 0 AND P1 damage_type == 34
-        local p1_pp = ((matrix.p1_hs or 0) ~= 0 and (matrix.p1_dmg or 0) == 34)
-        local p1_pp_prev = ((matrix.prev_p1_hs or 0) ~= 0 and (matrix.prev_p1_dmg or 0) == 34)
-        if p1_pp and not p1_pp_prev then
+        -- P1 perfect parry
+        if (matrix.p1_hs or 0) == 0 then track[0]._pp_locked = false end
+        if not track[0]._pp_locked and (matrix.p1_dmg or 0) == 34 and (matrix.p1_hs or 0) ~= 0 then
             counters[0].pp = counters[0].pp + 1
+            track[0]._pp_locked = true
         end
-        -- P2 perfect parry: P2 hit_stop != 0 AND P2 damage_type == 34
-        local p2_pp = ((matrix.p2_hs or 0) ~= 0 and (matrix.p2_dmg or 0) == 34)
-        local p2_pp_prev = ((matrix.prev_p2_hs or 0) ~= 0 and (matrix.prev_p2_dmg or 0) == 34)
-        if p2_pp and not p2_pp_prev then
+        -- P2 perfect parry
+        if (matrix.p2_hs or 0) == 0 then track[1]._pp_locked = false end
+        if not track[1]._pp_locked and (matrix.p2_dmg or 0) == 34 and (matrix.p2_hs or 0) ~= 0 then
             counters[1].pp = counters[1].pp + 1
+            track[1]._pp_locked = true
         end
     end
 
