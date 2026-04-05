@@ -300,7 +300,7 @@ local function d2d_draw()
             d2d.outline_rect(bar_x, by, bar_max_w, bar_h, 1, 0x44FFFFFF)
 
             -- Pourcentage
-            local pct_str = string.format("%d%%", pct_safe)
+            local pct_str = string.format("%d%%", math.floor(pct_safe))
             d2d.text(_font_small, pct_str, pct_x + 1, tty + 1, COL_SHADOW)
             d2d.text(_font_small, pct_str, pct_x, tty, col)
 
@@ -325,10 +325,10 @@ local function d2d_draw()
         local trend = _sessions[n].pct - _sessions[1].pct
         local trend_str, trend_col
         if trend >= 0 then
-            trend_str = string.format("+%d%%", trend)
+            trend_str = string.format("+%d%%", math.floor(trend))
             trend_col = COL_BAR_GRN
         else
-            trend_str = string.format("%d%%", trend)
+            trend_str = string.format("%d%%", math.floor(trend))
             trend_col = COL_BAR_RED
         end
         d2d.text(_font, trend_str, panel_x + pad + 1, fy + 1, COL_SHADOW)
@@ -336,7 +336,7 @@ local function d2d_draw()
     end
 
     -- Moyenne
-    local avg_str = string.format("AVG: %d%%", avg)
+    local avg_str = string.format("AVG: %d%%", math.floor(avg))
     local avg_w = #avg_str * fh * 0.6
     local avg_x = panel_x + panel_w - pad - avg_w
     d2d.text(_font, avg_str, avg_x + 1, fy + 1, COL_SHADOW)
