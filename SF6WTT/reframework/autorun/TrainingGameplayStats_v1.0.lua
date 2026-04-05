@@ -155,10 +155,15 @@ local function detect_events()
         local t_o = track[opp]
 
         -- =====================
-        -- PERFECT PARRY : player transitions to parry state (act_st 39)
+        -- PERFECT PARRY : player is in parry (act_st 39)
+        -- Count each parried hit by watching opponent's frame_st
+        -- transition to blockstun/hurt (= their attack got parried)
         -- =====================
-        if t_p.act_st == ACT_PARRY and t_p.prev_act_st ~= ACT_PARRY then
-            counters[p].pp = counters[p].pp + 1
+        if t_p.act_st == ACT_PARRY or t_p.prev_act_st == ACT_PARRY then
+            -- Opponent's frame_st transitions into hurt/block = a hit was parried
+            if t_o.frame_st == STATE_HURT and t_o.prev_frame_st ~= STATE_HURT then
+                counters[p].pp = counters[p].pp + 1
+            end
         end
 
         -- =====================
