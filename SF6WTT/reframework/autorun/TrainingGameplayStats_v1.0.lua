@@ -607,7 +607,7 @@ local function d2d_draw()
     local header_h = fh * 2.2
     local sep_h = 1
     local footer_h = fhs * 2.2
-    local ph = header_h + sep_h + (#STATS * row_h) + sep_h + footer_h + pad
+    local ph = header_h + sep_h + (#STATS * row_h) + pad
 
     for p = 0, 1 do
         -- Panel X position
@@ -677,28 +677,6 @@ local function d2d_draw()
                 d2d.text(_font_small, label, lx + 1, ty + 1, COL.shadow)
                 d2d.text(_font_small, label, lx, ty, col)
             end
-        end
-
-        -- Separator before footer
-        local sep2_y = sep_y + sep_h + #STATS * row_h
-        d2d.fill_rect(px, sep2_y, pw, sep_h, COL.separator)
-
-        -- Footer: TOTAL
-        local fy = sep2_y + sep_h + (footer_h - fhs) * 0.5
-        local total_str = tostring(total)
-
-        if p == 0 then
-            d2d.text(_font_small, "TOTAL", px + pad + 1, fy + 1, COL.shadow)
-            d2d.text(_font_small, "TOTAL", px + pad, fy, COL.text_dim)
-            local tx = px + pw - pad - #total_str * fhs * 0.62
-            d2d.text(_font_small, total_str, tx + 1, fy + 1, COL.shadow)
-            d2d.text(_font_small, total_str, tx, fy, COL.total)
-        else
-            d2d.text(_font_small, total_str, px + pad + 1, fy + 1, COL.shadow)
-            d2d.text(_font_small, total_str, px + pad, fy, COL.total)
-            local lx = px + pw - pad - #"TOTAL" * fhs * 0.62
-            d2d.text(_font_small, "TOTAL", lx + 1, fy + 1, COL.shadow)
-            d2d.text(_font_small, "TOTAL", lx, fy, COL.text_dim)
         end
     end
 end
