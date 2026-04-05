@@ -27,13 +27,14 @@ local exc_status = ""
 -- Raccourcis dynamiques : pad (FUNC+DIR) ou clavier (1/2/3/4)
 -- ComboTrials mapping: L=1, U=2, D=3, R=4
 local SharedUI = require("func/Training_SharedUI")
-local CT_KB_MAP = { L = "1", U = "2", D = "3", R = "4" }
+local CT_KB_MAP = { L = "1", U = "2", D = "3", R = "4", A = "8" }
 local function sc(pad_key)
     return SharedUI.sc_label(pad_key, CT_KB_MAP[pad_key])
 end
 -- Always returns the pad label (longest) for stable button width calculation
 local function sc_max(pad_key)
-    return SharedUI.get_func_name() .. "+" .. ({ D = "DOWN", U = "UP", R = "RIGHT", L = "LEFT" })[pad_key] or pad_key
+    local dir_names = { D = "DOWN", U = "UP", R = "RIGHT", L = "LEFT", A = "CROSS" }
+    return (SharedUI.get_func_name() or "") .. "+" .. (dir_names[pad_key] or pad_key)
 end
 
 -- =========================================================
@@ -63,6 +64,84 @@ local UI_THEME = {
     btn_red     = { base = 0xFF0000CC, hover = 0xFF2222FF, active = 0xFF000099 },
     btn_orange  = { base = 0xFFFF8800, hover = 0xFFFFAA33, active = 0xFFCC6600 }
 }
+
+-- Combo dropdown ouvrable et navigable par raccourci (remplace imgui.combo pour ##FilesP1)
+local _dropdown_highlight_idx = nil
+local _dropdown_scroll_needed = false
+
+local function combo_openable(label, current_idx, items, force_open, btn_width)
+    local popup_id = label .. "_popup"
+    local preview = (items and items[current_idx]) or "---"
+
+    -- Ouvrir le popup (raccourci ou clic)
+    if force_open then
+        imgui.open_popup(popup_id)
+        _dropdown_highlight_idx = current_idx
+        _dropdown_scroll_needed = true
+        _G.ComboTrials_OpenDropdown = false
+    end
+
+    -- Bouton pleine largeur avec ▼
+    local w = btn_width or -1
+    local clicked = imgui.button(preview .. "  \xe2\x96\xbc" .. label, Vector2f.new(w, 0))
+    if clicked then
+        imgui.open_popup(popup_id)
+        _dropdown_highlight_idx = current_idx
+        _dropdown_scroll_needed = true
+    end
+
+    -- Navigation par raccourci (flags posés par le handler d'input)
+    if _G.ComboTrials_DropdownNavUp then
+        _G.ComboTrials_DropdownNavUp = false
+        if _dropdown_highlight_idx and _dropdown_highlight_idx > 1 then
+            _dropdown_highlight_idx = _dropdown_highlight_idx - 1
+            _dropdown_scroll_needed = true
+        end
+    end
+    if _G.ComboTrials_DropdownNavDown then
+        _G.ComboTrials_DropdownNavDown = false
+        if _dropdown_highlight_idx and _dropdown_highlight_idx < #items then
+            _dropdown_highlight_idx = _dropdown_highlight_idx + 1
+            _dropdown_scroll_needed = true
+        end
+    end
+
+    local changed = false
+    local new_idx = current_idx
+
+    if imgui.begin_popup(popup_id) then
+        _G.ComboTrials_DropdownOpen = true
+
+        -- Sélection par raccourci (func+Cross/A ou touche 8)
+        if _G.ComboTrials_DropdownSelect then
+            _G.ComboTrials_DropdownSelect = false
+            if _dropdown_highlight_idx then
+                new_idx = _dropdown_highlight_idx
+                changed = (new_idx ~= current_idx)
+            end
+            imgui.close_current_popup()
+        end
+
+        for i = 1, #items do
+            local is_highlighted = (i == _dropdown_highlight_idx)
+            if imgui.selectable(items[i], is_highlighted) then
+                new_idx = i
+                changed = true
+            end
+            -- Scroll vers l'élément surligné
+            if is_highlighted and _dropdown_scroll_needed then
+                pcall(imgui.set_scroll_here_y)
+                _dropdown_scroll_needed = false
+            end
+        end
+        imgui.end_popup()
+    else
+        _G.ComboTrials_DropdownOpen = false
+        _dropdown_highlight_idx = nil
+    end
+
+    return changed, new_idx
+end
 
 local function styled_button(label, style, text_col)
     imgui.push_style_color(21, style.base); imgui.push_style_color(22, style.hover); imgui.push_style_color(23,
@@ -266,17 +345,18 @@ local function draw_single_line_content()
     imgui.set_cursor_pos(Vector2f.new(pad_x, pad_y))
 
     -- DROPDOWN COMBO FILES
-    imgui.push_item_width(dd_w)
     if #file_system.saved_combos_display_p1 == 0 then
+        imgui.push_item_width(dd_w)
         imgui.combo("##EmptyP1", 1, { "No P1 files" })
+        imgui.pop_item_width()
     else
-        local f1_changed, new_idx1 = imgui.combo("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1)
+        local should_open = (_G.ComboTrials_OpenDropdown == true)
+        local f1_changed, new_idx1 = combo_openable("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1, should_open, dd_w)
         if f1_changed then
             file_system.selected_file_idx_p1 = new_idx1
             load_and_start_trial(0)
         end
     end
-    imgui.pop_item_width()
 
     -- 3. BOUTONS (Dynamiques pour combler le vide)
     imgui.same_line(0, sp)
@@ -405,17 +485,18 @@ local function draw_combo_trials_content(is_floating)
     if not is_floating then imgui.text_colored("1. MANAGEMENT", COLORS.Cyan) end
 
     -- DROPDOWN COMBO FILES (full width)
-    imgui.push_item_width(col1_w)
     if #file_system.saved_combos_display_p1 == 0 then
+        imgui.push_item_width(col1_w)
         imgui.combo("##EmptyP1", 1, { "No P1 files" })
+        imgui.pop_item_width()
     else
-        local f1_changed, new_idx1 = imgui.combo("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1)
+        local should_open = (_G.ComboTrials_OpenDropdown == true)
+        local f1_changed, new_idx1 = combo_openable("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1, should_open, col1_w)
         if f1_changed then
             file_system.selected_file_idx_p1 = new_idx1
             load_and_start_trial(0)
         end
     end
-    imgui.pop_item_width()
 
     imgui.end_group()
 

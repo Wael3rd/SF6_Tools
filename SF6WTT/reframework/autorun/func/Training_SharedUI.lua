@@ -267,8 +267,8 @@ function UI.reset_message()
 end
 
 -- Dynamic shortcut label for button text: D/U/R/L → keyboard number or FUNC+DIR
-local DIR_NAMES = { D = "DOWN", U = "UP", R = "RIGHT", L = "LEFT" }
-local DIR_TO_KEY = { D = "1", U = "2", R = "3", L = "4" }
+local DIR_NAMES = { D = "DOWN", U = "UP", R = "RIGHT", L = "LEFT", A = "CROSS" }
+local DIR_TO_KEY = { D = "1", U = "2", R = "3", L = "4", A = "8" }
 
 function UI.sc_label(pad_dir, kb_key)
     local fn = UI.get_func_name()

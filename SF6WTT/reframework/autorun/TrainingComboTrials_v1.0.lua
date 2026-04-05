@@ -1593,14 +1593,18 @@ local BTN_UP          = 1
 local BTN_DOWN        = 2
 local BTN_LEFT        = 4
 local BTN_RIGHT       = 8
+local BTN_CROSS       = 16  -- Cross (PS) / A (Xbox)
 local last_input_mask = 0
-local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false }
+local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false, [0x38]=false, [0x26]=false, [0x28]=false }
 
--- VK codes pour les touches 1,2,3,4 (haut du clavier)
+-- VK codes pour les touches 1,2,3,4,8 (haut du clavier) + flèches
 local KB_1 = 0x31  -- L (RECORD P1 / STOP & SAVE)
 local KB_2 = 0x32  -- U (START TRIAL P1 / CANCEL RECORDING)
 local KB_3 = 0x33  -- D (RECORD P2 / CANCEL)
 local KB_4 = 0x34  -- R (STOP TRIAL / SWITCH POS)
+local KB_8 = 0x38  -- A (OPEN/CLOSE COMBO DROPDOWN)
+local KB_ARROW_UP   = 0x26  -- Flèche haut (navigation dropdown)
+local KB_ARROW_DOWN = 0x28  -- Flèche bas (navigation dropdown)
 
 -- Détection du dernier périphérique utilisé (partagé via _G)
 if _G.ComboTrials_InputDevice == nil then _G.ComboTrials_InputDevice = "pad" end
@@ -1639,12 +1643,15 @@ local function handle_combo_shortcuts()
         return ((active_buttons & target_mask) == target_mask) and not ((last_input_mask & target_mask) == target_mask)
     end
 
-    -- Lecture clavier : touches 1,2,3,4 (front-edge)
+    -- Lecture clavier : touches 1,2,3,4,8 + flèches (front-edge)
     local kb_now = {
         [KB_1] = is_kb_down(KB_1),
         [KB_2] = is_kb_down(KB_2),
         [KB_3] = is_kb_down(KB_3),
-        [KB_4] = is_kb_down(KB_4)
+        [KB_4] = is_kb_down(KB_4),
+        [KB_8] = is_kb_down(KB_8),
+        [KB_ARROW_UP] = is_kb_down(KB_ARROW_UP),
+        [KB_ARROW_DOWN] = is_kb_down(KB_ARROW_DOWN)
     }
     local function kb_pressed(vk)
         return kb_now[vk] and not last_kb_state[vk]
@@ -1654,8 +1661,29 @@ local function handle_combo_shortcuts()
     if is_func_held and active_buttons > func_btn then
         _G.ComboTrials_InputDevice = "pad"
     end
-    for _, vk in ipairs({KB_1, KB_2, KB_3, KB_4}) do
+    for _, vk in ipairs({KB_1, KB_2, KB_3, KB_4, KB_8}) do
         if kb_now[vk] then _G.ComboTrials_InputDevice = "kb" end
+    end
+    if kb_now[KB_ARROW_UP] or kb_now[KB_ARROW_DOWN] then
+        _G.ComboTrials_InputDevice = "kb"
+    end
+
+    -- =============================================
+    -- DROPDOWN NAVIGATION MODE : bloque tous les autres raccourcis
+    -- =============================================
+    if _G.ComboTrials_DropdownOpen then
+        if is_pressed(BTN_UP) or kb_pressed(KB_ARROW_UP) then
+            _G.ComboTrials_DropdownNavUp = true
+        end
+        if is_pressed(BTN_DOWN) or kb_pressed(KB_ARROW_DOWN) then
+            _G.ComboTrials_DropdownNavDown = true
+        end
+        if is_pressed(BTN_CROSS) or kb_pressed(KB_8) then
+            _G.ComboTrials_DropdownSelect = true
+        end
+        last_input_mask = active_buttons
+        last_kb_state = kb_now
+        return
     end
 
     local is_demo_active = (demo_state and demo_state.is_playing)
@@ -1765,6 +1793,13 @@ local function handle_combo_shortcuts()
                 end
                 if ctx.reset_visuals then ctx.reset_visuals() end
             end
+        end
+    end
+
+    -- FUNC + CROSS (A) / Touche 8 : OUVRIR LE DROPDOWN COMBO FILES
+    if is_pressed(BTN_CROSS) or kb_pressed(KB_8) then
+        if not trial_state.is_recording then
+            _G.ComboTrials_OpenDropdown = true
         end
     end
 
