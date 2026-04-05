@@ -391,19 +391,18 @@ local function detect_events()
 
     -- =====================
     -- PERFECT PARRY (from player data)
-    -- trade_dm_flag == true (distinguishes perfect parry from normal parry)
-    -- + dmg=34 AND hitstop!=0 as confirmation
-    -- Lock until hitstop returns to 0
+    -- trade_dm_flag must TRANSITION from false→true (not just be true)
+    -- + dmg=34 AND hitstop!=0. Lock until trade_dm goes back to false.
     -- =====================
     if has_matrix then
         -- P1 perfect parry
-        if (matrix.p1_hs or 0) == 0 then track[0]._pp_locked = false end
+        if not matrix.p1_trade_dm then track[0]._pp_locked = false end
         if not track[0]._pp_locked and matrix.p1_trade_dm and (matrix.p1_dmg or 0) == 34 and (matrix.p1_hs or 0) ~= 0 then
             counters[0].pp = counters[0].pp + 1
             track[0]._pp_locked = true
         end
         -- P2 perfect parry
-        if (matrix.p2_hs or 0) == 0 then track[1]._pp_locked = false end
+        if not matrix.p2_trade_dm then track[1]._pp_locked = false end
         if not track[1]._pp_locked and matrix.p2_trade_dm and (matrix.p2_dmg or 0) == 34 and (matrix.p2_hs or 0) ~= 0 then
             counters[1].pp = counters[1].pp + 1
             track[1]._pp_locked = true
@@ -453,10 +452,12 @@ local function detect_events()
         end
 
         -- =====================
-        -- ANTI AIR (PostGuard logic: pose_st>=2 + suki_flag = air attack)
-        -- Score: +1 if hit while airborne, -1 if opponent lands safely
+        -- ANTI AIR (PostGuard logic)
+        -- Only tracks when OPPONENT is airborne AND attacking (suki_flag)
+        -- +1 if opponent hit while airborne attacking, -1 if lands safely
         -- =====================
         local opp_suki = (opp == 0) and matrix.p1_suki or matrix.p2_suki
+        local my_pose = (p == 0) and (matrix.p1_pose_st or 0) or (matrix.p2_pose_st or 0)
 
         if opp_pose >= 2 then
             t_p._aa_opp_in_air = true
@@ -464,18 +465,18 @@ local function detect_events()
         end
 
         if t_p._aa_opp_in_air then
-            if opp_state == STATE_HURT then
-                -- Player anti-aired = SUCCESS
+            -- Only count if opponent was ATTACKING in air (suki_flag) and player is GROUNDED
+            if t_p._aa_opp_attacking and opp_state == STATE_HURT and my_pose < 2 then
                 if not t_p._aa_counted then
                     counters[p].aa = counters[p].aa + 1
                     counters[p].aa_ok = counters[p].aa_ok + 1
                     counters[p].aa_opp = counters[p].aa_opp + 1
                     t_p._aa_counted = true
                 end
-            elseif opp_pose < 2 and (opp_state == STATE_NEUTRAL or opp_state == 0) then
-                -- Opponent landed safely
+            end
+            -- Opponent landed (back on ground + neutral)
+            if opp_pose < 2 and (opp_state == STATE_NEUTRAL or opp_state == 0) then
                 if t_p._aa_opp_attacking and not t_p._aa_counted then
-                    -- Was attacking in air and wasn't anti-aired = MISSED
                     counters[p].aa = counters[p].aa - 1
                     counters[p].aa_opp = counters[p].aa_opp + 1
                 end
@@ -721,12 +722,14 @@ local function d2d_draw()
             total = total + val
 
             local label = LABELS[k]
-            -- WP/HC/AA show successes/opportunities, PP just count
+            -- WP/HC/AA show score + ratio, PP just count
             local val_str
             local ok_key = k .. "_ok"
             local opp_key = k .. "_opp"
             if counters[p][ok_key] and counters[p][opp_key] then
-                val_str = tostring(counters[p][ok_key]) .. "/" .. tostring(counters[p][opp_key])
+                local score = val
+                local score_prefix = score >= 0 and "+" or ""
+                val_str = score_prefix .. tostring(score) .. " (" .. tostring(counters[p][ok_key]) .. "/" .. tostring(counters[p][opp_key]) .. ")"
             else
                 val_str = tostring(val)
             end
