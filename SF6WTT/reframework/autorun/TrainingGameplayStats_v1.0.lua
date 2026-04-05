@@ -320,6 +320,13 @@ re.on_draw_ui(function()
             end
         end
 
+        -- Live matrix debug
+        imgui.spacing()
+        imgui.text("--- MATRIX LIVE ---")
+        imgui.text(string.format("P1_FT: %d  (prev: %d)  |  P1_GAU: %d", matrix.p1_ft, matrix.prev_p1_ft, matrix.p1_gau))
+        imgui.text(string.format("P2_FT: %d  (prev: %d)  |  P2_GAU: %d", matrix.p2_ft, matrix.prev_p2_ft, matrix.p2_gau))
+        imgui.text(string.format("Head IDX: %d", matrix.last_head))
+
         imgui.tree_pop()
     end
 end)
