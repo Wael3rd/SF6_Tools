@@ -56,6 +56,7 @@ local UI_THEME = {
 }
 
 local SharedUI = require("func/Training_SharedUI")
+local SessionRecap = require("func/Training_SessionRecap")
 
 -- FULL CONFIG
 local user_config = {
@@ -344,6 +345,7 @@ local function set_feedback(msg, color, duration)
 end
 
 local function reset_session_stats()
+    SessionRecap.hide()
     session.score = 0; session.total = 0; session.is_running = false; session.is_paused = false
     session.real_start_time = os.time()
     
@@ -549,7 +551,8 @@ local function update_logic()
             set_playback_mode(false)
             
             export_log_excel()
-            set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0) 
+            SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
+            set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
         end
     end
 

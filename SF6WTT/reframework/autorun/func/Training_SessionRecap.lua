@@ -1,0 +1,288 @@
+-- =========================================================
+-- Training_SessionRecap.lua
+-- D2D overlay : barres horizontales des 7 dernieres sessions
+-- =========================================================
+
+local M = {}
+
+-- State
+local _visible = false
+local _sessions = {}
+local _title = ""
+local _font = nil
+local _font_small = nil
+local _last_font_h = 0
+local _last_font_h_small = 0
+
+-- Colors (ABGR : 0xAABBGGRR)
+local COL_BG        = 0xF0181818
+local COL_BORDER    = 0xFFAAAAAA
+local COL_HEADER_BG = 0x44FFFFFF
+local COL_HEADER    = 0xFF00DDFF   -- jaune/or
+local COL_TEXT      = 0xFFDADADA
+local COL_TEXT_DIM  = 0xFF888888
+local COL_BAR_BG    = 0xFF333333
+local COL_BAR_RED   = 0xFF4444FF
+local COL_BAR_ORG   = 0xFF00A5FF
+local COL_BAR_YEL   = 0xFF00FFFF
+local COL_BAR_GRN   = 0xFF00DD00
+local COL_SHADOW    = 0xFF000000
+
+local function bar_color(pct)
+    if pct < 40 then return COL_BAR_RED
+    elseif pct < 60 then return COL_BAR_ORG
+    elseif pct < 75 then return COL_BAR_YEL
+    else return COL_BAR_GRN end
+end
+
+-- =========================================================
+-- PARSERS (un par type de fichier stats)
+-- =========================================================
+
+local function tail_7(results)
+    local n = #results
+    local start = math.max(1, n - 6)
+    local out = {}
+    for i = start, n do out[#out + 1] = results[i] end
+    return out
+end
+
+local function extract_date(raw)
+    local y, mo, da = raw:match("(%d+)-(%d+)-(%d+)")
+    return (da or "??") .. "/" .. (mo or "??")
+end
+
+-- Reactions : date\tduration\tmode\tp1\tp2\tscore\ttotal  (pas de header)
+local function parse_reactions(filepath)
+    local results = {}
+    local f = io.open(filepath, "r")
+    if not f then return results end
+    for line in f:lines() do
+        local parts = {}
+        for p in line:gmatch("[^\t]+") do parts[#parts + 1] = p end
+        if #parts >= 7 then
+            local score = tonumber(parts[6])
+            local total = tonumber(parts[7])
+            if score and total and total > 0 then
+                results[#results + 1] = {
+                    date  = extract_date(parts[1]),
+                    pct   = (score / total) * 100,
+                    score = score,
+                    total = total
+                }
+            end
+        end
+    end
+    f:close()
+    return tail_7(results)
+end
+
+-- HitConfirm : header optionnel, puis date\ttime\tmode\tduration\ttotal\tsuccess\tpct%\tscore\t...
+local function parse_hitconfirm(filepath)
+    local results = {}
+    local f = io.open(filepath, "r")
+    if not f then return results end
+    for line in f:lines() do
+        if not line:match("^DATE") then
+            local parts = {}
+            for p in line:gmatch("[^\t]+") do parts[#parts + 1] = p end
+            if #parts >= 7 then
+                local total   = tonumber(parts[5])
+                local success = tonumber(parts[6])
+                local pct     = tonumber((parts[7]:gsub("%%", "")))
+                if pct and total and total > 0 then
+                    results[#results + 1] = {
+                        date  = extract_date(parts[1]),
+                        pct   = pct,
+                        score = success or 0,
+                        total = total
+                    }
+                end
+            end
+        end
+    end
+    f:close()
+    return tail_7(results)
+end
+
+-- PostGuard : header optionnel, puis date\tduration\tscore\tpct%\ttotal\tdetails
+local function parse_postguard(filepath)
+    local results = {}
+    local f = io.open(filepath, "r")
+    if not f then return results end
+    for line in f:lines() do
+        if not line:match("^DATE") then
+            local parts = {}
+            for p in line:gmatch("[^\t]+") do parts[#parts + 1] = p end
+            if #parts >= 5 then
+                local score = tonumber(parts[3])
+                local pct   = tonumber((parts[4]:gsub("%%", "")))
+                local total = tonumber(parts[5])
+                if pct and total and total > 0 then
+                    results[#results + 1] = {
+                        date  = extract_date(parts[1]),
+                        pct   = pct,
+                        score = score or 0,
+                        total = total
+                    }
+                end
+            end
+        end
+    end
+    f:close()
+    return tail_7(results)
+end
+
+local PARSERS = {
+    reactions  = parse_reactions,
+    hitconfirm = parse_hitconfirm,
+    postguard  = parse_postguard
+}
+
+-- =========================================================
+-- PUBLIC API
+-- =========================================================
+
+function M.show(mode_name, stats_file, parser_type)
+    local parser = PARSERS[parser_type]
+    if not parser then return end
+    _sessions = parser(stats_file)
+    local n = #_sessions
+    if n == 0 then return end
+    _title = mode_name .. "  -  LAST " .. n .. " SESSION" .. (n > 1 and "S" or "")
+    _visible = true
+end
+
+function M.hide()
+    _visible = false
+    _sessions = {}
+end
+
+function M.is_visible()
+    return _visible
+end
+
+-- =========================================================
+-- D2D DRAWING
+-- =========================================================
+
+local function d2d_init() end
+
+local function d2d_draw()
+    if not _visible or #_sessions == 0 then return end
+
+    local sw, sh = d2d.surface_size()
+
+    -- Fonts (recrees si la taille change)
+    local fh   = math.floor(sh * 0.016)
+    local fh_s = math.floor(sh * 0.013)
+    if fh ~= _last_font_h then
+        _font = d2d.Font.new("Consolas", fh)
+        _last_font_h = fh
+    end
+    if fh_s ~= _last_font_h_small then
+        _font_small = d2d.Font.new("Consolas", fh_s)
+        _last_font_h_small = fh_s
+    end
+
+    -- Layout
+    local n        = #_sessions
+    local row_h    = fh * 2.2
+    local header_h = fh * 2.8
+    local footer_h = fh * 2.5
+    local pad      = sh * 0.012
+    local panel_w  = sw * 0.34
+    local panel_h  = header_h + (n * row_h) + footer_h + pad
+    local panel_x  = (sw - panel_w) * 0.5
+    local panel_y  = (sh - panel_h) * 0.5
+
+    -- Background + border
+    d2d.fill_rect(panel_x, panel_y, panel_w, panel_h, COL_BG)
+    d2d.outline_rect(panel_x, panel_y, panel_w, panel_h, 2, COL_BORDER)
+
+    -- Header
+    d2d.fill_rect(panel_x, panel_y, panel_w, header_h, COL_HEADER_BG)
+    local tx = panel_x + pad
+    local ty = panel_y + (header_h - fh) * 0.5
+    d2d.text(_font, _title, tx + 1, ty + 1, COL_SHADOW)
+    d2d.text(_font, _title, tx, ty, COL_HEADER)
+
+    -- Colonnes
+    local date_x    = panel_x + pad
+    local bar_x     = panel_x + panel_w * 0.17
+    local bar_max_w = panel_w * 0.46
+    local pct_x     = bar_x + bar_max_w + pad
+    local score_x   = pct_x + panel_w * 0.11
+    local bar_h     = row_h * 0.50
+
+    local sum_pct = 0
+
+    for i, s in ipairs(_sessions) do
+        local ry  = panel_y + header_h + (i - 1) * row_h
+        local by  = ry + (row_h - bar_h) * 0.5
+        local tty = ry + (row_h - fh_s) * 0.5
+
+        -- Alternance fond de ligne
+        if i % 2 == 0 then
+            d2d.fill_rect(panel_x, ry, panel_w, row_h, 0x11FFFFFF)
+        end
+
+        -- Date
+        d2d.text(_font_small, s.date, date_x + 1, tty + 1, COL_SHADOW)
+        d2d.text(_font_small, s.date, date_x, tty, COL_TEXT_DIM)
+
+        -- Barre fond
+        d2d.fill_rect(bar_x, by, bar_max_w, bar_h, COL_BAR_BG)
+
+        -- Barre remplie
+        local fill_w = bar_max_w * math.min(s.pct, 100) / 100
+        local col = bar_color(s.pct)
+        d2d.fill_rect(bar_x, by, fill_w, bar_h, col)
+        d2d.outline_rect(bar_x, by, bar_max_w, bar_h, 1, 0x44FFFFFF)
+
+        -- Pourcentage
+        local pct_str = string.format("%d%%", s.pct)
+        d2d.text(_font_small, pct_str, pct_x + 1, tty + 1, COL_SHADOW)
+        d2d.text(_font_small, pct_str, pct_x, tty, col)
+
+        -- Score / Total
+        local sc_str = string.format("%d/%d", s.score, s.total)
+        d2d.text(_font_small, sc_str, score_x + 1, tty + 1, COL_SHADOW)
+        d2d.text(_font_small, sc_str, score_x, tty, COL_TEXT)
+
+        sum_pct = sum_pct + s.pct
+    end
+
+    -- Footer
+    local avg = sum_pct / n
+    local fy = panel_y + header_h + n * row_h + (footer_h - fh) * 0.5
+
+    -- Trend (derniere vs premiere)
+    if n >= 2 then
+        local trend = _sessions[n].pct - _sessions[1].pct
+        local trend_str, trend_col
+        if trend >= 0 then
+            trend_str = string.format("+%d%%", trend)
+            trend_col = COL_BAR_GRN
+        else
+            trend_str = string.format("%d%%", trend)
+            trend_col = COL_BAR_RED
+        end
+        d2d.text(_font, trend_str, panel_x + pad + 1, fy + 1, COL_SHADOW)
+        d2d.text(_font, trend_str, panel_x + pad, fy, trend_col)
+    end
+
+    -- Moyenne
+    local avg_str = string.format("AVG: %d%%", avg)
+    local avg_w = #avg_str * fh * 0.6
+    local avg_x = panel_x + panel_w - pad - avg_w
+    d2d.text(_font, avg_str, avg_x + 1, fy + 1, COL_SHADOW)
+    d2d.text(_font, avg_str, avg_x, fy, bar_color(avg))
+end
+
+-- Register D2D (guard si d2d pas disponible)
+if d2d and d2d.register then
+    d2d.register(d2d_init, d2d_draw)
+end
+
+return M
