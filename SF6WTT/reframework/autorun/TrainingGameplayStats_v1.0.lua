@@ -364,6 +364,7 @@ local function detect_events()
         -- Non-light: opportunity at combo 0→1, success at combo 1→2+
         -- Light:     opportunity at combo 1→2, success at combo 2→3+
         -- Displays as ratio: successes / opportunities
+        -- Uses _hc_active lock for the entire combo sequence
         -- =====================
         local my_combo = (p == 0) and matrix.p1_combo or matrix.p2_combo
         local my_prev_combo = (p == 0) and matrix.prev_p1_combo or matrix.prev_p2_combo
@@ -377,46 +378,42 @@ local function detect_events()
         end)
         local is_light = (t_p._last_light_time and (os.clock() - t_p._last_light_time) < 0.25)
 
-        -- Combo 0→1: first hit landed
-        if my_combo == 1 and my_prev_combo == 0 then
+        -- Combo starts (0→1): lock the whole sequence
+        if my_combo >= 1 and not t_p._hc_active then
+            t_p._hc_active = true
             t_p._hc_is_light = is_light
             t_p._hc_opp_counted = false
-            t_p._hc_locked = false
+            t_p._hc_confirmed = false
             if not is_light then
-                -- Non-light: opportunity starts now
+                -- Non-light: opportunity at first hit
                 counters[p].hc_opp = counters[p].hc_opp + 1
                 t_p._hc_opp_counted = true
             end
         end
 
-        -- Combo 1→2: second hit
-        if my_combo == 2 and my_prev_combo < 2 then
-            if t_p._hc_is_light then
-                -- Light: opportunity starts at 2nd hit
+        -- Combo reaches 2: light opportunity or non-light confirm
+        if my_combo >= 2 and t_p._hc_active then
+            if t_p._hc_is_light and not t_p._hc_opp_counted then
                 counters[p].hc_opp = counters[p].hc_opp + 1
                 t_p._hc_opp_counted = true
-            else
-                -- Non-light: 2nd hit = confirmed!
-                if not t_p._hc_locked then
-                    counters[p].hc = counters[p].hc + 1
-                    t_p._hc_locked = true
-                end
             end
-        end
-
-        -- Combo 2→3+: for lights, this is the confirm
-        if my_combo >= 3 and my_prev_combo < 3 then
-            if t_p._hc_is_light and not t_p._hc_locked then
+            if not t_p._hc_is_light and not t_p._hc_confirmed then
                 counters[p].hc = counters[p].hc + 1
-                t_p._hc_locked = true
+                t_p._hc_confirmed = true
             end
         end
 
-        -- Combo dropped without confirming
-        if my_combo == 0 and my_prev_combo > 0 then
-            t_p._hc_locked = false
-            t_p._hc_is_light = false
-            t_p._hc_opp_counted = false
+        -- Combo reaches 3+: light confirm
+        if my_combo >= 3 and t_p._hc_active then
+            if t_p._hc_is_light and not t_p._hc_confirmed then
+                counters[p].hc = counters[p].hc + 1
+                t_p._hc_confirmed = true
+            end
+        end
+
+        -- Combo fully reset to 0: unlock for next sequence
+        if my_combo == 0 then
+            t_p._hc_active = false
         end
     end
 end
