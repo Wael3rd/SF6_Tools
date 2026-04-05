@@ -387,6 +387,15 @@ local function draw_chart(sw, sh, fh, fh_s)
 
     -- Dessiner les courbes
     local dot_r = math.max(3, fh * 0.2)
+    local hover_r = dot_r * 2.5  -- zone de detection hover plus large que le point
+    local tooltip = nil  -- { x, y, text, color } si hover detecte
+
+    -- Lire la position de la souris une seule fois
+    local mx, my = 0, 0
+    pcall(function()
+        local m = imgui.get_mouse()
+        if m then mx, my = m.x, m.y end
+    end)
 
     -- Hit% curve (orange)
     for i = 1, n do
@@ -396,7 +405,13 @@ local function draw_chart(sw, sh, fh, fh_s)
                 local hp_prev = tonumber(_sessions[i-1].hit_pct) or 0
                 draw_line(sx(i-1), sy(hp_prev), sx(i), sy(hp), 2, COL_HIT)
             end
-            d2d.fill_rect(sx(i) - dot_r, sy(hp) - dot_r, dot_r * 2, dot_r * 2, COL_HIT)
+            local px, py = sx(i), sy(hp)
+            local is_hov = math.abs(mx - px) < hover_r and math.abs(my - py) < hover_r
+            local size = is_hov and dot_r * 1.6 or dot_r
+            d2d.fill_rect(px - size, py - size, size * 2, size * 2, COL_HIT)
+            if is_hov then
+                tooltip = { x = px, y = py, text = string.format("HIT: %.1f%%", hp), color = COL_HIT }
+            end
         end)
     end
 
@@ -408,8 +423,26 @@ local function draw_chart(sw, sh, fh, fh_s)
                 local bp_prev = tonumber(_sessions[i-1].blk_pct) or 0
                 draw_line(sx(i-1), sy(bp_prev), sx(i), sy(bp), 2, COL_BLK)
             end
-            d2d.fill_rect(sx(i) - dot_r, sy(bp) - dot_r, dot_r * 2, dot_r * 2, COL_BLK)
+            local px, py = sx(i), sy(bp)
+            local is_hov = math.abs(mx - px) < hover_r and math.abs(my - py) < hover_r
+            local size = is_hov and dot_r * 1.6 or dot_r
+            d2d.fill_rect(px - size, py - size, size * 2, size * 2, COL_BLK)
+            if is_hov and not tooltip then  -- hit a priorite si les deux se chevauchent
+                tooltip = { x = px, y = py, text = string.format("BLK: %.1f%%", bp), color = COL_BLK }
+            end
         end)
+    end
+
+    -- Tooltip au dessus du point
+    if tooltip then
+        local tt = tooltip
+        local tt_w = #tt.text * fh_s * 0.62 + pad * 2
+        local tt_h = fh_s + pad
+        local tt_x = tt.x - tt_w * 0.5
+        local tt_y = tt.y - tt_h - dot_r * 2
+        d2d.fill_rect(tt_x, tt_y, tt_w, tt_h, 0xEE222222)
+        d2d.outline_rect(tt_x, tt_y, tt_w, tt_h, 1, tt.color)
+        d2d.text(_font_small, tt.text, tt_x + pad, tt_y + pad * 0.3, tt.color)
     end
 
     -- X axis labels (session time)
