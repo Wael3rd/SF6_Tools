@@ -1598,9 +1598,9 @@ local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false }
 
 -- VK codes pour les touches 1,2,3,4 (haut du clavier)
 local KB_1 = 0x31  -- L (RECORD P1 / STOP & SAVE)
-local KB_2 = 0x32  -- U (START/STOP TRIAL P1)
+local KB_2 = 0x32  -- U (START TRIAL P1 / CANCEL RECORDING)
 local KB_3 = 0x33  -- D (RECORD P2 / CANCEL)
-local KB_4 = 0x34  -- R (START/STOP TRIAL P2)
+local KB_4 = 0x34  -- R (STOP TRIAL / SWITCH POS)
 
 -- Détection du dernier périphérique utilisé (partagé via _G)
 if _G.ComboTrials_InputDevice == nil then _G.ComboTrials_InputDevice = "pad" end
@@ -1713,13 +1713,11 @@ local function handle_combo_shortcuts()
         end
     end
 
-    -- DPAD UP / Touche 2 : START/STOP TRIAL P1
+    -- DPAD UP / Touche 2 : START TRIAL P1 / CANCEL RECORDING
     if is_pressed(BTN_UP) or kb_pressed(KB_2) then
-        if trial_state.is_playing then
-            trial_state.is_playing = false
-        elseif trial_state.is_recording then
+        if trial_state.is_recording then
             cancel_recording()
-        elseif not trial_state.is_recording then
+        elseif not trial_state.is_playing and not trial_state.is_recording then
             load_and_start_trial(0)
         end
     end
@@ -1735,9 +1733,12 @@ local function handle_combo_shortcuts()
 
     end -- fin du else (pas demo)
 
-    -- DPAD RIGHT / Touche 4 : SWITCH POS (Bloqué pendant le record)
+    -- DPAD RIGHT / Touche 4 : STOP TRIAL / SWITCH POS (Bloqué pendant le record)
     if is_pressed(BTN_RIGHT) or kb_pressed(KB_4) then
-        if not trial_state.is_recording then
+        local is_demo_active_r = (demo_state and demo_state.is_playing)
+        if trial_state.is_playing and not is_demo_active_r then
+            trial_state.is_playing = false
+        elseif not trial_state.is_recording then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             save_d2d_config()
