@@ -206,11 +206,12 @@ local function read_frame_data()
     matrix.p2_ef  = tonumber(tostring(it2:get_field("EndFrame")))  or 0
     matrix.p2_gau = tonumber(tostring(it2:get_field("MainGauge"))) or 0
 
-    -- Read DMG, HS, COMBO from player objects (not from matrix items)
+    -- Read DMG, HS, COMBO, TRADE_DM from player objects
     matrix.prev_p1_combo = matrix.p1_combo or 0
     matrix.prev_p2_combo = matrix.p2_combo or 0
     matrix.p1_dmg = 0; matrix.p1_hs = 0; matrix.p1_combo = 0
     matrix.p2_dmg = 0; matrix.p2_hs = 0; matrix.p2_combo = 0
+    matrix.p1_trade_dm = false; matrix.p2_trade_dm = false
     pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
         if not gBattle then return end
@@ -222,11 +223,13 @@ local function read_frame_data()
             local dt = p1_obj:get_field("damage_type"); if dt then matrix.p1_dmg = tonumber(tostring(dt)) or 0 end
             local hs = p1_obj:get_field("hit_stop"); if hs then matrix.p1_hs = tonumber(tostring(hs)) or 0 end
             local cc = p1_obj:get_field("combo_cnt"); if cc then matrix.p1_combo = tonumber(tostring(cc)) or 0 end
+            local td = p1_obj:get_field("trade_dm_flag"); if td then matrix.p1_trade_dm = (tostring(td) == "true") end
         end
         if p2_obj then
             local dt = p2_obj:get_field("damage_type"); if dt then matrix.p2_dmg = tonumber(tostring(dt)) or 0 end
             local hs = p2_obj:get_field("hit_stop"); if hs then matrix.p2_hs = tonumber(tostring(hs)) or 0 end
             local cc = p2_obj:get_field("combo_cnt"); if cc then matrix.p2_combo = tonumber(tostring(cc)) or 0 end
+            local td = p2_obj:get_field("trade_dm_flag"); if td then matrix.p2_trade_dm = (tostring(td) == "true") end
         end
     end)
 
@@ -294,19 +297,20 @@ local function detect_events()
 
     -- =====================
     -- PERFECT PARRY (from player data)
-    -- dmg=34 AND hitstop!=0 → count 1 PP
-    -- Then ignore until hitstop returns to 0 (cooldown)
+    -- trade_dm_flag == true (distinguishes perfect parry from normal parry)
+    -- + dmg=34 AND hitstop!=0 as confirmation
+    -- Lock until hitstop returns to 0
     -- =====================
     if has_matrix then
         -- P1 perfect parry
         if (matrix.p1_hs or 0) == 0 then track[0]._pp_locked = false end
-        if not track[0]._pp_locked and (matrix.p1_dmg or 0) == 34 and (matrix.p1_hs or 0) ~= 0 then
+        if not track[0]._pp_locked and matrix.p1_trade_dm and (matrix.p1_dmg or 0) == 34 and (matrix.p1_hs or 0) ~= 0 then
             counters[0].pp = counters[0].pp + 1
             track[0]._pp_locked = true
         end
         -- P2 perfect parry
         if (matrix.p2_hs or 0) == 0 then track[1]._pp_locked = false end
-        if not track[1]._pp_locked and (matrix.p2_dmg or 0) == 34 and (matrix.p2_hs or 0) ~= 0 then
+        if not track[1]._pp_locked and matrix.p2_trade_dm and (matrix.p2_dmg or 0) == 34 and (matrix.p2_hs or 0) ~= 0 then
             counters[1].pp = counters[1].pp + 1
             track[1]._pp_locked = true
         end
@@ -397,11 +401,11 @@ re.on_draw_ui(function()
         imgui.text("P1 item fields:")
         imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  SF=%d  EF=%d  MainGauge=%d",
             matrix.p1_ft, matrix.p1_type or 0, matrix.p1_frame or 0, matrix.p1_sf or 0, matrix.p1_ef or 0, matrix.p1_gau))
-        imgui.text(string.format("  damage_type=%d  hit_stop=%d  combo_cnt=%d", matrix.p1_dmg or 0, matrix.p1_hs or 0, matrix.p1_combo or 0))
+        imgui.text(string.format("  dmg=%d  hs=%d  combo=%d  trade_dm=%s", matrix.p1_dmg or 0, matrix.p1_hs or 0, matrix.p1_combo or 0, tostring(matrix.p1_trade_dm)))
         imgui.text("P2 item fields:")
         imgui.text(string.format("  FrameType=%d  Type=%d  Frame=%d  SF=%d  EF=%d  MainGauge=%d",
             matrix.p2_ft, matrix.p2_type or 0, matrix.p2_frame or 0, matrix.p2_sf or 0, matrix.p2_ef or 0, matrix.p2_gau))
-        imgui.text(string.format("  damage_type=%d  hit_stop=%d  combo_cnt=%d", matrix.p2_dmg or 0, matrix.p2_hs or 0, matrix.p2_combo or 0))
+        imgui.text(string.format("  dmg=%d  hs=%d  combo=%d  trade_dm=%s", matrix.p2_dmg or 0, matrix.p2_hs or 0, matrix.p2_combo or 0, tostring(matrix.p2_trade_dm)))
 
         imgui.tree_pop()
     end
