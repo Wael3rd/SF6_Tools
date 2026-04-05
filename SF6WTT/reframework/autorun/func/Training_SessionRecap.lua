@@ -55,8 +55,13 @@ local function tail_7(results)
 end
 
 local function extract_date(raw)
-    local y, mo, da = raw:match("(%d+)-(%d+)-(%d+)")
-    return (da or "??") .. "/" .. (mo or "??")
+    -- Essaie d'extraire date + heure pour distinguer les sessions du meme jour
+    local y, mo, da, hh, mm = raw:match("(%d+)-(%d+)-(%d+)%s+(%d+):(%d+)")
+    if da and hh then
+        return (da or "??") .. "/" .. (mo or "??") .. " " .. hh .. ":" .. mm
+    end
+    local y2, mo2, da2 = raw:match("(%d+)-(%d+)-(%d+)")
+    return (da2 or "??") .. "/" .. (mo2 or "??")
 end
 
 -- Reactions : date\tduration\tmode\tp1\tp2\tscore\ttotal  (pas de header)
@@ -269,39 +274,46 @@ local function d2d_draw()
     local sum_pct = 0
 
     for i, s in ipairs(_sessions) do
-        local ry  = panel_y + header_h + (i - 1) * row_h
-        local by  = ry + (row_h - bar_h) * 0.5
-        local tty = ry + (row_h - fh_s) * 0.5
+        local ok, err = pcall(function()
+            local ry  = panel_y + header_h + (i - 1) * row_h
+            local by  = ry + (row_h - bar_h) * 0.5
+            local tty = ry + (row_h - fh_s) * 0.5
 
-        -- Alternance fond de ligne
-        if i % 2 == 0 then
-            d2d.fill_rect(panel_x, ry, panel_w, row_h, 0x11FFFFFF)
+            -- Alternance fond de ligne
+            if i % 2 == 0 then
+                d2d.fill_rect(panel_x, ry, panel_w, row_h, 0x11FFFFFF)
+            end
+
+            -- Date
+            local date_str = tostring(s.date or "?")
+            d2d.text(_font_small, date_str, date_x + 1, tty + 1, COL_SHADOW)
+            d2d.text(_font_small, date_str, date_x, tty, COL_TEXT_DIM)
+
+            -- Barre fond
+            d2d.fill_rect(bar_x, by, bar_max_w, bar_h, COL_BAR_BG)
+
+            -- Barre remplie
+            local pct_safe = tonumber(s.pct) or 0
+            local fill_w = bar_max_w * math.min(pct_safe, 100) / 100
+            local col = bar_color(pct_safe)
+            d2d.fill_rect(bar_x, by, fill_w, bar_h, col)
+            d2d.outline_rect(bar_x, by, bar_max_w, bar_h, 1, 0x44FFFFFF)
+
+            -- Pourcentage
+            local pct_str = string.format("%d%%", pct_safe)
+            d2d.text(_font_small, pct_str, pct_x + 1, tty + 1, COL_SHADOW)
+            d2d.text(_font_small, pct_str, pct_x, tty, col)
+
+            -- Score / Total
+            local sc_str = string.format("%d/%d", tonumber(s.score) or 0, tonumber(s.total) or 0)
+            d2d.text(_font_small, sc_str, score_x + 1, tty + 1, COL_SHADOW)
+            d2d.text(_font_small, sc_str, score_x, tty, COL_TEXT)
+
+            sum_pct = sum_pct + pct_safe
+        end)
+        if not ok then
+            _debug_msg = "DRAW ERROR row " .. i .. ": " .. tostring(err)
         end
-
-        -- Date
-        d2d.text(_font_small, s.date, date_x + 1, tty + 1, COL_SHADOW)
-        d2d.text(_font_small, s.date, date_x, tty, COL_TEXT_DIM)
-
-        -- Barre fond
-        d2d.fill_rect(bar_x, by, bar_max_w, bar_h, COL_BAR_BG)
-
-        -- Barre remplie
-        local fill_w = bar_max_w * math.min(s.pct, 100) / 100
-        local col = bar_color(s.pct)
-        d2d.fill_rect(bar_x, by, fill_w, bar_h, col)
-        d2d.outline_rect(bar_x, by, bar_max_w, bar_h, 1, 0x44FFFFFF)
-
-        -- Pourcentage
-        local pct_str = string.format("%d%%", s.pct)
-        d2d.text(_font_small, pct_str, pct_x + 1, tty + 1, COL_SHADOW)
-        d2d.text(_font_small, pct_str, pct_x, tty, col)
-
-        -- Score / Total
-        local sc_str = string.format("%d/%d", s.score, s.total)
-        d2d.text(_font_small, sc_str, score_x + 1, tty + 1, COL_SHADOW)
-        d2d.text(_font_small, sc_str, score_x, tty, COL_TEXT)
-
-        sum_pct = sum_pct + s.pct
     end
 
     -- Footer
@@ -358,6 +370,10 @@ re.on_draw_ui(function()
         imgui.text("Visible: " .. tostring(_visible))
         imgui.text("Sessions: " .. #_sessions)
         imgui.text("Debug: " .. _debug_msg)
+        -- Detail de chaque session parsee
+        for i, s in ipairs(_sessions) do
+            imgui.text("  [" .. i .. "] " .. tostring(s.date) .. " | " .. tostring(s.pct) .. "% | " .. tostring(s.score) .. "/" .. tostring(s.total))
+        end
         if _visible and imgui.button("Close Recap") then
             M.hide()
         end
