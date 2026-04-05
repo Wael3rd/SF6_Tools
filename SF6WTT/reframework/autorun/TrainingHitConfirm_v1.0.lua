@@ -4,6 +4,7 @@ local imgui = imgui
 local draw = draw
 local json = json
 local SharedUI = require("func/Training_SharedUI")
+local SessionRecap = require("func/Training_SessionRecap")
 
 -- =========================================================
 -- TrainingHitConfirm_v7.3 (Heavy DR Cancel Fail Logic)
@@ -349,6 +350,7 @@ local function set_feedback(msg, color, duration)
 end
 
 local function reset_session_stats()
+    SessionRecap.hide()
     session.score = 0; session.total = 0; session.hit_ok = 0; session.hit_tot = 0; session.blk_ok = 0; session.blk_tot = 0
     session.is_running = false; session.is_paused = false
     session.is_time_up = false 
@@ -784,8 +786,9 @@ local pm = sdk.get_managed_singleton("app.PauseManager")
             session.is_time_up = true
             session.time_up_delay = 0 
             
-            export_session_stats() 
-            set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0) 
+            export_session_stats()
+            SessionRecap.show("HIT CONFIRM", "HitConfirm_SessionStats.txt", "hitconfirm")
+            set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
         end
     end
     
