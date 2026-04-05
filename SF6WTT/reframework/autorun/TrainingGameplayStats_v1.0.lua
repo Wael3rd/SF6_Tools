@@ -120,8 +120,8 @@ local STAT_COLORS = { pp = COL.pp, wp = COL.wp, hc = COL.hc, aa = COL.aa }
 local FULL_LABELS = { pp = "PERFECT PARRY", wp = "WHIFF PUNISH", hc = "HIT CONFIRM", aa = "ANTI AIR" }
 
 local counters = {
-    [0] = { pp = 0, wp = 0, hc = 0, aa = 0 },
-    [1] = { pp = 0, wp = 0, hc = 0, aa = 0 },
+    [0] = { pp = 0, wp = 0, wp_ok = 0, wp_opp = 0, hc = 0, hc_ok = 0, hc_opp = 0, aa = 0, aa_ok = 0, aa_opp = 0 },
+    [1] = { pp = 0, wp = 0, wp_ok = 0, wp_opp = 0, hc = 0, hc_ok = 0, hc_opp = 0, aa = 0, aa_ok = 0, aa_opp = 0 },
 }
 
 -- Per-player tracking
@@ -190,6 +190,8 @@ local function read_frame_data()
     matrix.p1_dmg = 0; matrix.p1_hs = 0; matrix.p1_combo = 0
     matrix.p2_dmg = 0; matrix.p2_hs = 0; matrix.p2_combo = 0
     matrix.p1_trade_dm = false; matrix.p2_trade_dm = false
+    matrix.p1_pose_st = 0; matrix.p2_pose_st = 0
+    matrix.p1_suki = false; matrix.p2_suki = false
     pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
         if not gBattle then return end
@@ -202,12 +204,16 @@ local function read_frame_data()
             local hs = p1_obj:get_field("hit_stop"); if hs then matrix.p1_hs = tonumber(tostring(hs)) or 0 end
             local cc = p1_obj:get_field("combo_cnt"); if cc then matrix.p1_combo = tonumber(tostring(cc)) or 0 end
             local td = p1_obj:get_field("trade_dm_flag"); if td then matrix.p1_trade_dm = (tostring(td) == "true") end
+            local ps = p1_obj:get_field("pose_st"); if ps then matrix.p1_pose_st = tonumber(tostring(ps)) or 0 end
+            local sk = p1_obj:get_field("land_suki_flag"); if sk then matrix.p1_suki = (tostring(sk) == "true") end
         end
         if p2_obj then
             local dt = p2_obj:get_field("damage_type"); if dt then matrix.p2_dmg = tonumber(tostring(dt)) or 0 end
             local hs = p2_obj:get_field("hit_stop"); if hs then matrix.p2_hs = tonumber(tostring(hs)) or 0 end
             local cc = p2_obj:get_field("combo_cnt"); if cc then matrix.p2_combo = tonumber(tostring(cc)) or 0 end
             local td = p2_obj:get_field("trade_dm_flag"); if td then matrix.p2_trade_dm = (tostring(td) == "true") end
+            local ps = p2_obj:get_field("pose_st"); if ps then matrix.p2_pose_st = tonumber(tostring(ps)) or 0 end
+            local sk = p2_obj:get_field("land_suki_flag"); if sk then matrix.p2_suki = (tostring(sk) == "true") end
         end
     end)
 
@@ -410,24 +416,73 @@ local function detect_events()
         local t_o = track[opp]
 
         -- =====================
-        -- WHIFF PUNISH : opponent was in recovery (8) and gets hurt (9)
+        -- WHIFF PUNISH (PostGuard logic: opponent attacked on ground, returned to neutral = missed)
+        -- Score: +1 if P punishes (opponent goes hurt), -1 if missed (opponent returns neutral)
         -- =====================
-        if t_o.prev_frame_st == STATE_RECOVER and t_o.frame_st == STATE_HURT then
-            counters[p].wp = counters[p].wp + 1
+        local opp_state = (opp == 0) and track[0].frame_st or track[1].frame_st
+        local opp_pose  = (opp == 0) and (matrix.p1_pose_st or 0) or (matrix.p2_pose_st or 0)
+
+        -- Opponent is grounded and attacking (not neutral, not block, not airborne)
+        if opp_pose < 2 and opp_state ~= STATE_NEUTRAL and opp_state ~= 10 and opp_state ~= 0 and not t_p._wp_tracking then
+            -- Check if opponent is in attack states (startup=7, active=13/14, recovery=8)
+            if opp_state == 7 or opp_state == 13 or opp_state == 14 or opp_state == STATE_RECOVER then
+                t_p._wp_tracking = true
+                t_p._wp_counted = false
+            end
+        end
+
+        if t_p._wp_tracking then
+            if opp_state == STATE_HURT then
+                -- Player punished the opponent = SUCCESS
+                if not t_p._wp_counted then
+                    counters[p].wp = counters[p].wp + 1
+                    counters[p].wp_ok = counters[p].wp_ok + 1
+                    counters[p].wp_opp = counters[p].wp_opp + 1
+                    t_p._wp_counted = true
+                end
+                t_p._wp_tracking = false
+            elseif opp_state == STATE_NEUTRAL or opp_state == 0 then
+                -- Opponent returned to neutral unpunished = MISSED
+                if not t_p._wp_counted then
+                    counters[p].wp = counters[p].wp - 1
+                    counters[p].wp_opp = counters[p].wp_opp + 1
+                end
+                t_p._wp_tracking = false
+                t_p._wp_counted = false
+            end
         end
 
         -- =====================
-        -- ANTI AIR : opponent was airborne (pose_st >= 2) and gets hurt
+        -- ANTI AIR (PostGuard logic: pose_st>=2 + suki_flag = air attack)
+        -- Score: +1 if hit while airborne, -1 if opponent lands safely
         -- =====================
-        if t_o.pose_st >= 2 then
-            t_o.was_airborne = true
+        local opp_suki = (opp == 0) and matrix.p1_suki or matrix.p2_suki
+
+        if opp_pose >= 2 then
+            t_p._aa_opp_in_air = true
+            if opp_suki then t_p._aa_opp_attacking = true end
         end
-        if t_o.was_airborne and t_o.frame_st == STATE_HURT and t_o.prev_frame_st ~= STATE_HURT then
-            counters[p].aa = counters[p].aa + 1
-            t_o.was_airborne = false
-        end
-        if t_o.frame_st == STATE_NEUTRAL then
-            t_o.was_airborne = false
+
+        if t_p._aa_opp_in_air then
+            if opp_state == STATE_HURT then
+                -- Player anti-aired = SUCCESS
+                if not t_p._aa_counted then
+                    counters[p].aa = counters[p].aa + 1
+                    counters[p].aa_ok = counters[p].aa_ok + 1
+                    counters[p].aa_opp = counters[p].aa_opp + 1
+                    t_p._aa_counted = true
+                end
+            elseif opp_pose < 2 and (opp_state == STATE_NEUTRAL or opp_state == 0) then
+                -- Opponent landed safely
+                if t_p._aa_opp_attacking and not t_p._aa_counted then
+                    -- Was attacking in air and wasn't anti-aired = MISSED
+                    counters[p].aa = counters[p].aa - 1
+                    counters[p].aa_opp = counters[p].aa_opp + 1
+                end
+                t_p._aa_opp_in_air = false
+                t_p._aa_opp_attacking = false
+                t_p._aa_counted = false
+            end
         end
 
         -- =====================
@@ -493,27 +548,33 @@ local function detect_events()
                     if live_combo >= mon.target_combo then
                         -- SUCCESS: confirmed hit into combo
                         counters[p].hc = counters[p].hc + 1
+                        counters[p].hc_ok = counters[p].hc_ok + 1
+                        counters[p].hc_opp = counters[p].hc_opp + 1
                         mon.active = false; hs.lockout = true
                     elseif live_combo == 0 then
                         -- FAIL: dropped combo
                         counters[p].hc = counters[p].hc - 1
+                        counters[p].hc_opp = counters[p].hc_opp + 1
                         mon.active = false; hs.lockout = true
                     end
                 elseif mon.type == "BLOCK" then
                     if is_in(hc_work.break_list, p_ft) then
                         -- FAIL: unsafe on block
                         counters[p].hc = counters[p].hc - 1
+                        counters[p].hc_opp = counters[p].hc_opp + 1
                         mon.active = false; hs.lockout = true
                     elseif is_in(hc_work.success, p_ft) and not is_in(hc_work.trigger, p_ft) and live_hs > 0 then
                         -- FAIL: autopilot (kept pressing buttons)
                         counters[p].hc = counters[p].hc - 1
+                        counters[p].hc_opp = counters[p].hc_opp + 1
                         mon.active = false; hs.lockout = true
                     elseif not is_in(hc_work.dmg_block, live_dmg) then
                         -- Block resolved: stopped pressing
+                        counters[p].hc_opp = counters[p].hc_opp + 1
                         if not hc_cfg.dont_count_blocked then
                             counters[p].hc = counters[p].hc + 1
+                            counters[p].hc_ok = counters[p].hc_ok + 1
                         end
-                        -- dont_count_blocked=true means score unchanged (safe but no +1)
                         mon.active = false; hs.lockout = true
                     end
                 end
@@ -541,9 +602,14 @@ re.on_draw_ui(function()
         if imgui.button("RESET ALL") then
             for p = 0, 1 do
                 for _, k in ipairs(STATS) do counters[p][k] = 0 end
+                counters[p].wp_ok = 0; counters[p].wp_opp = 0
+                counters[p].hc_ok = 0; counters[p].hc_opp = 0
+                counters[p].aa_ok = 0; counters[p].aa_opp = 0
                 hc_state[p].monitor.active = false; hc_state[p].monitor.type = nil
                 hc_state[p].monitor.has_reset_hs = false; hc_state[p].monitor.target_combo = 0
                 hc_state[p].lockout = false
+                track[p]._wp_tracking = false; track[p]._aa_opp_in_air = false
+                track[p]._aa_opp_attacking = false; track[p]._aa_counted = false
             end
         end
 
@@ -655,7 +721,15 @@ local function d2d_draw()
             total = total + val
 
             local label = LABELS[k]
-            local val_str = tostring(val)
+            -- WP/HC/AA show successes/opportunities, PP just count
+            local val_str
+            local ok_key = k .. "_ok"
+            local opp_key = k .. "_opp"
+            if counters[p][ok_key] and counters[p][opp_key] then
+                val_str = tostring(counters[p][ok_key]) .. "/" .. tostring(counters[p][opp_key])
+            else
+                val_str = tostring(val)
+            end
             local col = STAT_COLORS[k]
 
             if p == 0 then
