@@ -484,7 +484,14 @@ local function detect_events()
             end
         end
 
-        -- 5) STANDARD MONITOR
+        -- 5) COMBO DROP CHECK (before standard monitor, independent of has_reset_hs)
+        -- If we had a HIT trigger but combo drops to 0 → immediate fail
+        if mon.active and mon.type == "HIT" and live_combo == 0 and not hs.lockout then
+            counters[p].hc = counters[p].hc - 1
+            mon.active = false; hs.lockout = true
+        end
+
+        -- 6) STANDARD MONITOR (for ongoing evaluation)
         if mon.active and not hs.lockout then
             if live_hs == 0 then mon.has_reset_hs = true end
             if mon.has_reset_hs then
@@ -492,10 +499,6 @@ local function detect_events()
                     if live_combo >= mon.target_combo then
                         -- SUCCESS: confirmed hit into combo
                         counters[p].hc = counters[p].hc + 1
-                        mon.active = false; hs.lockout = true
-                    elseif live_combo == 0 then
-                        -- FAIL: dropped combo
-                        counters[p].hc = counters[p].hc - 1
                         mon.active = false; hs.lockout = true
                     end
                 elseif mon.type == "BLOCK" then
