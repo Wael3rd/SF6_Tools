@@ -40,6 +40,78 @@ local COL = {
 }
 
 -- =========================================================
+-- HC ENGINE: CONFIG + HELPERS (same as HitConfirm training)
+-- =========================================================
+local hc_config_file = "TrainingHitConfirm_Config.json"
+
+local function parse_list(str)
+    local t = {}
+    if not str then return t end
+    for s in string.gmatch(str, "([^,]+)") do local n = tonumber(s); if n then table.insert(t, n) end end
+    return t
+end
+
+local function is_in(tbl, val)
+    for _, v in ipairs(tbl) do if v == val then return true end end
+    return false
+end
+
+-- Load HC config from shared config file, with defaults
+local hc_cfg = {
+    str_trigger_list = "13",
+    str_success_list = "13",
+    str_break_list = "7,2,1",
+    str_dmg_hit_list = "3",
+    str_dmg_block_list = "30",
+    str_light_btn_list = "16,128",
+    dont_count_blocked = true,
+}
+pcall(function()
+    local f = io.open("reframework/data/" .. hc_config_file, "r")
+    if not f then return end
+    local raw = f:read("*a"); f:close()
+    local data = json.load_string(raw)
+    if data and data.user then
+        local u = data.user
+        if u.str_trigger_list then hc_cfg.str_trigger_list = u.str_trigger_list end
+        if u.str_success_list then hc_cfg.str_success_list = u.str_success_list end
+        if u.str_break_list then hc_cfg.str_break_list = u.str_break_list end
+        if u.str_dmg_hit_list then hc_cfg.str_dmg_hit_list = u.str_dmg_hit_list end
+        if u.str_dmg_block_list then hc_cfg.str_dmg_block_list = u.str_dmg_block_list end
+        if u.str_light_btn_list then hc_cfg.str_light_btn_list = u.str_light_btn_list end
+        if u.dont_count_blocked ~= nil then hc_cfg.dont_count_blocked = u.dont_count_blocked end
+    end
+end)
+
+-- Work tables (parsed from config)
+local hc_work = {
+    trigger    = parse_list(hc_cfg.str_trigger_list),
+    success    = parse_list(hc_cfg.str_success_list),
+    break_list = parse_list(hc_cfg.str_break_list),
+    dmg_hit    = parse_list(hc_cfg.str_dmg_hit_list),
+    dmg_block  = parse_list(hc_cfg.str_dmg_block_list),
+    light_btns = parse_list(hc_cfg.str_light_btn_list),
+}
+
+local MASK_LIGHT  = 144  -- LP(16) + LK(128)
+local MASK_MEDIUM = 288
+local MASK_HEAVY  = 576
+
+-- HC detection state per player
+local hc_state = {
+    [0] = {
+        monitor = { active = false, type = nil, has_reset_hs = false, target_combo = 0, is_medium = false },
+        lockout = false,
+        last_light_time = 0, last_medium_time = 0, last_heavy_time = 0,
+    },
+    [1] = {
+        monitor = { active = false, type = nil, has_reset_hs = false, target_combo = 0, is_medium = false },
+        lockout = false,
+        last_light_time = 0, last_medium_time = 0, last_heavy_time = 0,
+    },
+}
+
+-- =========================================================
 -- STATE
 -- =========================================================
 local STATS = { "pp", "wp", "hc", "aa" }
@@ -54,8 +126,8 @@ local counters = {
 
 -- Per-player tracking
 local track = {
-    [0] = { act_st = 0, prev_act_st = 0, pose_st = 0, frame_st = 0, prev_frame_st = 0, hc_pending = false, was_airborne = false, in_combo = false },
-    [1] = { act_st = 0, prev_act_st = 0, pose_st = 0, frame_st = 0, prev_frame_st = 0, hc_pending = false, was_airborne = false, in_combo = false },
+    [0] = { act_st = 0, prev_act_st = 0, pose_st = 0, frame_st = 0, prev_frame_st = 0, was_airborne = false },
+    [1] = { act_st = 0, prev_act_st = 0, pose_st = 0, frame_st = 0, prev_frame_st = 0, was_airborne = false },
 }
 
 -- Frame state from hooks
@@ -264,10 +336,8 @@ end
 pcall(setup_hooks)
 
 -- =========================================================
--- INPUT READING (for light button detection)
+-- INPUT READING (for button detection)
 -- =========================================================
-local MASK_LIGHT = 144  -- LP(16) + LK(128)
-
 local function read_game_input(player_index)
     local gBattle = sdk.find_type_definition("gBattle")
     if not gBattle then return 0 end
@@ -360,43 +430,93 @@ local function detect_events()
         end
 
         -- =====================
-        -- HIT CONFIRM SCORE (same logic as HitConfirm training)
-        -- +1 = confirmed hit into combo (success)
-        -- -1 = dropped combo or didn't confirm (fail)
-        -- Light threshold: combo 2→3+, Non-light: combo 1→2+
+        -- HIT CONFIRM (full HitConfirm engine logic)
         -- =====================
-        local my_combo = (p == 0) and matrix.p1_combo or matrix.p2_combo
+        local hs = hc_state[p]
+        local mon = hs.monitor
 
-        -- Track light button press for this player
+        -- Get matrix data for attacker (p) and opponent (opp)
+        local p_ft  = (p == 0) and matrix.p1_ft  or matrix.p2_ft
+        local p_gau = (p == 0) and matrix.p1_gau or matrix.p2_gau
+        local opp_ft  = (p == 0) and matrix.p2_ft  or matrix.p1_ft
+        local opp_gau = (p == 0) and matrix.p2_gau or matrix.p1_gau
+        local live_dmg   = (opp == 0) and matrix.p1_dmg   or matrix.p2_dmg
+        local live_hs    = (opp == 0) and matrix.p1_hs    or matrix.p2_hs
+        local live_combo = (p == 0)   and matrix.p1_combo or matrix.p2_combo
+
+        -- Track button presses for this player
         pcall(function()
             local input = read_game_input(p)
-            if (input & MASK_LIGHT) ~= 0 then
-                t_p._last_light_time = os.clock()
-            end
+            if (input & MASK_LIGHT) ~= 0 then hs.last_light_time = os.clock() end
+            if (input & MASK_MEDIUM) ~= 0 then hs.last_medium_time = os.clock() end
+            if (input & MASK_HEAVY) ~= 0 then hs.last_heavy_time = os.clock() end
         end)
-        local is_light = (t_p._last_light_time and (os.clock() - t_p._last_light_time) < 0.25)
 
-        -- Combo starts: lock and determine threshold
-        if my_combo >= 1 and not t_p._hc_active then
-            t_p._hc_active = true
-            t_p._hc_is_light = is_light
-            t_p._hc_scored = false
-            t_p._hc_target = is_light and 3 or 2  -- light needs combo 3+, other needs 2+
-        end
+        local is_light_buffered  = (os.clock() - hs.last_light_time) < 0.25
+        local is_medium_buffered = (os.clock() - hs.last_medium_time) < 0.5
+        local required_combo_start = is_light_buffered and 2 or 1
 
-        -- Combo reaches target = SUCCESS (+1)
-        if t_p._hc_active and not t_p._hc_scored and my_combo >= (t_p._hc_target or 2) then
-            counters[p].hc = counters[p].hc + 1
-            t_p._hc_scored = true
-        end
-
-        -- Combo drops to 0 = evaluate
-        if my_combo == 0 and t_p._hc_active then
-            if not t_p._hc_scored then
-                -- Had a hit but didn't confirm = FAIL (-1)
-                counters[p].hc = counters[p].hc - 1
+        -- 1) LOCKOUT RESET
+        if hs.lockout then
+            if not is_in(hc_work.trigger, p_ft) and not is_in(hc_work.break_list, p_ft) then
+                hs.lockout = false
             end
-            t_p._hc_active = false
+        end
+
+        -- 2) TRIGGER CONDITIONS
+        local is_ft_trig   = is_in(hc_work.trigger, p_ft)
+        local is_dmg_hit   = is_in(hc_work.dmg_hit, live_dmg)
+        local is_dmg_blk   = is_in(hc_work.dmg_block, live_dmg)
+        local trig_hit = (is_ft_trig and live_combo == required_combo_start and is_dmg_hit)
+        local trig_blk = (is_ft_trig and opp_gau > 0 and is_dmg_blk)
+
+        -- 3) HIT TRIGGER
+        if trig_hit and not hs.lockout then
+            if not mon.active or mon.type ~= "HIT" then
+                mon.active = true; mon.type = "HIT"; mon.has_reset_hs = false
+                mon.target_combo = required_combo_start + 1
+            end
+        -- 4) BLOCK TRIGGER
+        elseif trig_blk and not hs.lockout then
+            if not mon.active or mon.type ~= "BLOCK" then
+                mon.active = true; mon.type = "BLOCK"; mon.has_reset_hs = false
+                mon.is_medium = is_medium_buffered
+            end
+        end
+
+        -- 5) STANDARD MONITOR
+        if mon.active and not hs.lockout then
+            if live_hs == 0 then mon.has_reset_hs = true end
+            if mon.has_reset_hs then
+                if mon.type == "HIT" then
+                    if live_combo >= mon.target_combo then
+                        -- SUCCESS: confirmed hit into combo
+                        counters[p].hc = counters[p].hc + 1
+                        mon.active = false; hs.lockout = true
+                    elseif live_combo == 0 then
+                        -- FAIL: dropped combo
+                        counters[p].hc = counters[p].hc - 1
+                        mon.active = false; hs.lockout = true
+                    end
+                elseif mon.type == "BLOCK" then
+                    if is_in(hc_work.break_list, p_ft) then
+                        -- FAIL: unsafe on block
+                        counters[p].hc = counters[p].hc - 1
+                        mon.active = false; hs.lockout = true
+                    elseif is_in(hc_work.success, p_ft) and not is_in(hc_work.trigger, p_ft) and live_hs > 0 then
+                        -- FAIL: autopilot (kept pressing buttons)
+                        counters[p].hc = counters[p].hc - 1
+                        mon.active = false; hs.lockout = true
+                    elseif not is_in(hc_work.dmg_block, live_dmg) then
+                        -- Block resolved: stopped pressing
+                        if not hc_cfg.dont_count_blocked then
+                            counters[p].hc = counters[p].hc + 1
+                        end
+                        -- dont_count_blocked=true means score unchanged (safe but no +1)
+                        mon.active = false; hs.lockout = true
+                    end
+                end
+            end
         end
     end
 end
@@ -420,6 +540,9 @@ re.on_draw_ui(function()
         if imgui.button("RESET ALL") then
             for p = 0, 1 do
                 for _, k in ipairs(STATS) do counters[p][k] = 0 end
+                hc_state[p].monitor.active = false; hc_state[p].monitor.type = nil
+                hc_state[p].monitor.has_reset_hs = false; hc_state[p].monitor.target_combo = 0
+                hc_state[p].lockout = false
             end
         end
 
