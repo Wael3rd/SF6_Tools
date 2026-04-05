@@ -233,7 +233,7 @@ local function draw_single_line_content()
 
     -- Largeurs sans les boutons P2
     local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("U") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("D") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("D") .. ")" }, true)
-    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, true)
+    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("R") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, true)
 
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
 
@@ -309,12 +309,12 @@ local function draw_single_line_content()
 
         imgui.same_line(0, sp)
         if trial_state.is_playing then
-            if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, actual_btn_w, true, false, TRIAL_COLORS) then
+            if styled_sf6_button("STOP TRIAL (" .. sc("R") .. ")", true, actual_btn_w, true, false, TRIAL_COLORS) then
                 trial_state.is_playing = false
             end
         elseif not trial_state.is_recording then
             local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-            if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, actual_btn_w, true, false, TRIAL_COLORS) then
+            if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("R") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, actual_btn_w, true, false, TRIAL_COLORS) then
                 if is_p1_active then trial_state.is_playing = false
                 else load_and_start_trial(0) end
             end
@@ -353,7 +353,7 @@ local function draw_combo_trials_content(is_floating)
     local w_width = (size.x > 50) and size.x or (sw * 0.44)
 
     local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("U") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("D") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("D") .. ")" }, is_floating)
-    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, is_floating)
+    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("R") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, is_floating)
 
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
     local spacing_cols = 20 * (sh / 1080.0)
@@ -478,13 +478,13 @@ local function draw_combo_trials_content(is_floating)
     if not is_floating then imgui.text_colored("3. PLAYBACK (TRIAL)", COLORS.White) end
 
     if trial_state.is_playing or is_demo_active then
-        if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, play_btn_w, is_floating, false, TRIAL_COLORS) then
+        if styled_sf6_button("STOP TRIAL (" .. sc("R") .. ")", true, play_btn_w, is_floating, false, TRIAL_COLORS) then
             trial_state.is_playing = false
             if ctx.stop_demo then ctx.stop_demo() end
         end
     elseif not trial_state.is_recording then
         local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-        if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, is_floating, false, TRIAL_COLORS) then
+        if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("R") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, is_floating, false, TRIAL_COLORS) then
             if is_p1_active then trial_state.is_playing = false
             else load_and_start_trial(0) end
         end
@@ -781,7 +781,7 @@ re.on_frame(function()
 
             -- Calcul du seuil single-line
             local rec_btn_w_check = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("U") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("D") .. ")" }, true)
-            local play_btn_w_check = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "START TRIAL P2 (" .. sc_max("R") .. ")", "STOP TRIAL P2 (" .. sc_max("R") .. ")" }, true)
+            local play_btn_w_check = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("R") .. ")", "START TRIAL P2 (" .. sc_max("R") .. ")", "STOP TRIAL P2 (" .. sc_max("R") .. ")" }, true)
             local min_single_line_w = 200 + (rec_btn_w_check + play_btn_w_check) * 2 + 150 * (sh / 1080.0)
 
             if w_width >= min_single_line_w then
@@ -791,7 +791,7 @@ re.on_frame(function()
                 -- MODE NORMAL : Header + contenu classique
                 -- Calculate exact actual width to synchronize header transition with UI layout
                 local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("U") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("D") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("D") .. ")" }, true)
-                local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, true)
+                local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("R") .. ")", "MIRROR POSITION (" .. sc_max("R") .. ")" }, true)
                 local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
                 local spacing_cols = 20 * (sh / 1080.0)
 
