@@ -448,8 +448,11 @@ local function detect_events()
         end
 
         if t_p._wp_tracking then
-            -- If PLAYER got hit, opponent's move connected = NOT a whiff, cancel
-            if my_state == STATE_HURT or my_state == 10 then
+            -- If PLAYER got hit OR blocked, opponent's move connected = NOT a whiff, cancel
+            -- 9 = hitstun, 10 = blockstun, also check opponent's dmg as backup
+            local opp_dmg = (opp == 0) and (matrix.p1_dmg or 0) or (matrix.p2_dmg or 0)
+            local opp_hs  = (opp == 0) and (matrix.p1_hs or 0) or (matrix.p2_hs or 0)
+            if my_state == STATE_HURT or my_state == 10 or (opp_hs > 0 and opp_dmg > 0 and opp_dmg ~= 34) then
                 t_p._wp_tracking = false
                 t_p._wp_counted = false
             elseif opp_state == STATE_HURT then
