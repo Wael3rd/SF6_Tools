@@ -224,7 +224,8 @@ load_settings()
 -- [TELEPORT SYSTEM]
 -- =========================================================
 local pending_tp = { active = false, attacker_id = 0, distance = 0.0, attempts = 0, expected_c2c = 0.0 }
-local shared_combat = { p1_front_offset = 0.0, p2_front_offset = 0.0, p1_edge_x = nil, p1_dist = nil, p2_edge_x = nil, p2_dist = nil }
+local shared_combat = { p1_front_offset = 0.0, p2_front_offset = 0.0, p1_edge_x = nil, p1_dist = nil, p2_edge_x = nil, p2_dist = nil, p1_zone_name = "", p2_zone_name = "" }
+_G.SF6_SharedCombat = shared_combat
 
 local function apply_teleport_exact(attacker_id, distance, is_retry)
     local gb = sdk.find_type_definition("gBattle")
@@ -2331,6 +2332,8 @@ re.on_frame(function()
         if p1_cache.valid and p2_cache.valid then
             p1_cache.active_zone = evaluate_player_zone(0, p1_cache, p2_cache)
             p2_cache.active_zone = evaluate_player_zone(1, p2_cache, p1_cache)
+            shared_combat.p1_zone_name = p1_cache.active_zone and p1_cache.active_zone.name or ""
+            shared_combat.p2_zone_name = p2_cache.active_zone and p2_cache.active_zone.name or ""
         end
         
         -- [TELEPORT RETRY LOGIC] Ensures strict adherence to target distance
