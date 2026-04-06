@@ -184,7 +184,7 @@ local function get_closest_dist(player_obj, ref_x)
 end
 
 -- Returns true if player P's opponent is in P's orange zone
--- Same logic as DistanceViewer: closest edge of P's boxes to opponent center
+-- Measures: closest edge of OPPONENT's boxes to PLAYER's center
 local function is_opp_in_orange_zone(p)
     local ok, result = pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
@@ -194,9 +194,9 @@ local function is_opp_in_orange_zone(p)
         local cP = pmgr.mcPlayer
         if not cP or not cP[0] or not cP[1] then return false end
         local opp = 1 - p
-        local my_obj = cP[p]
-        local opp_x = cP[opp].pos.x.v / 6553600.0
-        local dist = get_closest_dist(my_obj, opp_x)
+        local opp_obj = cP[opp]
+        local my_x = cP[p].pos.x.v / 6553600.0
+        local dist = get_closest_dist(opp_obj, my_x)
         local my_ar = get_orange_ar(wp_char_names[p])
         return dist <= (my_ar / 100.0) + 0.001
     end)
