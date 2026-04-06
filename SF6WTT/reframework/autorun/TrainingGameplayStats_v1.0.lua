@@ -113,6 +113,94 @@ local hc_state = {
 }
 
 -- =========================================================
+-- ORANGE ZONE: edge-to-edge distance check (from ZoneChecker)
+-- =========================================================
+local esf_names_map = {
+    ["ESF_001"]="Ryu",     ["ESF_002"]="Luke",    ["ESF_003"]="Kimberly", ["ESF_004"]="Chun-Li",
+    ["ESF_005"]="Manon",   ["ESF_006"]="Zangief", ["ESF_007"]="JP",       ["ESF_008"]="Dhalsim",
+    ["ESF_009"]="Cammy",   ["ESF_010"]="Ken",     ["ESF_011"]="Dee Jay",  ["ESF_012"]="Lily",
+    ["ESF_013"]="A.K.I.",  ["ESF_014"]="Rashid",  ["ESF_015"]="Blanka",   ["ESF_016"]="Juri",
+    ["ESF_017"]="Marisa",  ["ESF_018"]="Guile",   ["ESF_019"]="Ed",
+    ["ESF_020"]="E. Honda",["ESF_021"]="Jamie",   ["ESF_022"]="Akuma",
+    ["ESF_025"]="Sagat",   ["ESF_026"]="M.Bison", ["ESF_027"]="Terry",
+    ["ESF_028"]="Maï",     ["ESF_029"]="Elena",   ["ESF_030"]="Viper",["ESF_031"]="Alex"
+}
+
+local wp_char_names = { [0] = "?", [1] = "?" }
+local wp_attack_data = json.load_file("SF6DistanceLogger_Data_Attacks.json") or {}
+
+-- Hook character detection
+pcall(function()
+    local t_med = sdk.find_type_definition("app.FBattleMediator")
+    if not t_med then return end
+    local method = t_med:get_method("UpdateGameInfo")
+    if not method then return end
+    sdk.hook(method, function(args)
+        local managed_obj = sdk.to_managed_object(args[2])
+        if managed_obj then
+            local f_pt = t_med:get_field("PlayerType")
+            if f_pt then
+                local array = f_pt:get_data(managed_obj)
+                if array and array:call("get_Length") >= 2 then
+                    for i = 0, 1 do
+                        local obj = array:call("GetValue", i)
+                        if obj then
+                            local pid = obj:get_type_definition():get_field("value__"):get_data(obj)
+                            local esf = string.format("ESF_%03d", pid)
+                            wp_char_names[i] = esf_names_map[esf] or esf
+                        end
+                    end
+                end
+            end
+        end
+    end, function(r) return r end)
+end)
+
+local function get_orange_ar(char_name)
+    local cdata = wp_attack_data[char_name]
+    if cdata and cdata.red then return (cdata.red.ar or 0) end
+    return 0
+end
+
+local function get_closest_dist(player_obj, ref_x)
+    local min_dist = 999999.0
+    if not player_obj or not player_obj.mpActParam or not player_obj.mpActParam.Collision then return min_dist end
+    local col = player_obj.mpActParam.Collision
+    if col.Infos and col.Infos._items then
+        for _, r in pairs(col.Infos._items) do
+            if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
+                local box_x = (r.OffsetX and r.OffsetX.v) and (r.OffsetX.v / 6553600.0) or 0.0
+                local size_x = (r.SizeX and r.SizeX.v) and (r.SizeX.v / 6553600.0) or 0.0
+                local d_left = math.abs(ref_x - (box_x - size_x))
+                local d_right = math.abs(ref_x - (box_x + size_x))
+                if d_left < min_dist then min_dist = d_left end
+                if d_right < min_dist then min_dist = d_right end
+            end
+        end
+    end
+    return min_dist
+end
+
+-- Returns true if player P's opponent is in P's orange zone
+local function is_opp_in_orange_zone(p)
+    local ok, result = pcall(function()
+        local gBattle = sdk.find_type_definition("gBattle")
+        if not gBattle then return false end
+        local pmgr = gBattle:get_field("Player"):get_data(nil)
+        if not pmgr then return false end
+        local cP = pmgr.mcPlayer
+        if not cP or not cP[0] or not cP[1] then return false end
+        local opp = 1 - p
+        local my_obj = cP[p]
+        local opp_x = cP[opp].pos.x.v / 6553600.0
+        local dist = get_closest_dist(my_obj, opp_x)
+        local my_ar = get_orange_ar(wp_char_names[p])
+        return dist <= (my_ar / 100.0) + 0.001
+    end)
+    return ok and result
+end
+
+-- =========================================================
 -- STATE
 -- =========================================================
 local STATS = { "pp", "wp", "hc", "aa" }
@@ -439,12 +527,12 @@ local function detect_events()
         local opp_pose  = (opp == 0) and (matrix.p1_pose_st or 0) or (matrix.p2_pose_st or 0)
         local my_state  = (p == 0) and track[0].frame_st or track[1].frame_st
 
-        -- Opponent is grounded and attacking
+        -- Opponent is grounded and attacking — start tracking always, zone checked during
         if opp_pose < 2 and not t_p._wp_tracking and not t_p._wp_cooldown then
             if opp_state == 7 or opp_state == 13 or opp_state == 14 or opp_state == STATE_RECOVER then
                 t_p._wp_tracking = true
                 t_p._wp_counted = false
-                -- Check if opponent used a light button
+                t_p._wp_entered_zone = false  -- has opponent entered orange zone at any point?
                 t_p._wp_is_light = false
                 pcall(function()
                     local opp_input = read_game_input(opp)
@@ -459,14 +547,19 @@ local function detect_events()
         end
 
         if t_p._wp_tracking then
+            -- Check if opponent enters orange zone at any point during the move
+            if not t_p._wp_entered_zone and is_opp_in_orange_zone(p) then
+                t_p._wp_entered_zone = true
+            end
+
             -- If PLAYER got hit or blocked, opponent's move connected = NOT a whiff, cancel
             if my_state == STATE_HURT or my_state == 10 then
                 t_p._wp_tracking = false
                 t_p._wp_counted = false
                 t_p._wp_cooldown = true
             elseif opp_state == STATE_HURT then
-                -- Player punished the opponent = SUCCESS (+1 always, even lights)
-                if not t_p._wp_counted then
+                -- Player punished the opponent = SUCCESS (only if was in zone)
+                if not t_p._wp_counted and t_p._wp_entered_zone then
                     counters[p].wp = counters[p].wp + 1
                     counters[p].wp_ok = counters[p].wp_ok + 1
                     counters[p].wp_opp = counters[p].wp_opp + 1
@@ -476,16 +569,16 @@ local function detect_events()
                 t_p._wp_cooldown = true
             elseif opp_state == STATE_NEUTRAL or opp_state == 0 then
                 -- Opponent returned to neutral unpunished
-                if not t_p._wp_counted then
+                if not t_p._wp_counted and t_p._wp_entered_zone then
+                    -- Only count as missed opportunity if opponent was in zone
                     if t_p._wp_is_light then
-                        -- Light whiff missed: no penalty, just count opportunity
                         counters[p].wp_opp = counters[p].wp_opp + 1
                     else
-                        -- Non-light whiff missed: -1
                         counters[p].wp = counters[p].wp - 1
                         counters[p].wp_opp = counters[p].wp_opp + 1
                     end
                 end
+                -- Never entered zone = ignore completely
                 t_p._wp_tracking = false
                 t_p._wp_counted = false
             end
