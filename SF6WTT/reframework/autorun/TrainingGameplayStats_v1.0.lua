@@ -276,9 +276,9 @@ pcall(function()
     end, function(r) return r end)
 end)
 
-local function get_orange_ar(char_name)
+local function get_red_ar(char_name)
     local cdata = wp_attack_data[char_name]
-    if cdata and cdata.red then return (cdata.red.ar or 0) end
+    if cdata and cdata.low then return (cdata.low.ar or 0) end
     return 0
 end
 
@@ -305,7 +305,7 @@ end
 
 -- Returns true if player P's opponent is in P's orange zone
 -- Measures: closest edge of OPPONENT's boxes to PLAYER's center
-local function is_opp_in_orange_zone(p)
+local function is_opp_in_red_zone(p)
     local ok, result = pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
         if not gBattle then return false end
@@ -317,7 +317,7 @@ local function is_opp_in_orange_zone(p)
         local opp_obj = cP[opp]
         local my_x = cP[p].pos.x.v / 6553600.0
         local dist = get_closest_dist(opp_obj, my_x)
-        local my_ar = get_orange_ar(wp_char_names[p])
+        local my_ar = get_red_ar(wp_char_names[p])
         return dist <= (my_ar / 100.0) + 0.001
     end)
     return ok and result
@@ -696,7 +696,7 @@ local function detect_events()
             local wp_skip = (not t_p._wp_move_input and has_any_exclusion(p))
 
             -- Check if opponent enters orange zone at any point during the move
-            if not wp_skip and not t_p._wp_entered_zone and is_opp_in_orange_zone(p) then
+            if not wp_skip and not t_p._wp_entered_zone and is_opp_in_red_zone(p) then
                 t_p._wp_entered_zone = true
             end
 
@@ -739,13 +739,34 @@ local function detect_events()
         local opp_suki = (opp == 0) and matrix.p1_suki or matrix.p2_suki
         local my_pose = (p == 0) and (matrix.p1_pose_st or 0) or (matrix.p2_pose_st or 0)
 
-        if opp_pose >= 2 then
-            t_p._aa_opp_in_air = true
+        -- Skip AA tracking entirely if player P is being comboed (hurt/airborne)
+        local my_state_raw = (p == 0) and track[0].frame_st or track[1].frame_st
+        local p_is_hurt = (my_state_raw == STATE_HURT)
+
+        -- Check if opponent is being comboed (hurt while airborne = launched, not jumping)
+        local opp_is_launched = (opp_pose >= 2 and opp_state == STATE_HURT)
+
+        if not p_is_hurt and opp_pose >= 2 and not opp_is_launched then
+            if not t_p._aa_opp_in_air then
+                t_p._aa_opp_in_air = true
+                t_p._aa_launched = false
+            end
             if opp_suki then t_p._aa_opp_attacking = true end
+        elseif opp_is_launched and not t_p._aa_opp_in_air then
+            t_p._aa_launched = true
         end
 
-        if t_p._aa_opp_in_air then
-            -- Only count if opponent was ATTACKING in air (suki_flag) and player is GROUNDED
+        -- Cancel AA tracking if player gets hurt BUT only if opponent wasn't attacking from air
+        -- (if opponent was jump-attacking and hits you, that's a failed AA = -1)
+        if p_is_hurt and t_p._aa_opp_in_air and not t_p._aa_opp_attacking then
+            t_p._aa_opp_in_air = false
+            t_p._aa_opp_attacking = false
+            t_p._aa_counted = false
+            t_p._aa_launched = false
+        end
+
+        if t_p._aa_opp_in_air and not t_p._aa_launched then
+            -- SUCCESS: opponent was attacking from air and got hit (AA'd)
             if t_p._aa_opp_attacking and opp_state == STATE_HURT and my_pose < 2 then
                 if not t_p._aa_counted then
                     counters[p].aa = counters[p].aa + 1
@@ -754,8 +775,15 @@ local function detect_events()
                     t_p._aa_counted = true
                 end
             end
+            -- FAIL: opponent jump-attacked and HIT YOU (you got hurt by the jump-in)
+            if t_p._aa_opp_attacking and p_is_hurt and not t_p._aa_counted then
+                counters[p].aa = counters[p].aa - 1
+                counters[p].aa_opp = counters[p].aa_opp + 1
+                t_p._aa_counted = true
+            end
             -- Opponent landed (back on ground + neutral)
             if opp_pose < 2 and (opp_state == STATE_NEUTRAL or opp_state == 0) then
+                -- Landed safely without being AA'd and without hitting you = also a fail
                 if t_p._aa_opp_attacking and not t_p._aa_counted then
                     counters[p].aa = counters[p].aa - 1
                     counters[p].aa_opp = counters[p].aa_opp + 1
@@ -763,7 +791,14 @@ local function detect_events()
                 t_p._aa_opp_in_air = false
                 t_p._aa_opp_attacking = false
                 t_p._aa_counted = false
+                t_p._aa_launched = false
             end
+        elseif opp_pose < 2 then
+            -- Reset all AA state when opponent is back on ground
+            t_p._aa_opp_in_air = false
+            t_p._aa_opp_attacking = false
+            t_p._aa_counted = false
+            t_p._aa_launched = false
         end
 
         -- =====================
