@@ -162,30 +162,29 @@ local function get_orange_ar(char_name)
     return 0
 end
 
--- Get front offset of a player (furthest box edge toward opponent)
--- Same as DistanceViewer's front_offset calculation
-local function get_front_offset(player_obj, is_on_left)
-    local front_offset = 0.0
-    if not player_obj or not player_obj.mpActParam or not player_obj.mpActParam.Collision then return 0.0 end
+-- Get closest distance from player's box edges to opponent's position
+-- Same as DistanceViewer's analyze_boxes min_dist logic
+local function get_closest_dist(player_obj, ref_x)
+    local min_dist = 999999.0
+    if not player_obj or not player_obj.mpActParam or not player_obj.mpActParam.Collision then return min_dist end
     local col = player_obj.mpActParam.Collision
-    local px = player_obj.pos.x.v / 6553600.0
     if col.Infos and col.Infos._items then
         for _, r in pairs(col.Infos._items) do
             if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
                 local box_x = (r.OffsetX and r.OffsetX.v) and (r.OffsetX.v / 6553600.0) or 0.0
                 local size_x = (r.SizeX and r.SizeX.v) and (r.SizeX.v / 6553600.0) or 0.0
-                local right_edge = box_x + size_x
-                local left_edge = box_x - size_x
-                local off = is_on_left and (right_edge - px) or (px - left_edge)
-                if off > front_offset then front_offset = off end
+                local d_left = math.abs(ref_x - (box_x - size_x))
+                local d_right = math.abs(ref_x - (box_x + size_x))
+                if d_left < min_dist then min_dist = d_left end
+                if d_right < min_dist then min_dist = d_right end
             end
         end
     end
-    return front_offset * 100.0  -- same scale as ar values
+    return min_dist
 end
 
 -- Returns true if player P's opponent is in P's orange zone
--- Measures edge-to-edge: gap = center_dist - P_front_offset - Opp_front_offset
+-- Same logic as DistanceViewer: closest edge of P's boxes to opponent center
 local function is_opp_in_orange_zone(p)
     local ok, result = pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
@@ -195,22 +194,11 @@ local function is_opp_in_orange_zone(p)
         local cP = pmgr.mcPlayer
         if not cP or not cP[0] or not cP[1] then return false end
         local opp = 1 - p
-        local my_x = cP[p].pos.x.v / 6553600.0
+        local my_obj = cP[p]
         local opp_x = cP[opp].pos.x.v / 6553600.0
-        local is_p_left = my_x < opp_x
-
-        -- Front offsets (how far each player's boxes extend toward each other)
-        local my_front = get_front_offset(cP[p], is_p_left)
-        local opp_front = get_front_offset(cP[opp], not is_p_left)
-
-        -- Edge-to-edge distance
-        local center_dist = math.abs(my_x - opp_x) * 100.0
-        local edge_dist = center_dist - my_front - opp_front
-
+        local dist = get_closest_dist(my_obj, opp_x)
         local my_ar = get_orange_ar(wp_char_names[p])
-        -- ar is in same units as front_offset (already *100)
-        -- The orange zone ar represents total reach, so compare edge_dist with ar
-        return edge_dist <= my_ar
+        return dist <= (my_ar / 100.0) + 0.001
     end)
     return ok and result
 end
