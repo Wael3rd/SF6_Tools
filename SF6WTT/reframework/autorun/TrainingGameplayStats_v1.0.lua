@@ -169,23 +169,32 @@ local wp_char_names = { [0] = "?", [1] = "?" }
 local wp_attack_data = json.load_file("SF6DistanceLogger_Data_Attacks.json") or {}
 
 -- =========================================================
--- WP MOVE FILTER: exclusion set (default = all tracked)
+-- WP MOVE FILTER: per-player exclusion sets (default = all tracked)
 -- =========================================================
 local WP_CONFIG_FILE = "TrainingGameplayStats_WPFilter.json"
--- Stores excluded moves: { ["5LP"]=true, ... }. Absent = tracked.
-local wp_excluded = {}
+-- wp_excluded[0] = P1's filter (which P2 moves to ignore)
+-- wp_excluded[1] = P2's filter (which P1 moves to ignore)
+local wp_excluded = { [0] = {}, [1] = {} }
 
 pcall(function()
     local data = json.load_file(WP_CONFIG_FILE)
-    if data then wp_excluded = data end
+    if data then
+        if data["0"] then wp_excluded[0] = data["0"] end
+        if data["1"] then wp_excluded[1] = data["1"] end
+    end
 end)
 
 local function save_wp_filter()
-    json.dump_file(WP_CONFIG_FILE, wp_excluded)
+    json.dump_file(WP_CONFIG_FILE, { ["0"] = wp_excluded[0], ["1"] = wp_excluded[1] })
 end
 
-local function is_move_excluded(input_notation)
-    return wp_excluded[input_notation] == true
+local function has_any_exclusion(player)
+    for _, _ in pairs(wp_excluded[player]) do return true end
+    return false
+end
+
+local function is_move_excluded(player, input_notation)
+    return wp_excluded[player][input_notation] == true
 end
 
 -- =========================================================
@@ -232,10 +241,13 @@ local function read_opp_full_input(opp_index)
     return ok and result or nil
 end
 
--- WP filter submenu state
-local wp_submenu_open = false
--- Screen position for ">" button + submenu placement (set by D2D, read by imgui)
-local wp_btn_screen = { x = 0, y = 0, w = 0, h = 0, panel_x = 0, panel_w = 0 }
+-- WP filter submenu: independent open state per player
+local wp_submenu_open = { [0] = false, [1] = false }
+-- Screen position for ">" buttons per player (set by D2D, read by imgui)
+local wp_btn_screen = {
+    [0] = { x = 0, y = 0, w = 0, h = 0, panel_x = 0, panel_w = 0 },
+    [1] = { x = 0, y = 0, w = 0, h = 0, panel_x = 0, panel_w = 0 },
+}
 
 -- Hook character detection
 pcall(function()
@@ -643,19 +655,35 @@ local function detect_events()
             if opp_state == 7 or opp_state == 13 or opp_state == 14 or opp_state == STATE_RECOVER then
                 t_p._wp_tracking = true
                 t_p._wp_counted = false
-                t_p._wp_entered_zone = false  -- has opponent entered orange zone at any point?
+                t_p._wp_entered_zone = false
                 t_p._wp_is_light = false
                 t_p._wp_move_input = nil
+                t_p._wp_filtered_out = false
                 pcall(function()
                     local opp_input = read_game_input(opp)
                     if (opp_input & MASK_LIGHT) ~= 0 then t_p._wp_is_light = true end
                     t_p._wp_move_input = read_opp_full_input(opp)
                 end)
-                -- Filter: skip if move is excluded
-                if t_p._wp_move_input and is_move_excluded(t_p._wp_move_input) then
+                -- Immediate filter if we got the input
+                if t_p._wp_move_input and is_move_excluded(p, t_p._wp_move_input) then
                     t_p._wp_tracking = false
+                    t_p._wp_filtered_out = true
                 end
             end
+        end
+
+        -- Keep trying to identify the move while tracking (button may have been released on first frame)
+        if t_p._wp_tracking and not t_p._wp_move_input then
+            pcall(function()
+                local input = read_opp_full_input(opp)
+                if input then
+                    t_p._wp_move_input = input
+                    if is_move_excluded(p, input) then
+                        t_p._wp_tracking = false
+                        t_p._wp_filtered_out = true
+                    end
+                end
+            end)
         end
 
         -- Cooldown resets when opponent returns to neutral
@@ -664,8 +692,11 @@ local function detect_events()
         end
 
         if t_p._wp_tracking then
+            -- If move still unidentified and we have exclusions, skip entirely
+            local wp_skip = (not t_p._wp_move_input and has_any_exclusion(p))
+
             -- Check if opponent enters orange zone at any point during the move
-            if not t_p._wp_entered_zone and is_opp_in_orange_zone(p) then
+            if not wp_skip and not t_p._wp_entered_zone and is_opp_in_orange_zone(p) then
                 t_p._wp_entered_zone = true
             end
 
@@ -675,8 +706,8 @@ local function detect_events()
                 t_p._wp_counted = false
                 t_p._wp_cooldown = true
             elseif opp_state == STATE_HURT then
-                -- Player punished the opponent = SUCCESS (only if was in zone)
-                if not t_p._wp_counted and t_p._wp_entered_zone then
+                -- Player punished the opponent = SUCCESS (only if was in zone and not filtered)
+                if not wp_skip and not t_p._wp_counted and t_p._wp_entered_zone then
                     counters[p].wp = counters[p].wp + 1
                     counters[p].wp_ok = counters[p].wp_ok + 1
                     counters[p].wp_opp = counters[p].wp_opp + 1
@@ -686,8 +717,7 @@ local function detect_events()
                 t_p._wp_cooldown = true
             elseif opp_state == STATE_NEUTRAL or opp_state == 0 then
                 -- Opponent returned to neutral unpunished
-                if not t_p._wp_counted and t_p._wp_entered_zone then
-                    -- Only count as missed opportunity if opponent was in zone
+                if not wp_skip and not t_p._wp_counted and t_p._wp_entered_zone then
                     if t_p._wp_is_light then
                         counters[p].wp_opp = counters[p].wp_opp + 1
                     else
@@ -839,23 +869,94 @@ end
 -- =========================================================
 re.on_frame(function()
     if not should_show() then
-        wp_submenu_open = false
+        wp_submenu_open[0] = false
+        wp_submenu_open[1] = false
         return
     end
     pcall(detect_events)
 
-    -- Click detection on WP ">" button (D2D hit zone)
+    -- Click detection on WP ">"/"<" buttons
     pcall(function()
         if imgui.is_mouse_clicked(0) then
             local m = imgui.get_mouse()
-            if m and wp_btn_screen.w > 0 then
-                if m.x >= wp_btn_screen.x and m.x <= wp_btn_screen.x + wp_btn_screen.w
-                   and m.y >= wp_btn_screen.y and m.y <= wp_btn_screen.y + wp_btn_screen.h then
-                    wp_submenu_open = not wp_submenu_open
+            if m then
+                for p = 0, 1 do
+                    local b = wp_btn_screen[p]
+                    if b.w > 0 and m.x >= b.x and m.x <= b.x + b.w and m.y >= b.y and m.y <= b.y + b.h then
+                        wp_submenu_open[p] = not wp_submenu_open[p]
+                        break
+                    end
                 end
             end
         end
     end)
+
+    -- Draw WP filter submenus (one per player, independent)
+    for p = 0, 1 do
+        if wp_submenu_open[p] then
+            local opp = 1 - p
+            local char_name = wp_char_names[opp]
+            local b = wp_btn_screen[p]
+            local excl = wp_excluded[p]
+
+            local sub_x, sub_y
+            if p == 0 then
+                sub_x = b.panel_x + b.panel_w + 4
+            else
+                sub_x = b.panel_x - 204
+            end
+            sub_y = b.y
+
+            imgui.push_style_color(2, COL.bg)
+            imgui.push_style_color(5, COL.border)
+            imgui.push_style_color(0, COL.text)
+            imgui.push_style_color(7, 0x44FFFFFF)
+            imgui.push_style_color(18, COL.wp)
+            imgui.push_style_color(21, 0x44FFFFFF)
+            imgui.push_style_color(22, 0x66FFFFFF)
+            imgui.push_style_color(23, 0x88FFFFFF)
+
+            imgui.set_next_window_pos(Vector2f.new(sub_x, sub_y), 1 << 2)
+            imgui.set_next_window_size(Vector2f.new(200, 400), 1 << 2)
+            local visible = imgui.begin_window("##wp_sub_p" .. p, nil, 1 | 32)
+            if visible then
+                local cdata = char_name and char_name ~= "?" and wp_attack_data[char_name]
+                if cdata and cdata.moves then
+                    imgui.text(char_name)
+                    imgui.separator()
+
+                    if imgui.button("Check All##p" .. p) then
+                        for _, move in ipairs(cdata.moves) do
+                            excl[move.input] = nil
+                        end
+                        save_wp_filter()
+                    end
+                    imgui.same_line()
+                    if imgui.button("Uncheck All##p" .. p) then
+                        for _, move in ipairs(cdata.moves) do
+                            excl[move.input] = true
+                        end
+                        save_wp_filter()
+                    end
+
+                    imgui.spacing()
+                    for _, move in ipairs(cdata.moves) do
+                        local is_checked = not excl[move.input]
+                        local chg, val = imgui.checkbox(move.input .. "##p" .. p, is_checked)
+                        if chg then
+                            excl[move.input] = (not val) or nil
+                            save_wp_filter()
+                        end
+                    end
+                else
+                    imgui.text("No opponent")
+                    imgui.text("detected yet")
+                end
+            end
+            imgui.end_window()
+            imgui.pop_style_color(8)
+        end
+    end
 end)
 
 -- =========================================================
@@ -939,82 +1040,7 @@ re.on_draw_ui(function()
         imgui.tree_pop()
     end
 
-    -- (WP ">" click is handled in re.on_frame via imgui.is_mouse_clicked)
-    if wp_submenu_open and should_show() and wp_btn_screen.panel_w > 0 then
-        -- Position: right next to P1 stats panel
-        local sub_x = wp_btn_screen.panel_x + wp_btn_screen.panel_w + 4
-        local sub_y = wp_btn_screen.y
-
-        -- Style to match stats panel
-        imgui.push_style_color(2, COL.bg)          -- WindowBg
-        imgui.push_style_color(5, COL.border)       -- Border
-        imgui.push_style_color(0, COL.text)          -- Text
-        imgui.push_style_color(7, 0x44FFFFFF)        -- FrameBg (checkbox bg)
-        imgui.push_style_color(18, COL.wp)           -- CheckMark
-        imgui.push_style_color(21, 0x44FFFFFF)       -- Button
-        imgui.push_style_color(22, 0x66FFFFFF)       -- ButtonHovered
-        imgui.push_style_color(23, 0x88FFFFFF)       -- ButtonActive
-
-        imgui.set_next_window_pos(Vector2f.new(sub_x, sub_y), 1 << 2) -- FirstUseEver
-        imgui.set_next_window_size(Vector2f.new(200, 400), 1 << 2)
-        -- NoTitleBar | NoCollapse
-        local sub_flags = 1 | 32
-        local visible = imgui.begin_window("##wp_submenu", nil, sub_flags)
-        if visible then
-            -- Collect opponent characters
-            local opp_names = {}
-            for i = 0, 1 do
-                if wp_char_names[i] and wp_char_names[i] ~= "?" then
-                    opp_names[wp_char_names[i]] = true
-                end
-            end
-
-            local any_char = false
-            for char_name, _ in pairs(opp_names) do
-                any_char = true
-                local cdata = wp_attack_data[char_name]
-                if cdata and cdata.moves then
-                    imgui.text(char_name)
-                    imgui.separator()
-
-                    -- Check All / Uncheck All
-                    if imgui.button("Check All") then
-                        for _, move in ipairs(cdata.moves) do
-                            wp_excluded[move.input] = nil
-                        end
-                        save_wp_filter()
-                    end
-                    imgui.same_line()
-                    if imgui.button("Uncheck All") then
-                        for _, move in ipairs(cdata.moves) do
-                            wp_excluded[move.input] = true
-                        end
-                        save_wp_filter()
-                    end
-
-                    imgui.spacing()
-                    for _, move in ipairs(cdata.moves) do
-                        local input = move.input
-                        local is_checked = not wp_excluded[input]
-                        local chg, val = imgui.checkbox(input, is_checked)
-                        if chg then
-                            wp_excluded[input] = (not val) or nil
-                            save_wp_filter()
-                        end
-                    end
-                else
-                    imgui.text(char_name .. ": no data")
-                end
-            end
-
-            if not any_char then
-                imgui.text("No opponent")
-                imgui.text("detected yet")
-            end
-        end
-        imgui.end_window()
-        imgui.pop_style_color(8)
-    end
+    -- (WP submenu is drawn in re.on_frame, independent of REF menu)
 end)
 
 -- =========================================================
@@ -1119,16 +1145,15 @@ local function d2d_draw()
                 -- ">" indicator next to WP label (clickable via imgui overlay)
                 if k == "wp" then
                     local gt_x = px + pad + #label * fhs * 0.62 + fhs * 0.3
-                    local gt_col = wp_submenu_open and COL.text or COL.text_dim
+                    local gt_col = wp_submenu_open[0] and COL.text or COL.text_dim
                     d2d.text(_font_small, ">", gt_x + 1, ty + 1, COL.shadow)
                     d2d.text(_font_small, ">", gt_x, ty, gt_col)
-                    -- Store hit zone for imgui overlay
-                    wp_btn_screen.x = gt_x - fhs * 0.3
-                    wp_btn_screen.y = ty - fhs * 0.3
-                    wp_btn_screen.w = fhs * 1.5
-                    wp_btn_screen.h = fhs * 1.8
-                    wp_btn_screen.panel_x = px
-                    wp_btn_screen.panel_w = pw
+                    wp_btn_screen[0].x = gt_x - fhs * 0.3
+                    wp_btn_screen[0].y = ty - fhs * 0.3
+                    wp_btn_screen[0].w = fhs * 1.5
+                    wp_btn_screen[0].h = fhs * 1.8
+                    wp_btn_screen[0].panel_x = px
+                    wp_btn_screen[0].panel_w = pw
                 end
 
                 local vx = px + pw - pad - #val_str * fhs * 0.62
@@ -1143,12 +1168,18 @@ local function d2d_draw()
                 d2d.text(_font_small, label, lx + 1, ty + 1, COL.shadow)
                 d2d.text(_font_small, label, lx, ty, col)
 
-                -- ">" indicator next to WP label (P2 side, before label)
+                -- "<" indicator next to WP label (P2 side, before label)
                 if k == "wp" then
                     local gt_x = lx - fhs * 0.9
-                    local gt_col = wp_submenu_open and COL.text or COL.text_dim
+                    local gt_col = wp_submenu_open[1] and COL.text or COL.text_dim
                     d2d.text(_font_small, "<", gt_x + 1, ty + 1, COL.shadow)
                     d2d.text(_font_small, "<", gt_x, ty, gt_col)
+                    wp_btn_screen[1].x = gt_x - fhs * 0.3
+                    wp_btn_screen[1].y = ty - fhs * 0.3
+                    wp_btn_screen[1].w = fhs * 1.5
+                    wp_btn_screen[1].h = fhs * 1.8
+                    wp_btn_screen[1].panel_x = px
+                    wp_btn_screen[1].panel_w = pw
                 end
             end
         end

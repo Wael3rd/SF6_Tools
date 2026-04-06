@@ -788,11 +788,11 @@ local debug_p2_mem = get_p2_extended_info()
         end
 
         if styled_header("--- SESSION ---", UI_THEME.hdr_session) then
-            local c_fl, v_fl = imgui.checkbox("Detacher en fenetre flottante", user_config.show_floating)
+            local c_fl, v_fl = imgui.checkbox("FLOATING WINDOW", user_config.show_floating)
             if c_fl then user_config.show_floating = v_fl; save_conf() end
 
             if user_config.show_floating then
-                imgui.text_colored("Cette section est actuellement detachee en fenetre flottante.", COLORS.DarkGrey)
+                imgui.text_colored("Session controls are in the floating window.", COLORS.DarkGrey)
             else
                 imgui.separator(); imgui.spacing()
                 draw_session_buttons_docked()

@@ -333,6 +333,7 @@ local function load_conf()
     user_config.difficulty = 3
     user_config.show_early_detection = false
     user_config.dont_count_blocked = true
+    user_config.session_mode = "trials"
     
     if user_config.difficulty == nil then user_config.difficulty = 2 end
     refresh_tables()
@@ -1273,11 +1274,11 @@ re.on_draw_ui(function()
     if imgui.tree_node("Hit Confirm Trainer (V7.3 Heavy DR Fail)") then
 
         if styled_header("--- SESSION CONFIGURATION ---", UI_THEME.hdr_session) then
-            local c_fl, v_fl = imgui.checkbox("Detacher en fenetre flottante", user_config.show_floating)
+            local c_fl, v_fl = imgui.checkbox("FLOATING WINDOW", user_config.show_floating)
             if c_fl then user_config.show_floating = v_fl; save_conf() end
 
             if user_config.show_floating then
-                imgui.text_colored("Cette section est actuellement detachee en fenetre flottante.", COLORS.DarkGrey)
+                imgui.text_colored("Session controls are in the floating window.", COLORS.DarkGrey)
             else
                 imgui.separator(); imgui.spacing()
                 draw_session_buttons_docked()

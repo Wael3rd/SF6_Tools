@@ -326,7 +326,8 @@ local function load_conf()
     if type(user_config.hud_base_size) ~= "number" then user_config.hud_base_size = 60 end
     
     if user_config.playback_mode_auto == nil then user_config.playback_mode_auto = true end
-    
+
+    user_config.session_mode = 2
     user_config.timer_mode_enabled = (user_config.session_mode == 1)
 end
 load_conf()
@@ -1063,11 +1064,11 @@ re.on_draw_ui(function()
     if imgui.tree_node("Reaction Trainer Remastered (V6.10 - Recording Fix)") then
 
         if styled_header("--- SESSION CONFIGURATION ---", UI_THEME.hdr_session) then
-                local c_fl, v_fl = imgui.checkbox("Detacher en fenetre flottante", user_config.show_floating)
+                local c_fl, v_fl = imgui.checkbox("FLOATING WINDOW", user_config.show_floating)
                 if c_fl then user_config.show_floating = v_fl; save_conf() end
 
                 if user_config.show_floating then
-                    imgui.text_colored("Cette section est actuellement detachee en fenetre flottante.", COLORS.DarkGrey)
+                    imgui.text_colored("Session controls are in the floating window.", COLORS.DarkGrey)
                 else
                     imgui.separator(); imgui.spacing()
                     draw_session_buttons_docked()
