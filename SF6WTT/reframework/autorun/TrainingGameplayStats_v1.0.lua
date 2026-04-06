@@ -168,6 +168,75 @@ local esf_names_map = {
 local wp_char_names = { [0] = "?", [1] = "?" }
 local wp_attack_data = json.load_file("SF6DistanceLogger_Data_Attacks.json") or {}
 
+-- =========================================================
+-- WP MOVE FILTER: exclusion set (default = all tracked)
+-- =========================================================
+local WP_CONFIG_FILE = "TrainingGameplayStats_WPFilter.json"
+-- Stores excluded moves: { ["5LP"]=true, ... }. Absent = tracked.
+local wp_excluded = {}
+
+pcall(function()
+    local data = json.load_file(WP_CONFIG_FILE)
+    if data then wp_excluded = data end
+end)
+
+local function save_wp_filter()
+    json.dump_file(WP_CONFIG_FILE, wp_excluded)
+end
+
+local function is_move_excluded(input_notation)
+    return wp_excluded[input_notation] == true
+end
+
+-- =========================================================
+-- INPUT NOTATION HELPERS (for identifying opponent's move)
+-- =========================================================
+local function get_numpad_notation(dir_val)
+    if not dir_val then return "5" end
+    local u, d, l, r = (dir_val & 1) ~= 0, (dir_val & 2) ~= 0, (dir_val & 4) ~= 0, (dir_val & 8) ~= 0
+    if u and l then return "7" elseif u and r then return "9" elseif d and l then return "1" elseif d and r then return "3"
+    elseif u then return "8" elseif d then return "2" elseif l then return "4" elseif r then return "6" end
+    return "5"
+end
+
+local function get_btn_text(val)
+    if not val or val == 0 then return "" end
+    local btns = {}
+    if (val & 16) ~= 0  then table.insert(btns, "LP") end
+    if (val & 32) ~= 0  then table.insert(btns, "MP") end
+    if (val & 64) ~= 0  then table.insert(btns, "HP") end
+    if (val & 128) ~= 0 then table.insert(btns, "LK") end
+    if (val & 256) ~= 0 then table.insert(btns, "MK") end
+    if (val & 512) ~= 0 then table.insert(btns, "HK") end
+    if #btns == 0 then return "" end
+    return table.concat(btns, "")
+end
+
+local function read_opp_full_input(opp_index)
+    local ok, result = pcall(function()
+        local gBattle = sdk.find_type_definition("gBattle")
+        if not gBattle then return nil end
+        local pmgr = gBattle:get_field("Player"):get_data(nil)
+        if not pmgr then return nil end
+        local p = pmgr:call("getPlayer", opp_index)
+        if not p then return nil end
+        local td = p:get_type_definition()
+        local f_in = td:get_field("pl_input_new")
+        local f_sw = td:get_field("pl_sw_new")
+        local dv = (f_in and f_in:get_data(p)) or 0
+        local bv = (f_sw and f_sw:get_data(p)) or 0
+        local btn = get_btn_text(bv)
+        if btn == "" then return nil end
+        return get_numpad_notation(dv) .. btn
+    end)
+    return ok and result or nil
+end
+
+-- WP filter submenu state
+local wp_submenu_open = false
+-- Screen position for ">" button + submenu placement (set by D2D, read by imgui)
+local wp_btn_screen = { x = 0, y = 0, w = 0, h = 0, panel_x = 0, panel_w = 0 }
+
 -- Hook character detection
 pcall(function()
     local t_med = sdk.find_type_definition("app.FBattleMediator")
@@ -576,10 +645,16 @@ local function detect_events()
                 t_p._wp_counted = false
                 t_p._wp_entered_zone = false  -- has opponent entered orange zone at any point?
                 t_p._wp_is_light = false
+                t_p._wp_move_input = nil
                 pcall(function()
                     local opp_input = read_game_input(opp)
                     if (opp_input & MASK_LIGHT) ~= 0 then t_p._wp_is_light = true end
+                    t_p._wp_move_input = read_opp_full_input(opp)
                 end)
+                -- Filter: skip if move is excluded
+                if t_p._wp_move_input and is_move_excluded(t_p._wp_move_input) then
+                    t_p._wp_tracking = false
+                end
             end
         end
 
@@ -763,8 +838,24 @@ end
 -- GAME LOOP
 -- =========================================================
 re.on_frame(function()
-    if not should_show() then return end
+    if not should_show() then
+        wp_submenu_open = false
+        return
+    end
     pcall(detect_events)
+
+    -- Click detection on WP ">" button (D2D hit zone)
+    pcall(function()
+        if imgui.is_mouse_clicked(0) then
+            local m = imgui.get_mouse()
+            if m and wp_btn_screen.w > 0 then
+                if m.x >= wp_btn_screen.x and m.x <= wp_btn_screen.x + wp_btn_screen.w
+                   and m.y >= wp_btn_screen.y and m.y <= wp_btn_screen.y + wp_btn_screen.h then
+                    wp_submenu_open = not wp_submenu_open
+                end
+            end
+        end
+    end)
 end)
 
 -- =========================================================
@@ -782,6 +873,8 @@ re.on_draw_ui(function()
 
         local pp_chg, pp_val = imgui.checkbox("PP: PostGuard mode (trade_dm only)", cfg.pp_postguard_mode)
         if pp_chg then cfg.pp_postguard_mode = pp_val end
+
+        imgui.spacing()
 
         if imgui.button("RESET ALL") then
             for p = 0, 1 do
@@ -844,6 +937,83 @@ re.on_draw_ui(function()
         end
 
         imgui.tree_pop()
+    end
+
+    -- (WP ">" click is handled in re.on_frame via imgui.is_mouse_clicked)
+    if wp_submenu_open and should_show() and wp_btn_screen.panel_w > 0 then
+        -- Position: right next to P1 stats panel
+        local sub_x = wp_btn_screen.panel_x + wp_btn_screen.panel_w + 4
+        local sub_y = wp_btn_screen.y
+
+        -- Style to match stats panel
+        imgui.push_style_color(2, COL.bg)          -- WindowBg
+        imgui.push_style_color(5, COL.border)       -- Border
+        imgui.push_style_color(0, COL.text)          -- Text
+        imgui.push_style_color(7, 0x44FFFFFF)        -- FrameBg (checkbox bg)
+        imgui.push_style_color(18, COL.wp)           -- CheckMark
+        imgui.push_style_color(21, 0x44FFFFFF)       -- Button
+        imgui.push_style_color(22, 0x66FFFFFF)       -- ButtonHovered
+        imgui.push_style_color(23, 0x88FFFFFF)       -- ButtonActive
+
+        imgui.set_next_window_pos(Vector2f.new(sub_x, sub_y), 1 << 2) -- FirstUseEver
+        imgui.set_next_window_size(Vector2f.new(200, 400), 1 << 2)
+        -- NoTitleBar | NoCollapse
+        local sub_flags = 1 | 32
+        local visible = imgui.begin_window("##wp_submenu", nil, sub_flags)
+        if visible then
+            -- Collect opponent characters
+            local opp_names = {}
+            for i = 0, 1 do
+                if wp_char_names[i] and wp_char_names[i] ~= "?" then
+                    opp_names[wp_char_names[i]] = true
+                end
+            end
+
+            local any_char = false
+            for char_name, _ in pairs(opp_names) do
+                any_char = true
+                local cdata = wp_attack_data[char_name]
+                if cdata and cdata.moves then
+                    imgui.text(char_name)
+                    imgui.separator()
+
+                    -- Check All / Uncheck All
+                    if imgui.button("Check All") then
+                        for _, move in ipairs(cdata.moves) do
+                            wp_excluded[move.input] = nil
+                        end
+                        save_wp_filter()
+                    end
+                    imgui.same_line()
+                    if imgui.button("Uncheck All") then
+                        for _, move in ipairs(cdata.moves) do
+                            wp_excluded[move.input] = true
+                        end
+                        save_wp_filter()
+                    end
+
+                    imgui.spacing()
+                    for _, move in ipairs(cdata.moves) do
+                        local input = move.input
+                        local is_checked = not wp_excluded[input]
+                        local chg, val = imgui.checkbox(input, is_checked)
+                        if chg then
+                            wp_excluded[input] = (not val) or nil
+                            save_wp_filter()
+                        end
+                    end
+                else
+                    imgui.text(char_name .. ": no data")
+                end
+            end
+
+            if not any_char then
+                imgui.text("No opponent")
+                imgui.text("detected yet")
+            end
+        end
+        imgui.end_window()
+        imgui.pop_style_color(8)
     end
 end)
 
@@ -946,6 +1116,21 @@ local function d2d_draw()
                 d2d.text(_font_small, label, px + pad + 1, ty + 1, COL.shadow)
                 d2d.text(_font_small, label, px + pad, ty, col)
 
+                -- ">" indicator next to WP label (clickable via imgui overlay)
+                if k == "wp" then
+                    local gt_x = px + pad + #label * fhs * 0.62 + fhs * 0.3
+                    local gt_col = wp_submenu_open and COL.text or COL.text_dim
+                    d2d.text(_font_small, ">", gt_x + 1, ty + 1, COL.shadow)
+                    d2d.text(_font_small, ">", gt_x, ty, gt_col)
+                    -- Store hit zone for imgui overlay
+                    wp_btn_screen.x = gt_x - fhs * 0.3
+                    wp_btn_screen.y = ty - fhs * 0.3
+                    wp_btn_screen.w = fhs * 1.5
+                    wp_btn_screen.h = fhs * 1.8
+                    wp_btn_screen.panel_x = px
+                    wp_btn_screen.panel_w = pw
+                end
+
                 local vx = px + pw - pad - #val_str * fhs * 0.62
                 d2d.text(_font_small, val_str, vx + 1, ty + 1, COL.shadow)
                 d2d.text(_font_small, val_str, vx, ty, COL.text)
@@ -957,6 +1142,14 @@ local function d2d_draw()
                 local lx = px + pw - pad - #label * fhs * 0.62
                 d2d.text(_font_small, label, lx + 1, ty + 1, COL.shadow)
                 d2d.text(_font_small, label, lx, ty, col)
+
+                -- ">" indicator next to WP label (P2 side, before label)
+                if k == "wp" then
+                    local gt_x = lx - fhs * 0.9
+                    local gt_col = wp_submenu_open and COL.text or COL.text_dim
+                    d2d.text(_font_small, "<", gt_x + 1, ty + 1, COL.shadow)
+                    d2d.text(_font_small, "<", gt_x, ty, gt_col)
+                end
             end
         end
     end

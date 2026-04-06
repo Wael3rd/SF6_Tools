@@ -62,7 +62,43 @@
         "is_holdable": false,
         "override_name": ">HK"
     },
+    "680": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "214+P"
+    },
+    "681": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "214+P"
+    },
+    "683": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "214+P"
+    },
     "684": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "214+P"
+    },
+    "686": {
         "absorb_ids": "",
         "force": true,
         "hold_partial_check": true,

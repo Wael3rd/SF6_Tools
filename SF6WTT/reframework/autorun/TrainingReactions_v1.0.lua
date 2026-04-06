@@ -60,9 +60,10 @@ local SessionRecap = require("func/Training_SessionRecap")
 
 -- FULL CONFIG
 local user_config = {
-    session_mode = 1, 
+    session_mode = 2, -- 1=timer, 2=trials
     timer_minutes = 3,
-    timer_mode_enabled = false, 
+    trial_count = 20,
+    timer_mode_enabled = false,
     
     hud_base_size = 20.24,
     hud_auto_scale = true,
@@ -539,20 +540,29 @@ local function update_logic()
     -- [FIX] Logic Pause is handled in re.on_frame via pause flags
     -- Removed internal is_game_in_menu() call here.
 
-    if session.is_running and user_config.timer_mode_enabled and not session.is_paused then
-        session.time_rem = session.time_rem - dt
-        if session.time_rem <= 0 then 
-            session.time_rem = 0
-            session.is_running = false
-            -- ACTIVATION DU TIME UP
-            session.is_time_up = true
-            session.time_up_delay = 0
-            
-            set_playback_mode(false)
-            
-            export_log_excel()
-            SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
-            set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
+    if session.is_running and not session.is_paused then
+        if user_config.timer_mode_enabled then
+            session.time_rem = session.time_rem - dt
+            if session.time_rem <= 0 then
+                session.time_rem = 0
+                session.is_running = false
+                session.is_time_up = true
+                session.time_up_delay = 0
+                set_playback_mode(false)
+                export_log_excel()
+                SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
+                set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
+            end
+        elseif user_config.session_mode == 2 then
+            if session.total >= user_config.trial_count then
+                session.is_running = false
+                session.is_time_up = true
+                session.time_up_delay = 0
+                set_playback_mode(false)
+                export_log_excel()
+                SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
+                set_feedback(session.total .. " TRIALS DONE! & EXPORTED", COLORS.Red, 0)
+            end
         end
     end
 
@@ -698,17 +708,29 @@ local function handle_input()
     local function pad_pressed(btn) return ((active_buttons & btn) == btn) and not ((last_input_mask & btn) == btn) end
     local function is_action(btn, kb) return (is_func_held and pad_pressed(btn)) or kb_pressed(kb) end
 
-    -- 1. TIMER SETTINGS (UP/DOWN = 2/3)
-    if not session.is_running and not session.is_time_up then 
+    -- 1. TIMER/TRIALS SETTINGS (UP/DOWN)
+    if not session.is_running and not session.is_time_up then
         if is_action(BTN_UP, 0x32) then
-            user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
-            session.time_rem = user_config.timer_minutes * 60
-            set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0); save_conf()
+            if user_config.session_mode == 2 then
+                user_config.trial_count = math.min(200, user_config.trial_count + 10)
+                set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
+            else
+                user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
+                session.time_rem = user_config.timer_minutes * 60
+                set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0)
+            end
+            save_conf()
         end
         if is_action(BTN_DOWN, 0x31) then
-            user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
-            session.time_rem = user_config.timer_minutes * 60
-            set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0); save_conf()
+            if user_config.session_mode == 2 then
+                user_config.trial_count = math.max(10, user_config.trial_count - 10)
+                set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
+            else
+                user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
+                session.time_rem = user_config.timer_minutes * 60
+                set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0)
+            end
+            save_conf()
         end
     end
 
@@ -830,7 +852,22 @@ end)
 local function draw_hud_overlay()
     local show_timer = (user_config.session_mode == 1)
     
-    SharedUI.draw_standard_hud("HUD_Reaction", user_config, session, TEXTS.mode_label, show_timer, function(cx, cy, sw, sh)
+    local is_trials = (user_config.session_mode == 2)
+    SharedUI.draw_standard_hud("HUD_Reaction", user_config, session, TEXTS.mode_label, show_timer and not is_trials, function(cx, cy, sw, sh)
+        if is_trials then
+            local center_y = sh / 2
+            local remaining = math.max(0, user_config.trial_count - session.total)
+            local t_txt = session.is_running and tostring(remaining) or tostring(user_config.trial_count)
+            local hud_cfg = SharedUI.HUD_CONFIG[_G.CurrentHudSuffix or "Default"] or SharedUI.HUD_CONFIG["Default"]
+            SharedUI.pop_main(); SharedUI.push_timer()
+            local w_t = imgui.calc_text_size(t_txt).x
+            local t_col = SharedUI.COLORS.White
+            if session.is_paused then t_col = SharedUI.COLORS.Yellow
+            elseif remaining <= 3 and session.is_running then t_col = SharedUI.COLORS.Red end
+            if session.is_time_up then t_col = SharedUI.COLORS.Red end
+            SharedUI.draw_timer(t_txt, cx - (w_t / 2) + (hud_cfg.x * sw), center_y + (hud_cfg.y * sh), t_col)
+            SharedUI.pop_timer(); SharedUI.push_main()
+        end
         if user_config.show_slot_stats then
             local slots_str = ""
             local has_visible_slots = false
@@ -856,19 +893,34 @@ local function draw_session_buttons_docked()
     local sl = SharedUI.sc_label
     local SC = SharedUI.SC_COLORS
 
-    if SharedUI.sc_button("TIMER - (" .. sl("D") .. ")##dk_r", SC.c1) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
+    local mode_label = user_config.session_mode == 2 and "MODE: TRIALS" or "MODE: TIMER"
+    if imgui.button(mode_label .. "##dk_mode_r") then
+        user_config.session_mode = user_config.session_mode == 2 and 1 or 2
+        user_config.timer_mode_enabled = (user_config.session_mode == 1)
+        reset_session_stats(); save_conf()
+    end
     imgui.same_line()
-    if SharedUI.sc_button("TIMER + (" .. sl("U") .. ")##dk_r", SC.c2) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
-    imgui.same_line()
-    imgui.text(tostring(user_config.timer_minutes) .. " min")
+    if user_config.session_mode == 2 then
+        if SharedUI.sc_button("TRIALS - (" .. sl("D") .. ")##dk_r", SC.c1) then user_config.trial_count = math.max(10, user_config.trial_count - 10); reset_session_stats(); save_conf() end
+        imgui.same_line()
+        if SharedUI.sc_button("TRIALS + (" .. sl("U") .. ")##dk_r", SC.c2) then user_config.trial_count = math.min(200, user_config.trial_count + 10); reset_session_stats(); save_conf() end
+        imgui.same_line(); imgui.text(tostring(user_config.trial_count) .. " TRIALS")
+    else
+        if SharedUI.sc_button("TIMER - (" .. sl("D") .. ")##dk_r", SC.c1) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
+        imgui.same_line()
+        if SharedUI.sc_button("TIMER + (" .. sl("U") .. ")##dk_r", SC.c2) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
+        imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " min")
+    end
     imgui.same_line(300)
     if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_r", SC.c3) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
 
     imgui.spacing()
     if not session.is_running then
         if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_r", SC.c4) then
-            session.is_running = true; session.is_paused = false; reset_session_stats()
-            session.time_rem = user_config.timer_minutes * 60; set_feedback(TEXTS.started, COLORS.Green, 1.0)
+            reset_session_stats()
+            if user_config.session_mode ~= 2 then session.time_rem = user_config.timer_minutes * 60 end
+            session.is_running = true; session.is_paused = false
+            set_feedback(TEXTS.started, COLORS.Green, 1.0)
             set_playback_mode(true)
         end
     else
@@ -900,7 +952,7 @@ local function draw_session_floating()
 
     local slm = SharedUI.sc_label_max
     local all_labels = {
-        "TIMER - (" .. slm("D") .. ")", "TIMER + (" .. slm("U") .. ")",
+        "TRIALS - (" .. slm("D") .. ")", "TRIALS + (" .. slm("U") .. ")",
         "RESET (" .. slm("L") .. ")", "STOP (" .. slm("L") .. ")",
         "START (" .. slm("R") .. ")", "PAUSE (" .. slm("R") .. ")"
     }
@@ -911,9 +963,15 @@ local function draw_session_floating()
     local actual_w = math.max(max_w + 20, remaining / 4)
 
     imgui.set_cursor_pos(Vector2f.new(pad_x, sh * 0.01))
-    if SharedUI.sf6_button("TIMER - (" .. sl("D") .. ")##fl_r", SC.c1, actual_w) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
-    imgui.same_line(0, sp)
-    if SharedUI.sf6_button("TIMER + (" .. sl("U") .. ")##fl_r", SC.c2, actual_w) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
+    if user_config.session_mode == 2 then
+        if SharedUI.sf6_button("TRIALS - (" .. sl("D") .. ")##fl_r", SC.c1, actual_w) then user_config.trial_count = math.max(10, user_config.trial_count - 10); reset_session_stats(); save_conf() end
+        imgui.same_line(0, sp)
+        if SharedUI.sf6_button("TRIALS + (" .. sl("U") .. ")##fl_r", SC.c2, actual_w) then user_config.trial_count = math.min(200, user_config.trial_count + 10); reset_session_stats(); save_conf() end
+    else
+        if SharedUI.sf6_button("TIMER - (" .. sl("D") .. ")##fl_r", SC.c1, actual_w) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
+        imgui.same_line(0, sp)
+        if SharedUI.sf6_button("TIMER + (" .. sl("U") .. ")##fl_r", SC.c2, actual_w) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
+    end
     imgui.same_line(0, sp)
     if not session.is_running then
         if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_r", SC.c3, actual_w) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
@@ -929,8 +987,10 @@ local function draw_session_floating()
         end
     else
         if SharedUI.sf6_button("START (" .. sl("R", "4") .. ")##fl_r", SC.c4, actual_w) then
-            session.is_running = true; session.is_paused = false; reset_session_stats()
-            session.time_rem = user_config.timer_minutes * 60; set_feedback(TEXTS.started, COLORS.Green, 1.0); set_playback_mode(true)
+            reset_session_stats()
+            if user_config.session_mode ~= 2 then session.time_rem = user_config.timer_minutes * 60 end
+            session.is_running = true; session.is_paused = false
+            set_feedback(TEXTS.started, COLORS.Green, 1.0); set_playback_mode(true)
         end
     end
     imgui.same_line(w_width - cb_size - 10 - pad_x)
@@ -948,6 +1008,7 @@ re.on_frame(function()
     last_trainer_mode = cur_mode
 
     if cur_mode ~= 1 then return end
+    if not sdk.get_managed_singleton("app.training.TrainingManager") then return end
 
     local should_update_logic = true
     local should_draw_hud = true
@@ -957,12 +1018,20 @@ re.on_frame(function()
         local pause_bit = pm:get_field("_CurrentPauseTypeBit")
         -- Si pause active ou état non standard (différent de 64 et 2112)
         if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then
-            if session.is_running and not session.is_paused then 
-                session.is_paused = true 
+            if session.is_running and not session.is_paused then
+                session.is_paused = true
+                session._auto_paused = true
                 set_playback_mode(false) -- AUTO PAUSE
             end
             should_update_logic = false
-            should_draw_hud = false -- Masquer le HUD dans les menus
+            should_draw_hud = false
+        else
+            -- Menu closed: auto-unpause if it was auto-paused
+            if session._auto_paused and session.is_paused then
+                session.is_paused = false
+                session._auto_paused = false
+                set_playback_mode(true)
+            end
         end
     end
     

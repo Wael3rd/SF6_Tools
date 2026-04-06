@@ -36,7 +36,9 @@ local SharedUI = require("func/Training_SharedUI")
 local SessionRecap = require("func/Training_SessionRecap")
 
 local user_config = {
+    session_mode = "trials", -- "timer" or "trials"
     timer_minutes = 1,
+    trial_count = 20,
     hud_base_size = 20.24,
     hud_auto_scale = true,
     hud_n_global_y = -0.337,
@@ -298,17 +300,31 @@ local function update_logic()
     
     if not session.is_running or session.is_paused then return end
 
-    session.time_rem = session.time_rem - dt
-    if session.time_rem <= 0 then 
-        session.time_rem = 0
-        if not session.is_time_up then
-            session.is_time_up = true 
-            session.time_up_delay = 0 
-            export_stats()
-            SessionRecap.show("POST GUARD", LOG_FILENAME, "postguard")
+    if user_config.session_mode == "timer" then
+        session.time_rem = session.time_rem - dt
+        if session.time_rem <= 0 then
+            session.time_rem = 0
+            if not session.is_time_up then
+                session.is_time_up = true
+                session.time_up_delay = 0
+                export_stats()
+                SessionRecap.show("POST GUARD", LOG_FILENAME, "postguard")
+            end
+            set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
+            return
         end
-        set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
-        return
+    else -- trials
+        if session.total >= user_config.trial_count then
+            if not session.is_time_up then
+                session.is_running = false
+                session.is_time_up = true
+                session.time_up_delay = 0
+                export_stats()
+                SessionRecap.show("POST GUARD", LOG_FILENAME, "postguard")
+            end
+            set_feedback(session.total .. " TRIALS DONE! & EXPORTED", COLORS.Red, 0)
+            return
+        end
     end
 
     if session.feedback.timer > 0 then
@@ -514,12 +530,24 @@ local function handle_input()
     else
         if not session.is_running then
              if is_action(BTN_UP, 0x32) then
-                user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
-                session.time_rem = user_config.timer_minutes * 60; set_feedback("TIMER: "..user_config.timer_minutes.." MIN", COLORS.White, 1.0)
+                if user_config.session_mode == "trials" then
+                    user_config.trial_count = math.min(200, user_config.trial_count + 10)
+                    set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
+                else
+                    user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
+                    session.time_rem = user_config.timer_minutes * 60; set_feedback("TIMER: "..user_config.timer_minutes.." MIN", COLORS.White, 1.0)
+                end
+                save_conf()
              end
              if is_action(BTN_DOWN, 0x31) then
-                user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
-                session.time_rem = user_config.timer_minutes * 60; set_feedback("TIMER: "..user_config.timer_minutes.." MIN", COLORS.White, 1.0)
+                if user_config.session_mode == "trials" then
+                    user_config.trial_count = math.max(10, user_config.trial_count - 10)
+                    set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
+                else
+                    user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
+                    session.time_rem = user_config.timer_minutes * 60; set_feedback("TIMER: "..user_config.timer_minutes.." MIN", COLORS.White, 1.0)
+                end
+                save_conf()
              end
         end
         -- POSITION 3 (key 3): START when not running, STOP when running
@@ -606,10 +634,25 @@ end)
 
 
 local function draw_hud()
-    SharedUI.draw_standard_hud("HUD_PostGuard", user_config, session, "POST GUARD", true, function(cx, cy, sw, sh)
+    local is_trials = (user_config.session_mode == "trials")
+    SharedUI.draw_standard_hud("HUD_PostGuard", user_config, session, "POST GUARD", not is_trials, function(cx, cy, sw, sh)
+        if is_trials then
+            local center_y = sh / 2
+            local remaining = math.max(0, user_config.trial_count - session.total)
+            local t_txt = session.is_running and tostring(remaining) or tostring(user_config.trial_count)
+            local hud_cfg = SharedUI.HUD_CONFIG[_G.CurrentHudSuffix or "Default"] or SharedUI.HUD_CONFIG["Default"]
+            SharedUI.pop_main(); SharedUI.push_timer()
+            local w_t = imgui.calc_text_size(t_txt).x
+            local t_col = SharedUI.COLORS.White
+            if session.is_paused then t_col = SharedUI.COLORS.Yellow
+            elseif remaining <= 3 and session.is_running then t_col = SharedUI.COLORS.Red end
+            if session.is_time_up then t_col = SharedUI.COLORS.Red end
+            SharedUI.draw_timer(t_txt, cx - (w_t / 2) + (hud_cfg.x * sw), center_y + (hud_cfg.y * sh), t_col)
+            SharedUI.pop_timer(); SharedUI.push_main()
+        end
         local pct = 0
         if session.total > 0 then pct = (session.success_count / session.total) * 100 end
-        
+
         local pct_txt = string.format("SUCCESS: %.0f%%", pct)
         local w_p = imgui.calc_text_size(pct_txt).x
         SharedUI.draw_text(pct_txt, cx - (w_p / 2), cy, SharedUI.COLORS.White)
@@ -632,10 +675,24 @@ end
 local function draw_session_buttons_docked()
     local sl = SharedUI.sc_label
     local SC = SharedUI.SC_COLORS
-    if SharedUI.sc_button("TIMER - (" .. sl("D") .. ")##dk_pg", SC.c1) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats() end
+    local mode_label = user_config.session_mode == "trials" and "MODE: TRIALS" or "MODE: TIMER"
+    if imgui.button(mode_label .. "##dk_mode_pg") then
+        user_config.session_mode = user_config.session_mode == "trials" and "timer" or "trials"
+        reset_session_stats(); save_conf()
+    end
     imgui.same_line()
-    if SharedUI.sc_button("TIMER + (" .. sl("U") .. ")##dk_pg", SC.c2) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats() end
-    imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " MIN"); imgui.same_line(300)
+    if user_config.session_mode == "trials" then
+        if SharedUI.sc_button("TRIALS - (" .. sl("D") .. ")##dk_pg", SC.c1) then user_config.trial_count = math.max(10, user_config.trial_count - 10); reset_session_stats(); save_conf() end
+        imgui.same_line()
+        if SharedUI.sc_button("TRIALS + (" .. sl("U") .. ")##dk_pg", SC.c2) then user_config.trial_count = math.min(200, user_config.trial_count + 10); reset_session_stats(); save_conf() end
+        imgui.same_line(); imgui.text(tostring(user_config.trial_count) .. " TRIALS")
+    else
+        if SharedUI.sc_button("TIMER - (" .. sl("D") .. ")##dk_pg", SC.c1) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats() end
+        imgui.same_line()
+        if SharedUI.sc_button("TIMER + (" .. sl("U") .. ")##dk_pg", SC.c2) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats() end
+        imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " MIN")
+    end
+    imgui.same_line(300)
     if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then reset_session_stats() end
     imgui.spacing()
     if not session.is_running then
@@ -659,7 +716,7 @@ local function draw_session_floating()
     SharedUI.draw_floating_bg()
     local slm = SharedUI.sc_label_max
     local all_labels = {
-        "TIMER - (" .. slm("D") .. ")", "TIMER + (" .. slm("U") .. ")",
+        "TRIALS - (" .. slm("D") .. ")", "TRIALS + (" .. slm("U") .. ")",
         "RESET (" .. slm("L") .. ")", "STOP (" .. slm("L") .. ")",
         "START (" .. slm("R") .. ")", "PAUSE (" .. slm("R") .. ")"
     }
@@ -669,9 +726,15 @@ local function draw_session_floating()
     local remaining = w_width - (pad_x * 2) - cb_size - 10 - (sp * 4)
     local actual_w = math.max(max_w + 20, remaining / 4)
     imgui.set_cursor_pos(Vector2f.new(pad_x, sh * 0.01))
-    if SharedUI.sf6_button("TIMER - (" .. sl("D") .. ")##fl_pg", SC.c1, actual_w) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats() end
-    imgui.same_line(0, sp)
-    if SharedUI.sf6_button("TIMER + (" .. sl("U") .. ")##fl_pg", SC.c2, actual_w) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats() end
+    if user_config.session_mode == "trials" then
+        if SharedUI.sf6_button("TRIALS - (" .. sl("D") .. ")##fl_pg", SC.c1, actual_w) then user_config.trial_count = math.max(10, user_config.trial_count - 10); reset_session_stats(); save_conf() end
+        imgui.same_line(0, sp)
+        if SharedUI.sf6_button("TRIALS + (" .. sl("U") .. ")##fl_pg", SC.c2, actual_w) then user_config.trial_count = math.min(200, user_config.trial_count + 10); reset_session_stats(); save_conf() end
+    else
+        if SharedUI.sf6_button("TIMER - (" .. sl("D") .. ")##fl_pg", SC.c1, actual_w) then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats() end
+        imgui.same_line(0, sp)
+        if SharedUI.sf6_button("TIMER + (" .. sl("U") .. ")##fl_pg", SC.c2, actual_w) then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats() end
+    end
     imgui.same_line(0, sp)
     if not session.is_running then
         if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then reset_session_stats() end
@@ -741,7 +804,8 @@ end)
 
 re.on_frame(function()
     if DEPENDANT_ON_MANAGER and _G.CurrentTrainerMode ~= MY_TRAINER_ID then return end
-    
+    if not sdk.get_managed_singleton("app.training.TrainingManager") then return end
+
     local should_update = true
     local should_draw = true
 
@@ -750,9 +814,17 @@ re.on_frame(function()
         local pause_bit = pm:get_field("_CurrentPauseTypeBit")
         if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then
             -- Pause Menu / System
-            if session.is_running and not session.is_paused then session.is_paused = true end
+            if session.is_running and not session.is_paused then
+                session.is_paused = true
+                session._auto_paused = true
+            end
             should_update = false
             should_draw = false
+        else
+            if session._auto_paused and session.is_paused then
+                session.is_paused = false
+                session._auto_paused = false
+            end
         end
     end
     
