@@ -439,16 +439,8 @@ local function detect_events()
         local opp_pose  = (opp == 0) and (matrix.p1_pose_st or 0) or (matrix.p2_pose_st or 0)
         local my_state  = (p == 0) and track[0].frame_st or track[1].frame_st
 
-        -- Check if opponent is in player's orange zone (from DistanceViewer)
-        local my_zone = ""
-        pcall(function()
-            local sc = _G.SF6_SharedCombat
-            if sc then my_zone = (p == 0) and (sc.p1_zone_name or "") or (sc.p2_zone_name or "") end
-        end)
-        local in_punish_range = my_zone:find("Orange Zone") or my_zone:find("Red Zone")
-
-        -- Opponent is grounded and attacking — only track if in punish range
-        if opp_pose < 2 and not t_p._wp_tracking and not t_p._wp_cooldown and in_punish_range then
+        -- Opponent is grounded and attacking
+        if opp_pose < 2 and not t_p._wp_tracking and not t_p._wp_cooldown then
             if opp_state == 7 or opp_state == 13 or opp_state == 14 or opp_state == STATE_RECOVER then
                 t_p._wp_tracking = true
                 t_p._wp_counted = false
@@ -672,19 +664,6 @@ re.on_draw_ui(function()
                 imgui.text("  " .. FULL_LABELS[k] .. ": " .. counters[p][k])
             end
         end
-
-        -- Zone info from DistanceViewer
-        imgui.spacing()
-        imgui.text("--- ZONES (from DistanceViewer) ---")
-        pcall(function()
-            local sc = _G.SF6_SharedCombat
-            if sc then
-                imgui.text("P1 zone: " .. (sc.p1_zone_name or "N/A"))
-                imgui.text("P2 zone: " .. (sc.p2_zone_name or "N/A"))
-            else
-                imgui.text("DistanceViewer not loaded")
-            end
-        end)
 
         -- Live matrix debug - ALL fields
         imgui.spacing()
