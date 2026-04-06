@@ -193,6 +193,7 @@ local function read_frame_data()
     matrix.p1_trade_dm = false; matrix.p2_trade_dm = false
     matrix.p1_pose_st = 0; matrix.p2_pose_st = 0
     matrix.p1_suki = false; matrix.p2_suki = false
+    matrix.p1_parry_combo = 0; matrix.p2_parry_combo = 0
     pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
         if not gBattle then return end
@@ -207,6 +208,7 @@ local function read_frame_data()
             local td = p1_obj:get_field("trade_dm_flag"); if td then matrix.p1_trade_dm = (tostring(td) == "true") end
             local ps = p1_obj:get_field("pose_st"); if ps then matrix.p1_pose_st = tonumber(tostring(ps)) or 0 end
             local sk = p1_obj:get_field("land_suki_flag"); if sk then matrix.p1_suki = (tostring(sk) == "true") end
+            local pc = p1_obj:get_field("parry_combo_cnt"); if pc then matrix.p1_parry_combo = tonumber(tostring(pc)) or 0 end
         end
         if p2_obj then
             local dt = p2_obj:get_field("damage_type"); if dt then matrix.p2_dmg = tonumber(tostring(dt)) or 0 end
@@ -215,6 +217,7 @@ local function read_frame_data()
             local td = p2_obj:get_field("trade_dm_flag"); if td then matrix.p2_trade_dm = (tostring(td) == "true") end
             local ps = p2_obj:get_field("pose_st"); if ps then matrix.p2_pose_st = tonumber(tostring(ps)) or 0 end
             local sk = p2_obj:get_field("land_suki_flag"); if sk then matrix.p2_suki = (tostring(sk) == "true") end
+            local pc = p2_obj:get_field("parry_combo_cnt"); if pc then matrix.p2_parry_combo = tonumber(tostring(pc)) or 0 end
         end
     end)
 
@@ -400,18 +403,21 @@ local function detect_events()
             local dm  = (pp_p == 0) and matrix.p1_trade_dm or matrix.p2_trade_dm
             local dmg = (pp_p == 0) and (matrix.p1_dmg or 0) or (matrix.p2_dmg or 0)
             local hs  = (pp_p == 0) and (matrix.p1_hs or 0) or (matrix.p2_hs or 0)
+            local pcc = (pp_p == 0) and (matrix.p1_parry_combo or 0) or (matrix.p2_parry_combo or 0)
+            -- parry_combo_cnt > 0 = normal parry (held parry), must be 0 for perfect parry
+            local not_normal_parry = (pcc == 0)
 
             if cfg.pp_postguard_mode then
-                -- PostGuard: just trade_dm_flag, unlock when it goes false
+                -- PostGuard: trade_dm_flag + not normal parry, unlock when dm goes false
                 if not dm then track[pp_p]._pp_locked = false end
-                if not track[pp_p]._pp_locked and dm then
+                if not track[pp_p]._pp_locked and dm and not_normal_parry then
                     counters[pp_p].pp = counters[pp_p].pp + 1
                     track[pp_p]._pp_locked = true
                 end
             else
-                -- Custom: trade_dm + dmg=34 + hs!=0, unlock when hs=0
+                -- Custom: trade_dm + dmg=34 + hs!=0 + not normal parry, unlock when hs=0
                 if hs == 0 then track[pp_p]._pp_locked = false end
-                if not track[pp_p]._pp_locked and dm and dmg == 34 and hs ~= 0 then
+                if not track[pp_p]._pp_locked and dm and not_normal_parry and dmg == 34 and hs ~= 0 then
                     counters[pp_p].pp = counters[pp_p].pp + 1
                     track[pp_p]._pp_locked = true
                 end
@@ -657,21 +663,24 @@ re.on_draw_ui(function()
 
         -- PP detection formula debug
         imgui.spacing()
-        local mode_label = cfg.pp_postguard_mode and "PostGuard (trade_dm only)" or "Custom (trade_dm + dmg=34 + hs!=0)"
+        local mode_label = cfg.pp_postguard_mode and "PostGuard" or "Custom"
         imgui.text("--- PP DETECTION [" .. mode_label .. "] ---")
         for p = 0, 1 do
             local dm   = (p == 0) and matrix.p1_trade_dm or matrix.p2_trade_dm
             local dmg  = (p == 0) and (matrix.p1_dmg or 0) or (matrix.p2_dmg or 0)
             local hs   = (p == 0) and (matrix.p1_hs or 0) or (matrix.p2_hs or 0)
+            local pcc  = (p == 0) and (matrix.p1_parry_combo or 0) or (matrix.p2_parry_combo or 0)
             local lock = track[p]._pp_locked and "LOCKED" or "READY"
+            local not_normal = (pcc == 0)
             local result
             if cfg.pp_postguard_mode then
-                result = dm and ">>> PP!" or "no"
-                imgui.text(string.format("P%d: trade_dm=%s  [%s] => %s", p + 1, tostring(dm), lock, result))
+                result = (dm and not_normal) and ">>> PP!" or "no"
+                imgui.text(string.format("P%d: trade_dm=%s  parry_combo=%d==0?  [%s] => %s",
+                    p + 1, tostring(dm), pcc, lock, result))
             else
-                result = (dm and dmg == 34 and hs ~= 0) and ">>> PP!" or "no"
-                imgui.text(string.format("P%d: trade_dm=%s AND dmg=%d==34? AND hs=%d!=0?  [%s] => %s",
-                    p + 1, tostring(dm), dmg, hs, lock, result))
+                result = (dm and not_normal and dmg == 34 and hs ~= 0) and ">>> PP!" or "no"
+                imgui.text(string.format("P%d: trade_dm=%s  parry_combo=%d==0?  dmg=%d==34?  hs=%d!=0?  [%s] => %s",
+                    p + 1, tostring(dm), pcc, dmg, hs, lock, result))
             end
         end
 
