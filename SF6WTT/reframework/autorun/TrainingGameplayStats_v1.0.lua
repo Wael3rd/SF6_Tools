@@ -439,12 +439,17 @@ local function detect_events()
         local opp_pose  = (opp == 0) and (matrix.p1_pose_st or 0) or (matrix.p2_pose_st or 0)
         local my_state  = (p == 0) and track[0].frame_st or track[1].frame_st
 
-        -- Opponent is grounded and attacking
-        if opp_pose < 2 and not t_p._wp_tracking then
+        -- Opponent is grounded and attacking — only start tracking if not on cooldown
+        if opp_pose < 2 and not t_p._wp_tracking and not t_p._wp_cooldown then
             if opp_state == 7 or opp_state == 13 or opp_state == 14 or opp_state == STATE_RECOVER then
                 t_p._wp_tracking = true
                 t_p._wp_counted = false
             end
+        end
+
+        -- Cooldown resets when opponent returns to neutral
+        if t_p._wp_cooldown and (opp_state == STATE_NEUTRAL or opp_state == 0) then
+            t_p._wp_cooldown = false
         end
 
         if t_p._wp_tracking then
@@ -453,6 +458,7 @@ local function detect_events()
             if opp_dmg ~= 0 then
                 t_p._wp_tracking = false
                 t_p._wp_counted = false
+                t_p._wp_cooldown = true
             elseif opp_state == STATE_HURT then
                 -- Player punished the opponent = SUCCESS
                 if not t_p._wp_counted then
@@ -462,6 +468,7 @@ local function detect_events()
                     t_p._wp_counted = true
                 end
                 t_p._wp_tracking = false
+                t_p._wp_cooldown = true
             elseif opp_state == STATE_NEUTRAL or opp_state == 0 then
                 -- Opponent returned to neutral unpunished = MISSED
                 if not t_p._wp_counted then
