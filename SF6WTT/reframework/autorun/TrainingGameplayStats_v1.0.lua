@@ -453,9 +453,8 @@ local function detect_events()
         end
 
         if t_p._wp_tracking then
-            -- If opponent's DMG != 0, the move connected (hit or block) = NOT a whiff, cancel
-            local opp_dmg = (opp == 0) and (matrix.p1_dmg or 0) or (matrix.p2_dmg or 0)
-            if opp_dmg ~= 0 then
+            -- If PLAYER got hit or blocked, opponent's move connected = NOT a whiff, cancel
+            if my_state == STATE_HURT or my_state == 10 then
                 t_p._wp_tracking = false
                 t_p._wp_counted = false
                 t_p._wp_cooldown = true
