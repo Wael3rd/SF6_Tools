@@ -18,7 +18,46 @@ local cfg = {
     panel_margin_pct = 0.02, -- marge depuis le bord
     panel_y_pct = 0.28,     -- position verticale (sous les barres de vie)
     pp_postguard_mode = false, -- true = PostGuard detection (trade_dm only), false = custom (trade_dm + dmg=34 + hs!=0)
+    debug_training = false, -- force show in training mode
 }
+
+-- =========================================================
+-- REPLAY DETECTION
+-- =========================================================
+local is_in_replay = false
+
+pcall(function()
+    -- Detect replay start: mInputType == 3 in emote flow setup
+    local t_emote = sdk.find_type_definition("app.esports.bBattleFighterEmoteFlow")
+    if t_emote then
+        local m_setup = t_emote:get_method("setup")
+        if m_setup then
+            sdk.hook(m_setup, function(args)
+                local obj = sdk.to_managed_object(args[2])
+                if obj and obj.mInputType == 3 then
+                    is_in_replay = true
+                end
+            end, function(r) return r end)
+        end
+    end
+    -- Detect replay end
+    local t_flow = sdk.find_type_definition("app.battle.bBattleFlow")
+    if t_flow then
+        local m_end = t_flow:get_method("endReplay")
+        if m_end then
+            sdk.hook(m_end, function(args)
+                is_in_replay = false
+            end, function(r) return r end)
+        end
+    end
+end)
+
+local function should_show()
+    if not cfg.visible then return false end
+    if is_in_replay then return true end
+    if cfg.debug_training then return true end
+    return false
+end
 
 -- =========================================================
 -- COLORS (ABGR)
@@ -724,7 +763,7 @@ end
 -- GAME LOOP
 -- =========================================================
 re.on_frame(function()
-    if not cfg.visible then return end
+    if not should_show() then return end
     pcall(detect_events)
 end)
 
@@ -735,6 +774,11 @@ re.on_draw_ui(function()
     if imgui.tree_node("Gameplay Stats Counter") then
         local changed, val = imgui.checkbox("Show Overlay", cfg.visible)
         if changed then cfg.visible = val end
+
+        local dbg_chg, dbg_val = imgui.checkbox("Force Show in Training (debug)", cfg.debug_training)
+        if dbg_chg then cfg.debug_training = dbg_val end
+
+        imgui.text(is_in_replay and "Mode: REPLAY" or "Mode: --")
 
         local pp_chg, pp_val = imgui.checkbox("PP: PostGuard mode (trade_dm only)", cfg.pp_postguard_mode)
         if pp_chg then cfg.pp_postguard_mode = pp_val end
@@ -809,7 +853,7 @@ end)
 local function d2d_init() end
 
 local function d2d_draw()
-    if not cfg.visible then return end
+    if not should_show() then return end
 
     local sw, sh = d2d.surface_size()
 

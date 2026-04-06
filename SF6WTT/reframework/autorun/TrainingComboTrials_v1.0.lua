@@ -1593,18 +1593,19 @@ local BTN_UP          = 1
 local BTN_DOWN        = 2
 local BTN_LEFT        = 4
 local BTN_RIGHT       = 8
-local BTN_CROSS       = 16  -- Cross (PS) / A (Xbox)
+local BTN_CROSS       = 32  -- Cross (PS) / A (Xbox)  [RDown in via.hid.GamePad]
 local last_input_mask = 0
-local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false, [0x38]=false, [0x26]=false, [0x28]=false }
+local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false, [0x38]=false, [0x26]=false, [0x28]=false, [0x0D]=false }
 
 -- VK codes pour les touches 1,2,3,4,8 (haut du clavier) + flèches
-local KB_1 = 0x31  -- L (RECORD P1 / STOP & SAVE)
-local KB_2 = 0x32  -- U (START TRIAL P1 / CANCEL RECORDING)
-local KB_3 = 0x33  -- D (RECORD P2 / CANCEL)
-local KB_4 = 0x34  -- R (STOP TRIAL / SWITCH POS)
+local KB_1 = 0x31  -- Position 1 : LEFT
+local KB_2 = 0x32  -- Position 2 : UP (4-btn) ou RIGHT (2-btn)
+local KB_3 = 0x33  -- Position 3 : RIGHT (4-btn only)
+local KB_4 = 0x34  -- Position 4 : DOWN (4-btn only)
 local KB_8 = 0x38  -- A (OPEN/CLOSE COMBO DROPDOWN)
 local KB_ARROW_UP   = 0x26  -- Flèche haut (navigation dropdown)
 local KB_ARROW_DOWN = 0x28  -- Flèche bas (navigation dropdown)
+local KB_ENTER      = 0x0D  -- Entrée (valider sélection dropdown)
 
 -- Détection du dernier périphérique utilisé (partagé via _G)
 if _G.ComboTrials_InputDevice == nil then _G.ComboTrials_InputDevice = "pad" end
@@ -1651,7 +1652,8 @@ local function handle_combo_shortcuts()
         [KB_4] = is_kb_down(KB_4),
         [KB_8] = is_kb_down(KB_8),
         [KB_ARROW_UP] = is_kb_down(KB_ARROW_UP),
-        [KB_ARROW_DOWN] = is_kb_down(KB_ARROW_DOWN)
+        [KB_ARROW_DOWN] = is_kb_down(KB_ARROW_DOWN),
+        [KB_ENTER] = is_kb_down(KB_ENTER)
     }
     local function kb_pressed(vk)
         return kb_now[vk] and not last_kb_state[vk]
@@ -1678,7 +1680,7 @@ local function handle_combo_shortcuts()
         if is_pressed(BTN_DOWN) or kb_pressed(KB_ARROW_DOWN) then
             _G.ComboTrials_DropdownNavDown = true
         end
-        if is_pressed(BTN_CROSS) or kb_pressed(KB_8) then
+        if is_pressed(BTN_CROSS) or kb_pressed(KB_8) or kb_pressed(KB_ENTER) then
             _G.ComboTrials_DropdownSelect = true
         end
         last_input_mask = active_buttons
@@ -1689,9 +1691,13 @@ local function handle_combo_shortcuts()
     local is_demo_active = (demo_state and demo_state.is_playing)
 
     -- =============================================
-    -- DEMO MODE : 2 shortcuts only (LEFT/1 = restart, RIGHT/2 = quit)
+    -- Raccourcis positionnels (gauche → droite) :
+    --   4 boutons : LEFT/1, UP/2, RIGHT/3, DOWN/4
+    --   2 boutons : LEFT/1, RIGHT/2
     -- =============================================
+
     if is_demo_active then
+        -- ===== DEMO : 2 boutons (LEFT/1 = restart, RIGHT/2 = quit) =====
         if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
             if ctx.start_demo then ctx.start_demo() end
         end
@@ -1699,11 +1705,19 @@ local function handle_combo_shortcuts()
             trial_state.is_playing = false
             if ctx.stop_demo then ctx.stop_demo() end
         end
-    else
 
-    -- DPAD LEFT / Touche 1 : RECORD P1 / STOP AND SAVE ou RESET en PLAYING
-    if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
-        if trial_state.is_playing then
+    elseif trial_state.is_recording then
+        -- ===== RECORDING : 2 boutons (LEFT/1 = save, RIGHT/2 = cancel) =====
+        if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
+            stop_recording_and_save()
+        end
+        if is_pressed(BTN_RIGHT) or kb_pressed(KB_2) then
+            cancel_recording()
+        end
+
+    elseif trial_state.is_playing then
+        -- ===== PLAYING : 4 boutons (LEFT/1=reset, UP/2=stop, RIGHT/3=demo, DOWN/4=switch pos) =====
+        if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
             -- RESET : recharge la séquence sans quitter le trial
             local curr_player = trial_state.playing_player
             local paths = (curr_player == 0) and file_system.saved_combos_paths_p1 or file_system.saved_combos_paths_p2
@@ -1734,65 +1748,48 @@ local function handle_combo_shortcuts()
             apply_forced_position()
             ComboTrials_D2D.reset_anim()
             ComboTrials_D2D.reset_raw()
-        elseif trial_state.is_recording then
-            stop_recording_and_save()
-        elseif not trial_state.is_playing and not trial_state.is_recording then
-            start_recording(0)
         end
-    end
-
-    -- DPAD UP / Touche 2 : START TRIAL P1 / CANCEL RECORDING
-    if is_pressed(BTN_UP) or kb_pressed(KB_2) then
-        if trial_state.is_recording then
-            cancel_recording()
-        elseif not trial_state.is_playing and not trial_state.is_recording then
-            load_and_start_trial(0)
-        end
-    end
-
-    -- DPAD DOWN / Touche 3 : RECORD P2 ou DEMO en PLAYING
-    if is_pressed(BTN_DOWN) or kb_pressed(KB_3) then
-        if trial_state.is_playing then
-            if ctx.start_demo then ctx.start_demo() end
-        elseif not trial_state.is_playing and not trial_state.is_recording then
-            start_recording(1)
-        end
-    end
-
-    end -- fin du else (pas demo)
-
-    -- DPAD RIGHT / Touche 4 : STOP TRIAL / SWITCH POS (Bloqué pendant le record)
-    if is_pressed(BTN_RIGHT) or kb_pressed(KB_4) then
-        local is_demo_active_r = (demo_state and demo_state.is_playing)
-        if trial_state.is_playing and not is_demo_active_r then
+        if is_pressed(BTN_UP) or kb_pressed(KB_2) then
             trial_state.is_playing = false
-        elseif not trial_state.is_recording then
+        end
+        if is_pressed(BTN_RIGHT) or kb_pressed(KB_3) then
+            if ctx.start_demo then ctx.start_demo() end
+        end
+        if is_pressed(BTN_DOWN) or kb_pressed(KB_4) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             save_d2d_config()
-            
-            local is_demo_active = (demo_state and demo_state.is_playing)
-            -- On applique physiquement la position UNIQUEMENT si un trial ou une démo est en cours
-            if is_demo_active or trial_state.is_playing then
-                apply_forced_position()
-                if is_demo_active then
-                    if ctx.start_demo then ctx.start_demo() end
-                else
-                    -- Mini-reset pour replacer proprement après le switch pos
-                    trial_state.current_step = 1
-                    trial_state._step1_wrong_pending = false
-                    trial_state.success_timer = 0
-                    trial_state.fail_timer = 0
-                    trial_state.fail_reason = nil
-                    trial_state.active_universal_hold = nil
-                    for _, item in ipairs(trial_state.sequence) do
-                        item.actual_combo = 0
-                        item.has_hit = false
-                        item.last_frame_diff = nil
-                    end
-                end
-                if ctx.reset_visuals then ctx.reset_visuals() end
+            apply_forced_position()
+            -- Mini-reset pour replacer proprement après le switch pos
+            trial_state.current_step = 1
+            trial_state._step1_wrong_pending = false
+            trial_state.success_timer = 0
+            trial_state.fail_timer = 0
+            trial_state.fail_reason = nil
+            trial_state.active_universal_hold = nil
+            for _, item in ipairs(trial_state.sequence) do
+                item.actual_combo = 0
+                item.has_hit = false
+                item.last_frame_diff = nil
             end
+            if ctx.reset_visuals then ctx.reset_visuals() end
+        end
+
+    else
+        -- ===== IDLE : 4 boutons (LEFT/1=rec P1, UP/2=start trial, RIGHT/3=rec P2, DOWN/4=switch pos) =====
+        if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
+            start_recording(0)
+        end
+        if is_pressed(BTN_UP) or kb_pressed(KB_2) then
+            load_and_start_trial(0)
+        end
+        if is_pressed(BTN_RIGHT) or kb_pressed(KB_3) then
+            start_recording(1)
+        end
+        if is_pressed(BTN_DOWN) or kb_pressed(KB_4) then
+            d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
+            if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
+            save_d2d_config()
         end
     end
 
