@@ -452,6 +452,12 @@ local function detect_events()
             if opp_state == 7 or opp_state == 13 or opp_state == 14 or opp_state == STATE_RECOVER then
                 t_p._wp_tracking = true
                 t_p._wp_counted = false
+                -- Check if opponent used a light button
+                t_p._wp_is_light = false
+                pcall(function()
+                    local opp_input = read_game_input(opp)
+                    if (opp_input & MASK_LIGHT) ~= 0 then t_p._wp_is_light = true end
+                end)
             end
         end
 
@@ -467,7 +473,7 @@ local function detect_events()
                 t_p._wp_counted = false
                 t_p._wp_cooldown = true
             elseif opp_state == STATE_HURT then
-                -- Player punished the opponent = SUCCESS
+                -- Player punished the opponent = SUCCESS (+1 always, even lights)
                 if not t_p._wp_counted then
                     counters[p].wp = counters[p].wp + 1
                     counters[p].wp_ok = counters[p].wp_ok + 1
@@ -477,10 +483,16 @@ local function detect_events()
                 t_p._wp_tracking = false
                 t_p._wp_cooldown = true
             elseif opp_state == STATE_NEUTRAL or opp_state == 0 then
-                -- Opponent returned to neutral unpunished = MISSED
+                -- Opponent returned to neutral unpunished
                 if not t_p._wp_counted then
-                    counters[p].wp = counters[p].wp - 1
-                    counters[p].wp_opp = counters[p].wp_opp + 1
+                    if t_p._wp_is_light then
+                        -- Light whiff missed: no penalty, just count opportunity
+                        counters[p].wp_opp = counters[p].wp_opp + 1
+                    else
+                        -- Non-light whiff missed: -1
+                        counters[p].wp = counters[p].wp - 1
+                        counters[p].wp_opp = counters[p].wp_opp + 1
+                    end
                 end
                 t_p._wp_tracking = false
                 t_p._wp_counted = false
