@@ -10,7 +10,7 @@
     "hud_n_spread_score": 0.09000000357627869,
     "loop_delay_frames": 60,
     "playback_mode_auto": false,
-    "session_mode": 1,
+    "session_mode": 2,
     "show_debug_panel": false,
     "show_floating": true,
     "show_slot_stats": true,
@@ -27,6 +27,7 @@
     "timer_font_size": 80,
     "timer_hud_y": -0.46,
     "timer_minutes": 1,
-    "timer_mode_enabled": true,
-    "timer_offset_x": 0.0
+    "timer_mode_enabled": false,
+    "timer_offset_x": 0.0,
+    "trial_count": 10
 }

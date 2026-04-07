@@ -955,6 +955,14 @@ re.on_frame(function()
             imgui.set_next_window_size(Vector2f.new(200, 400), 1 << 2)
             local visible = imgui.begin_window("##wp_sub_p" .. p, nil, 1 | 32)
             if visible then
+                -- Publish rect for overlap detection
+                pcall(function()
+                    local wpos = imgui.get_window_pos()
+                    local wsz = imgui.get_window_size()
+                    if _G.FloatingRects then
+                        table.insert(_G.FloatingRects, { x = wpos.x, y = wpos.y, w = wsz.x, h = wsz.y })
+                    end
+                end)
                 local cdata = char_name and char_name ~= "?" and wp_attack_data[char_name]
                 if cdata and cdata.moves then
                     imgui.text(char_name)

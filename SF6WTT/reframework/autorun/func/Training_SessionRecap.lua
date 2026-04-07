@@ -12,29 +12,71 @@ local _title = ""
 local _mode = ""  -- "reactions", "hitconfirm", "postguard"
 local _font = nil
 local _font_small = nil
+local _font_title = nil
 local _last_font_h = 0
 local _last_font_h_small = 0
+local _last_font_h_title = 0
 local _debug_msg = ""
 
 -- Colors (ABGR : 0xAABBGGRR)
-local COL_BG        = 0xF0181818
-local COL_BORDER    = 0xFFAAAAAA
-local COL_HEADER_BG = 0x44FFFFFF
-local COL_HEADER    = 0xFF00DDFF
-local COL_TEXT      = 0xFFDADADA
-local COL_TEXT_DIM  = 0xFF888888
-local COL_BAR_BG    = 0xFF333333
+local COL_BG        = 0xF00D0D12
+local COL_BORDER    = 0xFF3A3A4A
+local COL_HEADER_BG = 0xFF1A1A28
+local COL_HEADER    = 0xFFFFAA44  -- warm orange title
+local COL_TEXT      = 0xFFE0E0E0
+local COL_TEXT_DIM  = 0xFF6A6A7A
+local COL_BAR_BG    = 0xFF1E1E2E
 local COL_BAR_RED   = 0xFF4444FF
 local COL_BAR_ORG   = 0xFF00A5FF
 local COL_BAR_YEL   = 0xFF00FFFF
 local COL_BAR_GRN   = 0xFF00DD00
 local COL_SHADOW    = 0xFF000000
-local COL_CLOSE_BG  = 0x44FFFFFF
-local COL_CLOSE_HOV = 0x884444FF
+local COL_CLOSE_BG  = 0x33FFFFFF
+local COL_CLOSE_HOV = 0x664444FF
 local COL_CLOSE_TXT = 0xFFDADADA
-local COL_HIT       = 0xFF00A5FF  -- orange (hit confirm)
-local COL_BLK       = 0xFFFFFF00  -- cyan (block confirm)
-local COL_GRID      = 0xFF2D3246
+local COL_HIT       = 0xFFF5C832  -- warm gold (hit confirm)
+local COL_BLK       = 0xFFEE6644  -- coral/salmon (block confirm)
+local COL_GRID      = 0xFF1E2233
+local COL_CHART_BG  = 0xFF0A0A14
+local COL_ACCENT    = 0xFF3A3A5A
+
+-- Layout config (all values in % of screen, saved to JSON)
+local LAYOUT_FILE = "SessionRecap_Layout.json"
+local layout = {
+    panel_w  = 0.48,
+    panel_cy = 0.50,
+    header_h = 0.034,
+    chart_h  = 0.30,
+    axis_h   = 0.042,
+    legend_h = 0.022,
+    footer_h = 0.038,
+    pad      = 0.014,
+    margin_l = 0.040,
+    margin_r = 0.012,
+    title_y  = 0.485,
+    btn_inset = 0.010,
+    btn_size = 0.019,
+    title_ox = 0.025, title_oy = 0.0,
+    btn_ox = 0.006, btn_oy = 0.0,
+    ylabels_ox = 0.0, ylabels_oy = 0.0,
+    chart_ox = 0.0, chart_oy = 0.0,
+    xlabels_ox = 0.0, xlabels_oy = 0.0,
+    legend_ox = 0.0, legend_oy = 0.030,
+    legdot_ox = -0.002, legdot_oy = 0.008,
+    closex_ox = 0.0, closex_oy = -0.010,
+    footer_ox = 0.0, footer_oy = -0.009,
+    hitavg_ox = 0.002, hitavg_oy = -0.008,
+    blkavg_ox = 0.005, blkavg_oy = -0.007,
+}
+
+pcall(function()
+    local data = json.load_file(LAYOUT_FILE)
+    if data then for k, v in pairs(data) do layout[k] = v end end
+end)
+
+local function save_layout()
+    json.dump_file(LAYOUT_FILE, layout)
+end
 
 local _close_btn = { x = 0, y = 0, w = 0, h = 0 }
 
@@ -100,6 +142,8 @@ local function parse_reactions(filepath)
             if score and total and total > 0 then
                 results[#results + 1] = {
                     date  = extract_date(parts[1]),
+                    time  = extract_short_time(parts[1]),
+                    mode  = parts[3] or "",
                     pct   = (score / total) * 100,
                     score = score,
                     total = total
@@ -108,7 +152,7 @@ local function parse_reactions(filepath)
         end
     end
     f:close()
-    return tail_n(results, 7)
+    return tail_n(results, 10)
 end
 
 -- HitConfirm : 14 cols avec hit_pct et blk_pct separees
@@ -130,9 +174,14 @@ local function parse_hitconfirm(filepath)
                     results[#results + 1] = {
                         date    = extract_date(parts[1]),
                         time    = extract_short_time(parts[2]),
+                        mode    = parts[3] or "",
                         pct     = pct or 0,
                         hit_pct = hit_pct,
                         blk_pct = blk_pct,
+                        hit_tot = tonumber(parts[9]) or 0,
+                        hit_ok  = tonumber(parts[10]) or 0,
+                        blk_tot = tonumber(parts[12]) or 0,
+                        blk_ok  = tonumber(parts[13]) or 0,
                         score   = tonumber(parts[6]) or 0,
                         total   = total
                     }
@@ -158,10 +207,13 @@ local function parse_postguard(filepath)
                 local pct   = tonumber((parts[4]:gsub("%%", "")))
                 local total = tonumber(parts[5])
                 if pct and total and total > 0 then
+                    local success = math.floor(pct * total / 100 + 0.5)
                     results[#results + 1] = {
                         date  = extract_date(parts[1]),
+                        time  = extract_short_time(parts[1]),
+                        mode  = "",
                         pct   = pct,
-                        score = score or 0,
+                        score = success,
                         total = total
                     }
                 end
@@ -169,7 +221,7 @@ local function parse_postguard(filepath)
         end
     end
     f:close()
-    return tail_n(results, 7)
+    return tail_n(results, 10)
 end
 
 local PARSERS = {
@@ -224,16 +276,26 @@ end
 -- =========================================================
 
 local function draw_header(panel_x, panel_y, panel_w, header_h, fh, pad)
+    -- Header background
     d2d.fill_rect(panel_x, panel_y, panel_w, header_h, COL_HEADER_BG)
-    local tx = panel_x + pad
-    local ty = panel_y + (header_h - fh) * 0.5
-    d2d.text(_font, _title, tx + 1, ty + 1, COL_SHADOW)
-    d2d.text(_font, _title, tx, ty, COL_HEADER)
+    -- Accent separator at bottom of header
+    d2d.fill_rect(panel_x, panel_y + header_h - 2, panel_w, 2, COL_ACCENT)
 
-    -- Close button [X]
-    local btn_size = header_h * 0.65
-    local btn_x = panel_x + panel_w - pad - btn_size
-    local btn_y = panel_y + (header_h - btn_size) * 0.5
+    -- Title — centered horizontally, adjustable vertical bias
+    local title_font = _font_title or _font
+    local fh_title = _last_font_h_title or fh
+    local title_w = #_title * fh_title * 0.52
+    local sw_local, sh_local = d2d.surface_size()
+    local tx = panel_x + (panel_w - title_w) * 0.5 + sw_local * (layout.title_ox or 0)
+    local ty = panel_y + (header_h - fh_title) * (layout.title_y or 0.48) + sh_local * (layout.title_oy or 0)
+    d2d.text(title_font, _title, tx + 1, ty + 1, COL_SHADOW)
+    d2d.text(title_font, _title, tx, ty, COL_HEADER)
+
+    -- Close button
+    local btn_size = sh_local * (layout.btn_size or 0.016)
+    local btn_inset = sw_local * (layout.btn_inset or 0.010)
+    local btn_x = panel_x + panel_w - btn_inset - btn_size + sw_local * (layout.btn_ox or 0)
+    local btn_y = panel_y + (header_h - btn_size) * 0.5 + sh_local * (layout.btn_oy or 0)
     _close_btn.x = btn_x
     _close_btn.y = btn_y
     _close_btn.w = btn_size
@@ -249,11 +311,13 @@ local function draw_header(panel_x, panel_y, panel_w, header_h, fh, pad)
     end)
 
     d2d.fill_rect(btn_x, btn_y, btn_size, btn_size, is_hovered and COL_CLOSE_HOV or COL_CLOSE_BG)
-    d2d.outline_rect(btn_x, btn_y, btn_size, btn_size, 1, 0x66FFFFFF)
-    local x_tx = btn_x + btn_size * 0.25
-    local x_ty = btn_y + (btn_size - fh) * 0.5
+    d2d.outline_rect(btn_x, btn_y, btn_size, btn_size, 1, COL_ACCENT)
+    -- "X" centered in button + offset
+    local x_char_w = fh * 0.55
+    local x_tx = btn_x + (btn_size - x_char_w) * 0.5 + sw_local * (layout.closex_ox or 0)
+    local x_ty = btn_y + (btn_size - fh) * 0.5 + sh_local * (layout.closex_oy or 0)
     d2d.text(_font, "X", x_tx + 1, x_ty + 1, COL_SHADOW)
-    d2d.text(_font, "X", x_tx, x_ty, COL_CLOSE_TXT)
+    d2d.text(_font, "X", x_tx, x_ty, is_hovered and 0xFFFFFFFF or COL_CLOSE_TXT)
 end
 
 -- =========================================================
@@ -262,51 +326,63 @@ end
 
 local function draw_bars(sw, sh, fh, fh_s)
     local n        = #_sessions
-    local row_h    = fh * 2.2
-    local header_h = fh * 2.8
-    local footer_h = fh * 2.5
-    local pad      = sh * 0.012
-    local panel_w  = sw * 0.34
-    local panel_h  = header_h + (n * row_h) + footer_h + pad
+    local L        = layout
+    local pad      = sh * L.pad
+    local header_h = sh * L.header_h
+    local row_h    = fh_s * 2.6
+    local footer_h = sh * L.footer_h
+    local content_h = n * row_h
+    local panel_w  = sw * L.panel_w * 0.75
+    local panel_h  = header_h + pad + content_h + pad + footer_h + pad
     local panel_x  = (sw - panel_w) * 0.5
-    local panel_y  = (sh - panel_h) * 0.5
+    local panel_y  = sh * L.panel_cy - panel_h * 0.5
 
+    -- Panel background with shadow
+    d2d.fill_rect(panel_x - 1, panel_y - 1, panel_w + 2, panel_h + 2, COL_SHADOW)
     d2d.fill_rect(panel_x, panel_y, panel_w, panel_h, COL_BG)
-    d2d.outline_rect(panel_x, panel_y, panel_w, panel_h, 2, COL_BORDER)
+    d2d.outline_rect(panel_x, panel_y, panel_w, panel_h, 1, COL_BORDER)
     draw_header(panel_x, panel_y, panel_w, header_h, fh, pad)
 
-    local date_x    = panel_x + pad
-    local bar_x     = panel_x + panel_w * 0.22
-    local bar_max_w = panel_w * 0.40
-    local pct_x     = bar_x + bar_max_w + pad
-    local score_x   = pct_x + panel_w * 0.11
-    local bar_h     = row_h * 0.50
+    -- Column positions
+    local content_x = panel_x + pad * 1.5
+    local content_y = panel_y + header_h + pad
+    local date_w    = panel_w * 0.18
+    local bar_x     = content_x + date_w + pad
+    local bar_max_w = panel_w * 0.38
+    local pct_x     = bar_x + bar_max_w + pad * 1.5
+    local score_x   = pct_x + panel_w * 0.12
+    local bar_h     = row_h * 0.45
     local sum_pct   = 0
 
     for i, s in ipairs(_sessions) do
         pcall(function()
-            local ry  = panel_y + header_h + (i - 1) * row_h
+            local ry  = content_y + (i - 1) * row_h
             local by  = ry + (row_h - bar_h) * 0.5
             local tty = ry + (row_h - fh_s) * 0.5
 
+            -- Alternating row bg
             if i % 2 == 0 then
-                d2d.fill_rect(panel_x, ry, panel_w, row_h, 0x11FFFFFF)
+                d2d.fill_rect(panel_x + 1, ry, panel_w - 2, row_h, 0x0CFFFFFF)
             end
 
-            d2d.text(_font_small, tostring(s.date or "?"), date_x + 1, tty + 1, COL_SHADOW)
-            d2d.text(_font_small, tostring(s.date or "?"), date_x, tty, COL_TEXT_DIM)
+            -- Date
+            d2d.text(_font_small, tostring(s.date or "?"), content_x + 1, tty + 1, COL_SHADOW)
+            d2d.text(_font_small, tostring(s.date or "?"), content_x, tty, COL_TEXT_DIM)
 
+            -- Bar
             d2d.fill_rect(bar_x, by, bar_max_w, bar_h, COL_BAR_BG)
             local pct_safe = tonumber(s.pct) or 0
             local fill_w = bar_max_w * math.min(pct_safe, 100) / 100
             local col = bar_color(pct_safe)
             d2d.fill_rect(bar_x, by, fill_w, bar_h, col)
-            d2d.outline_rect(bar_x, by, bar_max_w, bar_h, 1, 0x44FFFFFF)
+            d2d.outline_rect(bar_x, by, bar_max_w, bar_h, 1, COL_ACCENT)
 
+            -- Percentage
             local pct_str = string.format("%d%%", math.floor(pct_safe))
             d2d.text(_font_small, pct_str, pct_x + 1, tty + 1, COL_SHADOW)
             d2d.text(_font_small, pct_str, pct_x, tty, col)
 
+            -- Score
             local sc_str = string.format("%d/%d", tonumber(s.score) or 0, tonumber(s.total) or 0)
             d2d.text(_font_small, sc_str, score_x + 1, tty + 1, COL_SHADOW)
             d2d.text(_font_small, sc_str, score_x, tty, COL_TEXT)
@@ -315,175 +391,299 @@ local function draw_bars(sw, sh, fh, fh_s)
         end)
     end
 
-    -- Footer
+    -- Footer separator + content
+    local fy_sep = content_y + content_h + pad * 0.5
+    d2d.fill_rect(panel_x + pad * 1.5, fy_sep, panel_w - pad * 3, 1, COL_ACCENT)
+    local fy = fy_sep + (footer_h - fh) * 0.5
+
     local avg = sum_pct / n
-    local fy = panel_y + header_h + n * row_h + (footer_h - fh) * 0.5
 
     if n >= 2 then
         local trend = _sessions[n].pct - _sessions[1].pct
         local trend_str = trend >= 0
-            and string.format("+%d%%", math.floor(trend))
-            or  string.format("%d%%", math.floor(trend))
+            and string.format("TREND: +%d%%", math.floor(trend))
+            or  string.format("TREND: %d%%", math.floor(trend))
         local trend_col = trend >= 0 and COL_BAR_GRN or COL_BAR_RED
-        d2d.text(_font, trend_str, panel_x + pad + 1, fy + 1, COL_SHADOW)
-        d2d.text(_font, trend_str, panel_x + pad, fy, trend_col)
+        d2d.text(_font, trend_str, panel_x + pad * 1.5 + 1, fy + 1, COL_SHADOW)
+        d2d.text(_font, trend_str, panel_x + pad * 1.5, fy, trend_col)
     end
 
     local avg_str = string.format("AVG: %d%%", math.floor(avg))
     local avg_w = #avg_str * fh * 0.6
-    local avg_x = panel_x + panel_w - pad - avg_w
-    d2d.text(_font, avg_str, avg_x + 1, fy + 1, COL_SHADOW)
-    d2d.text(_font, avg_str, avg_x, fy, bar_color(avg))
+    d2d.text(_font, avg_str, panel_x + panel_w - pad * 1.5 - avg_w + 1, fy + 1, COL_SHADOW)
+    d2d.text(_font, avg_str, panel_x + panel_w - pad * 1.5 - avg_w, fy, bar_color(avg))
 end
 
 -- =========================================================
 -- D2D: LINE CHART (HitConfirm - hit% & block% courbes)
 -- =========================================================
 
+local COL_SINGLE    = 0xFF44DDFF  -- bright cyan for single-curve mode
+
 local function draw_chart(sw, sh, fh, fh_s)
     local n        = #_sessions
-    local header_h = fh * 2.8
-    local pad      = sh * 0.012
-    local chart_h  = sh * 0.28
-    local legend_h = fh * 2.0
-    local footer_h = fh * 2.5
-    local panel_w  = sw * 0.40
-    local panel_h  = header_h + pad + chart_h + legend_h + footer_h + pad
+    local L = layout
+    -- Dual mode (hit+blk) or single mode (pct only)
+    local dual_mode = (_sessions[1].hit_pct ~= nil)
+    local pad      = sh * L.pad
+    local header_h = sh * L.header_h
+    local chart_h  = sh * L.chart_h
+    local axis_h   = sh * L.axis_h
+    local legend_h = sh * L.legend_h
+    local footer_h = sh * L.footer_h
+    local panel_w  = sw * L.panel_w
+    local panel_h  = header_h + pad + chart_h + axis_h + legend_h + footer_h + pad
     local panel_x  = (sw - panel_w) * 0.5
-    local panel_y  = (sh - panel_h) * 0.5
+    local panel_y  = sh * L.panel_cy - panel_h * 0.5
 
+    -- Panel background with subtle inner shadow
+    d2d.fill_rect(panel_x - 1, panel_y - 1, panel_w + 2, panel_h + 2, COL_SHADOW)
     d2d.fill_rect(panel_x, panel_y, panel_w, panel_h, COL_BG)
-    d2d.outline_rect(panel_x, panel_y, panel_w, panel_h, 2, COL_BORDER)
+    d2d.outline_rect(panel_x, panel_y, panel_w, panel_h, 1, COL_BORDER)
+
     draw_header(panel_x, panel_y, panel_w, header_h, fh, pad)
 
-    -- Chart area
-    local cx = panel_x + pad * 4  -- leave space for Y axis labels
-    local cy = panel_y + header_h + pad
-    local cw = panel_w - pad * 6
+    -- Chart area with inset look
+    local margin_l = sw * L.margin_l
+    local margin_r = sw * L.margin_r
+    local cx = panel_x + margin_l + sw * (L.chart_ox or 0)
+    local cy = panel_y + header_h + pad * 1.5 + sh * (L.chart_oy or 0)
+    local cw = panel_w - margin_l - margin_r
     local ch = chart_h
 
-    -- Background du graphique
-    d2d.fill_rect(cx, cy, cw, ch, 0xFF111111)
-    d2d.outline_rect(cx, cy, cw, ch, 1, COL_GRID)
+    d2d.fill_rect(cx, cy, cw, ch, COL_CHART_BG)
+    d2d.outline_rect(cx, cy, cw, ch, 1, COL_ACCENT)
 
-    -- Grille Y (0%, 25%, 50%, 75%, 100%)
+    -- Y axis grid + labels (right-aligned to chart left edge)
     for _, pct in ipairs({0, 25, 50, 75, 100}) do
         local gy = cy + ch - (ch * pct / 100)
-        d2d.fill_rect(cx, gy, cw, 1, COL_GRID)
+        if pct > 0 and pct < 100 then
+            for gx = cx, cx + cw - 4, 8 do
+                d2d.fill_rect(gx, gy, 4, 1, COL_GRID)
+            end
+        else
+            d2d.fill_rect(cx, gy, cw, 1, COL_ACCENT)
+        end
         local label = tostring(pct) .. "%"
-        d2d.text(_font_small, label, panel_x + pad * 0.5, gy - fh_s * 0.5, COL_TEXT_DIM)
+        local lw = #label * fh_s * 0.55
+        local lx = cx - lw - pad * 0.5 + sw * (L.ylabels_ox or 0)
+        d2d.text(_font_small, label, lx, gy - fh_s * 0.45 + sh * (L.ylabels_oy or 0), COL_TEXT_DIM)
     end
 
-    -- Helper: map session index to X position
+    -- Helpers
     local function sx(i)
         if n == 1 then return cx + cw * 0.5 end
-        return cx + (i - 1) * cw / (n - 1)
+        return cx + pad + (i - 1) * (cw - pad * 2) / (n - 1)
     end
-
-    -- Helper: map percentage to Y position
     local function sy(pct)
         return cy + ch - (ch * math.min(math.max(pct, 0), 100) / 100)
     end
 
-    -- Dessiner les courbes
-    local dot_r = math.max(3, fh * 0.2)
-    local hover_r = dot_r * 2.5  -- zone de detection hover plus large que le point
-    local tooltip = nil  -- { x, y, text, color } si hover detecte
+    -- Vertical grid lines per session (subtle)
+    for i = 1, n do
+        local gx = sx(i)
+        for gy = cy + 2, cy + ch - 2, 6 do
+            d2d.fill_rect(gx, gy, 1, 3, 0x18FFFFFF)
+        end
+    end
 
-    -- Lire la position de la souris une seule fois
+    -- Curves
+    local dot_r = math.max(3, fh * 0.22)
+    local hover_r = dot_r * 3
+    local tooltip = nil
+
     local mx, my = 0, 0
     pcall(function()
         local m = imgui.get_mouse()
         if m then mx, my = m.x, m.y end
     end)
 
-    -- Hit% curve (orange)
-    for i = 1, n do
-        pcall(function()
-            local hp = tonumber(_sessions[i].hit_pct) or 0
-            if i > 1 then
-                local hp_prev = tonumber(_sessions[i-1].hit_pct) or 0
-                draw_line(sx(i-1), sy(hp_prev), sx(i), sy(hp), 2, COL_HIT)
-            end
-            local px, py = sx(i), sy(hp)
-            local is_hov = math.abs(mx - px) < hover_r and math.abs(my - py) < hover_r
-            local size = is_hov and dot_r * 1.6 or dot_r
-            d2d.fill_rect(px - size, py - size, size * 2, size * 2, COL_HIT)
-            if is_hov then
-                tooltip = { x = px, y = py, text = string.format("HIT: %.1f%%", hp), color = COL_HIT }
-            end
-        end)
+    -- Define curve data: dual mode (hit+blk) or single mode (pct)
+    local curves = {}
+    if dual_mode then
+        curves[#curves + 1] = { key = "hit_pct", ok_key = "hit_ok", tot_key = "hit_tot", label = "HIT", color = COL_HIT, fill = 0x0CF5C832 }
+        curves[#curves + 1] = { key = "blk_pct", ok_key = "blk_ok", tot_key = "blk_tot", label = "BLK", color = COL_BLK, fill = 0x0CEE6644 }
+    else
+        curves[#curves + 1] = { key = "pct", ok_key = "score", tot_key = "total", label = "SUCCESS", color = COL_SINGLE, fill = 0x0C44DDFF }
     end
 
-    -- Block% curve (cyan)
-    for i = 1, n do
-        pcall(function()
-            local bp = tonumber(_sessions[i].blk_pct) or 0
-            if i > 1 then
-                local bp_prev = tonumber(_sessions[i-1].blk_pct) or 0
-                draw_line(sx(i-1), sy(bp_prev), sx(i), sy(bp), 2, COL_BLK)
-            end
-            local px, py = sx(i), sy(bp)
-            local is_hov = math.abs(mx - px) < hover_r and math.abs(my - py) < hover_r
-            local size = is_hov and dot_r * 1.6 or dot_r
-            d2d.fill_rect(px - size, py - size, size * 2, size * 2, COL_BLK)
-            if is_hov and not tooltip then  -- hit a priorite si les deux se chevauchent
-                tooltip = { x = px, y = py, text = string.format("BLK: %.1f%%", bp), color = COL_BLK }
-            end
-        end)
+    -- Area fill under curves
+    for _, c in ipairs(curves) do
+        for i = 2, n do
+            pcall(function()
+                local v = tonumber(_sessions[i][c.key]) or 0
+                local vp = tonumber(_sessions[i-1][c.key]) or 0
+                local x1, x2 = sx(i-1), sx(i)
+                local y1, y2 = sy(vp), sy(v)
+                local base = cy + ch
+                local steps = math.max(1, math.floor(x2 - x1))
+                for s = 0, steps do
+                    local t = s / steps
+                    local lx = x1 + (x2 - x1) * t
+                    local ly = y1 + (y2 - y1) * t
+                    d2d.fill_rect(lx, ly, 1, base - ly, c.fill)
+                end
+            end)
+        end
     end
 
-    -- Tooltip au dessus du point
+    -- Lines + dots
+    for ci, c in ipairs(curves) do
+        for i = 1, n do
+            pcall(function()
+                local v = tonumber(_sessions[i][c.key]) or 0
+                if i > 1 then
+                    local vp = tonumber(_sessions[i-1][c.key]) or 0
+                    draw_line(sx(i-1), sy(vp), sx(i), sy(v), 2, c.color)
+                end
+                local px, py = sx(i), sy(v)
+                local is_hov = math.abs(mx - px) < hover_r and math.abs(my - py) < hover_r
+                local size = is_hov and dot_r * 1.8 or dot_r
+                d2d.fill_rect(px - size - 1, py - size - 1, size * 2 + 2, size * 2 + 2, COL_CHART_BG)
+                d2d.fill_rect(px - size, py - size, size * 2, size * 2, c.color)
+                if is_hov and not tooltip then
+                    local s = _sessions[i]
+                    tooltip = { x = px, y = py, text = string.format("%s: %.1f%%", c.label, v), text2 = string.format("%d / %d", tonumber(s[c.ok_key]) or 0, tonumber(s[c.tot_key]) or 0), color = c.color }
+                end
+            end)
+        end
+    end
+
+    -- Tooltip
     if tooltip then
         local tt = tooltip
-        local tt_w = #tt.text * fh_s * 0.62 + pad * 2
-        local tt_h = fh_s + pad
+        local max_len = math.max(#tt.text, #(tt.text2 or ""))
+        local tt_w = max_len * fh_s * 0.62 + pad * 3
+        local tt_h = fh_s * 2.2 + pad * 1.5
         local tt_x = tt.x - tt_w * 0.5
-        local tt_y = tt.y - tt_h - dot_r * 2
-        d2d.fill_rect(tt_x, tt_y, tt_w, tt_h, 0xEE222222)
+        local tt_y = tt.y - tt_h - dot_r * 3
+        -- Clamp inside chart
+        if tt_x < cx then tt_x = cx end
+        if tt_x + tt_w > cx + cw then tt_x = cx + cw - tt_w end
+        if tt_y < cy then tt_y = tt.y + dot_r * 3 end
+        -- Shadow + bg
+        d2d.fill_rect(tt_x + 2, tt_y + 2, tt_w, tt_h, 0x88000000)
+        d2d.fill_rect(tt_x, tt_y, tt_w, tt_h, 0xF0141420)
         d2d.outline_rect(tt_x, tt_y, tt_w, tt_h, 1, tt.color)
-        d2d.text(_font_small, tt.text, tt_x + pad, tt_y + pad * 0.3, tt.color)
+        -- Accent line on top
+        d2d.fill_rect(tt_x, tt_y, tt_w, 2, tt.color)
+        d2d.text(_font_small, tt.text, tt_x + pad, tt_y + pad * 0.6, tt.color)
+        if tt.text2 then
+            d2d.text(_font_small, tt.text2, tt_x + pad, tt_y + pad * 0.6 + fh_s * 1.1, COL_TEXT)
+        end
     end
 
-    -- X axis labels (session time)
+    -- X axis labels (date + time + mode) — centered under each point
+    local cw_char = fh_s * 0.55
+    local xl_ox = sw * (L.xlabels_ox or 0)
+    local xl_oy = sh * (L.xlabels_oy or 0)
     for i = 1, n do
         pcall(function()
-            local label = _sessions[i].time or tostring(i)
-            local lx = sx(i) - #label * fh_s * 0.25
-            d2d.text(_font_small, label, lx, cy + ch + 2, COL_TEXT_DIM)
+            local s = _sessions[i]
+            local date_lbl = s.date or ""
+            local time_lbl = s.time or tostring(i)
+            local base_y = cy + ch + pad * 0.8 + xl_oy
+            local xi = sx(i) + xl_ox
+
+            -- Tick mark
+            d2d.fill_rect(xi, cy + ch, 1, pad * 0.5, COL_ACCENT)
+
+            -- Date
+            d2d.text(_font_small, date_lbl, xi - #date_lbl * cw_char * 0.5, base_y, COL_TEXT_DIM)
+
+            -- Time
+            d2d.text(_font_small, time_lbl, xi - #time_lbl * cw_char * 0.5, base_y + fh_s * 1.15, COL_TEXT)
+
+            -- Mode tag
+            local mode_raw = s.mode or ""
+            local mode_tag = ""
+            local t_count = mode_raw:match("TRIALS_(%d+)")
+            local t_min = mode_raw:match("TIMED_(%d+M)")
+            if t_count then mode_tag = "T" .. t_count
+            elseif t_min then mode_tag = t_min end
+            if mode_tag ~= "" then
+                d2d.text(_font_small, mode_tag, xi - #mode_tag * cw_char * 0.5, base_y + fh_s * 2.3, COL_TEXT_DIM)
+            end
         end)
     end
 
-    -- Legende
-    local leg_y = cy + ch + fh_s * 1.5
-    local leg_x1 = cx + cw * 0.15
-    local leg_x2 = cx + cw * 0.55
+    -- Legend — centered symmetrically, adapts to number of curves
+    local leg_y = cy + ch + axis_h + pad * 0.3 + sh * (L.legend_oy or 0)
+    local leg_cx = cx + cw * 0.5 + sw * (L.legend_ox or 0)
+    local dot_sz = fh_s * 0.6
+    local ldot_ox = sw * (L.legdot_ox or 0)
+    local ldot_oy = sh * (L.legdot_oy or 0)
+    local leg_gap = cw * 0.08
 
-    d2d.fill_rect(leg_x1, leg_y + fh_s * 0.3, fh_s, fh_s * 0.4, COL_HIT)
-    d2d.text(_font_small, "HIT %", leg_x1 + fh_s * 1.5, leg_y, COL_HIT)
-
-    d2d.fill_rect(leg_x2, leg_y + fh_s * 0.3, fh_s, fh_s * 0.4, COL_BLK)
-    d2d.text(_font_small, "BLOCK %", leg_x2 + fh_s * 1.5, leg_y, COL_BLK)
-
-    -- Footer: averages
-    local fy = panel_y + panel_h - footer_h + (footer_h - fh) * 0.5
-    local sum_hit, sum_blk = 0, 0
-    for _, s in ipairs(_sessions) do
-        sum_hit = sum_hit + (tonumber(s.hit_pct) or 0)
-        sum_blk = sum_blk + (tonumber(s.blk_pct) or 0)
+    local leg_labels = {}
+    for _, c in ipairs(curves) do
+        leg_labels[#leg_labels + 1] = { text = c.label .. " %", color = c.color }
     end
-    local avg_hit = sum_hit / n
-    local avg_blk = sum_blk / n
+    -- Measure total width
+    local leg_items_w = {}
+    local total_leg = 0
+    for i, ll in ipairs(leg_labels) do
+        local w = dot_sz + fh_s * 0.5 + #ll.text * cw_char
+        leg_items_w[i] = w
+        total_leg = total_leg + w
+        if i < #leg_labels then total_leg = total_leg + leg_gap end
+    end
+    local leg_x = leg_cx - total_leg * 0.5
+    for i, ll in ipairs(leg_labels) do
+        d2d.fill_rect(leg_x + ldot_ox, leg_y + (fh_s - dot_sz) * 0.5 + ldot_oy, dot_sz, dot_sz, ll.color)
+        d2d.text(_font_small, ll.text, leg_x + dot_sz + fh_s * 0.4, leg_y, ll.color)
+        leg_x = leg_x + leg_items_w[i] + leg_gap
+    end
 
-    local hit_str = string.format("HIT AVG: %d%%", math.floor(avg_hit))
-    d2d.text(_font, hit_str, panel_x + pad + 1, fy + 1, COL_SHADOW)
-    d2d.text(_font, hit_str, panel_x + pad, fy, COL_HIT)
+    -- Footer: averages with accent separator
+    local ft_ox = sw * (L.footer_ox or 0)
+    local ft_oy = sh * (L.footer_oy or 0)
+    local fy_sep = panel_y + panel_h - footer_h + ft_oy
+    d2d.fill_rect(panel_x + pad * 1.5, fy_sep, panel_w - pad * 3, 1, COL_ACCENT)
+    local fy = fy_sep + (footer_h - fh) * 0.5
 
-    local blk_str = string.format("BLOCK AVG: %d%%", math.floor(avg_blk))
-    local blk_w = #blk_str * fh * 0.6
-    local blk_x = panel_x + panel_w - pad - blk_w
-    d2d.text(_font, blk_str, blk_x + 1, fy + 1, COL_SHADOW)
-    d2d.text(_font, blk_str, blk_x, fy, COL_BLK)
+    if dual_mode then
+        local sum_hit, sum_blk = 0, 0
+        for _, s in ipairs(_sessions) do
+            sum_hit = sum_hit + (tonumber(s.hit_pct) or 0)
+            sum_blk = sum_blk + (tonumber(s.blk_pct) or 0)
+        end
+        local avg_hit = sum_hit / n
+        local avg_blk = sum_blk / n
+
+        local hit_str = string.format("HIT AVG: %d%%", math.floor(avg_hit))
+        local ha_x = panel_x + pad * 1.5 + ft_ox + sw * (L.hitavg_ox or 0)
+        local ha_y = fy + sh * (L.hitavg_oy or 0)
+        d2d.text(_font, hit_str, ha_x + 1, ha_y + 1, COL_SHADOW)
+        d2d.text(_font, hit_str, ha_x, ha_y, COL_HIT)
+
+        local blk_str = string.format("BLOCK AVG: %d%%", math.floor(avg_blk))
+        local blk_w = #blk_str * fh * 0.6
+        local ba_x = panel_x + panel_w - pad * 1.5 - blk_w + ft_ox + sw * (L.blkavg_ox or 0)
+        local ba_y = fy + sh * (L.blkavg_oy or 0)
+        d2d.text(_font, blk_str, ba_x + 1, ba_y + 1, COL_SHADOW)
+        d2d.text(_font, blk_str, ba_x, ba_y, COL_BLK)
+    else
+        -- Single mode: trend left, avg right
+        local sum_pct = 0
+        for _, s in ipairs(_sessions) do sum_pct = sum_pct + (tonumber(s.pct) or 0) end
+        local avg_pct = sum_pct / n
+
+        if n >= 2 then
+            local trend = (tonumber(_sessions[n].pct) or 0) - (tonumber(_sessions[1].pct) or 0)
+            local trend_str = trend >= 0
+                and string.format("TREND: +%d%%", math.floor(trend))
+                or  string.format("TREND: %d%%", math.floor(trend))
+            local trend_col = trend >= 0 and COL_BAR_GRN or COL_BAR_RED
+            d2d.text(_font, trend_str, panel_x + pad * 1.5 + ft_ox + 1, fy + 1, COL_SHADOW)
+            d2d.text(_font, trend_str, panel_x + pad * 1.5 + ft_ox, fy, trend_col)
+        end
+
+        local avg_str = string.format("AVG: %d%%", math.floor(avg_pct))
+        local avg_w = #avg_str * fh * 0.6
+        d2d.text(_font, avg_str, panel_x + panel_w - pad * 1.5 - avg_w + ft_ox + 1, fy + 1, COL_SHADOW)
+        d2d.text(_font, avg_str, panel_x + panel_w - pad * 1.5 - avg_w + ft_ox, fy, COL_SINGLE)
+    end
 end
 
 -- =========================================================
@@ -493,26 +693,28 @@ end
 local function d2d_init() end
 
 local function d2d_draw()
+    _G.SessionRecapVisible = _visible and #_sessions > 0
     if not _visible or #_sessions == 0 then return end
 
     local sw, sh = d2d.surface_size()
 
-    local fh   = math.floor(sh * 0.016)
-    local fh_s = math.floor(sh * 0.013)
+    local fh   = math.floor(sh * 0.015)
+    local fh_s = math.floor(sh * 0.012)
+    local fh_t = math.floor(sh * 0.020)
     if fh ~= _last_font_h then
-        _font = d2d.Font.new("Consolas", fh)
+        _font = d2d.Font.new("capcom_goji-udkakugoc80pro-db.ttf", fh)
         _last_font_h = fh
     end
     if fh_s ~= _last_font_h_small then
-        _font_small = d2d.Font.new("Consolas", fh_s)
+        _font_small = d2d.Font.new("capcom_goji-udkakugoc80pro-db.ttf", fh_s)
         _last_font_h_small = fh_s
     end
-
-    if _mode == "hitconfirm" then
-        pcall(draw_chart, sw, sh, fh, fh_s)
-    else
-        pcall(draw_bars, sw, sh, fh, fh_s)
+    if fh_t ~= _last_font_h_title then
+        _font_title = d2d.Font.new("SF6_college.ttf", fh_t)
+        _last_font_h_title = fh_t
     end
+
+    pcall(draw_chart, sw, sh, fh, fh_s)
 end
 
 -- Register D2D
@@ -538,35 +740,26 @@ end)
 
 -- Debug
 re.on_draw_ui(function()
-    if imgui.tree_node("Session Recap Debug") then
-        imgui.text("Visible: " .. tostring(_visible))
-        imgui.text("Mode: " .. _mode)
-        imgui.text("Sessions: " .. #_sessions)
-        imgui.text("Debug: " .. _debug_msg)
-        for i, s in ipairs(_sessions) do
-            local extra = ""
-            if s.hit_pct then extra = " | hit:" .. tostring(s.hit_pct) .. "% blk:" .. tostring(s.blk_pct) .. "%" end
-            imgui.text("  [" .. i .. "] " .. tostring(s.date) .. " | " .. tostring(s.pct) .. "% | " .. tostring(s.score) .. "/" .. tostring(s.total) .. extra)
-        end
-        if _visible and imgui.button("Close Recap") then
-            M.hide()
-        end
-        if imgui.button("Test Show (HitConfirm)") then
-            M.show("HIT CONFIRM", "HitConfirm_SessionStats.txt", "hitconfirm")
-        end
-        if imgui.button("Copy Debug to Clipboard") then
-            local lines = {}
-            lines[#lines + 1] = "Visible: " .. tostring(_visible)
-            lines[#lines + 1] = "Mode: " .. _mode
-            lines[#lines + 1] = "Sessions: " .. #_sessions
-            lines[#lines + 1] = "Debug: " .. _debug_msg
+    if imgui.tree_node("Session Recap") then
+        -- Layout editor
+
+        -- Debug
+        if imgui.tree_node("Debug") then
+            imgui.text("Visible: " .. tostring(_visible))
+            imgui.text("Mode: " .. _mode)
+            imgui.text("Sessions: " .. #_sessions)
+            imgui.text("Debug: " .. _debug_msg)
             for i, s in ipairs(_sessions) do
                 local extra = ""
                 if s.hit_pct then extra = " | hit:" .. tostring(s.hit_pct) .. "% blk:" .. tostring(s.blk_pct) .. "%" end
-                lines[#lines + 1] = "  [" .. i .. "] " .. tostring(s.date) .. " | " .. tostring(s.pct) .. "% | " .. tostring(s.score) .. "/" .. tostring(s.total) .. extra
+                imgui.text("  [" .. i .. "] " .. tostring(s.date) .. " | " .. tostring(s.pct) .. "% | " .. tostring(s.score) .. "/" .. tostring(s.total) .. extra)
             end
-            pcall(imgui.set_clipboard_text, table.concat(lines, "\n"))
-            _debug_msg = _debug_msg .. " | Copied!"
+            imgui.tree_pop()
+        end
+
+        if _visible and imgui.button("Close Recap") then M.hide() end
+        if imgui.button("Test Show (HitConfirm)") then
+            M.show("HIT CONFIRM", "HitConfirm_SessionStats.txt", "hitconfirm")
         end
         imgui.tree_pop()
     end

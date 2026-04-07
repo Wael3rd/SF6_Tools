@@ -247,8 +247,8 @@
         "tp_p2_border": true,
         "ui_scale": 0.75,
         "use_attack_lock": true,
-        "window_pos_x": 105.0,
-        "window_pos_y": 208.0,
+        "window_pos_x": 96.0,
+        "window_pos_y": 456.0,
         "zone_opacity": 15
     }
 }

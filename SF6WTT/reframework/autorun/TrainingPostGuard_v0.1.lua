@@ -563,11 +563,7 @@ local function handle_input()
             end
         else
             if pos3_kb or pos4_pad then
-                if session.total > 0 then
-                    export_stats(); reset_session_stats(); set_feedback("STOP & EXPORT DONE", COLORS.Red, 1.5)
-                else
-                    reset_session_stats(); set_feedback("RESET DONE", COLORS.White, 1.0)
-                end
+                reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.5)
             end
         end
         -- Position 4 (key 4 / FUNC+RIGHT): START when idle, PAUSE when running
@@ -698,7 +694,7 @@ local function draw_session_buttons_docked()
     if not session.is_running then
         if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_pg", SC.c4) then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0) end
     else
-        if SharedUI.sc_button("STOP & EXPORT (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then export_stats(); session.is_running = false end
+        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0) end
         imgui.same_line()
         if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_pg", SC.c4) then session.is_paused = not session.is_paused end
     end
@@ -739,7 +735,7 @@ local function draw_session_floating()
     if not session.is_running then
         if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then reset_session_stats() end
     else
-        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then export_stats(); session.is_running = false end
+        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0) end
     end
     imgui.same_line(0, sp)
     if session.is_running then
@@ -802,8 +798,14 @@ local debug_p2_mem = get_p2_extended_info()
     end
 end)
 
+local last_trainer_mode_pg = 0
 re.on_frame(function()
-    if DEPENDANT_ON_MANAGER and _G.CurrentTrainerMode ~= MY_TRAINER_ID then return end
+    local cur_mode = _G.CurrentTrainerMode or 0
+    if cur_mode ~= last_trainer_mode_pg then
+        if session.is_running then reset_session_stats() end
+    end
+    last_trainer_mode_pg = cur_mode
+    if DEPENDANT_ON_MANAGER and cur_mode ~= MY_TRAINER_ID then return end
     if not sdk.get_managed_singleton("app.training.TrainingManager") then return end
 
     local should_update = true
@@ -839,7 +841,7 @@ re.on_frame(function()
     end
 
     -- FLOATING SESSION WINDOW
-    if should_draw and user_config.show_floating then
+    if user_config.show_floating then
         draw_session_floating()
     end
 end)

@@ -2267,12 +2267,6 @@ local function handle_viewer_shortcuts()
 
     local changed = false
 
-    -- Toggle UI Window: KB 7 or FUNC + Triangle
-    if is_pressed(PAD_TRIANGLE) or kb_pressed(KB_7) then
-        config.show_debug_window = not config.show_debug_window
-        changed = true
-    end
-
     -- Cycle P1 Modes
     if is_pressed(PAD_LB) or kb_pressed(KB_5) then
         cycle_player_display("p1"); changed = true
@@ -2287,10 +2281,42 @@ local function handle_viewer_shortcuts()
     last_input_mask = active_buttons; last_kb_state = kb_now
 end
 
+local _dv_last_window_rect = nil -- saved from on_draw_ui, used next frame
+
 re.on_frame(function()
     handle_viewer_shortcuts()
-    
+
+    -- Build local rect list from all sources (independent of frame ordering)
+    local all_rects = {}
+    -- From SharedUI floating bars
+    if _G.FloatingRects then for _, r in ipairs(_G.FloatingRects) do all_rects[#all_rects + 1] = r end end
+    -- From DV settings window (last frame)
+    if _dv_last_window_rect then all_rects[#all_rects + 1] = _dv_last_window_rect end
+    -- From REF menu (last frame)
+    local ref_open = false
+    pcall(function() ref_open = reframework:is_drawing_ui() end)
+    if not ref_open then _G._ref_menu_rect = nil end
+    if _G._ref_menu_rect then all_rects[#all_rects + 1] = _G._ref_menu_rect end
+
+    -- Check if a point overlaps any rect
+    local function point_in_any_rect(px, py)
+        for _, r in ipairs(all_rects) do
+            if px >= r.x and px <= r.x + r.w and py >= r.y and py <= r.y + r.h then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function is_overlapping_floating(display)
+        if not display or not display.root_screen_pos then return false end
+        return point_in_any_rect(display.root_screen_pos.x, display.root_screen_pos.y)
+    end
+
     if gBattle == nil then gBattle = sdk.find_type_definition("gBattle") end; if gBattle == nil then return end
+
+    -- Hide everything when session recap is displayed
+    if _G.SessionRecapVisible then return end
 
     local pm = sdk.get_managed_singleton("app.PauseManager")
     if pm then
@@ -2370,27 +2396,27 @@ re.on_frame(function()
         return mx >= (cx - w/2) and mx <= (cx + w/2) and my >= top and my <= bot
     end
 
-    -- Skip mouse clicks if hovering an imgui window (REFramework menu, floating windows, etc.)
-    local imgui_hovered = false
-    pcall(function() imgui_hovered = imgui.is_window_hovered(8) end)  -- 8 = AnyWindow
-
-    -- [LEFT-CLICK: CYCLE DISPLAY ON CHARACTER (same as keyboard shortcut)]
-    if imgui.is_mouse_clicked(0) and not imgui_hovered then
+    -- [LEFT-CLICK: CYCLE DISPLAY ON CHARACTER]
+    if imgui.is_mouse_clicked(0) then
         local m = imgui.get_mouse()
-        if check_char_click(m.x, m.y, p1_cache) then
-            cycle_player_display("p1")
-        end
-        if check_char_click(m.x, m.y, p2_cache) then
-            cycle_player_display("p2")
+        if m and not point_in_any_rect(m.x, m.y) then
+            if check_char_click(m.x, m.y, p1_cache) then
+                cycle_player_display("p1")
+            end
+            if check_char_click(m.x, m.y, p2_cache) then
+                cycle_player_display("p2")
+            end
         end
     end
 
-    -- [RIGHT-CLICK ON P1/P2: TOGGLE DEBUG WINDOW (like pressing 7)]
-    if imgui.is_mouse_clicked(1) and not imgui_hovered then
+    -- [RIGHT-CLICK ON P1/P2: TOGGLE DEBUG WINDOW]
+    if imgui.is_mouse_clicked(1) then
         local m = imgui.get_mouse()
-        if check_char_click(m.x, m.y, p1_cache) or check_char_click(m.x, m.y, p2_cache) then
-            config.show_debug_window = not config.show_debug_window
-            save_settings()
+        if m and not point_in_any_rect(m.x, m.y) then
+            if check_char_click(m.x, m.y, p1_cache) or check_char_click(m.x, m.y, p2_cache) then
+                config.show_debug_window = not config.show_debug_window
+                save_settings()
+            end
         end
     end
 
@@ -2457,7 +2483,7 @@ re.on_frame(function()
             vertical_mode = draw_v_p2
         }
 
-        if config.p1_show_all then
+        if config.p1_show_all and not is_overlapping_floating(p1_display) then
             draw_spacing_horizontal(p1_display, p2_display, p1_settings, scale_factor, numbers_to_draw)
             draw_jump_arc(0, p1_cache, p2_cache, { show_jump_arc = config.p1_show_jump_arc }, scale_factor)
             draw_vertical_overlay(p1_display, p2_display, {
@@ -2466,7 +2492,7 @@ re.on_frame(function()
             }, scale_factor)
         end
 
-        if config.p2_show_all then
+        if config.p2_show_all and not is_overlapping_floating(p2_display) then
             draw_spacing_horizontal(p2_display, p1_display, p2_settings, scale_factor, numbers_to_draw)
             draw_jump_arc(1, p2_cache, p1_cache, { show_jump_arc = config.p2_show_jump_arc }, scale_factor)
             draw_vertical_overlay(p2_display, p1_display, {
@@ -2674,7 +2700,7 @@ re.on_frame(function()
                     end
 
                     -- ====== P1 TEXTS ======
-                    if config.p1_show_all then
+                    if config.p1_show_all and not is_overlapping_floating(p1_display) then
                         local draw_v_p1 = config.p1_vertical_mode
                         if draw_v_p1 == 8 then draw_v_p1 = config.p1_custom_base_mode or 1 end
                         if draw_v_p1 > 4 then draw_v_p1 = 4 end
@@ -2716,7 +2742,7 @@ re.on_frame(function()
 						end
 
                     -- ====== P2 TEXTS ======
-                    if config.p2_show_all then
+                    if config.p2_show_all and not is_overlapping_floating(p2_display) then
                         local draw_v_p1 = config.p1_vertical_mode
                         if draw_v_p1 == 8 then draw_v_p1 = config.p1_custom_base_mode or 1 end
                         if draw_v_p1 > 4 then draw_v_p1 = 4 end
@@ -2780,7 +2806,8 @@ re.on_frame(function()
     end
     imgui.pop_style_color(1); imgui.pop_style_var(2)
 
-    if config.show_debug_window then
+    if not config.show_debug_window or _G.SessionRecapVisible then _dv_last_window_rect = nil end
+    if config.show_debug_window and not _G.SessionRecapVisible then
         if first_draw then
             imgui.set_next_window_pos(Vector2f.new(config.window_pos_x, config.window_pos_y), 1 << 3)
             first_draw = false
@@ -2793,6 +2820,12 @@ re.on_frame(function()
         end
 
         if imgui.begin_window("SF6 DISTANCE VIEWER", true, window_flags) then
+            -- Save rect for next frame's click detection (on_draw_ui runs after on_frame)
+            pcall(function()
+                local wpos = imgui.get_window_pos()
+                local wsz = imgui.get_window_size()
+                _dv_last_window_rect = { x = wpos.x, y = wpos.y, w = wsz.x, h = wsz.y }
+            end)
             if ui_font.obj then imgui.push_font(ui_font.obj) end
             
             -- Checkbox to hide the floating window from within itself

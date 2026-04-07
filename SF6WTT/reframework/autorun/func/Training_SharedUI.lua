@@ -2,6 +2,16 @@
 local UI = {}
 local imgui = imgui
 
+-- Global floating rect registry (cleared each frame, any script can publish)
+function UI.clear_rects()
+    _G.FloatingRects = {}
+end
+
+function UI.publish_rect(x, y, w, h)
+    if not _G.FloatingRects then _G.FloatingRects = {} end
+    table.insert(_G.FloatingRects, { x = x, y = y, w = w, h = h })
+end
+
 UI.COLORS = {
     White  = 0xFFDADADA, Green  = 0xFF00FF00, Red    = 0xFF0000FF,
     Grey   = 0x99FFFFFF, DarkGrey = 0xFF888888, Orange = 0xFF00A5FF, 
@@ -408,9 +418,10 @@ function UI.draw_floating_bg_top()
     imgui.push_style_color(7, 0xFF220000)
     pcall(function() imgui.progress_bar(0.0, Vector2f.new(w.x + 20, w.y + 20)) end)
     imgui.pop_style_color(1)
-    -- Publish window rect for D2D neon border drawing
+    -- Publish window rect
     local pos = imgui.get_window_pos()
     _G.TrainingFloatingBarTop = { x = pos.x, y = pos.y, w = w.x, h = w.y, active = true }
+    UI.publish_rect(pos.x, pos.y, w.x, w.y)
 end
 
 -- Draw dark background (same as ComboTrials progress_bar trick)
@@ -420,9 +431,10 @@ function UI.draw_floating_bg()
     imgui.push_style_color(7, 0xFF220000)
     pcall(function() imgui.progress_bar(0.0, Vector2f.new(w.x + 20, w.y + 20)) end)
     imgui.pop_style_color(1)
-    -- Publish window rect for D2D neon border drawing
+    -- Publish window rect
     local pos = imgui.get_window_pos()
     _G.TrainingFloatingBar = { x = pos.x, y = pos.y, w = w.x, h = w.y, active = true }
+    UI.publish_rect(pos.x, pos.y, w.x, w.y)
 end
 
 -- SF6 neon button (identical to styled_sf6_button in floating mode with sf6_btn_font)

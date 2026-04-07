@@ -438,6 +438,7 @@ end
 -- 4. MAIN LOOP
 -- ==========================================
 re.on_frame(function()
+    SharedUI.clear_rects()
     -- COUPE CIRCUIT ABSOLU : Aucune lecture de manette ou logique hors du training
     if not is_in_training_mode() then
         -- AUTO-RESET : On éteint tous les modes actifs si on sort du mode Training
@@ -446,6 +447,18 @@ re.on_frame(function()
         end
         _G.TrainingFloatingBar = nil
         _G.TrainingFloatingBarTop = nil
+        -- Force close the top bar by drawing it at size 0 off-screen
+        pcall(function()
+            imgui.push_style_color(2, 0x00000000)  -- fully transparent bg
+            imgui.push_style_color(5, 0x00000000)  -- fully transparent border
+            imgui.push_style_var(2, Vector2f.new(0, 0))
+            imgui.set_next_window_size(Vector2f.new(0, 0), 1)
+            imgui.set_next_window_pos(Vector2f.new(-100, -100), 1)
+            imgui.begin_window("TrainingModeSwitch##top", true, 1 | 2 | 4 | 8 | 128)
+            imgui.end_window()
+            imgui.pop_style_var(1)
+            imgui.pop_style_color(2)
+        end)
         return
     end
 
@@ -486,6 +499,15 @@ local function styled_header(label, style)
 end
 
 re.on_draw_ui(function()
+    -- Publish REFramework menu window rect for overlap detection
+    pcall(function()
+        local wpos = imgui.get_window_pos()
+        local wsz = imgui.get_window_size()
+        if wpos and wsz and _G.FloatingRects then
+            _G._ref_menu_rect = { x = wpos.x, y = wpos.y, w = wsz.x, h = wsz.y }
+        end
+    end)
+
     if imgui.tree_node("TRAINING SCRIPT MANAGER") then
 
         -- Si on n'est pas en training, on affiche un message d'attente et on bloque l'UI

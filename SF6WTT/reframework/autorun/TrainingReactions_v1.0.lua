@@ -348,7 +348,7 @@ end
 
 local function reset_session_stats()
     SessionRecap.hide()
-    session.score = 0; session.total = 0; session.is_running = false; session.is_paused = false
+    session.score = 0; session.total = 0; session.success = 0; session.is_running = false; session.is_paused = false
     session.real_start_time = os.time()
     
     session.is_time_up = false 
@@ -376,7 +376,7 @@ local function export_log_excel()
     local mode = (user_config.session_mode == 1) and "TIMED" or "INFINITE"
     local p1n = get_character_name(game_state.p1_id)
     local p2n = get_character_name(game_state.p2_id)
-    local line = string.format("%s\t%s\t%s\t%s\t%s\t%d\t%d", now, format_duration(duration), mode, p1n, p2n, session.score, session.total)
+    local line = string.format("%s\t%s\t%s\t%s\t%s\t%d\t%d", now, format_duration(duration), mode, p1n, p2n, session.success, session.total)
     file:write(line .. "\n"); file:close()
     session.export_msg = "Stats Exported!"
 end
@@ -635,6 +635,7 @@ local function update_logic()
             if p2 == STATE_HURT then
                  set_feedback(TEXTS.success, COLORS.Green, 2.0)
                  session.score = session.score + 1
+                 session.success = session.success + 1
                  session.total = session.total + 1
                  update_slot_stats(true) 
                  session.score_processed = true
@@ -751,9 +752,8 @@ local function handle_input()
     elseif session.is_running then
         if pos3_kb or pos4_pad then
             set_playback_mode(false)
-            export_log_excel()
             reset_session_stats()
-            set_feedback(TEXTS.stopped_export, COLORS.Red, 1.5)
+            set_feedback("STOPPED", COLORS.Red, 1.5)
         end
     elseif session.is_time_up then
         if pos3_kb or pos4_pad then
@@ -925,8 +925,8 @@ local function draw_session_buttons_docked()
             set_playback_mode(true)
         end
     else
-        if SharedUI.sc_button("STOP & EXPORT (" .. sl("L", "3") .. ")##dk_r", SC.c3) then
-            set_playback_mode(false); export_log_excel(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0)
+        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_r", SC.c3) then
+            set_playback_mode(false); reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0)
         end
         imgui.same_line()
         if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_r", SC.c4) then
@@ -978,7 +978,7 @@ local function draw_session_floating()
         if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_r", SC.c3, actual_w) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
     else
         if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_r", SC.c3, actual_w) then
-            set_playback_mode(false); export_log_excel(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0)
+            set_playback_mode(false); reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0)
         end
     end
     imgui.same_line(0, sp)
@@ -1002,9 +1002,9 @@ end
 
 re.on_frame(function()
     local cur_mode = _G.CurrentTrainerMode or 0
-    if cur_mode == 1 and last_trainer_mode ~= 1 then
-        reset_session_stats()
-        set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
+    if cur_mode ~= last_trainer_mode then
+        if session.is_running then set_playback_mode(false); reset_session_stats() end
+        if cur_mode == 1 then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
     end
     last_trainer_mode = cur_mode
 
@@ -1049,7 +1049,7 @@ re.on_frame(function()
     end
 
     -- FLOATING SESSION WINDOW
-    if should_draw_hud and user_config.show_floating then
+    if user_config.show_floating then
         draw_session_floating()
     end
 end)

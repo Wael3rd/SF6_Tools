@@ -334,6 +334,7 @@ local function load_conf()
     user_config.show_early_detection = false
     user_config.dont_count_blocked = true
     user_config.session_mode = "trials"
+    user_config.show_floating = true
     
     if user_config.difficulty == nil then user_config.difficulty = 2 end
     refresh_tables()
@@ -384,7 +385,9 @@ local function export_session_stats()
     local duration = os.difftime(now, session.real_start_time)
     local duration_str = string.format("%02d:%02d", math.floor(duration/60), duration%60)
 
-    local mode_str = "TIMED" -- Always TIMED
+    local mode_str = user_config.session_mode == "trials"
+        and ("TRIALS_" .. user_config.trial_count)
+        or ("TIMED_" .. user_config.timer_minutes .. "M")
 
     local real_total_attempts = session.hit_tot + session.blk_tot
     local total_success = session.hit_ok + session.blk_ok
@@ -885,9 +888,8 @@ local function handle_input()
         end
     elseif session.is_running then
         if pos3_kb or pos4_pad then
-            export_session_stats(); reset_session_stats()
-            session.is_running = false
-            set_feedback(TEXTS.stopped_export, COLORS.Red, 1.5)
+            reset_session_stats()
+            set_feedback("STOPPED", COLORS.Red, 1.5)
         end
     elseif session.is_time_up then
         if pos3_kb or pos4_pad then
@@ -1158,7 +1160,7 @@ local function draw_session_buttons_docked()
             set_feedback(TEXTS.started, COLORS.Green, 1.0)
         end
     else
-        if SharedUI.sc_button("STOP & EXPORT (" .. sl("L", "3") .. ")##dk_hc", SC.c3) then export_session_stats(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0) end
+        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_hc", SC.c3) then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0) end
         imgui.same_line()
         if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_hc", SC.c4) then session.is_paused = not session.is_paused end
     end
@@ -1200,7 +1202,7 @@ local function draw_session_floating()
     if not session.is_running then
         if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_hc", SC.c3, actual_w) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
     else
-        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_hc", SC.c3, actual_w) then export_session_stats(); reset_session_stats(); set_feedback(TEXTS.stopped_export, COLORS.Red, 1.0) end
+        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_hc", SC.c3, actual_w) then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0) end
     end
     imgui.same_line(0, sp)
     if session.is_running then
@@ -1222,9 +1224,10 @@ local function draw_session_floating()
 end
 
 re.on_frame(function()
-    if DEPENDANT_ON_MANAGER and (_G.CurrentTrainerMode ~= 2) then return end
     -- Hide if not actually in training (e.g. launched ranked from training)
-    if not sdk.get_managed_singleton("app.training.TrainingManager") then return end
+    local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+    if DEPENDANT_ON_MANAGER and (_G.CurrentTrainerMode ~= 2) then return end
+    if not tm then return end
 
     local should_update_logic = true
     local should_draw_hud = true
@@ -1250,7 +1253,10 @@ re.on_frame(function()
     end
 
     local cur_mode = _G.CurrentTrainerMode or 0
-    if cur_mode == 2 and last_trainer_mode ~= 2 then reset_session_stats() end
+    if cur_mode ~= last_trainer_mode then
+        if session.is_running then reset_session_stats() end
+        if cur_mode == 2 then reset_session_stats() end
+    end
     last_trainer_mode = cur_mode
 
     if should_update_logic then
@@ -1262,8 +1268,8 @@ re.on_frame(function()
         draw_hud_overlay()
     end
 
-    -- FLOATING SESSION WINDOW
-    if should_draw_hud and user_config.show_floating and _G.CurrentTrainerMode == 2 then
+    -- FLOATING SESSION WINDOW (always draw if in correct mode, regardless of pause state)
+    if user_config.show_floating and _G.CurrentTrainerMode == 2 then
         draw_session_floating()
     end
 end)
