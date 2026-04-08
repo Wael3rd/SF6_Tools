@@ -694,7 +694,22 @@ local function d2d_init() end
 
 local function d2d_draw()
     _G.SessionRecapVisible = _visible and #_sessions > 0
-    if not _visible or #_sessions == 0 then return end
+
+    -- Hide during pause menus
+    if _visible then
+        pcall(function()
+            local pm = sdk.get_managed_singleton("app.PauseManager")
+            if pm then
+                local pb = pm:get_field("_CurrentPauseTypeBit")
+                if pb and pb ~= 64 and pb ~= 2112 then
+                    _G.SessionRecapVisible = false
+                    return
+                end
+            end
+        end)
+    end
+
+    if not _G.SessionRecapVisible then return end
 
     local sw, sh = d2d.surface_size()
 
@@ -717,10 +732,11 @@ local function d2d_draw()
     pcall(draw_chart, sw, sh, fh, fh_s)
 end
 
--- Register D2D
-if d2d and d2d.register then
-    d2d.register(d2d_init, d2d_draw)
-end
+-- Expose draw for external overlay (drawn last = on top of everything)
+M.d2d_draw = d2d_draw
+
+-- No d2d.register here — drawing is handled by zzz_SessionRecapOverlay.lua
+-- to ensure it renders on top of all other D2D (including SheldonsBoxes)
 
 -- Click detection
 re.on_frame(function()

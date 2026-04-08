@@ -118,17 +118,15 @@ local function set_playback_mode(enable)
         if user_config.playback_mode_auto then
             call_tm_method("SetAllPlayActive")
         end
-        
-        call_tm_method("SetPlay", true) 
-        call_tm_method("ForceApply") 
-        
+
+        call_tm_method("SetPlay", true)
+        call_tm_method("ForceApply")
+
         playback_loop.active = true
         playback_loop.wait_frames = 5
     else
-        -- STOP 
+        -- STOP: just stop the loop, don't call Stop(0) which freezes P1 inputs
         playback_loop.active = false
-        call_tm_method("Stop", 0) 
-        call_tm_method("ForceApply") 
     end
 end
 
@@ -504,12 +502,9 @@ local function manage_playback()
                 playback_loop.wait_frames = 5
             end
             
-        -- 2. PAUSE / STOP (ONLY ENFORCE STOP IF SESSION IS ACTIVE BUT PAUSED)
+        -- 2. PAUSE / STOP: just don't restart playback (let current action finish naturally)
         else
-            -- Force stop if not stopped
-            if current_state ~= 0 then
-                call_tm_method("Stop", 0) 
-            end
+            playback_loop.active = false
         end
     end
     -- IF SESSION IS NOT RUNNING -> DO NOTHING (Allows Manual Recording)
@@ -549,7 +544,9 @@ local function update_logic()
                 session.is_running = false
                 session.is_time_up = true
                 session.time_up_delay = 0
-                set_playback_mode(false)
+                playback_loop.active = false
+                call_tm_method("Stop", 0)
+                call_tm_method("ForceApply")
                 export_log_excel()
                 SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
                 set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
@@ -559,7 +556,9 @@ local function update_logic()
                 session.is_running = false
                 session.is_time_up = true
                 session.time_up_delay = 0
-                set_playback_mode(false)
+                playback_loop.active = false
+                call_tm_method("Stop", 0)
+                call_tm_method("ForceApply")
                 export_log_excel()
                 SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
                 set_feedback(session.total .. " TRIALS DONE! & EXPORTED", COLORS.Red, 0)
@@ -1003,7 +1002,11 @@ end
 re.on_frame(function()
     local cur_mode = _G.CurrentTrainerMode or 0
     if cur_mode ~= last_trainer_mode then
-        if session.is_running then set_playback_mode(false); reset_session_stats() end
+        -- Always stop playback when leaving this mode
+        if last_trainer_mode == 1 then
+            set_playback_mode(false)
+            if session.is_running then reset_session_stats() end
+        end
         if cur_mode == 1 then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
     end
     last_trainer_mode = cur_mode
@@ -1027,11 +1030,9 @@ re.on_frame(function()
             should_update_logic = false
             should_draw_hud = false
         else
-            -- Menu closed: auto-unpause if it was auto-paused
-            if session._auto_paused and session.is_paused then
-                session.is_paused = false
+            -- Menu closed: keep paused but clear auto flag (user must resume manually)
+            if session._auto_paused then
                 session._auto_paused = false
-                set_playback_mode(true)
             end
         end
     end
