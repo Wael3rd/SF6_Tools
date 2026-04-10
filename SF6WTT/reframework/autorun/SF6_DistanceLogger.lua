@@ -549,6 +549,28 @@ re.on_frame(function()
 							then cname_adv = "Alex_Prowler" end
                         end
                     end
+                    if cname_adv == "Chun-Li" and p.mpActParam ~= nil and p.mpActParam.ActionPart ~= nil then
+                        local eng = p.mpActParam.ActionPart._Engine
+                        if eng ~= nil then
+                            local act_id = eng:get_ActionID()
+                            if act_id == 658
+                            or act_id == 659
+                            or act_id == 660
+                            or act_id == 663
+                            or act_id == 664
+                            or act_id == 666
+                            or act_id == 667
+                            or act_id == 668
+                            or act_id == 669
+                            or act_id == 670
+                            or act_id == 680
+                            or act_id == 681
+                            or act_id == 684
+                            or act_id == 686
+                            or act_id == 688
+                            then cname_adv = "ChunLi_Serenity" end
+                        end
+                    end
                     detected_infos[i].name = cname_adv
 
                     -- Front montant bouton : nouveau appui (pas maintien)

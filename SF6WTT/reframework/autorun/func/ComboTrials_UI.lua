@@ -340,17 +340,13 @@ local function draw_single_line_content()
 
     local dynamic_rec_w = actual_btn_w
     local is_demo_active_early = (ctx.demo_state and ctx.demo_state.is_playing)
-    if trial_state.is_recording or is_demo_active_early then
-        -- In record/demo mode, distribute the massive 4-button space into 2
+    local is_replay_mode = (_G.IsInReplay == true)
+    if trial_state.is_recording or is_demo_active_early or is_replay_mode then
+        -- In record/demo/replay mode, distribute the massive 4-button space into 2
         dynamic_rec_w = (actual_btn_w * 4 + sp * 2) / 2
     end
 
-    imgui.set_cursor_pos(Vector2f.new(-10, -10))
-    imgui.push_style_color(7, 0xFF220000)
-    if not pcall(function() imgui.progress_bar(0.0, Vector2f.new(w_width + 20, win_h + 20)) end) then
-        pcall(function() imgui.progress_bar(0.0, Vector2f.new(w_width + 20, win_h + 20), "") end)
-    end
-    imgui.pop_style_color(1)
+    -- No progress_bar background (causes ghost in ranked mode)
 
     imgui.set_cursor_pos(Vector2f.new(pad_x, pad_y))
 
@@ -386,6 +382,11 @@ local function draw_single_line_content()
         if styled_sf6_button("QUIT DEMO (" .. sc("R", "2") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then
             if ctx.stop_demo then ctx.stop_demo() end
         end
+    elseif is_replay_mode then
+        -- REPLAY MODE: only Record P1 + Record P2 (2 buttons, special shortcuts)
+        if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then start_recording(0) end
+        imgui.same_line(0, sp)
+        if styled_sf6_button("RECORD P2 (" .. sc("R", "2") .. ")", false, dynamic_rec_w, true, false, P2_COLORS) then start_recording(1) end
     else
         -- Mode Normal / Playing
         if trial_state.is_playing then
@@ -635,10 +636,26 @@ local last_sw, last_sh = 0, 0
 local res_cooldown = 0
 local force_float_resize = 0
 
+local _was_bars_drawn = true
 re.on_frame(function()
+    -- Detect return from ranked: flush combo display
+    local bars_now = _G.TrainingBarsDrawn
+    if bars_now and not _was_bars_drawn then
+        pcall(function()
+            local ts = ctx and ctx.trial_state
+            if ts then
+                ts.is_playing = false
+                ts.sequence = {}
+                ts.current_step = 1
+            end
+        end)
+    end
+    _was_bars_drawn = bars_now
+
     if _G.CurrentTrainerMode ~= 4 then
         sf6_menu_state.active = false
         _G.ComboTrials_HideNativeHUD = false
+        _G.ComboTrialsD2DEnabled = false
         return
     end
 
@@ -648,6 +665,7 @@ re.on_frame(function()
         local b = pm:get_field("_CurrentPauseTypeBit")
         if b == 64 or b == 2112 then is_game_active = true end
     end
+    _G.ComboTrialsD2DEnabled = is_game_active
 
     -- Utilisation de l'API ImGui exacte pour le positionnement de la fenêtre
     local sw, sh = get_imgui_screen_size()
@@ -821,13 +839,15 @@ re.on_frame(function()
         imgui.pop_style_color(1)
     end
 
+    if not is_game_active then sf6_menu_state.active = false end
     if show_trial_overlay and is_game_active then
         sf6_menu_state.active = true
 
-        imgui.push_style_color(2, 0x00000000)
-        imgui.push_style_color(5, 0xAA220044)   -- Border (visible contour)
-        imgui.push_style_color(7, 0xAA220044)   -- Border accent
-        imgui.push_style_color(8, 0xCC6600AA)
+        imgui.push_style_color(2, 0x00000000)   -- WindowBg transparent
+        imgui.push_style_color(5, 0x00000000)   -- Border transparent
+        imgui.push_style_color(7, 0x00000000)   -- FrameBg transparent
+        imgui.push_style_color(8, 0x00000000)   -- TitleBg transparent
+        imgui.push_style_var(4, 0.0)            -- WindowBorderSize = 0
 		imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))
 		
         -- Full width, fixed at bottom — forced every frame
@@ -839,11 +859,15 @@ re.on_frame(function()
 
         if custom_ui_font then imgui.push_font(custom_ui_font) end
 
-        -- 9 = NoTitleBar(1) + NoScrollbar(8), + NoMove(4) + NoResize(2) = 15
-        local visible = imgui.begin_window("ComboTrialsFloating", true, 15)
+        -- 143 = NoTitleBar(1) + NoResize(2) + NoMove(4) + NoScrollbar(8) + NoBackground(128)
+        local visible = imgui.begin_window("ComboTrialsFloating", true, 143)
 
         local pos = imgui.get_window_pos()
         local size = imgui.get_window_size()
+
+        -- Add to neon border queue
+        if not _G.NeonBarQueue then _G.NeonBarQueue = {} end
+        table.insert(_G.NeonBarQueue, { x = pos.x, y = pos.y, w = size.x, h = size.y, src = "CT_UI" })
 
         -- SAUVEGARDE BLOQUÉE PENDANT LE COOLDOWN (Empêche la corruption des coordonnées)
         if size.x > 0 and size.y > 0 and not is_resizing then
@@ -940,8 +964,7 @@ re.on_frame(function()
 
         if custom_ui_font then imgui.pop_font() end
         imgui.pop_style_color(4)
-		-- WAEL2
-		imgui.pop_style_var(1)
+		imgui.pop_style_var(2)  -- WindowPadding + WindowBorderSize
     else
         sf6_menu_state.active = false
     end

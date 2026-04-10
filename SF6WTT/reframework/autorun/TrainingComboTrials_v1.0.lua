@@ -1425,17 +1425,11 @@ end
 
 local function cancel_recording()
     trial_state.is_recording = false
-    local target_p = 0
-    if #file_system.saved_combos_paths_p1 == 0 and #file_system.saved_combos_paths_p2 > 0 then target_p = 1 end
-    local path_to_load = nil
-    if target_p == 0 and #file_system.saved_combos_paths_p1 > 0 then
-        path_to_load = file_system.saved_combos_paths_p1[file_system.selected_file_idx_p1 or 1]
-    elseif target_p == 1 and #file_system.saved_combos_paths_p2 > 0 then
-        path_to_load = file_system.saved_combos_paths_p2[file_system.selected_file_idx_p2 or 1]
-    end
-    if not load_combo_from_file(path_to_load) then
-        clear_combo_state()
-    end
+    trial_state.is_playing = false
+    trial_state.sequence = {}
+    trial_state.current_step = 1
+    -- Flush displayed input history
+    pcall(function() ComboTrials_D2D.reset_raw() end)
 end
 
 local function stop_recording_and_save()
@@ -1702,8 +1696,8 @@ local function handle_combo_shortcuts()
             if ctx.start_demo then ctx.start_demo() end
         end
         if is_pressed(BTN_RIGHT) or kb_pressed(KB_2) then
-            trial_state.is_playing = false
             if ctx.stop_demo then ctx.stop_demo() end
+            -- trial_state.is_playing stays true so we return to the trial
         end
 
     elseif trial_state.is_recording then
@@ -1776,20 +1770,30 @@ local function handle_combo_shortcuts()
         end
 
     else
-        -- ===== IDLE : 4 boutons (LEFT/1=rec P1, UP/2=start trial, RIGHT/3=rec P2, DOWN/4=switch pos) =====
-        if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
-            start_recording(0)
-        end
-        if is_pressed(BTN_UP) or kb_pressed(KB_2) then
-            load_and_start_trial(0)
-        end
-        if is_pressed(BTN_RIGHT) or kb_pressed(KB_3) then
-            start_recording(1)
-        end
-        if is_pressed(BTN_DOWN) or kb_pressed(KB_4) then
-            d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
-            if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
-            save_d2d_config()
+        if _G.IsInReplay then
+            -- ===== REPLAY IDLE : 2 boutons (LEFT/1=rec P1, RIGHT/2=rec P2) =====
+            if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
+                start_recording(0)
+            end
+            if is_pressed(BTN_RIGHT) or kb_pressed(KB_2) then
+                start_recording(1)
+            end
+        else
+            -- ===== IDLE : 4 boutons (LEFT/1=rec P1, UP/2=start trial, RIGHT/3=rec P2, DOWN/4=switch pos) =====
+            if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
+                start_recording(0)
+            end
+            if is_pressed(BTN_UP) or kb_pressed(KB_2) then
+                load_and_start_trial(0)
+            end
+            if is_pressed(BTN_RIGHT) or kb_pressed(KB_3) then
+                start_recording(1)
+            end
+            if is_pressed(BTN_DOWN) or kb_pressed(KB_4) then
+                d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
+                if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
+                save_d2d_config()
+            end
         end
     end
 

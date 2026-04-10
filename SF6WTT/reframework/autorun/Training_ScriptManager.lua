@@ -13,6 +13,7 @@ local CONFIG_FILE = "TrainingManager_Config.json"
 
 local config = {
     func_button = nil, -- No default: must be set by user via CHANGE FUNCTION BUTTON
+    switch_key = 0x30, -- Keyboard key for mode switch (default: '0' = VK 0x30)
     btn_colors = { c1 = 0xFFFF0000, c2 = 0xFF00FF00, c3 = 0xFF0000FF, c4 = 0xFFDC00FF },
     btn_alphas = { c1 = 200, c2 = 200, c3 = 200, c4 = 200 },
     -- Top bar colors (ARGB)
@@ -56,6 +57,7 @@ local function load_config()
     local data = json.load_file(CONFIG_FILE)
     if data then
         if data.func_button then config.func_button = data.func_button end
+        if data.switch_key then config.switch_key = data.switch_key end
         if data.btn_colors and type(data.btn_colors) == "table" then
             for k, v in pairs(data.btn_colors) do config.btn_colors[k] = v end
         end
@@ -200,8 +202,9 @@ end
 
 -- Input Management (Gamepad & Keyboard)
 local last_input_mask = 0
-local is_binding_mode = false 
-local last_kb_0_state = false -- NEW: State tracker for the '0' key
+local is_binding_mode = false
+local is_kb_binding_mode = false
+local last_kb_0_state = false
 
 -- CORRECTED: 64 = X (Xbox) / Square (PS)
 local BTN_SQUARE = 64 
@@ -229,11 +232,27 @@ local function handle_input()
     if is_binding_mode then
         if active_buttons ~= 0 and last_input_mask == 0 then
             config.func_button = active_buttons
-            save_config() 
+            save_config()
             is_binding_mode = false
         end
         last_input_mask = active_buttons
-        return 
+        return
+    end
+
+    -- KEYBOARD BINDING LOGIC (scan all keys)
+    if is_kb_binding_mode then
+        pcall(function()
+            -- Scan common key range (0x08-0x7F covers most useful keys)
+            for vk = 0x08, 0x7F do
+                if reframework:is_key_down(vk) then
+                    config.switch_key = vk
+                    save_config()
+                    is_kb_binding_mode = false
+                    break
+                end
+            end
+        end)
+        if is_kb_binding_mode then return end -- still waiting for a key
     end
 
     -- SCRIPT SWITCH LOGIC (FUNCTION + SQUARE on Pad)
@@ -245,9 +264,10 @@ local function handle_input()
     _G.TrainingFuncHeld = is_func_held
     local is_switch_pressed = (active_buttons & BTN_SQUARE) == BTN_SQUARE and (last_input_mask & BTN_SQUARE) ~= BTN_SQUARE
 
-    -- SCRIPT SWITCH LOGIC (KEYBOARD '0' Key - VK Code 0x30)
+    -- SCRIPT SWITCH LOGIC (configurable keyboard key)
+    local switch_vk = config.switch_key or 0x30
     local is_kb_0_down = false
-    pcall(function() is_kb_0_down = reframework:is_key_down(0x30) end)
+    pcall(function() is_kb_0_down = reframework:is_key_down(switch_vk) end)
     local is_kb_0_pressed = is_kb_0_down and not last_kb_0_state
 
     -- Trigger switch if either Pad combo or Keyboard '0' is pressed
@@ -392,6 +412,25 @@ local MODE_BUTTONS = {
     { id = 4, label = "CUSTOM COMBO TRIALS" },
 }
 
+local VK_NAMES = {
+    [0x08]="BACKSPACE",[0x09]="TAB",[0x0D]="ENTER",[0x10]="SHIFT",[0x11]="CTRL",[0x12]="ALT",
+    [0x14]="CAPS",[0x1B]="ESC",[0x20]="SPACE",
+    [0x21]="PGUP",[0x22]="PGDN",[0x23]="END",[0x24]="HOME",[0x25]="LEFT",[0x26]="UP",[0x27]="RIGHT",[0x28]="DOWN",
+    [0x2D]="INSERT",[0x2E]="DELETE",
+    [0x30]="0",[0x31]="1",[0x32]="2",[0x33]="3",[0x34]="4",[0x35]="5",[0x36]="6",[0x37]="7",[0x38]="8",[0x39]="9",
+    [0x41]="A",[0x42]="B",[0x43]="C",[0x44]="D",[0x45]="E",[0x46]="F",[0x47]="G",[0x48]="H",[0x49]="I",
+    [0x4A]="J",[0x4B]="K",[0x4C]="L",[0x4D]="M",[0x4E]="N",[0x4F]="O",[0x50]="P",[0x51]="Q",[0x52]="R",
+    [0x53]="S",[0x54]="T",[0x55]="U",[0x56]="V",[0x57]="W",[0x58]="X",[0x59]="Y",[0x5A]="Z",
+    [0x60]="NUM0",[0x61]="NUM1",[0x62]="NUM2",[0x63]="NUM3",[0x64]="NUM4",
+    [0x65]="NUM5",[0x66]="NUM6",[0x67]="NUM7",[0x68]="NUM8",[0x69]="NUM9",
+    [0x70]="F1",[0x71]="F2",[0x72]="F3",[0x73]="F4",[0x74]="F5",[0x75]="F6",
+    [0x76]="F7",[0x77]="F8",[0x78]="F9",[0x79]="F10",[0x7A]="F11",[0x7B]="F12",
+    [0xBA]=";",[0xBB]="=",[0xBC]=",",[0xBD]="-",[0xBE]=".",[0xBF]="/",[0xC0]="`",
+}
+local function vk_name(vk)
+    return VK_NAMES[vk] or string.format("0x%02X", vk)
+end
+
 local function draw_top_floating_bar()
     local visible, sw, sh = SharedUI.begin_floating_window_top("TrainingModeSwitch##top", top_bar_width, top_bar_height)
     if not visible then
@@ -405,14 +444,15 @@ local function draw_top_floating_bar()
     -- Build switch label with dynamic shortcut (keyboard vs controller)
     local switch_label
     local fn = SharedUI.get_func_name()
+    local key_label = vk_name(config.switch_key or 0x30)
     if SharedUI.is_keyboard_mode() or not fn then
-        switch_label = "SWITCH (0)"
+        switch_label = "SWITCH (" .. key_label .. ")"
     else
         switch_label = "SWITCH (" .. fn .. " + SQUARE/X)"
     end
 
     -- Calculate button widths: use longest possible label for stable width
-    local switch_max = fn and ("SWITCH (" .. fn .. " + SQUARE/X)") or "SWITCH (0)"
+    local switch_max = fn and ("SWITCH (" .. fn .. " + SQUARE/X)") or "SWITCH (BACKSPACE)"
     local switch_w = imgui.calc_text_size(switch_max).x + 20
     local remaining = content_w - switch_w - sp * #MODE_BUTTONS
     local mode_w = remaining / #MODE_BUTTONS
@@ -447,33 +487,38 @@ re.on_frame(function()
         end
         _G.TrainingFloatingBar = nil
         _G.TrainingFloatingBarTop = nil
-        -- Force close the top bar by drawing it at size 0 off-screen
-        pcall(function()
-            imgui.push_style_color(2, 0x00000000)  -- fully transparent bg
-            imgui.push_style_color(5, 0x00000000)  -- fully transparent border
-            imgui.push_style_var(2, Vector2f.new(0, 0))
-            imgui.set_next_window_size(Vector2f.new(0, 0), 1)
-            imgui.set_next_window_pos(Vector2f.new(-100, -100), 1)
-            imgui.begin_window("TrainingModeSwitch##top", true, 1 | 2 | 4 | 8 | 128)
-            imgui.end_window()
-            imgui.pop_style_var(1)
-            imgui.pop_style_color(2)
-        end)
+        _G.TrainingModeActive = false
+        _G.TrainingGamePaused = true
         return
     end
+    _G.TrainingModeActive = true
 
     handle_input()
 
-    -- Clear D2D floating bar when no training mode is active
-    if _G.CurrentTrainerMode == 0 then _G.TrainingFloatingBar = nil end
+    -- Replay mode: auto-activate combo trials, no top bar
+    if _G.IsInReplay then
+        if _G.CurrentTrainerMode ~= 4 then
+            _G.CurrentTrainerMode = 4
+        end
+        -- Skip top bar and guard logic in replay
+    else
+        -- Clear D2D floating bar when no training mode is active
+        if _G.CurrentTrainerMode == 0 then _G.TrainingFloatingBar = nil end
 
-    if is_binding_mode then return end
+        if is_binding_mode then return end
 
-    -- CHECK AUTOMATIC GUARD SWITCHING
-    update_guard_logic()
+        -- CHECK AUTOMATIC GUARD SWITCHING
+        update_guard_logic()
 
-    -- TOP FLOATING BAR
-    draw_top_floating_bar()
+        -- TOP FLOATING BAR (hide during pause menu)
+        local pm = sdk.get_managed_singleton("app.PauseManager")
+        local pause_bit = pm and pm:get_field("_CurrentPauseTypeBit")
+        local in_pause_menu = pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112)
+        _G.TrainingGamePaused = in_pause_menu
+        if not in_pause_menu then
+            draw_top_floating_bar()
+        end
+    end
 
     local scripts_active = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3 or (_G.CurrentTrainerMode == 4 and _G.ComboTrials_HideNativeHUD))
     manage_ui_visibility(scripts_active)
@@ -597,6 +642,47 @@ re.on_draw_ui(function()
 
                 imgui.text_colored("The FUNCTION button is used for all controller shortcuts.", 0xFF888888)
                 imgui.text_colored("Inputs are blocked while FUNCTION is held.", 0xFF888888)
+
+                imgui.spacing()
+                imgui.separator()
+                imgui.spacing()
+
+                -- Keyboard switch key binding
+                if is_kb_binding_mode then
+                    imgui.push_style_color(5, 0xFF00FFFF)
+                    imgui.push_style_color(21, 0xFF005555)
+                    imgui.push_style_color(22, 0xFF007777)
+                    imgui.push_style_color(23, 0xFF009999)
+                    imgui.push_style_color(0, 0xFF00FFFF)
+                    imgui.button(">>> PRESS ANY KEY... <<<", Vector2f.new(-1, 35))
+                    imgui.pop_style_color(5)
+                else
+                    local cur_key = vk_name(config.switch_key or 0x30)
+                    imgui.push_style_color(5, 0xFFFFFFFF)
+                    imgui.push_style_color(21, 0xFF006644)
+                    imgui.push_style_color(22, 0xFF008866)
+                    imgui.push_style_color(23, 0xFF00AA88)
+                    imgui.push_style_color(0, 0xFF66FFCC)
+                    local avail = imgui.get_window_size().x - 40
+                    local reset_w = 80
+                    if imgui.button("CHANGE SWITCH KEY  [" .. cur_key .. "]", Vector2f.new(avail - reset_w - 8, 35)) then
+                        is_kb_binding_mode = true
+                    end
+                    imgui.pop_style_color(5)
+                    imgui.same_line(0, 8)
+                    imgui.push_style_color(5, 0xFFFFFFFF)
+                    imgui.push_style_color(21, 0xFF0000AA)
+                    imgui.push_style_color(22, 0xFF0000DD)
+                    imgui.push_style_color(23, 0xFF0000FF)
+                    imgui.push_style_color(0, 0xFFAAAAFF)
+                    if imgui.button("RESET##kb_reset", Vector2f.new(reset_w, 35)) then
+                        config.switch_key = 0x30
+                        save_config()
+                    end
+                    imgui.pop_style_color(5)
+                end
+                imgui.spacing()
+                imgui.text_colored("The SWITCH KEY cycles through training modes.", 0xFF888888)
             end
         end
 

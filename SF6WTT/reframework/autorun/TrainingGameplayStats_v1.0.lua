@@ -36,6 +36,7 @@ pcall(function()
                 local obj = sdk.to_managed_object(args[2])
                 if obj and obj.mInputType == 3 then
                     is_in_replay = true
+                    _G.IsInReplay = true
                 end
             end, function(r) return r end)
         end
@@ -47,6 +48,7 @@ pcall(function()
         if m_end then
             sdk.hook(m_end, function(args)
                 is_in_replay = false
+                _G.IsInReplay = false
             end, function(r) return r end)
         end
     end
@@ -72,10 +74,10 @@ local COL = {
     text      = 0xFFDADADA,
     text_dim  = 0xFF888888,
     separator = 0xFF444444,
-    pp        = 0xFFFFFF00, -- cyan
-    wp        = 0xFF00A5FF, -- orange
-    hc        = 0xFF00DD00, -- vert
-    aa        = 0xFF5555FF, -- rouge
+    pp        = 0xFF4488FF, -- bleu
+    wp        = 0xFFFF8800, -- orange
+    hc        = 0xFFFFDD00, -- jaune
+    aa        = 0xFF00DD00, -- vert
     total     = 0xFFFFFFFF, -- blanc
 }
 
@@ -243,10 +245,17 @@ end
 
 -- WP filter submenu: independent open state per player
 local wp_submenu_open = { [0] = false, [1] = false }
+local wp_submenu_rects = { [0] = nil, [1] = nil } -- saved rects for overlap detection
 -- Screen position for ">" buttons per player (set by D2D, read by imgui)
 local wp_btn_screen = {
     [0] = { x = 0, y = 0, w = 0, h = 0, panel_x = 0, panel_w = 0 },
     [1] = { x = 0, y = 0, w = 0, h = 0, panel_x = 0, panel_w = 0 },
+}
+local rst_btn_screen = {
+    [0] = { x = 0, y = 0, w = 0, h = 0 },
+    [1] = { x = 0, y = 0, w = 0, h = 0 },
+}
+local rst_flash = { [0] = 0, [1] = 0 -- countdown frames for red flash
 }
 
 -- Hook character detection
@@ -282,15 +291,15 @@ local function get_red_ar(char_name)
     return 0
 end
 
--- Get closest distance from player's box edges to opponent's position
--- Same as DistanceViewer's analyze_boxes min_dist logic
-local function get_closest_dist(player_obj, ref_x)
+-- Get closest distance from opponent's HURTBOX edges to player's position
+local function get_hurtbox_dist(player_obj, ref_x)
     local min_dist = 999999.0
     if not player_obj or not player_obj.mpActParam or not player_obj.mpActParam.Collision then return min_dist end
     local col = player_obj.mpActParam.Collision
     if col.Infos and col.Infos._items then
         for _, r in pairs(col.Infos._items) do
-            if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
+            -- HitNo = hurtbox, Type 0 = normal (not invuln)
+            if r and r:get_field("HitNo") ~= nil and (r.Type == 0 or r.Type == nil) then
                 local box_x = (r.OffsetX and r.OffsetX.v) and (r.OffsetX.v / 6553600.0) or 0.0
                 local size_x = (r.SizeX and r.SizeX.v) and (r.SizeX.v / 6553600.0) or 0.0
                 local d_left = math.abs(ref_x - (box_x - size_x))
@@ -303,8 +312,7 @@ local function get_closest_dist(player_obj, ref_x)
     return min_dist
 end
 
--- Returns true if player P's opponent is in P's orange zone
--- Measures: closest edge of OPPONENT's boxes to PLAYER's center
+-- Returns true if opponent is within player P's red zone
 local function is_opp_in_red_zone(p)
     local ok, result = pcall(function()
         local gBattle = sdk.find_type_definition("gBattle")
@@ -316,7 +324,7 @@ local function is_opp_in_red_zone(p)
         local opp = 1 - p
         local opp_obj = cP[opp]
         local my_x = cP[p].pos.x.v / 6553600.0
-        local dist = get_closest_dist(opp_obj, my_x)
+        local dist = get_hurtbox_dist(opp_obj, my_x)
         local my_ar = get_red_ar(wp_char_names[p])
         return dist <= (my_ar / 100.0) + 0.001
     end)
@@ -695,8 +703,9 @@ local function detect_events()
             -- If move still unidentified and we have exclusions, skip entirely
             local wp_skip = (not t_p._wp_move_input and has_any_exclusion(p))
 
-            -- Check if opponent enters orange zone at any point during the move
-            if not wp_skip and not t_p._wp_entered_zone and is_opp_in_red_zone(p) then
+            -- Check if opponent enters red zone only during recovery (FrameType 8)
+            local opp_ft = (opp == 0) and matrix.p1_ft or matrix.p2_ft
+            if not wp_skip and not t_p._wp_entered_zone and opp_ft == 8 and is_opp_in_red_zone(p) then
                 t_p._wp_entered_zone = true
             end
 
@@ -743,15 +752,65 @@ local function detect_events()
         local my_state_raw = (p == 0) and track[0].frame_st or track[1].frame_st
         local p_is_hurt = (my_state_raw == STATE_HURT)
 
-        -- Check if opponent is being comboed (hurt while airborne = launched, not jumping)
-        local opp_is_launched = (opp_pose >= 2 and opp_state == STATE_HURT)
+        -- Special case: Alex Prowler MK (action 980) — looks grounded but is airborne
+        local opp_airborne_override = false
+        local p_is_doing_980 = false
+        pcall(function()
+            local gBattle = sdk.find_type_definition("gBattle")
+            if not gBattle then return end
+            local pmgr = gBattle:get_field("Player"):get_data(nil)
+            if not pmgr then return end
+            -- Check opponent for airborne override
+            local opp_obj = pmgr:call("getPlayer", opp)
+            if opp_obj then
+                local eng = opp_obj.mpActParam and opp_obj.mpActParam.ActionPart and opp_obj.mpActParam.ActionPart._Engine
+                if eng then
+                    local act_id = eng:get_ActionID()
+                    if act_id == 980 then
+                        local y_val = opp_obj.pos and opp_obj.pos.y and opp_obj.pos.y.v or 0
+                        if y_val > 100000 then
+                            opp_airborne_override = true
+                        end
+                    end
+                end
+            end
+            -- Check if player P is doing action 980 (skip AA tracking for this player)
+            local p_obj = pmgr:call("getPlayer", p)
+            if p_obj then
+                local eng = p_obj.mpActParam and p_obj.mpActParam.ActionPart and p_obj.mpActParam.ActionPart._Engine
+                if eng and eng:get_ActionID() == 980 then
+                    p_is_doing_980 = true
+                end
+            end
+        end)
 
-        if not p_is_hurt and opp_pose >= 2 and not opp_is_launched then
+        local opp_is_airborne = (opp_pose >= 2) or opp_airborne_override
+
+        -- Check if opponent is being comboed (hurt while airborne = launched, not jumping)
+        local opp_is_launched = (opp_is_airborne and opp_state == STATE_HURT)
+
+        -- If player P is doing prowler MK, mark to skip AA for this whole sequence
+        if p_is_doing_980 then
+            t_p._aa_skip_980 = true
+        end
+        -- Reset the skip flag when back on ground and neutral
+        if not p_is_doing_980 and opp_pose < 2 and (my_state_raw == STATE_NEUTRAL or my_state_raw == 0) then
+            t_p._aa_skip_980 = false
+        end
+
+        if t_p._aa_skip_980 and t_p._aa_opp_in_air then
+            t_p._aa_opp_in_air = false
+            t_p._aa_opp_attacking = false
+            t_p._aa_counted = false
+            t_p._aa_launched = false
+        end
+
+        if not p_is_hurt and not t_p._aa_skip_980 and opp_is_airborne and not opp_is_launched then
             if not t_p._aa_opp_in_air then
                 t_p._aa_opp_in_air = true
                 t_p._aa_launched = false
             end
-            if opp_suki then t_p._aa_opp_attacking = true end
+            if opp_suki or opp_airborne_override then t_p._aa_opp_attacking = true end
         elseif opp_is_launched and not t_p._aa_opp_in_air then
             t_p._aa_launched = true
         end
@@ -782,7 +841,7 @@ local function detect_events()
                 t_p._aa_counted = true
             end
             -- Opponent landed (back on ground + neutral)
-            if opp_pose < 2 and (opp_state == STATE_NEUTRAL or opp_state == 0) then
+            if not opp_is_airborne and (opp_state == STATE_NEUTRAL or opp_state == 0) then
                 -- Landed safely without being AA'd and without hitting you = also a fail
                 if t_p._aa_opp_attacking and not t_p._aa_counted then
                     counters[p].aa = counters[p].aa - 1
@@ -793,7 +852,7 @@ local function detect_events()
                 t_p._aa_counted = false
                 t_p._aa_launched = false
             end
-        elseif opp_pose < 2 then
+        elseif not opp_is_airborne then
             -- Reset all AA state when opponent is back on ground
             t_p._aa_opp_in_air = false
             t_p._aa_opp_attacking = false
@@ -926,8 +985,36 @@ re.on_frame(function()
         end
     end)
 
+    -- Click detection on RST buttons
+    pcall(function()
+        if imgui.is_mouse_clicked(0) then
+            local m = imgui.get_mouse()
+            if m then
+                for p = 0, 1 do
+                    local b = rst_btn_screen[p]
+                    if b.w > 0 and m.x >= b.x and m.x <= b.x + b.w and m.y >= b.y and m.y <= b.y + b.h then
+                        for _, k in ipairs(STATS) do counters[p][k] = 0 end
+                        counters[p].wp_ok = 0; counters[p].wp_opp = 0
+                        counters[p].hc_ok = 0; counters[p].hc_opp = 0
+                        counters[p].aa_ok = 0; counters[p].aa_opp = 0
+                        hc_state[p].monitor.active = false; hc_state[p].monitor.type = nil
+                        hc_state[p].monitor.has_reset_hs = false; hc_state[p].monitor.target_combo = 0
+                        hc_state[p].lockout = false
+                        track[p]._wp_tracking = false; track[p]._aa_opp_in_air = false
+                        track[p]._aa_opp_attacking = false; track[p]._aa_counted = false
+                        rst_flash[p] = 20
+                        break
+                    end
+                end
+            end
+        end
+    end)
+
     -- Draw WP filter submenus (one per player, independent)
     for p = 0, 1 do
+        if not wp_submenu_open[p] then
+            wp_submenu_rects[p] = nil
+        end
         if wp_submenu_open[p] then
             local opp = 1 - p
             local char_name = wp_char_names[opp]
@@ -955,40 +1042,55 @@ re.on_frame(function()
             imgui.set_next_window_size(Vector2f.new(200, 400), 1 << 2)
             local visible = imgui.begin_window("##wp_sub_p" .. p, nil, 1 | 32)
             if visible then
-                -- Publish rect for overlap detection
+                -- Save rect for overlap detection (persists across frames)
                 pcall(function()
                     local wpos = imgui.get_window_pos()
                     local wsz = imgui.get_window_size()
-                    if _G.FloatingRects then
-                        table.insert(_G.FloatingRects, { x = wpos.x, y = wpos.y, w = wsz.x, h = wsz.y })
-                    end
+                    wp_submenu_rects[p] = { x = wpos.x, y = wpos.y, w = wsz.x, h = wsz.y }
                 end)
-                local cdata = char_name and char_name ~= "?" and wp_attack_data[char_name]
-                if cdata and cdata.moves then
-                    imgui.text(char_name)
-                    imgui.separator()
+                -- Build list of move sets (base + any stance variants in attack data)
+                local move_sets = {}
+                if char_name and char_name ~= "?" then
+                    local cdata = wp_attack_data[char_name]
+                    if cdata and cdata.moves then
+                        move_sets[#move_sets + 1] = { name = char_name, moves = cdata.moves }
+                    end
+                    -- Find all variants: keys that start with the char name + "_"
+                    local prefix = char_name:gsub("%-", "") .. "_"
+                    for key, vdata in pairs(wp_attack_data) do
+                        if key:sub(1, #prefix) == prefix and vdata.moves then
+                            move_sets[#move_sets + 1] = { name = key, moves = vdata.moves }
+                        end
+                    end
+                end
 
+                if #move_sets > 0 then
+                    -- Check All / Uncheck All across all sets
                     if imgui.button("Check All##p" .. p) then
-                        for _, move in ipairs(cdata.moves) do
-                            excl[move.input] = nil
+                        for _, ms in ipairs(move_sets) do
+                            for _, move in ipairs(ms.moves) do excl[move.input] = nil end
                         end
                         save_wp_filter()
                     end
                     imgui.same_line()
                     if imgui.button("Uncheck All##p" .. p) then
-                        for _, move in ipairs(cdata.moves) do
-                            excl[move.input] = true
+                        for _, ms in ipairs(move_sets) do
+                            for _, move in ipairs(ms.moves) do excl[move.input] = true end
                         end
                         save_wp_filter()
                     end
 
-                    imgui.spacing()
-                    for _, move in ipairs(cdata.moves) do
-                        local is_checked = not excl[move.input]
-                        local chg, val = imgui.checkbox(move.input .. "##p" .. p, is_checked)
-                        if chg then
-                            excl[move.input] = (not val) or nil
-                            save_wp_filter()
+                    for _, ms in ipairs(move_sets) do
+                        imgui.spacing()
+                        imgui.text(ms.name)
+                        imgui.separator()
+                        for _, move in ipairs(ms.moves) do
+                            local is_checked = not excl[move.input]
+                            local chg, val = imgui.checkbox(move.input .. "##p" .. p .. ms.name, is_checked)
+                            if chg then
+                                excl[move.input] = (not val) or nil
+                                save_wp_filter()
+                            end
                         end
                     end
                 else
@@ -1132,6 +1234,14 @@ local function d2d_draw()
         d2d.fill_rect(px, py, pw, ph, COL.bg)
         d2d.outline_rect(px, py, pw, ph, 1, COL.border)
 
+        -- Publish rect for DistanceViewer overlap detection
+        if _G.FloatingRects then
+            table.insert(_G.FloatingRects, { x = px, y = py, w = pw, h = ph })
+            if wp_submenu_rects[p] then
+                table.insert(_G.FloatingRects, wp_submenu_rects[p])
+            end
+        end
+
         -- Header
         d2d.fill_rect(px, py, pw, header_h, COL.header_bg)
         local header_col = p == 0 and COL.header_p1 or COL.header_p2
@@ -1153,6 +1263,26 @@ local function d2d_draw()
         local hy = py + (header_h - fh) * 0.5
         d2d.text(_font, header_txt, hx + 1, hy + 1, COL.shadow)
         d2d.text(_font, header_txt, hx, hy, header_col)
+
+        -- RESET button in header
+        local rst_txt = "RESET"
+        local rst_w = #rst_txt * fhs * 0.62
+        local rst_h = fhs * 1.4
+        local rst_y = py + (header_h - rst_h) * 0.5
+        local rst_x
+        if p == 0 then
+            rst_x = px + pw - pad - rst_w
+        else
+            rst_x = px + pad
+        end
+        if rst_flash[p] > 0 then rst_flash[p] = rst_flash[p] - 1 end
+        local rst_col = rst_flash[p] > 0 and 0xFFFF4444 or COL.text_dim
+        d2d.text(_font_small, rst_txt, rst_x + 1, rst_y + (rst_h - fhs) * 0.5 + 1, COL.shadow)
+        d2d.text(_font_small, rst_txt, rst_x, rst_y + (rst_h - fhs) * 0.5, rst_col)
+        rst_btn_screen[p].x = rst_x - fhs * 0.2
+        rst_btn_screen[p].y = rst_y - fhs * 0.1
+        rst_btn_screen[p].w = rst_w + fhs * 0.4
+        rst_btn_screen[p].h = rst_h + fhs * 0.2
 
         -- Separator
         local sep_y = py + header_h

@@ -1002,12 +1002,16 @@ end
 re.on_frame(function()
     local cur_mode = _G.CurrentTrainerMode or 0
     if cur_mode ~= last_trainer_mode then
-        -- Always stop playback when leaving this mode
-        if last_trainer_mode == 1 then
+        -- Pause playback when leaving this mode (but keep session intact)
+        if last_trainer_mode == 1 and session.is_running then
             set_playback_mode(false)
-            if session.is_running then reset_session_stats() end
+            session.is_paused = true
         end
-        if cur_mode == 1 then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0) end
+        -- Resume playback when coming back
+        if cur_mode == 1 and session.is_running and session.is_paused then
+            set_playback_mode(true)
+            session.is_paused = false
+        end
     end
     last_trainer_mode = cur_mode
 
@@ -1049,8 +1053,11 @@ re.on_frame(function()
         draw_hud_overlay()
     end
 
-    -- FLOATING SESSION WINDOW
-    if user_config.show_floating then
+    -- FLOATING SESSION WINDOW (hide during pause menu)
+    local _pm = sdk.get_managed_singleton("app.PauseManager")
+    local _pb = _pm and _pm:get_field("_CurrentPauseTypeBit")
+    local _in_menu = _pb and (_pb ~= 64 and _pb ~= 2112)
+    if user_config.show_floating and not _in_menu then
         draw_session_floating()
     end
 end)

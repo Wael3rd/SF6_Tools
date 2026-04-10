@@ -359,12 +359,25 @@ local function get_player_limits(pi, p_data)
     local char_name = p_data.adv_name or get_real_name(p_data.real_name)
     local cdata = advanced_data[char_name]
     if not cdata then return fallback_spacing end
-    
+
+    -- Get prefs for current stance/variant
     local prefs = advanced_prefs[pi] and advanced_prefs[pi][char_name] or {}
     local p_red = prefs.red or cdata.red
     local p_low = prefs.low or cdata.low
     local p_yoff = prefs.yellow_offset or cdata.yellow_offset or 50
-    
+
+    -- Fallback to base character if variant has no red/low
+    if not p_red or not p_low then
+        local base_name = esf_names_map[p_data.real_name] or char_name
+        if base_name ~= char_name then
+            local base_cdata = advanced_data[base_name]
+            local base_prefs = advanced_prefs[pi] and advanced_prefs[pi][base_name] or {}
+            if not p_red then p_red = base_prefs.red or (base_cdata and base_cdata.red) end
+            if not p_low then p_low = base_prefs.low or (base_cdata and base_cdata.low) end
+            if p_yoff == 50 then p_yoff = base_prefs.yellow_offset or (base_cdata and base_cdata.yellow_offset) or 50 end
+        end
+    end
+
     if p_red and p_low then
         local red_ar = p_red.ar / 100.0
         local low_ar = p_low.ar / 100.0
@@ -797,6 +810,28 @@ local function update_player_cache(pi, cache_table)
 				then cache_table.adv_name = "Alex_Prowler" end
             end
         end
+        if char_name == "Chun-Li" and p.mpActParam ~= nil and p.mpActParam.ActionPart ~= nil then
+            local eng = p.mpActParam.ActionPart._Engine
+            if eng ~= nil then
+                local a_id = eng:get_ActionID()
+                if a_id == 658
+                or a_id == 659
+                or a_id == 660
+                or a_id == 663
+                or a_id == 664
+                or a_id == 666
+                or a_id == 667
+                or a_id == 668
+                or a_id == 669
+                or a_id == 670
+                or a_id == 680
+                or a_id == 681
+                or a_id == 684
+                or a_id == 686
+                or a_id == 688
+                then cache_table.adv_name = "ChunLi_Serenity" end
+            end
+        end
         cache_table.valid = true
     else cache_table.valid = false end
 end
@@ -1175,14 +1210,10 @@ local function get_advanced_zone_label(pi, char_name, dist_cc, prefix, show_titl
         if dist_cc <= (mv.ar / 100.0) + 0.0000001 then
             local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
             
-            local zone_name = ""
-            if prefs.red and prefs.red.input == mv.input then zone_name = "Orange Zone"
-            elseif prefs.low and prefs.low.input == mv.input then zone_name = "Red Zone" end
-            
             if show_title and show_name then
-                return space .. zone_name .. "\n{" .. mv.input .. "}", col
+                return space .. "\n{" .. mv.input .. "}", col
             elseif show_title and not show_name then
-                return space .. zone_name, col
+                return space, col
             elseif not show_title and show_name then
                 return space .. "{" .. mv.input .. "}", col
             else
@@ -1215,8 +1246,9 @@ local function get_opp_zone_info(cache_data, opponent_data)
         local char_name = cache_data.adv_name or get_real_name(cache_data.real_name)
         local txt, col = get_advanced_zone_label(cache_data.id, char_name, dist_target, prefix, show_t, show_n)
         if txt then return txt, col end
+        return "", colors.Grey  -- no fallback to Red/Orange Zone labels in advanced mode
     end
-    
+
     local limits = get_player_limits(cache_data.id, cache_data)
     local sorted = get_sorted_thresholds(limits, show_t, show_n, prefix)
     
@@ -1644,82 +1676,103 @@ local function draw_pos_radios(id_suffix, current_mode)
 end
 
 local function draw_advanced_moves_menu(pi, rname, cdata)
-    local lbl = string.format("-- ADVANCED ZONE CONFIGURATION (%s)##adv%d", rname, pi)
+    local lbl = string.format("-- DISPLAYED MOVES ##adv%d", pi)
     if styled_tree_node(lbl, COL_YELLOW) then
-        if not cdata or not cdata.moves or #cdata.moves == 0 then
+        -- Build merged move list (base + variants)
+        local all_sets = {}
+        if cdata and cdata.moves and #cdata.moves > 0 then
+            all_sets[#all_sets + 1] = { name = rname, moves = cdata.moves }
+        end
+        local clean = rname:gsub("%-", "")
+        for key, vdata in pairs(advanced_data) do
+            if key ~= rname and key:sub(1, #clean + 1) == clean .. "_" and vdata.moves and #vdata.moves > 0 then
+                all_sets[#all_sets + 1] = { name = key, moves = vdata.moves }
+            end
+        end
+
+        if #all_sets == 0 then
             imgui.text_colored("(no moves logged)", COL_GREY)
         else
             local prefs = get_char_prefs(pi, rname)
             local ar_min, ar_max = get_ar_range(pi, rname)
             local max_ar_per_gb = {}
-            for _, entry in ipairs(cdata.moves) do
-                local gb = entry.guard_bit or 0
-                if gb > 0 then
-                    if not max_ar_per_gb[gb] or entry.ar > max_ar_per_gb[gb] then
-                        max_ar_per_gb[gb] = entry.ar
+            for _, s in ipairs(all_sets) do
+                for _, entry in ipairs(s.moves) do
+                    local gb = entry.guard_bit or 0
+                    if gb > 0 then
+                        if not max_ar_per_gb[gb] or entry.ar > max_ar_per_gb[gb] then
+                            max_ar_per_gb[gb] = entry.ar
+                        end
                     end
                 end
             end
 
             if imgui.button("Show All##"..pi) then
-                for _, mv in ipairs(cdata.moves) do set_move_visible(pi, rname, mv.input, true) end
+                for _, s in ipairs(all_sets) do
+                    for _, mv in ipairs(s.moves) do set_move_visible(pi, s.name, mv.input, true) end
+                end
             end
             imgui.same_line()
             if imgui.button("Hide All##"..pi) then
-                for _, mv in ipairs(cdata.moves) do set_move_visible(pi, rname, mv.input, false) end
+                for _, s in ipairs(all_sets) do
+                    for _, mv in ipairs(s.moves) do set_move_visible(pi, s.name, mv.input, false) end
+                end
             end
             imgui.same_line()
             if imgui.button("Max Only##"..pi) then
-                for _, mv in ipairs(cdata.moves) do
-                    local gb_val = mv.guard_bit or 0
-                    if gb_val > 0 and mv.ar == max_ar_per_gb[gb_val] then
-                        set_move_visible(pi, rname, mv.input, true)
-                    else
-                        set_move_visible(pi, rname, mv.input, false)
+                for _, s in ipairs(all_sets) do
+                    for _, mv in ipairs(s.moves) do
+                        local gb_val = mv.guard_bit or 0
+                        if gb_val > 0 and mv.ar == max_ar_per_gb[gb_val] then
+                            set_move_visible(pi, s.name, mv.input, true)
+                        else
+                            set_move_visible(pi, s.name, mv.input, false)
+                        end
                     end
                 end
             end
             imgui.separator()
 
-            if prefs.red then 
-                imgui.text_colored(string.format("ORANGE ZONE : [%s]", prefs.red.input), COL_ORANGE)
-                imgui.same_line(); if imgui.button("APPLY##adv_red_"..pi) then apply_teleport_exact(pi, prefs.red.ar) end
-            end
-            if prefs.low then 
-                imgui.text_colored(string.format("RED ZONE: [%s]", prefs.low.input), COL_RED)
-                imgui.same_line(); if imgui.button("APPLY##adv_low_"..pi) then apply_teleport_exact(pi, prefs.low.ar) end
-            end
-            if prefs.red or prefs.low then imgui.separator() end
+            imgui.separator()
 
-            for _, mv in ipairs(cdata.moves) do
-                local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
-                local tag = ""
-                if prefs.red and prefs.red.input == mv.input then tag = " [O]" end
-                if prefs.low and prefs.low.input == mv.input then tag = tag .. " [R]" end
-
-                local gb_val = mv.guard_bit or 0
-                local gb_name = get_guard_type_name(gb_val)
-                local is_max_for_gb = (gb_val > 0 and mv.ar == max_ar_per_gb[gb_val])
-
-                local visible = is_move_visible(pi, rname, mv.input)
-                local chk_changed, chk_new = imgui.checkbox(
-                    string.format("%-8s %s [%s]##chk_%s_%s_%d", mv.input, tag, gb_name, rname, mv.input, pi),
-                    visible)
-
-                if chk_changed then
-                    set_move_visible(pi, rname, mv.input, chk_new)
+            for _, s in ipairs(all_sets) do
+                if #all_sets > 1 then
+                    imgui.spacing()
+                    imgui.text_colored("-- " .. s.name .. " --", COL_CYAN)
                 end
+                for _, mv in ipairs(s.moves) do
+                    local col = ar_to_color_abgr(mv.ar, ar_min, ar_max)
+                    local tag = ""
+                    if prefs.red and prefs.red.input == mv.input then tag = " [O]" end
+                    if prefs.low and prefs.low.input == mv.input then tag = tag .. " [R]" end
 
-                imgui.same_line()
-                imgui.text_colored("[#]", col)
+                    local gb_val = mv.guard_bit or 0
+                    local gb_name = get_guard_type_name(gb_val)
+                    local is_max_for_gb = (gb_val > 0 and mv.ar == max_ar_per_gb[gb_val])
 
-                if is_max_for_gb then
+                    local visible = is_move_visible(pi, s.name, mv.input)
+                    local chk_changed, chk_new = imgui.checkbox(
+                        string.format("%-8s %.5f %s [%s]##chk_%s_%s_%d", mv.input, mv.ar, tag, gb_name, s.name, mv.input, pi),
+                        visible)
+
+                    if chk_changed then
+                        set_move_visible(pi, s.name, mv.input, chk_new)
+                    end
+
                     imgui.same_line()
-                    imgui.text_colored(" * [MAX " .. gb_name .. "]", COL_GOLD)
-                end
+                    imgui.text_colored("[#]", col)
 
-                imgui.same_line()
-                if imgui.button("APPLY##tp_adv_" .. pi .. "_" .. mv.input) then apply_teleport_exact(pi, mv.ar) end
+                    imgui.same_line()
+                    imgui.push_style_color(21, 0xFF994400) -- Button
+                    imgui.push_style_color(22, 0xFFBB6600) -- Hovered
+                    imgui.push_style_color(23, 0xFFDD8800) -- Active
+                    if imgui.button("Teleport##tp_adv_" .. pi .. "_" .. s.name .. "_" .. mv.input) then apply_teleport_exact(pi, mv.ar) end
+                    imgui.pop_style_color(3)
+                    if is_max_for_gb then
+                        imgui.same_line()
+                        imgui.text_colored("MAX " .. gb_name, COL_GOLD)
+                    end
+                end
             end
         end
         imgui.tree_pop()
@@ -1780,18 +1833,29 @@ local function apply_mode_flags(p, v)
 end
 
 local function cycle_player_display(p)
+    local cur_v = config[p.."_vertical_mode"]
     local next_v, next_a
     if not config.expert_mode_enabled then
-        next_v = (config[p.."_vertical_mode"] == 1) and 7 or 1
+        -- Normal: NORMAL(1) ↔ OFF(7)
+        next_v = (cur_v == 1) and 7 or 1
         next_a = false
     else
-        next_v, next_a = get_next_cycle(config[p.."_vertical_mode"], config[p.."_advanced_mode"], config[p.."_has_custom"])
+        -- Expert: toggle between Distance Only(1) and OFF(7)
+        if cur_v == 7 then
+            next_v = 1; next_a = true
+        else
+            next_v = 7; next_a = false
+        end
     end
     config[p.."_vertical_mode"] = next_v; config[p.."_advanced_mode"] = next_a
-    apply_mode_flags(p, next_v)
+    if config.expert_mode_enabled then
+        -- Expert: don't reset flags, just toggle show_all
+        config[p.."_show_all"] = (next_v ~= 7)
+    else
+        apply_mode_flags(p, next_v)
+    end
 
     local pi = (p == "p1") and 0 or 1
-    trigger_transient(pi, next_v, next_a)
     save_settings()
 end
 
@@ -1803,11 +1867,11 @@ local function draw_config_ui()
         imgui.text("SHORTCUTS (Keyboard / Gamepad):")
         
         if not config.expert_mode_enabled then
-            imgui.text("- [5] or (Func) + LB/L1 : Toggle P1 Mode (ON / OFF)")
-            imgui.text("- [6] or (Func) + RB/R1 : Toggle P2 Mode (ON / OFF)")
+            imgui.text("- [5] or (Func) + LB/L1 : Toggle P1 (Normal / OFF)")
+            imgui.text("- [6] or (Func) + RB/R1 : Toggle P2 (Normal / OFF)")
         else
-            imgui.text("- [5] or (Func) + LB/L1 : Cycle P1 Modes (Normal -> Advanced -> OFF)")
-            imgui.text("- [6] or (Func) + RB/R1 : Cycle P2 Modes (Normal -> Advanced -> OFF)")
+            imgui.text("- [5] or (Func) + LB/L1 : Toggle P1 (ON / OFF)")
+            imgui.text("- [6] or (Func) + RB/R1 : Toggle P2 (ON / OFF)")
         end
         
         imgui.text("- [7] or (Func) + Triangle/Y : Toggle UI Window")
@@ -1839,45 +1903,114 @@ local function draw_config_ui()
     end -- Fin du bloc "HELP & INFO"
 
         -- ==========================================
-        -- [NOUVEAU] MENU DE TELEPORTATION RAPIDE (Mode Non-Expert)
+        -- PLAYER OPTIONS (Normal Mode)
         -- ==========================================
         if not config.expert_mode_enabled then
-		            if styled_header("--- BASIC DISPLAY ---", UI_THEME.hdr_session_2) then
-                local c_p1, v_p1 = imgui.checkbox("DISPLAY P1 DISTANCE", config.p1_vertical_mode ~= 7)
-                if c_p1 then cycle_player_display("p1") end
+            local function draw_player_options_normal(pi, cache, p_prefix, hdr_color)
+                local rname = cache.valid and cache.adv_name or get_real_name(detected_infos[pi] and detected_infos[pi].name or "?")
+                -- Always use base character name for menu (not stance variant)
+                local base_display = cache.valid and (esf_names_map[cache.real_name] or cache.real_name) or get_real_name(detected_infos[pi] and detected_infos[pi].name or "?")
+                local header_label = string.format("--- %s (P%d) OPTIONS ---", base_display, pi + 1)
+                if styled_header(header_label, hdr_color) then
+                    -- Display toggle
+                    local is_on = config[p_prefix .. "_vertical_mode"] ~= 7
+                    local c_disp, v_disp = imgui.checkbox("Display P" .. (pi+1) .. " Distance##disp_" .. p_prefix, is_on)
+                    if c_disp then cycle_player_display(p_prefix) end
 
-                local c_p2, v_p2 = imgui.checkbox("DISPLAY P2 DISTANCE", config.p2_vertical_mode ~= 7)
-                if c_p2 then cycle_player_display("p2") end
-            end
-            -- CODE A COMMENTER WAEL
-            if styled_header("--- QUICK TELEPORT ---", UI_THEME.hdr_rules) then
-                local function draw_quick_tp(pi, cache)
-                    local rname = cache.valid and cache.adv_name or get_real_name(detected_infos[pi] and detected_infos[pi].name or "?")
-                    local limits = get_player_limits(pi, cache)
-                    
-                    local p_color = (pi == 0) and UI_THEME.hdr_session_1.hover or UI_THEME.hdr_session_2.hover
-                    imgui.text_colored(string.format("PLAYER %d (%s) :", pi + 1, rname), p_color)
-                    
-                    if limits and limits.red and limits.low and limits.yellow then
-                        local d_low = limits.low * 100.0
-                        local d_red = limits.red * 100.0
-                        local d_yel = limits.yellow * 100.0
-
-                        if imgui.button(string.format(" RED ##qtp_%d", pi)) then apply_teleport_exact(pi, d_low) end
-                        imgui.same_line()
-                        if imgui.button(string.format(" ORANGE ##qtp_%d", pi)) then apply_teleport_exact(pi, d_red) end
-                        imgui.same_line()
-                        if imgui.button(string.format(" YELLOW ##qtp_%d", pi)) then apply_teleport_exact(pi, d_yel) end
+                    -- Build list of move sets: base + variants
+                    local base_name = base_display
+                    local move_sets = {}
+                    local base_cdata = advanced_data[base_name]
+                    if base_cdata and base_cdata.moves and #base_cdata.moves > 0 then
+                        move_sets[#move_sets + 1] = { name = base_name, label = base_name, cdata = base_cdata }
                     end
-                    imgui.spacing()
+                    local clean_base = base_name:gsub("%-", "")
+                    for key, vdata in pairs(advanced_data) do
+                        if key ~= base_name and key:sub(1, #clean_base + 1) == clean_base .. "_" and vdata.moves and #vdata.moves > 0 then
+                            local short = key:match("_(.+)$") or key
+                            move_sets[#move_sets + 1] = { name = key, label = short, cdata = vdata }
+                        end
+                    end
+
+                    if #move_sets > 0 then
+                        -- Draw 3 lines (red/orange/yellow) per set
+                        for si, ms in ipairs(move_sets) do
+                            local prefs = get_char_prefs(pi, ms.name)
+                            local cd = ms.cdata
+                            local suffix = #move_sets > 1 and (" " .. ms.label) or ""
+                            local uid = p_prefix .. "_" .. ms.name
+
+                            local move_names = { "None" }
+                            local red_idx, low_idx = 1, 1
+                            local active_red = prefs.red or cd.red
+                            local active_low = prefs.low or cd.low
+                            for i, mv in ipairs(cd.moves) do
+                                move_names[#move_names + 1] = string.format("[%s]", mv.input)
+                                if active_red and active_red.input == mv.input and red_idx == 1 then red_idx = i + 1 end
+                                if active_low and active_low.input == mv.input and low_idx == 1 then low_idx = i + 1 end
+                            end
+
+                            if #move_sets > 1 then
+                                imgui.spacing()
+                                imgui.text_colored("-- " .. ms.label .. " --", COL_CYAN)
+                            else
+                                imgui.spacing()
+                            end
+
+                            -- Red Zone
+                            imgui.push_item_width(150)
+                            local chg_l, nv_l = imgui.combo("##" .. uid .. "_red", low_idx, move_names)
+                            imgui.pop_item_width()
+                            imgui.same_line(); imgui.text_colored("Red Zone" .. suffix, COL_RED)
+                            imgui.same_line()
+                            if imgui.button("TELEPORT##tp_red_" .. uid) then
+                                local idx = low_idx > 1 and low_idx or nv_l
+                                if idx and idx > 1 then apply_teleport_exact(pi, cd.moves[idx-1].ar) end
+                            end
+                            if chg_l then
+                                if nv_l == 1 then prefs.low = nil else prefs.low = { input = cd.moves[nv_l-1].input, ar = cd.moves[nv_l-1].ar } end
+                                save_advanced_prefs(); load_advanced_data()
+                            end
+
+                            -- Orange Zone
+                            imgui.push_item_width(150)
+                            local chg_r, nv_r = imgui.combo("##" .. uid .. "_org", red_idx, move_names)
+                            imgui.pop_item_width()
+                            imgui.same_line(); imgui.text_colored("Orange Zone" .. suffix, COL_ORANGE)
+                            imgui.same_line()
+                            if imgui.button("TELEPORT##tp_org_" .. uid) then
+                                local idx = red_idx > 1 and red_idx or nv_r
+                                if idx and idx > 1 then apply_teleport_exact(pi, cd.moves[idx-1].ar) end
+                            end
+                            if chg_r then
+                                if nv_r == 1 then prefs.red = nil else prefs.red = { input = cd.moves[nv_r-1].input, ar = cd.moves[nv_r-1].ar } end
+                                save_advanced_prefs(); load_advanced_data()
+                            end
+
+                            -- Yellow Offset
+                            local y_off = prefs.yellow_offset or 50
+                            imgui.push_item_width(150)
+                            local chg_y, nv_y = imgui.drag_int("##" .. uid .. "_yel", y_off, 1, 0, 300)
+                            imgui.pop_item_width()
+                            imgui.same_line(); imgui.text_colored("Yellow Offset" .. suffix, COL_YELLOW)
+                            imgui.same_line()
+                            if imgui.button("TELEPORT##tp_yel_" .. uid) then
+                                local limits = get_player_limits(pi, cache)
+                                if limits and limits.yellow then apply_teleport_exact(pi, limits.yellow * 100.0) end
+                            end
+                            if chg_y then
+                                prefs.yellow_offset = nv_y
+                                save_advanced_prefs(); load_advanced_data()
+                            end
+                        end
+                    else
+                        imgui.text_colored("No attack data for " .. rname, COL_GREY)
+                    end
                 end
-
-                draw_quick_tp(0, p1_cache)
-                draw_quick_tp(1, p2_cache)
             end
-            -- FIN DE CODE A COMMENTER WAEL 2
-            
 
+            draw_player_options_normal(0, p1_cache, "p1", UI_THEME.hdr_session_1)
+            draw_player_options_normal(1, p2_cache, "p2", UI_THEME.hdr_session_2)
         end
 
         if config.expert_mode_enabled then
@@ -1912,97 +2045,20 @@ local function draw_config_ui()
     -- 3. PLAYER 1 SETTINGS
     -- ==========================================
     local changed = false; local c = false
-    if styled_header("[ PLAYER 1 SETTINGS ]", UI_THEME.hdr_session_1) then
+    local p1_rname_expert = p1_cache.valid and (esf_names_map[p1_cache.real_name] or p1_cache.real_name) or "P1"
+    if styled_header(string.format("--- %s (P1) OPTIONS ---", p1_rname_expert), UI_THEME.hdr_session_1) then
 --        c, config.p1_show_all = imgui.checkbox("SHOW ALL P1 OVERLAYS##p1_master", config.p1_show_all); if c then changed = true end
 --        imgui.separator()
         
-        local rname = p1_cache.valid and p1_cache.adv_name or get_real_name(detected_infos[0] and detected_infos[0].name or "?")
-        local cdata = advanced_data[rname]
-        if cdata then
-            c, config.p1_advanced_mode = imgui.checkbox("Enable Advanced Mode (Distance Logger)##p1", config.p1_advanced_mode); if c then changed = true end
-            if not config.p1_advanced_mode then
-                if styled_tree_node("-- ZONE CONFIGURATION (" .. rname .. ")##p1", COL_YELLOW) then
-                    local prefs = get_char_prefs(0, rname)
-                    local move_names = { "None" }
-                    local red_idx, low_idx = 1, 1
-                    
-                    -- Determine the effective active data (user prefs or fallback to JSON base data)
-                    local active_red = prefs.red or cdata.red
-                    local active_low = prefs.low or cdata.low
-                    
-                    if cdata.moves then
-                        for i, mv in ipairs(cdata.moves) do
-                            table.insert(move_names, string.format("[%s]", mv.input))
-                            if active_red and active_red.input == mv.input then red_idx = i + 1 end
-                            if active_low and active_low.input == mv.input then low_idx = i + 1 end
-                        end
-                    end
-                    
-                    local chg_r, nv_r = imgui.combo("##p1_red_combo", red_idx, move_names)
-                    imgui.same_line(); imgui.text_colored("Orange Zone Move", COL_ORANGE)
-                    imgui.same_line(); if imgui.button("APPLY##tp_p1_red") and nv_r > 1 then apply_teleport_exact(0, cdata.moves[nv_r-1].ar) end
-                    if chg_r then 
-                        if nv_r == 1 then prefs.red = nil else prefs.red = { input = cdata.moves[nv_r-1].input, ar = cdata.moves[nv_r-1].ar } end
-                        save_advanced_prefs()
-                        load_advanced_data()
-                    end
-                    
-                    local chg_l, nv_l = imgui.combo("##p1_low_combo", low_idx, move_names)
-                    imgui.same_line(); imgui.text_colored("Red Zone Move", COL_RED)
-                    imgui.same_line(); if imgui.button("APPLY##tp_p1_low") and nv_l > 1 then apply_teleport_exact(0, cdata.moves[nv_l-1].ar) end
-                    if chg_l then
-                        if nv_l == 1 then prefs.low = nil else prefs.low = { input = cdata.moves[nv_l-1].input, ar = cdata.moves[nv_l-1].ar } end
-                        save_advanced_prefs()
-                        load_advanced_data()
-                    end
-                    
-                    local y_off = prefs.yellow_offset or 50
-                    local chg_y, nv_y = imgui.drag_int("##p1_yellow_drag", y_off, 1, 0, 300)
-                    imgui.same_line(); imgui.text_colored("Yellow Offset (cm)", COL_YELLOW)
-                    if chg_y then 
-                        prefs.yellow_offset = nv_y
-                        save_advanced_prefs()
-                        load_advanced_data()
-                    end
-                    
-                    imgui.tree_pop()
-                end
-                
-                imgui.separator()
-            else
-                draw_advanced_moves_menu(0, rname, cdata)
-            end
+        config.p1_advanced_mode = true
+        local rname_p1 = p1_rname_expert
+        local cdata_p1 = advanced_data[rname_p1]
+        if cdata_p1 then
+            draw_advanced_moves_menu(0, rname_p1, cdata_p1)
         end
---        imgui.separator()
 
 
-        if styled_tree_node("-- OVERLAY##p1", COL_YELLOW) then
-            local res1, index1 = imgui.combo("##vmode_p1", config.p1_vertical_mode, vmode_names)
-            
-            if config.p1_vertical_mode == 8 then
-                imgui.same_line()
-                if imgui.button("RESET##p1_reset") then
-                    index1 = 7; res1 = true; config.p1_has_custom = false
-                end
-            end
-
-            if res1 then 
-                config.p1_vertical_mode = index1
-                if index1 == 1 then
-                    config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false
-                    config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true
-                elseif index1 == 5 or index1 == 6 then
-                    config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = false; config.p1_show_numbers = false
-                elseif index1 == 7 then
-                    config.p1_fill_bg = false; config.p1_show_markers = false; config.p1_show_vertical_cursor = false; config.p1_show_horizontal_lines = false; config.p1_show_numbers = false; config.p1_opp_zone_show = false; config.p1_crossup_show = false
-                elseif index1 == 8 and config.p1_has_custom then
-                    config.p1_fill_bg = config.p1_custom_fill_bg; config.p1_show_markers = config.p1_custom_show_markers; config.p1_show_vertical_cursor = config.p1_custom_show_cursor; config.p1_show_horizontal_lines = config.p1_custom_show_hz; config.p1_show_numbers = config.p1_custom_show_numbers; config.p1_opp_zone_show = config.p1_custom_show_text; config.p1_crossup_show = config.p1_custom_show_text
-                elseif index1 >= 2 and index1 <= 4 then
-                    config.p1_fill_bg = true; config.p1_show_markers = true; config.p1_show_vertical_cursor = true; config.p1_show_horizontal_lines = true; config.p1_show_numbers = true; config.p1_opp_zone_show = true; config.p1_crossup_show = true
-                end
-                trigger_transient(0, config.p1_vertical_mode, config.p1_advanced_mode); changed = true 
-            end
-            
+        if styled_tree_node("-- CUSTOMIZE OVERLAY##p1", COL_YELLOW) then
             local changed_any = false
             c, config.p1_fill_bg = imgui.checkbox("Zones##p1", config.p1_fill_bg); if c then changed_any = true end; imgui.same_line()
             c, config.p1_show_markers = imgui.checkbox("Lines##p1", config.p1_show_markers); if c then changed_any = true end; imgui.same_line()
@@ -2022,19 +2078,7 @@ local function draw_config_ui()
             local c_arc1, v_arc1 = imgui.checkbox("CrossUp Arch##p1", config.p1_show_jump_arc)
             if c_arc1 then config.p1_show_jump_arc = v_arc1; changed = true end
 
-            local act_v1 = config.p1_vertical_mode
-            if act_v1 == 8 then act_v1 = config.p1_custom_base_mode or 1 end
-            -- if act_v1 >= 1 and act_v1 <= 4 and config.p1_show_numbers then
-                -- local c_ny1, v_ny1 = safe_input_float("Numbers Y Offset (Mode "..act_v1..")##p1", config["p1_number_off_y_"..act_v1] or 25.0)
-                -- if c_ny1 then config["p1_number_off_y_"..act_v1] = v_ny1; changed = true end
-            -- end
-
-            if changed_any then
-                if config.p1_vertical_mode >= 2 and config.p1_vertical_mode <= 4 then config.p1_custom_base_mode = config.p1_vertical_mode end
-                config.p1_vertical_mode = 8; config.p1_has_custom = true
-                config.p1_custom_fill_bg = config.p1_fill_bg; config.p1_custom_show_markers = config.p1_show_markers; config.p1_custom_show_cursor = config.p1_show_vertical_cursor; config.p1_custom_show_hz = config.p1_show_horizontal_lines; config.p1_custom_show_numbers = config.p1_show_numbers; config.p1_custom_show_text = config.p1_opp_zone_show
-                changed = true; trigger_transient(0, config.p1_vertical_mode, config.p1_advanced_mode)
-            end
+            if changed_any then changed = true end
             imgui.tree_pop()
         end
         imgui.separator()
@@ -2043,96 +2087,16 @@ local function draw_config_ui()
     -- ==========================================
     -- 4. PLAYER 2 SETTINGS
     -- ==========================================
-    if styled_header("[ PLAYER 2 SETTINGS ]", UI_THEME.hdr_session_2) then
---        c, config.p2_show_all = imgui.checkbox("SHOW ALL P2 OVERLAYS##p2_master", config.p2_show_all); if c then changed = true end
---        imgui.separator()
-        
-        local rname = p2_cache.valid and p2_cache.adv_name or get_real_name(detected_infos[1] and detected_infos[1].name or "?")
-        local cdata = advanced_data[rname]
-        if cdata then
-            c, config.p2_advanced_mode = imgui.checkbox("Enable Advanced Mode (Distance Logger)##p2", config.p2_advanced_mode); if c then changed = true end
-            if not config.p2_advanced_mode then
-                if styled_tree_node("-- ZONE CONFIGURATION (" .. rname .. ")##p2", COL_YELLOW) then
-                    local prefs = get_char_prefs(1, rname)
-                    local move_names = { "None" }
-                    local red_idx, low_idx = 1, 1
-                    
-                    -- Determine the effective active data (user prefs or fallback to JSON base data)
-                    local active_red = prefs.red or cdata.red
-                    local active_low = prefs.low or cdata.low
-                    
-                    if cdata.moves then
-                        for i, mv in ipairs(cdata.moves) do
-                            table.insert(move_names, string.format("[%s]", mv.input))
-                            if active_red and active_red.input == mv.input then red_idx = i + 1 end
-                            if active_low and active_low.input == mv.input then low_idx = i + 1 end
-                        end
-                    end
-                    
-                    local chg_r, nv_r = imgui.combo("##p2_red_combo", red_idx, move_names)
-                    imgui.same_line(); imgui.text_colored("Orange Zone Move", COL_ORANGE)
-                    imgui.same_line(); if imgui.button("APPLY##tp_p2_red") and nv_r > 1 then apply_teleport_exact(1, cdata.moves[nv_r-1].ar) end
-                    if chg_r then 
-                        if nv_r == 1 then prefs.red = nil else prefs.red = { input = cdata.moves[nv_r-1].input, ar = cdata.moves[nv_r-1].ar } end
-                        save_advanced_prefs()
-                        load_advanced_data()
-                    end
-                    
-                    local chg_l, nv_l = imgui.combo("##p2_low_combo", low_idx, move_names)
-                    imgui.same_line(); imgui.text_colored("Red Zone Move", COL_RED)
-                    imgui.same_line(); if imgui.button("APPLY##tp_p2_low") and nv_l > 1 then apply_teleport_exact(1, cdata.moves[nv_l-1].ar) end
-                    if chg_l then
-                        if nv_l == 1 then prefs.low = nil else prefs.low = { input = cdata.moves[nv_l-1].input, ar = cdata.moves[nv_l-1].ar } end
-                        save_advanced_prefs()
-                        load_advanced_data()
-                    end
-                    
-                    local y_off = prefs.yellow_offset or 50
-                    local chg_y, nv_y = imgui.drag_int("##p2_yellow_drag", y_off, 1, 0, 300)
-                    imgui.same_line(); imgui.text_colored("Yellow Offset (cm)", COL_YELLOW)
-                    if chg_y then 
-                        prefs.yellow_offset = nv_y
-                        save_advanced_prefs()
-                        load_advanced_data()
-                    end
-                    
-                    imgui.tree_pop()
-                end
-                imgui.separator()
-            else
-                draw_advanced_moves_menu(1, rname, cdata)
-            end
+    local p2_rname_expert = p2_cache.valid and (esf_names_map[p2_cache.real_name] or p2_cache.real_name) or "P2"
+    if styled_header(string.format("--- %s (P2) OPTIONS ---", p2_rname_expert), UI_THEME.hdr_session_2) then
+        config.p2_advanced_mode = true
+        local rname_p2 = p2_rname_expert
+        local cdata_p2 = advanced_data[rname_p2]
+        if cdata_p2 then
+            draw_advanced_moves_menu(1, rname_p2, cdata_p2)
         end
---		imgui.separator()
 
-
-        if styled_tree_node("-- OVERLAY##p2", COL_YELLOW) then
-            local res2, index2 = imgui.combo("##vmode_p2", config.p2_vertical_mode, vmode_names)
-            
-            if config.p2_vertical_mode == 8 then
-                imgui.same_line()
-                if imgui.button("RESET##p2_reset") then
-                    index2 = 7; res2 = true; config.p2_has_custom = false
-                end
-            end
-
-            if res2 then 
-                config.p2_vertical_mode = index2
-                if index2 == 1 then
-                    config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false
-                    config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true
-                elseif index2 == 5 or index2 == 6 then
-                    config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = false; config.p2_show_numbers = false
-                elseif index2 == 7 then
-                    config.p2_fill_bg = false; config.p2_show_markers = false; config.p2_show_vertical_cursor = false; config.p2_show_horizontal_lines = false; config.p2_show_numbers = false; config.p2_opp_zone_show = false; config.p2_crossup_show = false
-                elseif index2 == 8 and config.p2_has_custom then
-                    config.p2_fill_bg = config.p2_custom_fill_bg; config.p2_show_markers = config.p2_custom_show_markers; config.p2_show_vertical_cursor = config.p2_custom_show_cursor; config.p2_show_horizontal_lines = config.p2_custom_show_hz; config.p2_show_numbers = config.p2_custom_show_numbers; config.p2_opp_zone_show = config.p2_custom_show_text; config.p2_crossup_show = config.p2_custom_show_text
-                elseif index2 >= 2 and index2 <= 4 then
-                    config.p2_fill_bg = true; config.p2_show_markers = true; config.p2_show_vertical_cursor = true; config.p2_show_horizontal_lines = true; config.p2_show_numbers = true; config.p2_opp_zone_show = true; config.p2_crossup_show = true
-                end
-                trigger_transient(1, config.p2_vertical_mode, config.p2_advanced_mode); changed = true 
-            end
-            
+        if styled_tree_node("-- CUSTOMIZE OVERLAY##p2", COL_YELLOW) then
             local changed_any = false
             c, config.p2_fill_bg = imgui.checkbox("Zones##p2", config.p2_fill_bg); if c then changed_any = true end; imgui.same_line()
             c, config.p2_show_markers = imgui.checkbox("Lines##p2", config.p2_show_markers); if c then changed_any = true end; imgui.same_line()
@@ -2159,12 +2123,7 @@ local function draw_config_ui()
                 -- if c_ny2 then config["p2_number_off_y_"..act_v2] = v_ny2; changed = true end
             -- end
 
-            if changed_any then
-                if config.p2_vertical_mode >= 2 and config.p2_vertical_mode <= 4 then config.p2_custom_base_mode = config.p2_vertical_mode end
-                config.p2_vertical_mode = 8; config.p2_has_custom = true
-                config.p2_custom_fill_bg = config.p2_fill_bg; config.p2_custom_show_markers = config.p2_show_markers; config.p2_custom_show_cursor = config.p2_show_vertical_cursor; config.p2_custom_show_hz = config.p2_show_horizontal_lines; config.p2_custom_show_numbers = config.p2_show_numbers; config.p2_custom_show_text = config.p2_opp_zone_show
-                changed = true; trigger_transient(1, config.p2_vertical_mode, config.p2_advanced_mode)
-            end
+            if changed_any then changed = true end
             imgui.tree_pop()
         end
         imgui.separator()
@@ -2456,7 +2415,8 @@ re.on_frame(function()
         local draw_v_p1 = config.p1_vertical_mode
         if draw_v_p1 == 8 then draw_v_p1 = config.p1_custom_base_mode or 1 end
         if draw_v_p1 > 4 then draw_v_p1 = 4 end
-        
+        if config.expert_mode_enabled and draw_v_p1 ~= 7 then draw_v_p1 = 2 end
+
         local p1_settings = {
             show_horizontal_lines = config.p1_show_horizontal_lines, 
             show_numbers = config.p1_show_numbers,
@@ -2471,7 +2431,8 @@ re.on_frame(function()
         local draw_v_p2 = config.p2_vertical_mode
         if draw_v_p2 == 8 then draw_v_p2 = config.p2_custom_base_mode or 1 end
         if draw_v_p2 > 4 then draw_v_p2 = 4 end
-        
+        if config.expert_mode_enabled and draw_v_p2 ~= 7 then draw_v_p2 = 3 end
+
         local p2_settings = {
             show_horizontal_lines = config.p2_show_horizontal_lines, 
             show_numbers = config.p2_show_numbers,
@@ -2838,20 +2799,36 @@ re.on_frame(function()
                 config.expert_mode_enabled = new_em
                 for _, p in ipairs({"p1", "p2"}) do
                     if not new_em then
-                        -- Expert → Normal: save expert mode, reset to 1 unless OFF
-                        config[p.."_saved_expert_vmode"] = config[p.."_vertical_mode"]
-                        config[p.."_saved_expert_adv"] = config[p.."_advanced_mode"]
-                        if config[p.."_vertical_mode"] ~= 7 then
-                            config[p.."_vertical_mode"] = 1; config[p.."_advanced_mode"] = false
-                            apply_mode_flags(p, 1)
-                        end
+                        -- Expert → Normal: save expert flags, reset to normal mode 1
+                        config[p.."_expert_fill_bg"] = config[p.."_fill_bg"]
+                        config[p.."_expert_markers"] = config[p.."_show_markers"]
+                        config[p.."_expert_cursor"] = config[p.."_show_vertical_cursor"]
+                        config[p.."_expert_hlines"] = config[p.."_show_horizontal_lines"]
+                        config[p.."_expert_numbers"] = config[p.."_show_numbers"]
+                        config[p.."_expert_zone"] = config[p.."_opp_zone_show"]
+                        config[p.."_expert_crossup"] = config[p.."_crossup_show"]
+                        config[p.."_expert_color_text"] = config[p.."_opp_zone_color_text"]
+                        config[p.."_expert_crossup_color"] = config[p.."_crossup_color_text"]
+                        config[p.."_expert_jump_arc"] = config[p.."_show_jump_arc"]
+                        config[p.."_vertical_mode"] = 1; config[p.."_advanced_mode"] = false
+                        apply_mode_flags(p, 1)
+                        config[p.."_show_jump_arc"] = false
                     else
-                        -- Normal → Expert: if ON restore saved expert mode, if OFF stay OFF
-                        if config[p.."_vertical_mode"] ~= 7 and config[p.."_saved_expert_vmode"] and config[p.."_saved_expert_vmode"] ~= 7 then
-                            config[p.."_vertical_mode"] = config[p.."_saved_expert_vmode"]
-                            config[p.."_advanced_mode"] = config[p.."_saved_expert_adv"]
-                            apply_mode_flags(p, config[p.."_vertical_mode"])
-                        end
+                        -- Normal → Expert: restore expert flags
+                        config[p.."_vertical_mode"] = 1
+                        config[p.."_advanced_mode"] = true
+                        apply_mode_flags(p, 1)
+                        -- Restore saved expert settings (or defaults)
+                        config[p.."_fill_bg"] = config[p.."_expert_fill_bg"] or false
+                        config[p.."_show_markers"] = config[p.."_expert_markers"] or false
+                        config[p.."_show_vertical_cursor"] = config[p.."_expert_cursor"] ~= false and true or false
+                        config[p.."_show_horizontal_lines"] = config[p.."_expert_hlines"] ~= false and true or false
+                        config[p.."_show_numbers"] = config[p.."_expert_numbers"] ~= false and true or false
+                        config[p.."_opp_zone_show"] = config[p.."_expert_zone"] ~= false and true or false
+                        config[p.."_crossup_show"] = config[p.."_expert_crossup"] ~= false and true or false
+                        if config[p.."_expert_color_text"] ~= nil then config[p.."_opp_zone_color_text"] = config[p.."_expert_color_text"] end
+                        if config[p.."_expert_crossup_color"] ~= nil then config[p.."_crossup_color_text"] = config[p.."_expert_crossup_color"] end
+                        if config[p.."_expert_jump_arc"] ~= nil then config[p.."_show_jump_arc"] = config[p.."_expert_jump_arc"] end
                     end
                 end
                 save_settings()
@@ -2895,18 +2872,32 @@ local function draw_distance_viewer_menu_ui()
             config.expert_mode_enabled = new_em
             for _, p in ipairs({"p1", "p2"}) do
                 if not new_em then
-                    config[p.."_saved_expert_vmode"] = config[p.."_vertical_mode"]
-                    config[p.."_saved_expert_adv"] = config[p.."_advanced_mode"]
-                    if config[p.."_vertical_mode"] ~= 7 then
-                        config[p.."_vertical_mode"] = 1; config[p.."_advanced_mode"] = false
-                        apply_mode_flags(p, 1)
-                    end
+                    config[p.."_expert_fill_bg"] = config[p.."_fill_bg"]
+                    config[p.."_expert_markers"] = config[p.."_show_markers"]
+                    config[p.."_expert_cursor"] = config[p.."_show_vertical_cursor"]
+                    config[p.."_expert_hlines"] = config[p.."_show_horizontal_lines"]
+                    config[p.."_expert_numbers"] = config[p.."_show_numbers"]
+                    config[p.."_expert_zone"] = config[p.."_opp_zone_show"]
+                    config[p.."_expert_crossup"] = config[p.."_crossup_show"]
+                    config[p.."_expert_color_text"] = config[p.."_opp_zone_color_text"]
+                    config[p.."_expert_crossup_color"] = config[p.."_crossup_color_text"]
+                    config[p.."_expert_jump_arc"] = config[p.."_show_jump_arc"]
+                    config[p.."_vertical_mode"] = 1; config[p.."_advanced_mode"] = false
+                    apply_mode_flags(p, 1)
                 else
-                    if config[p.."_vertical_mode"] ~= 7 and config[p.."_saved_expert_vmode"] and config[p.."_saved_expert_vmode"] ~= 7 then
-                        config[p.."_vertical_mode"] = config[p.."_saved_expert_vmode"]
-                        config[p.."_advanced_mode"] = config[p.."_saved_expert_adv"]
-                        apply_mode_flags(p, config[p.."_vertical_mode"])
-                    end
+                    config[p.."_vertical_mode"] = 1
+                    config[p.."_advanced_mode"] = true
+                    apply_mode_flags(p, 1)
+                    config[p.."_fill_bg"] = config[p.."_expert_fill_bg"] or false
+                    config[p.."_show_markers"] = config[p.."_expert_markers"] or false
+                    config[p.."_show_vertical_cursor"] = config[p.."_expert_cursor"] ~= false and true or false
+                    config[p.."_show_horizontal_lines"] = config[p.."_expert_hlines"] ~= false and true or false
+                    config[p.."_show_numbers"] = config[p.."_expert_numbers"] ~= false and true or false
+                    config[p.."_opp_zone_show"] = config[p.."_expert_zone"] ~= false and true or false
+                    config[p.."_crossup_show"] = config[p.."_expert_crossup"] ~= false and true or false
+                    if config[p.."_expert_color_text"] ~= nil then config[p.."_opp_zone_color_text"] = config[p.."_expert_color_text"] end
+                    if config[p.."_expert_crossup_color"] ~= nil then config[p.."_crossup_color_text"] = config[p.."_expert_crossup_color"] end
+                    if config[p.."_expert_jump_arc"] ~= nil then config[p.."_show_jump_arc"] = config[p.."_expert_jump_arc"] end
                 end
             end
             save_settings()

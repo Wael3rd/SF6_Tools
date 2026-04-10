@@ -585,65 +585,22 @@ local function d2d_init()
     end
 end
 
-local function d2d_draw()
-    local d2d_cfg = ctx.d2d_cfg
-    local trial_state = ctx.trial_state
-    local players = ctx.players
+local function d2d_draw_inner()
+    local d2d_cfg = ctx and ctx.d2d_cfg
+    local trial_state = ctx and ctx.trial_state
+    local players = ctx and ctx.players
 
-    if not d2d_cfg.enabled then return end
-
-    -- Hide D2D when game is paused (menu open)
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local b = pm:get_field("_CurrentPauseTypeBit")
-        if b ~= 64 and b ~= 2112 then return end
-    end
+    local should_draw = d2d_cfg and d2d_cfg.enabled
 
     local sw, sh = d2d.surface_size()
 
-    -- SF6 NEON BORDER for Training floating bars (HitConfirm, Reactions, PostGuard)
-    -- Drawn before the mode-4 gate so it works in all training modes
-    local tfb = _G.TrainingFloatingBar
-    if tfb and tfb.active and tfb.w > 0 then
-        local mx, my, mw, mh = tfb.x, tfb.y, tfb.w, tfb.h
-        local header_h = math.floor(sh * 0.04)
-        d2d.fill_rect(mx, my, mw, mh, 0xFC110022)
-        d2d.fill_rect(mx, my, mw, header_h, 0x88440088)
-        d2d.fill_rect(mx, my, mw, 2, 0xFFFF00FF)
-        d2d.fill_rect(mx, my + header_h, mw, 2, 0xFFFF00FF)
-        d2d.outline_rect(mx - 2, my - 2, mw + 4, mh + 4, 2, 0x889900FF)
-        d2d.outline_rect(mx, my, mw, mh, 1, 0xFFFFAAFF)
-    end
-
-    -- SF6 NEON BORDER for Training top floating bar (mode switcher)
-    local tfbt = _G.TrainingFloatingBarTop
-    if tfbt and tfbt.active and tfbt.w > 0 then
-        local mx, my, mw, mh = tfbt.x, tfbt.y, tfbt.w, tfbt.h
-        local header_h = math.floor(sh * 0.04)
-        d2d.fill_rect(mx, my, mw, mh, 0xFC110022)
-        d2d.fill_rect(mx, my, mw, header_h, 0x88440088)
-        d2d.fill_rect(mx, my, mw, 2, 0xFFFF00FF)
-        d2d.fill_rect(mx, my + header_h, mw, 2, 0xFFFF00FF)
-        d2d.outline_rect(mx - 2, my - 2, mw + 4, mh + 4, 2, 0x889900FF)
-        d2d.outline_rect(mx, my, mw, mh, 1, 0xFFFFAAFF)
-    end
-
-    if _G.CurrentTrainerMode ~= 4 then return end
+    -- Use TrainingBarsDrawn from SharedUI D2D + mode check
+    -- ALL content gated by this condition — NO early returns
+    if should_draw and _G.TrainingBarsDrawn and _G.CurrentTrainerMode == 4 then
 
     ctx.cached_sw, ctx.cached_sh = sw, sh
 
-    -- SF6 NEON MENU BACKGROUND (ComboTrials)
-    local sf6_menu_state = ctx.sf6_menu_state
-    if sf6_menu_state and sf6_menu_state.active and sf6_menu_state.w > 0 then
-        local mx, my, mw, mh = sf6_menu_state.x, sf6_menu_state.y, sf6_menu_state.w, sf6_menu_state.h
-        local header_h = math.floor(sh * 0.04)
-        d2d.fill_rect(mx, my, mw, mh, 0xFC110022)
-        d2d.fill_rect(mx, my, mw, header_h, 0x88440088)
-        d2d.fill_rect(mx, my, mw, 2, 0xFFFF00FF)
-        d2d.fill_rect(mx, my + header_h, mw, 2, 0xFFFF00FF)
-        d2d.outline_rect(mx - 2, my - 2, mw + 4, mh + 4, 2, 0x889900FF)
-        d2d.outline_rect(mx, my, mw, mh, 1, 0xFFFFAAFF)
-    end
+    -- SF6 NEON MENU BACKGROUND: handled by NeonBarQueue from ComboTrials_UI on_frame only
 
 
     local pixel_font_h = d2d_cfg.font_size * sh
@@ -976,11 +933,17 @@ local function d2d_draw()
         local mp = imgui.get_mouse()
         if mp then d2d.image(assets.imgs["cursor"], mp.x, mp.y, 32, 32) end
     end
+
+    end -- close "if should_draw and not is_paused and CurrentTrainerMode == 4"
 end
 
 -- =========================================================
 -- Public API
 -- =========================================================
+local function d2d_draw()
+    pcall(d2d_draw_inner)
+end
+
 function M.init(shared_ctx)
     ctx = shared_ctx
     d2d.register(d2d_init, d2d_draw)

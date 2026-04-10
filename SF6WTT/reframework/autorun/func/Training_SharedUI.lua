@@ -347,11 +347,12 @@ function UI.begin_floating_window(window_name)
         pcall(function() float_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * font_scale))) end)
     end
 
-    -- Identical style to ComboTrials floating window
+    -- All transparent — no ghost when script stops running
     imgui.push_style_color(2,  0x00000000)   -- WindowBg transparent
     imgui.push_style_color(5,  0x00000000)   -- Border transparent
-    imgui.push_style_color(7,  0xAA220044)   -- Border accent
-    imgui.push_style_color(8,  0xCC6600AA)   -- Title bar
+    imgui.push_style_color(7,  0x00000000)   -- FrameBg transparent
+    imgui.push_style_color(8,  0x00000000)   -- TitleBg transparent
+    imgui.push_style_var(4, 0.0)             -- WindowBorderSize = 0
     imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))  -- WindowPadding
 
     if float_ui_font then imgui.push_font(float_ui_font) end
@@ -360,8 +361,8 @@ function UI.begin_floating_window(window_name)
     local target_h = sh * 0.0444
     imgui.set_next_window_size(Vector2f.new(sw, target_h), 1)      -- Always
     imgui.set_next_window_pos(Vector2f.new(0, sh - target_h), 1)   -- Always
-    -- 15 = NoTitleBar(1) + NoResize(2) + NoMove(4) + NoScrollbar(8)
-    local visible = imgui.begin_window(window_name, true, 15)
+    -- 143 = NoTitleBar(1) + NoResize(2) + NoMove(4) + NoScrollbar(8) + NoBackground(128)
+    local visible = imgui.begin_window(window_name, true, 143)
     if not visible then _G.TrainingFloatingBar = nil end
     return visible, sw, sh
 end
@@ -369,7 +370,7 @@ end
 function UI.end_floating_window()
     imgui.end_window()
     if float_ui_font then imgui.pop_font() end
-    imgui.pop_style_var(1)   -- WindowPadding
+    imgui.pop_style_var(2)   -- WindowPadding + WindowBorderSize
     imgui.pop_style_color(4)
 end
 
@@ -390,8 +391,9 @@ function UI.begin_floating_window_top(window_name, width_pct, height_pct)
 
     imgui.push_style_color(2,  0x00000000)   -- WindowBg transparent
     imgui.push_style_color(5,  0x00000000)   -- Border transparent
-    imgui.push_style_color(7,  0xAA220044)   -- Border accent
-    imgui.push_style_color(8,  0xCC6600AA)   -- Title bar
+    imgui.push_style_color(7,  0x00000000)   -- FrameBg transparent
+    imgui.push_style_color(8,  0x00000000)   -- TitleBg transparent
+    imgui.push_style_var(4, 0.0)             -- WindowBorderSize = 0
     imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))  -- WindowPadding
 
     if float_ui_font then imgui.push_font(float_ui_font) end
@@ -399,48 +401,42 @@ function UI.begin_floating_window_top(window_name, width_pct, height_pct)
     local target_w = sw * width_pct
     local target_h = sh * height_pct
     imgui.set_next_window_size(Vector2f.new(target_w, target_h), 1)
-    imgui.set_next_window_pos(Vector2f.new((sw - target_w) / 2, 0), 1)  -- Centered at top
-    local visible = imgui.begin_window(window_name, true, 15)
+    imgui.set_next_window_pos(Vector2f.new((sw - target_w) / 2, 0), 1)
+    local visible = imgui.begin_window(window_name, true, 143)  -- NoBackground
     return visible, sw, sh
 end
 
 function UI.end_floating_window_top()
     imgui.end_window()
     if float_ui_font then imgui.pop_font() end
-    imgui.pop_style_var(1)
+    imgui.pop_style_var(2)
     imgui.pop_style_color(4)
 end
 
--- Draw dark background for top bar
+-- Publish top bar rect + queue neon border
 function UI.draw_floating_bg_top()
     local w = imgui.get_window_size()
-    imgui.set_cursor_pos(Vector2f.new(-10, -10))
-    imgui.push_style_color(7, 0xFF220000)
-    pcall(function() imgui.progress_bar(0.0, Vector2f.new(w.x + 20, w.y + 20)) end)
-    imgui.pop_style_color(1)
-    -- Publish window rect
     local pos = imgui.get_window_pos()
     _G.TrainingFloatingBarTop = { x = pos.x, y = pos.y, w = w.x, h = w.y, active = true }
     UI.publish_rect(pos.x, pos.y, w.x, w.y)
+    if not _G.NeonBarQueue then _G.NeonBarQueue = {} end
+    table.insert(_G.NeonBarQueue, { x = pos.x, y = pos.y, w = w.x, h = w.y, src = "TOP" })
 end
 
--- Draw dark background (same as ComboTrials progress_bar trick)
+-- Publish bottom bar rect + queue neon border
 function UI.draw_floating_bg()
     local w = imgui.get_window_size()
-    imgui.set_cursor_pos(Vector2f.new(-10, -10))
-    imgui.push_style_color(7, 0xFF220000)
-    pcall(function() imgui.progress_bar(0.0, Vector2f.new(w.x + 20, w.y + 20)) end)
-    imgui.pop_style_color(1)
-    -- Publish window rect
     local pos = imgui.get_window_pos()
     _G.TrainingFloatingBar = { x = pos.x, y = pos.y, w = w.x, h = w.y, active = true }
     UI.publish_rect(pos.x, pos.y, w.x, w.y)
+    if not _G.NeonBarQueue then _G.NeonBarQueue = {} end
+    table.insert(_G.NeonBarQueue, { x = pos.x, y = pos.y, w = w.x, h = w.y, src = "BOT" })
 end
 
 -- SF6 neon button (identical to styled_sf6_button in floating mode with sf6_btn_font)
 function UI.sf6_button(label, colors, width)
     if float_btn_font then imgui.push_font(float_btn_font) end
-    imgui.push_style_color(5,  colors.text)    -- Border
+    imgui.push_style_color(5,  0x00000000)     -- Border transparent (no outline)
     imgui.push_style_color(21, colors.base)    -- Button
     imgui.push_style_color(22, colors.hover)   -- ButtonHovered
     imgui.push_style_color(23, colors.active)  -- ButtonActive
@@ -449,6 +445,31 @@ function UI.sf6_button(label, colors, width)
     imgui.pop_style_color(5)
     if float_btn_font then imgui.pop_font() end
     return clicked
+end
+
+-- D2D neon borders — queue pattern (same as DistanceViewer d2d_queue)
+-- on_frame populates _G.NeonBarQueue, D2D callback draws then CLEARS it
+if d2d and d2d.register then
+    d2d.register(function() end, function()
+        local queue = _G.NeonBarQueue
+        if queue then
+            local sw, sh = d2d.surface_size()
+            for _, r in ipairs(queue) do
+                local mx, my, mw, mh = r.x, r.y, r.w, r.h
+                local hh = math.floor(sh * 0.04)
+                d2d.fill_rect(mx, my, mw, mh, 0xFC110022)
+                d2d.fill_rect(mx, my, mw, hh, 0x88440088)
+                d2d.fill_rect(mx, my, mw, 2, 0xFFFF00FF)
+                d2d.fill_rect(mx, my + hh, mw, 2, 0xFFFF00FF)
+                d2d.outline_rect(mx - 2, my - 2, mw + 4, mh + 4, 2, 0x889900FF)
+                d2d.outline_rect(mx, my, mw, mh, 1, 0xFFFFAAFF)
+            end
+        end
+        -- Publish whether bars were drawn this frame
+        _G.TrainingBarsDrawn = (queue ~= nil and #queue > 0)
+        -- CRITICAL: clear queue after drawing (same as DistanceViewer)
+        _G.NeonBarQueue = {}
+    end)
 end
 
 return UI

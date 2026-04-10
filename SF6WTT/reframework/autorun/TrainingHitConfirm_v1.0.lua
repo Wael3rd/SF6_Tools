@@ -1253,10 +1253,6 @@ re.on_frame(function()
     end
 
     local cur_mode = _G.CurrentTrainerMode or 0
-    if cur_mode ~= last_trainer_mode then
-        if session.is_running then reset_session_stats() end
-        if cur_mode == 2 then reset_session_stats() end
-    end
     last_trainer_mode = cur_mode
 
     if should_update_logic then
@@ -1268,8 +1264,11 @@ re.on_frame(function()
         draw_hud_overlay()
     end
 
-    -- FLOATING SESSION WINDOW (always draw if in correct mode, regardless of pause state)
-    if user_config.show_floating and _G.CurrentTrainerMode == 2 then
+    -- FLOATING SESSION WINDOW (hide during pause menu)
+    local _pm = sdk.get_managed_singleton("app.PauseManager")
+    local _pb = _pm and _pm:get_field("_CurrentPauseTypeBit")
+    local _in_menu = _pb and (_pb ~= 64 and _pb ~= 2112)
+    if user_config.show_floating and _G.CurrentTrainerMode == 2 and not _in_menu then
         draw_session_floating()
     end
 end)
