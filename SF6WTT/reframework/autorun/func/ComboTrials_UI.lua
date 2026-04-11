@@ -326,55 +326,100 @@ local function draw_single_line_content()
 
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
 
-    local cb_size = imgui.calc_text_size("W").y + 6
-    local cb_reserve = cb_size + 10
-
     -- Répartition dynamique : boutons = taille fixe (texte), dropdown = tout le reste
-    local usable_w = w_width - (pad_x * 2) - cb_reserve - (sp * 5)
+    local usable_w = w_width - (pad_x * 2) - (sp * 5)
 
     -- 1. Buttons take their natural text width (all same size, based on longest label)
     local actual_btn_w = absolute_btn_w
 
-    -- 2. Dropdown takes ALL remaining space
+    -- 2. Dropdown keeps same size, buttons expand to fill
     local dd_w = usable_w - (actual_btn_w * 4)
+    local training_btn_w = (usable_w - dd_w) / 3
 
     local dynamic_rec_w = actual_btn_w
     local is_demo_active_early = (ctx.demo_state and ctx.demo_state.is_playing)
-    local is_replay_mode = (_G.IsInReplay == true)
+    local is_replay_mode = (_G.IsInReplay == true) or (_G.IsInBattleHub == true)
     if trial_state.is_recording or is_demo_active_early or is_replay_mode then
-        -- In record/demo/replay mode, distribute the massive 4-button space into 2
+        -- In record/demo/replay/spectate mode, distribute the massive 4-button space into 2
         dynamic_rec_w = (actual_btn_w * 4 + sp * 2) / 2
     end
+    -- Largeur fixe pour replay : toujours basée sur le layout idle
+    -- dd_P1 + sp + btn + sp + btn + sp + dd_P2 = usable_w
+    local replay_btn_w = actual_btn_w
+    local replay_dd_w = (usable_w - (replay_btn_w * 2) - (sp * 3)) / 2
+    if replay_dd_w < 50 then replay_dd_w = 50 end
 
     -- No progress_bar background (causes ghost in ranked mode)
 
     imgui.set_cursor_pos(Vector2f.new(pad_x, pad_y))
 
-    -- DROPDOWN COMBO FILES
-    if #file_system.saved_combos_display_p1 == 0 then
-        imgui.push_item_width(dd_w)
-        imgui.combo("##EmptyP1", 1, { "No P1 files" })
-        imgui.pop_item_width()
-    else
-        local should_open = (_G.ComboTrials_OpenDropdown == true)
-        local f1_changed, new_idx1 = combo_openable("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1, should_open, dd_w)
-        if f1_changed then
-            file_system.selected_file_idx_p1 = new_idx1
-            load_and_start_trial(0)
+    local is_demo_active = (ctx.demo_state and ctx.demo_state.is_playing)
+    local is_replay_rec_p1 = (trial_state.is_recording and trial_state.recording_player == 0 and is_replay_mode)
+    local is_replay_rec_p2 = (trial_state.is_recording and trial_state.recording_player == 1 and is_replay_mode)
+
+    -- Helper: draw a dropdown
+    local function draw_dd(id, display_list, selected_idx, width, on_change)
+        if #display_list == 0 then
+            imgui.push_item_width(width)
+            imgui.combo("##Empty" .. id, 1, { "No files" })
+            imgui.pop_item_width()
+        else
+            local changed, new_idx = combo_openable("##" .. id, selected_idx or 1, display_list, false, width)
+            if changed then on_change(new_idx) end
         end
     end
 
-    -- 3. BOUTONS (Dynamiques pour combler le vide)
-    imgui.same_line(0, sp)
-    local is_demo_active = (ctx.demo_state and ctx.demo_state.is_playing)
-
-    if trial_state.is_recording then
-        -- Mode Record
+    if is_replay_mode then
+        -- === REPLAY : toujours dropdown P1 | btn | btn | dropdown P2 ===
+        draw_dd("FilesP1", file_system.saved_combos_display_p1, file_system.selected_file_idx_p1, replay_dd_w,
+            function(idx) file_system.selected_file_idx_p1 = idx; load_and_start_trial(0) end)
+        imgui.same_line(0, sp)
+        if trial_state.is_recording then
+            if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, replay_btn_w, true, false, TRIAL_COLORS) then stop_recording_and_save() end
+            imgui.same_line(0, sp)
+            if styled_sf6_button("CANCEL (" .. sc("R", "2") .. ")", false, replay_btn_w, true, false, P1_COLORS) then cancel_recording() end
+        else
+            if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, replay_btn_w, true, false, P1_COLORS) then start_recording(0) end
+            imgui.same_line(0, sp)
+            if styled_sf6_button("RECORD P2 (" .. sc("R", "2") .. ")", false, replay_btn_w, true, false, P2_COLORS) then start_recording(1) end
+        end
+        imgui.same_line(0, sp)
+        draw_dd("FilesP2", file_system.saved_combos_display_p2, file_system.selected_file_idx_p2, replay_dd_w,
+            function(idx) file_system.selected_file_idx_p2 = idx; load_and_start_trial(1) end)
+    elseif trial_state.is_recording then
+        -- === TRAINING RECORD ===
+        -- Dropdown P1
+        if #file_system.saved_combos_display_p1 == 0 then
+            imgui.push_item_width(dd_w)
+            imgui.combo("##EmptyP1", 1, { "No P1 files" })
+            imgui.pop_item_width()
+        else
+            local should_open = (_G.ComboTrials_OpenDropdown == true)
+            local f1_changed, new_idx1 = combo_openable("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1, should_open, dd_w)
+            if f1_changed then
+                file_system.selected_file_idx_p1 = new_idx1
+                load_and_start_trial(0)
+            end
+        end
+        imgui.same_line(0, sp)
         if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, dynamic_rec_w, true, false, TRIAL_COLORS) then stop_recording_and_save() end
         imgui.same_line(0, sp)
         if styled_sf6_button("CANCEL (" .. sc("R", "2") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then cancel_recording() end
     elseif is_demo_active then
-        -- MODE DEMO : 2 boutons (même largeur que record)
+        -- === DEMO ===
+        if #file_system.saved_combos_display_p1 == 0 then
+            imgui.push_item_width(dd_w)
+            imgui.combo("##EmptyP1", 1, { "No P1 files" })
+            imgui.pop_item_width()
+        else
+            local should_open = (_G.ComboTrials_OpenDropdown == true)
+            local f1_changed, new_idx1 = combo_openable("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1, should_open, dd_w)
+            if f1_changed then
+                file_system.selected_file_idx_p1 = new_idx1
+                load_and_start_trial(0)
+            end
+        end
+        imgui.same_line(0, sp)
         if styled_sf6_button("RESTART DEMO (" .. sc("L") .. ")", false, dynamic_rec_w, true, false, TRIAL_COLORS) then
             if ctx.start_demo then ctx.start_demo() end
         end
@@ -382,30 +427,39 @@ local function draw_single_line_content()
         if styled_sf6_button("QUIT DEMO (" .. sc("R", "2") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then
             if ctx.stop_demo then ctx.stop_demo() end
         end
-    elseif is_replay_mode then
-        -- REPLAY MODE: only Record P1 + Record P2 (2 buttons, special shortcuts)
-        if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then start_recording(0) end
-        imgui.same_line(0, sp)
-        if styled_sf6_button("RECORD P2 (" .. sc("R", "2") .. ")", false, dynamic_rec_w, true, false, P2_COLORS) then start_recording(1) end
     else
-        -- Mode Normal / Playing
+        -- Mode Normal / Playing : dropdown P1 + 3 boutons
+        if #file_system.saved_combos_display_p1 == 0 then
+            imgui.push_item_width(dd_w)
+            imgui.combo("##EmptyP1", 1, { "No P1 files" })
+            imgui.pop_item_width()
+        else
+            local should_open = (_G.ComboTrials_OpenDropdown == true)
+            local f1_changed, new_idx1 = combo_openable("##FilesP1", file_system.selected_file_idx_p1, file_system.saved_combos_display_p1, should_open, dd_w)
+            if f1_changed then
+                file_system.selected_file_idx_p1 = new_idx1
+                load_and_start_trial(0)
+            end
+        end
+        imgui.same_line(0, sp)
+        local btn_w = trial_state.is_playing and actual_btn_w or training_btn_w
         if trial_state.is_playing then
-            if styled_sf6_button("RESET (" .. sc("L") .. ")", false, actual_btn_w, true, false, P1_COLORS) then
+            if styled_sf6_button("RESET (" .. sc("L") .. ")", false, btn_w, true, false, P1_COLORS) then
                 ctx.reset_trial_steps_and_load(trial_state.playing_player)
                 ctx.apply_forced_position()
             end
         else
-            if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, actual_btn_w, true, false, P1_COLORS) then start_recording(0) end
+            if styled_sf6_button("RECORD (" .. sc("L") .. ")", false, btn_w, true, false, P1_COLORS) then start_recording(0) end
         end
 
         imgui.same_line(0, sp)
         if trial_state.is_playing then
-            if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, actual_btn_w, true, false, TRIAL_COLORS) then
+            if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, btn_w, true, false, TRIAL_COLORS) then
                 trial_state.is_playing = false
             end
         elseif not trial_state.is_recording then
             local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-            if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, actual_btn_w, true, false, TRIAL_COLORS) then
+            if styled_sf6_button(is_p1_active and "STOP TRIAL (" .. sc("U") .. ")" or "START TRIAL (" .. sc("U") .. ")", is_p1_active, btn_w, true, false, TRIAL_COLORS) then
                 if is_p1_active then trial_state.is_playing = false
                 else load_and_start_trial(0) end
             end
@@ -413,15 +467,13 @@ local function draw_single_line_content()
 
         imgui.same_line(0, sp)
         if trial_state.is_playing then
-            if styled_sf6_button("DEMO (" .. sc("R") .. ")", false, actual_btn_w, true, false, P2_COLORS) then
+            if styled_sf6_button("DEMO (" .. sc("R") .. ")", false, btn_w, true, false, P2_COLORS) then
                 if ctx.start_demo then ctx.start_demo() end
             end
-        else
-            if styled_sf6_button("RECORD P2 (" .. sc("R") .. ")", false, actual_btn_w, true, false, P2_COLORS) then start_recording(1) end
+            imgui.same_line(0, sp)
         end
 
-        imgui.same_line(0, sp)
-        if styled_sf6_button(switch_pos_label() .. " (" .. sc("D") .. ")", false, actual_btn_w, true, false, SWITCH_COLORS) then
+        if styled_sf6_button(switch_pos_label() .. " (" .. (trial_state.is_playing and sc("D") or sc("R")) .. ")", false, btn_w, true, false, SWITCH_COLORS) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             ctx.save_d2d_config()
@@ -431,11 +483,8 @@ local function draw_single_line_content()
                 if ctx.reset_visuals then ctx.reset_visuals() end
             end
         end
-	end
-    -- 7. CHECKBOX
-    imgui.same_line(w_width - cb_reserve - pad_x)
-    local changed, new_val = imgui.checkbox("##close_float_sl", show_trial_overlay)
-    if changed then show_trial_overlay = new_val end
+
+    end
 end
 
 local function draw_combo_trials_content(is_floating)
@@ -652,7 +701,7 @@ re.on_frame(function()
     end
     _was_bars_drawn = bars_now
 
-    if _G.CurrentTrainerMode ~= 4 then
+    if _G.FlowMapID ~= 10 and not _G.IsInReplay and _G.CurrentTrainerMode ~= 4 then
         sf6_menu_state.active = false
         _G.ComboTrials_HideNativeHUD = false
         _G.ComboTrialsD2DEnabled = false

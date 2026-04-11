@@ -37,6 +37,7 @@ pcall(function()
                 if obj and obj.mInputType == 3 then
                     is_in_replay = true
                     _G.IsInReplay = true
+                    _G._replay_stats_reset_pending = true
                 end
             end, function(r) return r end)
         end
@@ -57,6 +58,7 @@ end)
 local function should_show()
     if not cfg.visible then return false end
     if is_in_replay then return true end
+    if _G.IsInBattleHub then return true end
     if cfg.debug_training then return true end
     return false
 end
@@ -168,7 +170,14 @@ local esf_names_map = {
 }
 
 local wp_char_names = { [0] = "?", [1] = "?" }
-local wp_attack_data = json.load_file("SF6DistanceLogger_Data_Attacks.json") or {}
+local _uf_gs = json.load_file("SF6Distance_Data_Attacks.json")
+local wp_attack_data = (_uf_gs and _uf_gs.attacks) or json.load_file("SF6DistanceLogger_Data_Attacks.json") or {}
+_uf_gs = nil
+local function get_viewer_prefs()
+    local p = _G.DV_AdvancedPrefs
+    if p then return p end
+    return { [0] = {}, [1] = {} }
+end
 
 -- =========================================================
 -- WP MOVE FILTER: per-player exclusion sets (default = all tracked)
@@ -285,9 +294,35 @@ pcall(function()
     end, function(r) return r end)
 end)
 
-local function get_red_ar(char_name)
-    local cdata = wp_attack_data[char_name]
-    if cdata and cdata.low then return (cdata.low.ar or 0) end
+local stance_variants = {
+    ["Chun-Li"] = "ChunLi_Serenity",
+    ["Alex"] = "Alex_Prowler",
+}
+
+local function get_low_ar_from(source, name)
+    local d = source[name]
+    if d and d.low and d.low.ar then return d.low.ar end
+    return 0
+end
+
+local function get_red_ar(char_name, player_idx)
+    -- Nom dynamique (stance-aware) depuis le Distance Viewer
+    local dynamic_name = char_name
+    if _G.DV_PlayerAdvName and _G.DV_PlayerAdvName[player_idx] then
+        dynamic_name = _G.DV_PlayerAdvName[player_idx]
+    end
+
+    -- Source de vérité : Viewer prefs pour CE joueur, nom dynamique exact
+    local vp = get_viewer_prefs()
+    if vp[player_idx] then
+        local v = get_low_ar_from(vp[player_idx], dynamic_name)
+        if v > 0 then return v end
+    end
+
+    -- Fallback : Logger data
+    local v = get_low_ar_from(wp_attack_data, dynamic_name)
+    if v > 0 then return v end
+
     return 0
 end
 
@@ -325,7 +360,7 @@ local function is_opp_in_red_zone(p)
         local opp_obj = cP[opp]
         local my_x = cP[p].pos.x.v / 6553600.0
         local dist = get_hurtbox_dist(opp_obj, my_x)
-        local my_ar = get_red_ar(wp_char_names[p])
+        local my_ar = get_red_ar(wp_char_names[p], p)
         return dist <= (my_ar / 100.0) + 0.001
     end)
     return ok and result
@@ -440,8 +475,16 @@ local function read_frame_data()
         end
     end)
 
-    -- Acquire matrix lists once
-    if not matrix.p1_list or not matrix.p2_list then
+    -- Acquire matrix lists (re-acquire if stale)
+    local lists_ok = false
+    if matrix.p1_list and matrix.p2_list then
+        local ok = pcall(function()
+            local c = matrix.p1_list:call("get_Count")
+            if not c or c <= 0 then error("stale") end
+        end)
+        if ok then lists_ok = true else matrix.p1_list = nil; matrix.p2_list = nil; matrix.last_head = -1 end
+    end
+    if not lists_ok then
         local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
         if not mgr then matrix.debug_status = "no TrainingManager"; return false end
         local dict = mgr:get_field("_ViewUIWigetDict")
@@ -959,6 +1002,25 @@ local function detect_events()
 end
 
 -- =========================================================
+-- ROUND RESET (Battle Hub) : reset stats quand le timer repart
+-- =========================================================
+local _match_stats_reset = false
+
+local function reset_all_stats()
+    for p = 0, 1 do
+        for _, k in ipairs(STATS) do counters[p][k] = 0 end
+        counters[p].wp_ok = 0; counters[p].wp_opp = 0
+        counters[p].hc_ok = 0; counters[p].hc_opp = 0
+        counters[p].aa_ok = 0; counters[p].aa_opp = 0
+        hc_state[p].monitor.active = false; hc_state[p].monitor.type = nil
+        hc_state[p].monitor.has_reset_hs = false; hc_state[p].monitor.target_combo = 0
+        hc_state[p].lockout = false
+        track[p]._wp_tracking = false; track[p]._aa_opp_in_air = false
+        track[p]._aa_opp_attacking = false; track[p]._aa_counted = false
+    end
+end
+
+-- =========================================================
 -- GAME LOOP
 -- =========================================================
 re.on_frame(function()
@@ -967,6 +1029,22 @@ re.on_frame(function()
         wp_submenu_open[1] = false
         return
     end
+
+    -- Reset stats au début d'un nouveau match (fight_st == STAGE_INIT)
+    pcall(function()
+        local gB = sdk.find_type_definition("gBattle")
+        if not gB then return end
+        local sGame = gB:get_field("Game"):get_data(nil)
+        if not sGame then return end
+        local fs = sGame.fight_st
+        if fs == 0 and not _match_stats_reset then
+            reset_all_stats()
+            _match_stats_reset = true
+        elseif fs ~= 0 then
+            _match_stats_reset = false
+        end
+    end)
+
     pcall(detect_events)
 
     -- Click detection on WP ">"/"<" buttons

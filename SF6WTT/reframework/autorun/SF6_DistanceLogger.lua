@@ -17,12 +17,11 @@ local Vector2f = Vector2f
 -- =========================================================
 -- CONFIGURATION PATHS
 -- =========================================================
-local jump_filename = "SF6DistanceLogger_Data_Jumps.json"
+local UNIFIED_FILE = "SF6Distance_Data_Attacks.json"
 local ui_state_filename = "SF6DistanceLogger_Config.json"
-local advanced_filename = "SF6DistanceLogger_Data_Attacks.json"
 
 local jump_data_store = {}
-local advanced_data = {} -- { ["Ryu"] = { moves={}, red=nil, low=nil }, ... }
+local advanced_data = {}
 
 -- State par joueur pour le tracking
 -- prev_bv : valeur boutons du frame précédent (pour détecter front montant)
@@ -65,6 +64,14 @@ local ui_state = {
 local ui_dirty = false
 local ui_save_timer = 0.0
 local first_draw = true
+
+-- STANCE PAIRS (pour afficher les deux listes simultanément)
+local stance_pairs = {
+    ["Alex"] = "Alex_Prowler",
+    ["Alex_Prowler"] = "Alex",
+    ["Chun-Li"] = "ChunLi_Serenity",
+    ["ChunLi_Serenity"] = "Chun-Li",
+}
 
 -- ÉCHELLES
 local SCALE_DIST = 65536.0   -- x100
@@ -224,59 +231,22 @@ end
 -- =========================================================
 -- 3. GESTION FICHIERS CONFIG
 -- =========================================================
+local function save_unified()
+    local current = json.load_file(UNIFIED_FILE) or {}
+    current.attacks = advanced_data
+    current.jumps = jump_data_store
+    if not current.player_prefs then current.player_prefs = { ["0"] = {}, ["1"] = {} } end
+    json.dump_file(UNIFIED_FILE, current)
+end
+
 local function save_jump_data()
-    local ok = json.dump_file(jump_filename, jump_data_store)
-    if ok then status_msg = "Saved!" else status_msg = "Error Write!" end
-    status_timer = 120
+    save_unified()
+    status_msg = "Saved!"; status_timer = 120
 end
 
 local function save_advanced_data()
-    local lines = { "{" }
-    local chars = {}
-    for k in pairs(advanced_data) do table.insert(chars, k) end
-    table.sort(chars) -- Trie les persos par ordre alphabétique
-    
-    for i, char_name in ipairs(chars) do
-        local cdata = advanced_data[char_name]
-        table.insert(lines, string.format('    "%s": {', char_name))
-        
-        local props = {}
-        if cdata.red then table.insert(props, string.format('        "red": { "input": "%s", "ar": %.5f }', cdata.red.input, cdata.red.ar)) end
-        if cdata.low then table.insert(props, string.format('        "low": { "input": "%s", "ar": %.5f }', cdata.low.input, cdata.low.ar)) end
-        local y_off = cdata.yellow_offset or 50
-        table.insert(props, string.format('        "yellow_offset": %d', y_off))
-        
-        if cdata.moves and #cdata.moves > 0 then
-            if #props > 0 then table.insert(lines, table.concat(props, ",\n") .. ",") end
-            table.insert(lines, '        "moves": [')
-            for j, mv in ipairs(cdata.moves) do
-                local comma = (j == #cdata.moves) and "" or ","
-                local gb = mv.guard_bit or 0
-                local isc = mv.is_cancelable and "true" or "false"
-                local issc = mv.is_super_cancelable and "true" or "false"
-                table.insert(lines, string.format('            { "input": "%s", "ar": %.5f, "guard_bit": %d, "is_cancelable": %s, "is_super_cancelable": %s }%s', mv.input, mv.ar, gb, isc, issc, comma))
-            end
-            table.insert(lines, '        ]')
-        else
-            if #props > 0 then table.insert(lines, table.concat(props, ",\n") .. ",\n        \"moves\": []")
-            else table.insert(lines, '        "moves": []') end
-        end
-        
-        local char_comma = (i == #chars) and "" or ","
-        table.insert(lines, "    }" .. char_comma)
-    end
-    table.insert(lines, "}")
-    
-    -- Écriture manuelle du fichier custom
-    local file = io.open("" .. advanced_filename, "w")
-    if file then
-        file:write(table.concat(lines, "\n"))
-        file:close()
-        status_msg = "ADV Saved!"
-    else
-        status_msg = "ERR ADV SAVE!"
-    end
-    status_timer = 120
+    save_unified()
+    status_msg = "ADV Saved!"; status_timer = 120
 end
 
 local function sort_moves(cdata)
@@ -287,7 +257,7 @@ end
 
 local function log_move(char_name, input, ar, guard_bit, is_cancelable, is_super_cancelable)
     if not advanced_data[char_name] then
-        advanced_data[char_name] = { moves = {}, red = nil, low = nil }
+        advanced_data[char_name] = { moves = {} }
     end
     local cdata = advanced_data[char_name]
     if not cdata.moves then cdata.moves = {} end
@@ -312,35 +282,33 @@ local function log_move(char_name, input, ar, guard_bit, is_cancelable, is_super
     status_timer = 150
 end
 
-local function load_advanced_data()
-    local f = json.load_file(advanced_filename)
-    if f and type(f) == "table" then
-        advanced_data = f
-        for _, cdata in pairs(advanced_data) do
-            sort_moves(cdata)
+local function load_unified()
+    local f = json.load_file(UNIFIED_FILE)
+    if f and f.attacks then
+        -- New unified format
+        advanced_data = f.attacks
+        if f.jumps then for k, v in pairs(f.jumps) do jump_data_store[k] = v end end
+    else
+        -- Migration: try old files
+        local old_atk = f  -- might be old flat format at new path
+        if not old_atk or not next(old_atk) then
+            old_atk = json.load_file("SF6DistanceLogger_Data_Attacks.json")
         end
-        status_msg = "ADV Data Loaded"
+        if old_atk and type(old_atk) == "table" and not old_atk.attacks then
+            advanced_data = old_atk
+        end
+        local old_jumps = json.load_file("SF6DistanceLogger_Data_Jumps.json")
+        if old_jumps then for k, v in pairs(old_jumps) do jump_data_store[k] = v end end
     end
-    status_timer = 120
-end
-
-local function load_jump_data()
-    for i=1, 60 do 
+    for _, cdata in pairs(advanced_data) do sort_moves(cdata) end
+    for i=1, 60 do
         local k = string.format("ESF_%03d", i)
         if not jump_data_store[k] then jump_data_store[k] = {} end
     end
-    
-    local data = json.load_file(jump_filename)
-    if data then
-        for k, v in pairs(data) do jump_data_store[k] = v end
-        status_msg = "Data Loaded OK"
-    else 
-        status_msg = "New Session" 
-    end
-    status_timer = 150
+    status_msg = "Data Loaded"; status_timer = 120
 end
 
-load_jump_data(); load_ui_config(); load_advanced_data()
+load_ui_config(); load_unified()
 
 -- =========================================================
 -- 4. TELEPORT LOGIC (UPDATED: POS_SETx & via.sfix)
@@ -869,35 +837,6 @@ function draw_main_content(is_overlay)
                     end
                 end
 
-                if cdata.low then imgui.text_colored(string.format("RED    [%s]  :  %.5f", cdata.low.input, cdata.low.ar), COL_RED)
-                else imgui.text_colored("RED    [--]  :  --", COL_RED) end
-
-                if cdata.red then imgui.text_colored(string.format("ORANGE [%s]  :  %.5f", cdata.red.input, cdata.red.ar), COL_ORANGE)
-                else imgui.text_colored("ORANGE [--]  :  --", COL_ORANGE) end
-
-                local y_off = cdata.yellow_offset or 50
-                local base_ar = nil
-                local base_input = "--"
-                
-                if cdata.red and cdata.low then
-                    if cdata.red.ar >= cdata.low.ar then base_ar = cdata.red.ar; base_input = cdata.red.input
-                    else base_ar = cdata.low.ar; base_input = cdata.low.input end
-                elseif cdata.red then base_ar = cdata.red.ar; base_input = cdata.red.input
-                elseif cdata.low then base_ar = cdata.low.ar; base_input = cdata.low.input end
-
-                if base_ar then
-                    local yellow_val = base_ar + y_off
-                    imgui.text_colored(string.format("YELLOW [%s]  :  %.5f  (+%d)", base_input, yellow_val, y_off), COL_YELLOW)
-                else
-                    imgui.text_colored(string.format("YELLOW [--]  :  --  (+%d)", y_off), COL_YELLOW)
-                end
-
-                imgui.push_item_width(60)
-                local ch, ns = imgui.input_text("Y-Off##yoff"..i, tostring(y_off))
-                imgui.pop_item_width()
-                if ch then local n = tonumber(ns); if n then cdata.yellow_offset = n; save_advanced_data() end end
-                imgui.separator()
-
                 local st_ui = adv_state[i]
                 imgui.text_colored(string.format("Act ID : %d", info.cur_act_id), COL_GREY)
                 -- Update Live and Memos display to 5 decimal places for surgical precision
@@ -921,10 +860,7 @@ function draw_main_content(is_overlay)
                     if is_moves_open then
                         local to_delete = nil
                         for idx, entry in ipairs(cdata.moves) do
-                            local is_red = cdata.red and cdata.red.input == entry.input
-                            local is_low = cdata.low and cdata.low.input == entry.input
                             local edit_key = i .. "_" .. idx
-                            
                             local gb_val = entry.guard_bit or 0
                             local gb_name = get_guard_type_name(gb_val)
                             local is_max_for_gb = (gb_val > 0 and entry.ar == max_ar_per_gb[gb_val])
@@ -943,14 +879,10 @@ function draw_main_content(is_overlay)
                                 if imgui.button("OK##ok"..edit_key) then
                                     local trimmed = edit_state.buf:match("^%s*(.-)%s*$")
                                     if trimmed ~= "" then
-                                        if cdata.red and cdata.red.input == entry.input then cdata.red.input = trimmed end
-                                        if cdata.low and cdata.low.input == entry.input then cdata.low.input = trimmed end
                                         entry.input = trimmed
                                     end
                                     local new_ar_val = tonumber(edit_state.ar_buf)
                                     if new_ar_val then
-                                        if cdata.red and cdata.red.input == entry.input then cdata.red.ar = new_ar_val end
-                                        if cdata.low and cdata.low.input == entry.input then cdata.low.ar = new_ar_val end
                                         entry.ar = new_ar_val
                                     end
                                     save_advanced_data()
@@ -962,36 +894,14 @@ function draw_main_content(is_overlay)
                                 if imgui.button("Annuler##can"..edit_key) then edit_state.key = nil end
                             else
                                 local row_text = string.format("  [%s] [%s]  AR: %.5f", entry.input, gb_name, entry.ar)
-                                if is_red and is_low then imgui.text_colored(row_text .. "  [O][R]", 0xFFEE88FF)
-                                elseif is_red then imgui.text_colored(row_text .. "  [O]", COL_ORANGE)
-                                elseif is_low then imgui.text_colored(row_text .. "  [R]", COL_RED)
-                                else imgui.text(row_text) end
+                                imgui.text(row_text)
 
                                 if entry.is_cancelable then imgui.same_line(); imgui.text_colored(" [C]", COL_GREEN) end
                                 if entry.is_super_cancelable then imgui.same_line(); imgui.text_colored(" [SC]", COL_RED) end
                                 if is_max_for_gb then imgui.same_line(); imgui.text_colored(" ★ [MAX " .. gb_name .. "]", COL_GOLD) end
 
-                                -- New Action Buttons
                                 imgui.same_line()
                                 if imgui.button("APPLY##tp"..edit_key) then apply_teleport_exact(entry.ar) end
-                                
-                                -- imgui.same_line()
-                                -- if imgui.button("-0.00001##min"..edit_key) then
-                                    -- entry.ar = entry.ar - 0.00001
-                                    -- if is_red then cdata.red.ar = entry.ar end
-                                    -- if is_low then cdata.low.ar = entry.ar end
-                                    -- save_advanced_data()
-                                -- end
-
-                                -- imgui.same_line()
-                                -- if imgui.button("+0.00001##plus"..edit_key) then
-                                    -- entry.ar = entry.ar + 0.00001
-                                    -- if is_red then cdata.red.ar = entry.ar end
-                                    -- if is_low then cdata.low.ar = entry.ar end
-                                    -- save_advanced_data()
-                                -- end
-
-                                -- Existing Action Buttons
                                 imgui.same_line()
                                 if imgui.button("Edit##ed"..edit_key) then
                                     edit_state.key = edit_key
@@ -999,23 +909,11 @@ function draw_main_content(is_overlay)
                                     edit_state.ar_buf = string.format("%.5f", entry.ar)
                                 end
                                 imgui.same_line()
-                                if imgui.button("O##sr"..i.."_"..idx) then
-                                    cdata.red = { input = entry.input, ar = entry.ar }; save_advanced_data()
-                                    status_msg = string.format("ORANGE = [%s] %.5f", entry.input, entry.ar); status_timer = 150
-                                end
-                                imgui.same_line()
-                                if imgui.button("R##sl"..i.."_"..idx) then
-                                    cdata.low = { input = entry.input, ar = entry.ar }; save_advanced_data()
-                                    status_msg = string.format("RED = [%s] %.5f", entry.input, entry.ar); status_timer = 150
-                                end
-                                imgui.same_line()
                                 if imgui.button("X##del"..i.."_"..idx) then to_delete = idx end
                             end
                         end
 
                         if to_delete then
-                            if cdata.red and cdata.red.input == cdata.moves[to_delete].input then cdata.red = nil end
-                            if cdata.low and cdata.low.input == cdata.moves[to_delete].input then cdata.low = nil end
                             table.remove(cdata.moves, to_delete)
                             save_advanced_data()
                         end
@@ -1023,6 +921,39 @@ function draw_main_content(is_overlay)
                     end
                 else
                     imgui.text_colored("  (en attente d'actions...)", COL_GREY)
+                end
+
+                -- STANCE PARTNER: afficher les données de l'autre stance
+                local alt_name = stance_pairs[cname]
+                if alt_name and advanced_data[alt_name] then
+                    local alt_data = advanced_data[alt_name]
+                    imgui.separator()
+                    if imgui.tree_node("Stance: " .. alt_name .. "##alt" .. i) then
+                        if alt_data.moves and #alt_data.moves > 0 then
+                            local alt_max_ar_per_gb = {}
+                            for _, entry in ipairs(alt_data.moves) do
+                                local gb = entry.guard_bit or 0
+                                if gb > 0 then
+                                    if not alt_max_ar_per_gb[gb] or entry.ar > alt_max_ar_per_gb[gb] then alt_max_ar_per_gb[gb] = entry.ar end
+                                end
+                            end
+                            for idx, entry in ipairs(alt_data.moves) do
+                                local gb_val = entry.guard_bit or 0
+                                local gb_name = get_guard_type_name(gb_val)
+                                local row_text = string.format("  [%s] [%s]  AR: %.5f", entry.input, gb_name, entry.ar)
+                                imgui.text(row_text)
+                                if entry.is_cancelable then imgui.same_line(); imgui.text_colored(" [C]", COL_GREEN) end
+                                if entry.is_super_cancelable then imgui.same_line(); imgui.text_colored(" [SC]", COL_RED) end
+                                local is_max_for_gb_alt = (gb_val > 0 and entry.ar == alt_max_ar_per_gb[gb_val])
+                                if is_max_for_gb_alt then imgui.same_line(); imgui.text_colored(" ★ [MAX " .. gb_name .. "]", COL_GOLD) end
+                                imgui.same_line()
+                                if imgui.button("APPLY##alttp"..i.."_"..idx) then apply_teleport_exact(entry.ar) end
+                            end
+                        else
+                            imgui.text_colored("  (pas de données)", COL_GREY)
+                        end
+                        imgui.tree_pop()
+                    end
                 end
             end
         end

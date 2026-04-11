@@ -477,8 +477,68 @@ end
 -- ==========================================
 -- 4. MAIN LOOP
 -- ==========================================
+local _tsm_replay_delay = 3.00  -- secondes avant de relancer le script après un replay
+local _tsm_replay_timer = 0
+local _tsm_was_replay = false
+
+local function get_flowmap_id()
+    local ok, id = pcall(function()
+        local bfm = sdk.get_managed_singleton("app.bFlowManager")
+        if not bfm then return nil end
+        local work = bfm:get_field("m_flow_work")
+        if work and work._FlowMap then return work._FlowMap._ID end
+        return nil
+    end)
+    return ok and id or nil
+end
+
 re.on_frame(function()
     SharedUI.clear_rects()
+
+    -- Détection FlowMap
+    local fid = get_flowmap_id()
+    _G.FlowMapID = fid
+    _G.IsInBattleHub = (fid == 9)
+    local is_replay = (fid == 10) or (_G.IsInReplay == true)
+
+    -- BattleHub : toujours désactivé
+    if _G.IsInBattleHub then
+        if _G.CurrentTrainerMode ~= 0 then _G.CurrentTrainerMode = 0 end
+        _G.TrainingFloatingBar = nil
+        _G.TrainingFloatingBarTop = nil
+        _G.TrainingModeActive = false
+        _G.TrainingGamePaused = true
+        return
+    end
+
+    -- Replay : désactiver une seule fois, puis timer, puis désactivé (pas de top bar)
+    if is_replay then
+        if _tsm_was_replay == false then
+            -- Première détection
+            _tsm_was_replay = "waiting"
+            _tsm_replay_timer = 0
+            if _G.CurrentTrainerMode ~= 0 then _G.CurrentTrainerMode = 0 end
+            _G.TrainingFloatingBar = nil
+            _G.TrainingFloatingBarTop = nil
+            _G.TrainingModeActive = false
+        end
+        if _tsm_was_replay == "waiting" then
+            _tsm_replay_timer = _tsm_replay_timer + (1.0 / 60.0)
+            if _tsm_replay_timer >= _tsm_replay_delay then
+                _tsm_was_replay = "done"
+                _G.CurrentTrainerMode = 4
+            end
+        end
+        -- En replay : toujours return, pas de top bar, pas de guard logic
+        _G.TrainingFloatingBarTop = nil
+        _G.TrainingModeActive = true
+        return
+    end
+
+    -- Reset quand on quitte le replay
+    if _tsm_was_replay ~= false then
+        _tsm_was_replay = false
+    end
     -- COUPE CIRCUIT ABSOLU : Aucune lecture de manette ou logique hors du training
     if not is_in_training_mode() then
         -- AUTO-RESET : On éteint tous les modes actifs si on sort du mode Training
@@ -495,29 +555,21 @@ re.on_frame(function()
 
     handle_input()
 
-    -- Replay mode: auto-activate combo trials, no top bar
-    if _G.IsInReplay then
-        if _G.CurrentTrainerMode ~= 4 then
-            _G.CurrentTrainerMode = 4
-        end
-        -- Skip top bar and guard logic in replay
-    else
-        -- Clear D2D floating bar when no training mode is active
-        if _G.CurrentTrainerMode == 0 then _G.TrainingFloatingBar = nil end
+    -- Clear D2D floating bar when no training mode is active
+    if _G.CurrentTrainerMode == 0 then _G.TrainingFloatingBar = nil end
 
-        if is_binding_mode then return end
+    if is_binding_mode then return end
 
-        -- CHECK AUTOMATIC GUARD SWITCHING
-        update_guard_logic()
+    -- CHECK AUTOMATIC GUARD SWITCHING
+    update_guard_logic()
 
-        -- TOP FLOATING BAR (hide during pause menu)
-        local pm = sdk.get_managed_singleton("app.PauseManager")
-        local pause_bit = pm and pm:get_field("_CurrentPauseTypeBit")
-        local in_pause_menu = pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112)
-        _G.TrainingGamePaused = in_pause_menu
-        if not in_pause_menu then
-            draw_top_floating_bar()
-        end
+    -- TOP FLOATING BAR (hide during pause menu)
+    local pm = sdk.get_managed_singleton("app.PauseManager")
+    local pause_bit = pm and pm:get_field("_CurrentPauseTypeBit")
+    local in_pause_menu = pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112)
+    _G.TrainingGamePaused = in_pause_menu
+    if not in_pause_menu then
+        draw_top_floating_bar()
     end
 
     local scripts_active = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3 or (_G.CurrentTrainerMode == 4 and _G.ComboTrials_HideNativeHUD))
@@ -755,6 +807,13 @@ re.on_draw_ui(function()
             imgui.text("  Save combos with damage/drive/SA stats.")
             imgui.text("  Replay with exact position, mirror, or free mode.")
         end
+
+        imgui.separator()
+        imgui.text_colored("REPLAY SETTINGS", 0xFF00FFFF)
+        local c_rd, v_rd = imgui.drag_float("Replay Reactivation Delay (s)", _tsm_replay_delay, 0.05, 0.0, 10.0, "%.2f")
+        if c_rd then _tsm_replay_delay = v_rd end
+        imgui.text(string.format("FlowMap: %s", tostring(_G.FlowMapID or "?")))
+        if _G._dbg_replay_rec then imgui.text(_G._dbg_replay_rec) end
 
         imgui.tree_pop()
     end

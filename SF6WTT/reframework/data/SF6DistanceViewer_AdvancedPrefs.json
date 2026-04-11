@@ -18,44 +18,48 @@
         },
         "Chun-Li": {
             "low": {
-                "ar": 175.56313,
-                "input": "5HP"
+                "ar": 73.0,
+                "input": "5MK"
             },
             "red": {
-                "ar": 189.68187,
-                "input": "6HK"
+                "ar": 73.0,
+                "input": "5MK"
             },
             "visibility": {
                 "2HK": true,
-                "2HP": true,
-                "2LK": true,
-                "2LP": true,
-                "2MK": true,
-                "2MP": true,
+                "2HP": false,
+                "2LK": false,
+                "2LP": false,
+                "2MK": false,
+                "2MP": false,
                 "3HK": true,
-                "3HP": true,
-                "4HP": true,
-                "4MP": true,
-                "5HK": true,
-                "5HP": true,
-                "5LK": true,
-                "5LP": true,
-                "5MK": true,
-                "5MP": true,
+                "3HP": false,
+                "4HP": false,
+                "4MP": false,
+                "5HK": false,
+                "5HP": false,
+                "5LK": false,
+                "5LP": false,
+                "5MK": false,
+                "5MP": false,
                 "6HK": true
             },
             "yellow_offset": 50
         },
         "ChunLi_Serenity": {
+            "low": {
+                "ar": 230.0,
+                "input": "5MP"
+            },
             "red": {
-                "ar": 140.1355,
-                "input": "5HP"
+                "ar": 230.0,
+                "input": "5MP"
             },
             "visibility": {
-                "5HK": true,
-                "5HP": true,
-                "5LK": true,
-                "5LP": true,
+                "5HK": false,
+                "5HP": false,
+                "5LK": false,
+                "5LP": false,
                 "5MK": true,
                 "5MP": true
             },
@@ -133,8 +137,8 @@
                 "input": "2MK"
             },
             "red": {
-                "ar": 154.506,
-                "input": "5HP"
+                "ar": 192.43614,
+                "input": "6HK"
             },
             "visibility": {
                 "2HK": false,
@@ -170,6 +174,30 @@
         }
     },
     "1": {
+        "Chun-Li": {
+            "low": {
+                "ar": 147.74174,
+                "input": "2MK"
+            },
+            "red": {
+                "ar": 175.56313,
+                "input": "5HP"
+            },
+            "visibility": null,
+            "yellow_offset": 50
+        },
+        "ChunLi_Serenity": {
+            "low": {
+                "ar": 151.8728,
+                "input": "5LK"
+            },
+            "red": {
+                "ar": 230.0,
+                "input": "5MP"
+            },
+            "visibility": null,
+            "yellow_offset": 50
+        },
         "Dee Jay": {
             "low": {
                 "ar": 152.08,
@@ -187,20 +215,20 @@
                 "input": "2HP"
             },
             "visibility": {
-                "2HK": false,
+                "2HK": true,
                 "2HP": true,
-                "2LK": false,
-                "2LP": false,
-                "2MK": false,
-                "2MP": false,
-                "3HK": false,
-                "5HK": false,
-                "5HP": false,
-                "5LK": false,
-                "5LP": false,
-                "5MK": false,
+                "2LK": true,
+                "2LP": true,
+                "2MK": true,
+                "2MP": true,
+                "3HK": true,
+                "5HK": true,
+                "5HP": true,
+                "5LK": true,
+                "5LP": true,
+                "5MK": true,
                 "5MP": true,
-                "6HK": false
+                "6HK": true
             },
             "yellow_offset": 50
         },
@@ -216,6 +244,14 @@
             "yellow_offset": 50
         },
         "Ryu": {
+            "low": {
+                "ar": 101.0,
+                "input": "5MP"
+            },
+            "red": {
+                "ar": 192.43614,
+                "input": "6HK"
+            },
             "visibility": {
                 "2HK": false,
                 "2HP": false,

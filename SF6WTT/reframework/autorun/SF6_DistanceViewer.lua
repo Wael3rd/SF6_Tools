@@ -9,27 +9,38 @@ local Vector2f = Vector2f
 -- =========================================================
 -- [ADVANCED MODE - Distance Logger integration]
 -- =========================================================
-local ADVANCED_DATA_FILE = "SF6DistanceLogger_Data_Attacks.json"
+local UNIFIED_FILE = "SF6Distance_Data_Attacks.json"
 local advanced_data = {}
 
 local fallback_spacing = { yellow = 2.50, red = 2.00, low = 1.50 }
 local spacing_thresholds = {}
 local jump_data_store = {}
 
-local ADVANCED_PREFS_FILE = "SF6DistanceViewer_AdvancedPrefs.json"
 local advanced_prefs = { [0] = {}, [1] = {} }
 
 local function load_advanced_prefs()
-    local f = json.load_file(ADVANCED_PREFS_FILE)
-    if f then 
-        -- JSON converts integer keys to strings, so we map them back
-        advanced_prefs[0] = f["0"] or f[0] or {}
-        advanced_prefs[1] = f["1"] or f[1] or {}
+    local f = json.load_file(UNIFIED_FILE)
+    local pp = f and f.player_prefs
+    if not pp then
+        -- Migration: try old file
+        pp = json.load_file("SF6DistanceViewer_AdvancedPrefs.json")
+    end
+    if pp then
+        advanced_prefs[0] = pp["0"] or pp[0] or {}
+        advanced_prefs[1] = pp["1"] or pp[1] or {}
     end
     if type(advanced_prefs[0]) ~= "table" then advanced_prefs[0] = {} end
     if type(advanced_prefs[1]) ~= "table" then advanced_prefs[1] = {} end
 end
-local function save_advanced_prefs() json.dump_file(ADVANCED_PREFS_FILE, advanced_prefs) end
+local function save_advanced_prefs()
+    local current = json.load_file(UNIFIED_FILE) or {}
+    current.player_prefs = advanced_prefs
+    if not current.attacks then current.attacks = {} end
+    if not current.jumps then current.jumps = {} end
+    json.dump_file(UNIFIED_FILE, current)
+    _G.DV_AdvancedPrefs = advanced_prefs
+end
+_G.DV_AdvancedPrefs = advanced_prefs
 local function get_char_prefs(pi, char_name)
     if not advanced_prefs[pi][char_name] then 
         advanced_prefs[pi][char_name] = { visibility = {}, yellow_offset = 50, red = nil, low = nil } 
@@ -47,7 +58,15 @@ local VMODE_TOP_HALF = 2
 local VMODE_BOTTOM_HALF = 3
 local VMODE_FULL = 4
 
-local config = { 
+local config = {
+    -- Box filters for distance calculation
+    box_use_hurtbox = true,
+    box_use_hurtbox_invuln = false,
+    box_use_pushbox = true,
+    box_use_hitbox = false,
+    box_use_throwbox = false,
+    box_use_clash = false,
+    box_use_proximity = false,
     use_attack_lock = false,
     jump_arc_thickness = 50.0,
     -- TELEPORT VARIABLES
@@ -334,10 +353,15 @@ for esf_key, real_name in pairs(esf_names_map) do
 end
 
 local function load_advanced_data()
-    local f = json.load_file(ADVANCED_DATA_FILE)
-    if not f or type(f) ~= "table" then return end
-    
-    for char_name, cdata in pairs(f) do
+    local f = json.load_file(UNIFIED_FILE)
+    local atk = f and f.attacks
+    if not atk then
+        -- Migration: try old file (flat format)
+        atk = json.load_file("SF6DistanceLogger_Data_Attacks.json")
+    end
+    if not atk or type(atk) ~= "table" then return end
+
+    for char_name, cdata in pairs(atk) do
         if type(cdata) == "table" and cdata.moves then
             local fixed = {}
             for _, v in pairs(cdata.moves) do
@@ -347,7 +371,7 @@ local function load_advanced_data()
             cdata.moves = fixed
         end
     end
-    advanced_data = f
+    advanced_data = atk
 
     local count = 0
     for _, _ in pairs(advanced_data) do count = count + 1 end
@@ -390,7 +414,11 @@ local function get_player_limits(pi, p_data)
 end
 
 local function save_advanced_data()
-    json.dump_file(ADVANCED_DATA_FILE, advanced_data)
+    local current = json.load_file(UNIFIED_FILE) or {}
+    current.attacks = advanced_data
+    if not current.jumps then current.jumps = {} end
+    if not current.player_prefs then current.player_prefs = advanced_prefs end
+    json.dump_file(UNIFIED_FILE, current)
     load_advanced_data()
 end
 
@@ -687,8 +715,10 @@ spacing_thresholds = {}
 debug_dist_status = "Waiting for Data..."
 debug_dist_color = 0xFF888888
 
--- 2. LOAD JUMPS
-local jump_data = json.load_file("SF6DistanceLogger_Data_Jumps.json")
+-- 2. LOAD JUMPS (from unified file, fallback to old file)
+local _uf = json.load_file(UNIFIED_FILE)
+local jump_data = _uf and _uf.jumps
+if not jump_data then jump_data = json.load_file("SF6DistanceLogger_Data_Jumps.json") end
 if jump_data then
     jump_data_store = jump_data
     local count = 0
@@ -699,6 +729,7 @@ else
     debug_jump_status = "ERROR: JSON not found"
     jump_data_store = {}
 end
+_uf = nil
 load_advanced_data()
 
 local detected_infos = { [0] = { name = "Waiting...", id = -1 }, [1] = { name = "Waiting...", id = -1 } }
@@ -988,7 +1019,29 @@ local function update_combat_distances()
         
         if col.Infos and col.Infos._items then
             for _, r in pairs(col.Infos._items) do
-                if r and (r:get_field("Attr") ~= nil or r:get_field("HitNo") ~= nil) then
+                local dominated = false
+                if r then
+                    local has_HitPos = r:get_field("HitPos") ~= nil
+                    local has_Attr = r:get_field("Attr") ~= nil
+                    local has_HitNo = r:get_field("HitNo") ~= nil
+                    if has_HitPos then
+                        local tf = r.TypeFlag or 0
+                        local pb = r.PoseBit or 0
+                        local cf = r.CondFlag or 0
+                        local gb = r.GuardBit or 0
+                        if tf > 0 then dominated = config.box_use_hitbox
+                        elseif (tf == 0 and pb > 0) or cf == 0x2C0 then dominated = config.box_use_throwbox
+                        elseif gb == 0 then dominated = config.box_use_clash
+                        else dominated = config.box_use_proximity end
+                    elseif has_Attr then
+                        dominated = config.box_use_pushbox
+                    elseif has_HitNo then
+                        local tp = r.Type or 0
+                        if tp == 1 or tp == 2 then dominated = config.box_use_hurtbox_invuln
+                        else dominated = config.box_use_hurtbox end
+                    end
+                end
+                if r and dominated then
                     local box_x = (r.OffsetX and r.OffsetX.v) and (r.OffsetX.v / 6553600.0) or 0.0
                     local size_x = (r.SizeX and r.SizeX.v) and (r.SizeX.v / 6553600.0) or 0.0
                     
@@ -1078,12 +1131,10 @@ local function evaluate_player_zone(pi, cache_data, opponent_data)
         if limits then
             local sorted = get_sorted_thresholds(limits, true, true, (pi == 0) and "P1" or "P2")
             for _, zone in ipairs(sorted) do
-				if dist_target <= zone.dist + 0.0000001 then
-					text_str = zone.name
-					text_col = zone.color
-					break
-				end
-			end
+                if dist_target <= zone.dist + 0.001 then
+                    return { name = zone.name, color = zone.color }
+                end
+            end
         end
     end
     return { name = ((pi == 0) and "P1" or "P2") .. " Green Zone", color = colors.Green }
@@ -1695,13 +1746,14 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
         else
             local prefs = get_char_prefs(pi, rname)
             local ar_min, ar_max = get_ar_range(pi, rname)
-            local max_ar_per_gb = {}
-            for _, s in ipairs(all_sets) do
+            local max_ar_per_gb_per_set = {}
+            for si, s in ipairs(all_sets) do
+                max_ar_per_gb_per_set[si] = {}
                 for _, entry in ipairs(s.moves) do
                     local gb = entry.guard_bit or 0
                     if gb > 0 then
-                        if not max_ar_per_gb[gb] or entry.ar > max_ar_per_gb[gb] then
-                            max_ar_per_gb[gb] = entry.ar
+                        if not max_ar_per_gb_per_set[si][gb] or entry.ar > max_ar_per_gb_per_set[si][gb] then
+                            max_ar_per_gb_per_set[si][gb] = entry.ar
                         end
                     end
                 end
@@ -1720,10 +1772,11 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
             end
             imgui.same_line()
             if imgui.button("Max Only##"..pi) then
-                for _, s in ipairs(all_sets) do
+                for si, s in ipairs(all_sets) do
+                    local set_max = max_ar_per_gb_per_set[si]
                     for _, mv in ipairs(s.moves) do
                         local gb_val = mv.guard_bit or 0
-                        if gb_val > 0 and mv.ar == max_ar_per_gb[gb_val] then
+                        if gb_val > 0 and mv.ar == set_max[gb_val] then
                             set_move_visible(pi, s.name, mv.input, true)
                         else
                             set_move_visible(pi, s.name, mv.input, false)
@@ -1735,7 +1788,8 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
 
             imgui.separator()
 
-            for _, s in ipairs(all_sets) do
+            for si, s in ipairs(all_sets) do
+                local set_max = max_ar_per_gb_per_set[si]
                 if #all_sets > 1 then
                     imgui.spacing()
                     imgui.text_colored("-- " .. s.name .. " --", COL_CYAN)
@@ -1748,7 +1802,7 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
 
                     local gb_val = mv.guard_bit or 0
                     local gb_name = get_guard_type_name(gb_val)
-                    local is_max_for_gb = (gb_val > 0 and mv.ar == max_ar_per_gb[gb_val])
+                    local is_max_for_gb = (gb_val > 0 and mv.ar == set_max[gb_val])
 
                     local visible = is_move_visible(pi, s.name, mv.input)
                     local chk_changed, chk_new = imgui.checkbox(
@@ -1760,7 +1814,7 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
                     end
 
                     imgui.same_line()
-                    imgui.text_colored("[#]", col)
+                    imgui.text_colored("[#]", visible and col or 0xFF444444)
 
                     imgui.same_line()
                     imgui.push_style_color(21, 0xFF994400) -- Button
@@ -2153,6 +2207,60 @@ local function draw_config_ui()
 
         draw_debug_values(p1_cache, p2_cache, 0)
         draw_debug_values(p2_cache, p1_cache, 1)
+
+        imgui.separator()
+        imgui.text_colored("[BOX FILTERS — Distance Calculation]", COL_YELLOW)
+        local bc = false
+        local c1, v1 = imgui.checkbox("Hurtbox", config.box_use_hurtbox); if c1 then config.box_use_hurtbox = v1; bc = true end
+        imgui.same_line()
+        local c2, v2 = imgui.checkbox("Hurtbox Invuln", config.box_use_hurtbox_invuln); if c2 then config.box_use_hurtbox_invuln = v2; bc = true end
+        local c3, v3 = imgui.checkbox("Pushbox", config.box_use_pushbox); if c3 then config.box_use_pushbox = v3; bc = true end
+        imgui.same_line()
+        local c4, v4 = imgui.checkbox("Hitbox", config.box_use_hitbox); if c4 then config.box_use_hitbox = v4; bc = true end
+        local c5, v5 = imgui.checkbox("Throwbox", config.box_use_throwbox); if c5 then config.box_use_throwbox = v5; bc = true end
+        imgui.same_line()
+        local c6, v6 = imgui.checkbox("Clash", config.box_use_clash); if c6 then config.box_use_clash = v6; bc = true end
+        local c7, v7 = imgui.checkbox("Proximity", config.box_use_proximity); if c7 then config.box_use_proximity = v7; bc = true end
+        if bc then save_settings() end
+
+        imgui.separator()
+        imgui.text_colored("[LIVE BOX DUMP — P1]", COL_CYAN)
+        pcall(function()
+            local gB = sdk.find_type_definition("gBattle")
+            if not gB then return end
+            local sP = gB:get_field("Player"):get_data(nil)
+            if not sP or not sP.mcPlayer or not sP.mcPlayer[0] then return end
+            local p = sP.mcPlayer[0]
+            if not p.mpActParam or not p.mpActParam.Collision then return end
+            local col = p.mpActParam.Collision
+            if col.Infos and col.Infos._items then
+                for j, r in pairs(col.Infos._items) do
+                    if r and r.OffsetX and r.OffsetX.v then
+                        local has_HitPos = r:get_field("HitPos") ~= nil
+                        local has_Attr = r:get_field("Attr") ~= nil
+                        local has_HitNo = r:get_field("HitNo") ~= nil
+                        local label = "?"
+                        if has_HitPos then
+                            local tf = r.TypeFlag or 0
+                            local pb = r.PoseBit or 0
+                            local cf = r.CondFlag or 0
+                            local gb = r.GuardBit or 0
+                            if tf > 0 then label = "HITBOX"
+                            elseif (tf == 0 and pb > 0) or cf == 0x2C0 then label = "THROWBOX"
+                            elseif gb == 0 then label = "CLASH"
+                            else label = "PROXIMITY" end
+                        elseif has_Attr then label = "PUSHBOX"
+                        elseif has_HitNo then
+                            local tp = r.Type or 0
+                            if tp == 1 or tp == 2 then label = "HURTBOX_INV" else label = "HURTBOX" end
+                        end
+                        local ox = r.OffsetX.v / 6553600.0
+                        local sx = r.SizeX.v / 6553600.0
+                        imgui.text(string.format("  [%d] %-12s X:%.3f SX:%.3f", j, label, ox, sx))
+                    end
+                end
+            end
+        end)
     end
     
     end -- FIN DU BLOC "if not config.simple_mode_enabled"
@@ -2288,10 +2396,10 @@ re.on_frame(function()
     if sGame then
         local success, current_timer = pcall(function() return sGame.stage_timer end)
         if success and current_timer ~= nil then
-            if current_timer == last_stage_timer then 
-                frozen_frames = frozen_frames + 1 
-            else 
-                last_stage_timer = current_timer; frozen_frames = 0 
+            if current_timer == last_stage_timer then
+                frozen_frames = frozen_frames + 1
+            else
+                last_stage_timer = current_timer; frozen_frames = 0
             end
             if frozen_frames > 5 then should_update = false end
         end
@@ -2310,14 +2418,15 @@ re.on_frame(function()
     if should_update then
         update_player_cache(0, p1_cache)
         update_player_cache(1, p2_cache)
+        _G.DV_PlayerAdvName = { [0] = p1_cache.adv_name, [1] = p2_cache.adv_name }
         update_combat_distances() -- <<< NOTRE DÉTECTION UNIQUE
-		
+
 		-- [SSOT] Détection unique des zones stockée dans le cache
         if p1_cache.valid and p2_cache.valid then
             p1_cache.active_zone = evaluate_player_zone(0, p1_cache, p2_cache)
             p2_cache.active_zone = evaluate_player_zone(1, p2_cache, p1_cache)
         end
-        
+
         -- [TELEPORT RETRY LOGIC] Ensures strict adherence to target distance
         if pending_tp.active and p1_cache.valid and p2_cache.valid then
             local current_c2c = math.abs(p1_cache.world_x - p2_cache.world_x) * 100.0
@@ -2332,7 +2441,7 @@ re.on_frame(function()
                 pending_tp.active = false -- Perfect distance reached
             end
         end
-        
+
         if config.use_attack_lock then
             process_attack_lock(0, p1_cache)
             process_attack_lock(1, p2_cache)

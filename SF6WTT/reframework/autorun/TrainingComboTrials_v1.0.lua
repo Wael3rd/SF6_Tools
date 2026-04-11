@@ -1146,14 +1146,19 @@ local function update_trial_flip_state(skip_mirror)
     local r1, r2
 
     if d2d_cfg.forced_position_idx == 1 then
-        -- 1. FORCED POS OFF : On lit la VRAIE position actuelle (Live) des personnages
-        local _, _, live_p1, live_p2 = capture_current_positions()
-        if not live_p1 or not live_p2 then
-            trial_state.flip_inputs = false
-            return
+        -- 1. FORCED POS OFF : positions de destination (live_start si playing, sinon live)
+        if trial_state.is_playing and trial_state.live_start_pos_p1_raw and trial_state.live_start_pos_p2_raw then
+            r1 = trial_state.live_start_pos_p1_raw
+            r2 = trial_state.live_start_pos_p2_raw
+        else
+            local _, _, live_p1, live_p2 = capture_current_positions()
+            if not live_p1 or not live_p2 then
+                trial_state.flip_inputs = false
+                return
+            end
+            r1 = live_p1
+            r2 = live_p2
         end
-        r1 = live_p1
-        r2 = live_p2
     else
         -- 2. FORCED POS ON ou MIRRORED : On lit la position sauvegardée (car le jeu va nous y téléporter)
         if not trial_state.start_pos_p1_raw or not trial_state.start_pos_p2_raw then
@@ -1195,6 +1200,8 @@ end
 
 
 local function apply_forced_position(skip_mirror)
+    if _G.IsInBattleHub or _G.IsInReplay then return end
+
     -- SYNCHRONIZATION: Always update visual flip state before injecting position
     update_trial_flip_state(skip_mirror)
 
@@ -1271,7 +1278,24 @@ end
 -- HELPER FUNCTIONS (Shared by UI buttons and pad shortcuts)
 -- =========================================================
 
+local function reset_positions_to_default()
+    if _G.IsInReplay or _G.FlowMapID == 10 then return end
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local tData = tm:get_field("_tData")
+        if not tData then return end
+        local sm = tData:get_field("SelectMenu")
+        if not sm then return end
+        sm.StartLocation = 3
+        sm.PlayerDatas[0].ManualPosX = -150
+        sm.PlayerDatas[1].ManualPosX = 150
+        tm._IsReqRefresh = true
+    end)
+end
+
 local function apply_current_position_refresh()
+    if _G.IsInReplay or _G.FlowMapID == 10 then return end
     local tm = sdk.get_managed_singleton("app.training.TrainingManager")
     if not tm then return end
     local tData = tm:get_field("_tData")
@@ -1361,13 +1385,13 @@ local function start_recording(player_idx)
     -- LOGGER EXPORT RECORDING INIT
     if player_idx == 0 then
         logger_state.rec_p1.data = {}
-        logger_state.rec_p1.has_started = false 
-        logger_state.rec_p1.wait_neutral = true -- AJOUT: Attendre que le joueur lâche le raccourci
+        logger_state.rec_p1.has_started = false
+        logger_state.rec_p1.wait_neutral = true
         logger_state.rec_p1.active = true
     else
         logger_state.rec_p2.data = {}
-        logger_state.rec_p2.has_started = false 
-        logger_state.rec_p2.wait_neutral = true -- AJOUT: Attendre que le joueur lâche le raccourci
+        logger_state.rec_p2.has_started = false
+        logger_state.rec_p2.wait_neutral = true
         logger_state.rec_p2.active = true
     end
 
@@ -1433,11 +1457,18 @@ local function cancel_recording()
 end
 
 local function stop_recording_and_save()
-    -- NEW: If nothing was recorded, act exactly like Cancel
-    if #trial_state.sequence == 0 then
+    -- Check if logger has data (for replay/BH mode where sequence stays empty)
+    local logger_has_data = false
+    if trial_state.recording_player == 0 then
+        logger_has_data = logger_state.rec_p1.has_started and #logger_state.rec_p1.data > 0
+    else
+        logger_has_data = logger_state.rec_p2.has_started and #logger_state.rec_p2.data > 0
+    end
+
+    -- If nothing was recorded anywhere, act exactly like Cancel
+    if #trial_state.sequence == 0 and not logger_has_data then
         cancel_recording()
-        
-        -- CANCEL LOGGER
+
         if trial_state.recording_player == 0 then
             logger_state.rec_p1.active = false
             logger_state.rec_p1.has_started = false
@@ -1481,7 +1512,6 @@ local function stop_recording_and_save()
         if raw_file then
             local loaded_raw = json.load_file("ReplayRecords/" .. raw_file)
             if loaded_raw and loaded_raw.timeline then
-                -- On aspire la timeline du fichier brut et on l'intègre au Trial
                 trial_state.sequence[1].timeline = loaded_raw.timeline
             end
         end
@@ -1627,7 +1657,7 @@ local function is_kb_down(vk)
 end
 
 local function handle_combo_shortcuts()
-    if _G.CurrentTrainerMode ~= 4 then return end
+    if _G.FlowMapID ~= 10 and not _G.IsInReplay and _G.CurrentTrainerMode ~= 4 then return end
 
     local active_buttons = get_hardware_pad_mask()
     local func_btn = _G.TrainingFuncButton or 16384
@@ -1770,8 +1800,8 @@ local function handle_combo_shortcuts()
         end
 
     else
-        if _G.IsInReplay then
-            -- ===== REPLAY IDLE : 2 boutons (LEFT/1=rec P1, RIGHT/2=rec P2) =====
+        if _G.IsInReplay or _G.IsInBattleHub then
+            -- ===== REPLAY/SPECTATE IDLE : 2 boutons (LEFT/1=rec P1, RIGHT/2=rec P2) =====
             if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
                 start_recording(0)
             end
@@ -1779,7 +1809,7 @@ local function handle_combo_shortcuts()
                 start_recording(1)
             end
         else
-            -- ===== IDLE : 4 boutons (LEFT/1=rec P1, UP/2=start trial, RIGHT/3=rec P2, DOWN/4=switch pos) =====
+            -- ===== IDLE : 3 boutons (LEFT/1=record, UP/2=start trial, RIGHT/3=switch pos) =====
             if is_pressed(BTN_LEFT) or kb_pressed(KB_1) then
                 start_recording(0)
             end
@@ -1787,9 +1817,6 @@ local function handle_combo_shortcuts()
                 load_and_start_trial(0)
             end
             if is_pressed(BTN_RIGHT) or kb_pressed(KB_3) then
-                start_recording(1)
-            end
-            if is_pressed(BTN_DOWN) or kb_pressed(KB_4) then
                 d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
                 if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
                 save_d2d_config()
@@ -1924,7 +1951,32 @@ local function build_fail_dump()
     return dump
 end
 
+local _replay_cleaned = false
 re.on_frame(function()
+    -- BATTLE HUB SPECTATE : script désactivé
+    if _G.IsInBattleHub then return end
+
+    -- Replay : clean une seule fois à l'entrée (stop trial/demo, reset state)
+    local _in_replay = (_G.FlowMapID == 10 or _G.IsInReplay)
+    if _in_replay and not _replay_cleaned then
+        _replay_cleaned = true
+        if trial_state.is_playing then
+            trial_state.is_playing = false
+            trial_state._was_playing = false
+        end
+        if demo_state and demo_state.is_playing then demo_state.is_playing = false end
+        trial_state.flip_inputs = false
+        trial_state.floating_info = nil
+        trial_state._vital_initialized = false
+        trial_state._pause_live_r1 = nil
+        trial_state._pause_live_r2 = nil
+        trial_state._unpause_delay = nil
+        trial_state.pending_exact_pos = nil
+        _G.ComboTrials_HideNativeHUD = false
+    elseif not _in_replay then
+        _replay_cleaned = false
+    end
+
     if _G.CurrentTrainerMode ~= 4 then
         -- Clean shutdown if switching scripts during an active Trial/Demo
         if trial_state.is_playing or (demo_state and demo_state.is_playing) then
@@ -1942,23 +1994,38 @@ re.on_frame(function()
         return
     end
 
-    -- On first frame of Combo Trials mode: set both players to Refill (once)
+    -- On first frame of Combo Trials mode: clean slate (skip en replay)
     if not trial_state._vital_initialized then
         trial_state._vital_initialized = true
-        pcall(function()
-            local tm = sdk.get_managed_singleton("app.training.TrainingManager")
-            if not tm then return end
-            local ps = tm:get_field("_tData"):get_field("ParameterSetting")
-            if not ps or not ps.PlayerDatas then return end
-            for i = 0, 1 do
-                local pd = ps.PlayerDatas[i]
-                pd.Is_Vital_Recovery_Timer = true
-                pd.Is_Vital_Infinity = false
-                pd.Is_Vital_No_Recovery = false
-                pd.Is_KO = false
-                pd.Is_Point_Lock = true
-            end
-        end)
+
+        -- Force stop tout ce qui traîne d'une session précédente
+        if trial_state.is_playing then
+            trial_state.is_playing = false
+            trial_state._was_playing = false
+        end
+        if demo_state and demo_state.is_playing then demo_state.is_playing = false end
+        if trial_state.is_recording then cancel_recording() end
+        trial_state.flip_inputs = false
+        trial_state.floating_info = nil
+        _G.ComboTrials_HideNativeHUD = false
+
+        -- Ne toucher au TrainingManager que si on n'est PAS en replay
+        if not _G.IsInReplay and _G.FlowMapID ~= 10 then
+            pcall(function()
+                local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+                if not tm then return end
+                local ps = tm:get_field("_tData"):get_field("ParameterSetting")
+                if not ps or not ps.PlayerDatas then return end
+                for i = 0, 1 do
+                    local pd = ps.PlayerDatas[i]
+                    pd.Is_Vital_Recovery_Timer = true
+                    pd.Is_Vital_Infinity = false
+                    pd.Is_Vital_No_Recovery = false
+                    pd.Is_KO = false
+                    pd.Is_Point_Lock = true
+                end
+            end)
+        end
     end
 
     -- DYNAMIC NATIVE HUD: Hide base game info ONLY during active record or playback
@@ -1993,8 +2060,8 @@ re.on_frame(function()
     end
     trial_state._was_game_paused = is_game_paused
 
-    -- Delayed inject after unpause
-    if trial_state._unpause_delay and trial_state._unpause_delay > 0 then
+    -- Delayed inject after unpause (skip en replay)
+    if not _in_replay and trial_state._unpause_delay and trial_state._unpause_delay > 0 then
         trial_state._unpause_delay = trial_state._unpause_delay - 1
         if trial_state._unpause_delay == 0 and trial_state._pause_live_r1 and trial_state._pause_live_r2 then
             pcall(function()
@@ -2029,17 +2096,15 @@ re.on_frame(function()
         -- Transition OFF → ON : Appliquer la vie P2 = damage du combo
         apply_trial_vital()
     elseif not now_playing and trial_state._was_playing then
-        -- Transition ON → OFF : Restaurer la vie P2 et refresh sur la position ACTUELLE exacte
+        -- Transition ON → OFF : Restaurer la vie P2 et remettre les positions par défaut
         restore_trial_vital()
         restore_dummy_counter_type()
-        apply_current_position_refresh()
+        reset_positions_to_default()
     end
     trial_state._was_playing = now_playing
 
-    -- POST-REFRESH EXACT POSITION CORRECTION
-    -- ManualPosX uniquement en entiers (cm). Après le refresh natif, on réinjecte
-    -- la position exacte via POS_SETx (sfix) pour corriger au centième près.
-    if trial_state.pending_exact_pos and trial_state.pending_exact_pos > 0 then
+    -- POST-REFRESH EXACT POSITION CORRECTION (skip en replay)
+    if not _in_replay and trial_state.pending_exact_pos and trial_state.pending_exact_pos > 0 then
         local tm_check = sdk.get_managed_singleton("app.training.TrainingManager")
         if tm_check and tm_check:get_field("_IsReqRefresh") == false then
             trial_state.pending_exact_pos = trial_state.pending_exact_pos - 1
@@ -2292,8 +2357,8 @@ end
                 end
 				end
 
-            -- Capture CH/PC en continu pendant tout le premier hit (Evite de rater les lights)
-            if (current_combo or 0) == 1 and trial_state.is_recording and p_idx == trial_state.recording_player then
+            -- Capture CH/PC en continu pendant le recording (indépendant du combo count pour DI etc.)
+            if not trial_state._rec_hit_type and trial_state.is_recording and p_idx == trial_state.recording_player then
                 pcall(function()
                     local victim_idx = 1 - p_idx
                     local victim_obj = player_obj:call("getPlayer", victim_idx)
@@ -3019,9 +3084,13 @@ end
 
                                         local hp_ok = true
                                         if expected.expected_hp ~= nil and process_act.current_hp ~= nil then
-                                            -- Validation de l'Oki Setup : la vie doit correspondre EXACTEMENT à la frame de l'input
-                                            if process_act.current_hp ~= expected.expected_hp then
-                                                hp_ok = false
+                                            -- Validation HP : strict pour oki (expected_combo == 0), tolérant pour combos
+                                            local prev_step = trial_state.current_step > 1 and trial_state.sequence[trial_state.current_step - 1] or nil
+                                            local is_oki = (prev_step and prev_step.expected_combo == 0)
+                                            if is_oki then
+                                                if process_act.current_hp ~= expected.expected_hp then
+                                                    hp_ok = false
+                                                end
                                             end
                                         end
 
