@@ -490,14 +490,12 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
         end
     end
 
-    -- Tag (CH) ou (PC) sur le premier step du trial (celui qui porte combo_stats)
-    if log_entry.combo_stats and log_entry.combo_stats.hit_type then
-        local ht = log_entry.combo_stats.hit_type
-        if ht == "CH" then
-            table.insert(final_tokens, { type = "text", val = " (CH)", col = 0xFFFFFFFF })
-        elseif ht == "PC" then
-            table.insert(final_tokens, { type = "text", val = " (PC)", col = 0xFFFFFFFF })
-        end
+    -- Tag (CH) ou (PC) par step
+    local ct = log_entry.counter_type
+    if ct == 1 then
+        table.insert(final_tokens, { type = "text", val = " (CH)", col = 0xFFFFFFFF })
+    elseif ct == 2 then
+        table.insert(final_tokens, { type = "text", val = " (PC)", col = 0xFFFFFFFF })
     end
 
     return final_tokens

@@ -1073,48 +1073,147 @@ local function restore_trial_vital()
 end
 
 -- Sets the Dummy Counter state (0=Normal, 1=Counter, 2=Punish Counter)
+-- Cache tf_CounterSetting depuis _tfFuncs
+local _tf_counter_cache = nil
+local function get_tf_counter()
+    if _tf_counter_cache then return _tf_counter_cache end
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local dict = tm:get_field("_tfFuncs")
+        if not dict then return end
+        local entries = dict:get_field("_entries")
+        if not entries then return end
+        local count = entries:call("get_Count")
+        for i = 0, count - 1 do
+            local entry = entries:call("get_Item", i)
+            if entry then
+                local val = entry:get_field("value")
+                if val then
+                    local td = val:get_type_definition()
+                    if td:get_full_name():find("tf_CounterSetting") then
+                        _tf_counter_cache = val
+                        return
+                    end
+                end
+            end
+        end
+    end)
+    return _tf_counter_cache
+end
+
+-- 0=Normal, 1=CH, 2=PC (via DummyData + bApply, instantané sans refresh)
 local function set_dummy_counter_type(counter_val)
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
-        
-        local counter_func = tm:call("get_CounterFunc")
-        if counter_func then
-            if counter_val == 2 then
-                -- Punish Counter ON, Normal Counter OFF
-                pcall(function() counter_func:call("ChangeNormalCounterType", 1, 0) end)
-                pcall(function() counter_func:call("ChangePanishCounterType", 1, 1) end) -- Capcom typo : "Panish"
-            elseif counter_val == 1 then
-                -- Normal Counter ON, Punish Counter OFF
-                pcall(function() counter_func:call("ChangeNormalCounterType", 1, 1) end)
-                pcall(function() counter_func:call("ChangePanishCounterType", 1, 0) end)
-            else
-                -- Everything OFF (Normal State)
-                pcall(function() counter_func:call("ChangeNormalCounterType", 1, 0) end)
-                pcall(function() counter_func:call("ChangePanishCounterType", 1, 0) end)
-            end
+        local tData = tm:get_field("_tData")
+        if not tData then return end
+        local cs = tData:get_field("CounterSetting")
+        if not cs then return end
+        local dd = cs:get_field("DummyData")
+        if not dd then return end
+        if counter_val == 2 then
+            dd.NC_TYPE = 0; dd.PC_TYPE = 1
+        elseif counter_val == 1 then
+            dd.NC_TYPE = 1; dd.PC_TYPE = 0
+        else
+            dd.NC_TYPE = 0; dd.PC_TYPE = 0
         end
     end)
+    local tc = get_tf_counter()
+    if tc then pcall(function() tc:call("bApply") end) end
+end
+
+-- Lire l'état actuel du counter
+local function read_dummy_counter_type()
+    local result = 0
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local tData = tm:get_field("_tData")
+        if not tData then return end
+        local cs = tData:get_field("CounterSetting")
+        if not cs then return end
+        local dd = cs:get_field("DummyData")
+        if not dd then return end
+        if dd.PC_TYPE == 1 then result = 2
+        elseif dd.NC_TYPE == 1 then result = 1 end
+    end)
+    return result
 end
 
 local function save_dummy_counter_type()
-    trial_state._saved_counter_type = 0
-    pcall(function()
-        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
-        local ps = tm:get_field("_tData"):get_field("ParameterSetting")
-        local p2d = ps.PlayerDatas[1]
-        if p2d.PanishCounter_Type == 1 then
-            trial_state._saved_counter_type = 2
-        elseif p2d.NormalCounter_Type == 1 then
-            trial_state._saved_counter_type = 1
-        end
-    end)
+    trial_state._saved_counter_type = read_dummy_counter_type()
 end
 
 local function restore_dummy_counter_type()
     if trial_state._saved_counter_type ~= nil then
         set_dummy_counter_type(trial_state._saved_counter_type)
         trial_state._saved_counter_type = nil
+    end
+end
+
+-- Cache tf_GuardSetting depuis _tfFuncs
+local _tf_guard_cache = nil
+local function get_tf_guard()
+    if _tf_guard_cache then return _tf_guard_cache end
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local dict = tm:get_field("_tfFuncs")
+        if not dict then return end
+        local entries = dict:get_field("_entries")
+        if not entries then return end
+        local count = entries:call("get_Count")
+        for i = 0, count - 1 do
+            local entry = entries:call("get_Item", i)
+            if entry then
+                local val = entry:get_field("value")
+                if val and val:get_type_definition():get_full_name():find("tf_GuardSetting") then
+                    _tf_guard_cache = val
+                    return
+                end
+            end
+        end
+    end)
+    return _tf_guard_cache
+end
+
+local function set_dummy_guard_type(guard_val)
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local tData = tm:get_field("_tData")
+        local gs = tData:get_field("GuardSetting")
+        local dd = gs:get_field("DummyData")
+        dd.GuardType = guard_val
+    end)
+    local tg = get_tf_guard()
+    if tg then pcall(function() tg:call("bApply") end) end
+end
+
+local function read_dummy_guard_type()
+    local result = 0
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local tData = tm:get_field("_tData")
+        local gs = tData:get_field("GuardSetting")
+        local dd = gs:get_field("DummyData")
+        result = dd.GuardType or 0
+    end)
+    return result
+end
+
+local function save_dummy_guard_type()
+    trial_state._saved_guard_type = read_dummy_guard_type()
+end
+
+local function restore_dummy_guard_type()
+    if trial_state._saved_guard_type ~= nil then
+        set_dummy_guard_type(trial_state._saved_guard_type)
+        trial_state._saved_guard_type = nil
     end
 end
 
@@ -1426,20 +1525,14 @@ local function start_trial(player_idx)
     end
 
     save_dummy_counter_type()
+    save_dummy_guard_type()
 
-    -- READ AND INJECT COUNTER STATE
-    local hit_t = nil
-    if trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].combo_stats then
-        hit_t = trial_state.sequence[1].combo_stats.hit_type
-    end
-    
-    if hit_t == "PC" then
-        set_dummy_counter_type(2) -- Punish Counter
-    elseif hit_t == "CH" then
-        set_dummy_counter_type(1) -- Counter Hit
-    else
-        set_dummy_counter_type(0) -- Normal
-    end
+    -- INJECT COUNTER STATE pour le premier step
+    local first_ct = trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].counter_type or 0
+    set_dummy_counter_type(first_ct)
+
+    -- Guard: After 1st Hit (2) au start trial
+    set_dummy_guard_type(2)
     if _G.p2_vital_mode and type(set_vital_recovery) == "function" then
         set_vital_recovery(1, _G.p2_vital_mode)
     end
@@ -2005,6 +2098,7 @@ re.on_frame(function()
 
             restore_trial_vital()
             restore_dummy_counter_type()
+            restore_dummy_guard_type()
             apply_current_position_refresh()
         elseif trial_state.is_recording then
             cancel_recording()
@@ -2118,6 +2212,7 @@ re.on_frame(function()
         -- Transition ON → OFF : Restaurer la vie P2 et remettre les positions par défaut
         restore_trial_vital()
         restore_dummy_counter_type()
+        restore_dummy_guard_type()
         reset_positions_to_default()
     end
     trial_state._was_playing = now_playing
@@ -2352,6 +2447,19 @@ end
                         step.has_hit = true
                         -- Mémorise s'il y a eu AU MOINS un hit de projectile pendant l'action
                         step.is_projectile_hit = step.is_projectile_hit or hit_is_projectile
+                        -- Capturer CH/PC au moment du hit
+                        if step.counter_type == 0 then
+                            pcall(function()
+                                local victim_idx = 1 - p_idx
+                                local victim_obj = player_obj:call("getPlayer", victim_idx)
+                                if victim_obj then
+                                    local pc = victim_obj:get_type_definition():get_field("counter_fw_flag"):get_data(victim_obj)
+                                    local ch = victim_obj:get_type_definition():get_field("counter_dm_flag"):get_data(victim_obj)
+                                    if tostring(pc) == "true" then step.counter_type = 2
+                                    elseif tostring(ch) == "true" then step.counter_type = 1 end
+                                end
+                            end)
+                        end
                     end
                 elseif trial_state.is_playing and p_idx == trial_state.playing_player
                     and not (trial_state.fail_timer and trial_state.fail_timer > 0) then
@@ -2367,6 +2475,14 @@ end
                         prev_step.actual_combo = current_combo
                         prev_step.has_hit = true
                         if hit_is_projectile then prev_step.is_projectile_hit = true end
+
+                        -- Le hit est confirmé : appliquer le counter_type du prochain step
+                        local next_step = trial_state.sequence[trial_state.current_step]
+                        if next_step and next_step.counter_type then
+                            set_dummy_counter_type(next_step.counter_type)
+                        else
+                            set_dummy_counter_type(0)
+                        end
 
                         -- Fait avancer UNIQUEMENT le compteur [ACTION X / Y] à l'impact
                         trial_state.ui_visual_step = trial_state.current_step
@@ -2403,6 +2519,13 @@ end
                     if tonumber(tostring(pose_st)) == 3 then opponent_knocked_down = true end
                 end
             end)
+            -- Guard off dès que l'adversaire tombe (pour les okis)
+            if trial_state.is_playing and opponent_knocked_down and not trial_state._guard_off_on_kd then
+                set_dummy_guard_type(0)
+                trial_state._guard_off_on_kd = true
+            elseif trial_state.is_playing and not opponent_knocked_down and trial_state._guard_off_on_kd then
+                trial_state._guard_off_on_kd = false
+            end
 
             -- ========================================================
             -- VÉRIFICATION DU SUCCÈS + DÉTECTION DROP (Trial)
@@ -3013,6 +3136,19 @@ end
                                     end
                                 elseif (current_combo or 0) > 0 then
                                     prev_step.has_hit = true
+                                    -- Capturer CH/PC au moment du hit
+                                    if trial_state.is_recording and prev_step.counter_type == 0 then
+                                        pcall(function()
+                                            local victim_idx = 1 - p_idx
+                                            local victim_obj = player_obj:call("getPlayer", victim_idx)
+                                            if victim_obj then
+                                                local pc = victim_obj:get_type_definition():get_field("counter_fw_flag"):get_data(victim_obj)
+                                                local ch = victim_obj:get_type_definition():get_field("counter_dm_flag"):get_data(victim_obj)
+                                                if tostring(pc) == "true" then prev_step.counter_type = 2
+                                                elseif tostring(ch) == "true" then prev_step.counter_type = 1 end
+                                            end
+                                        end)
+                                    end
                                 end
 							end
 
@@ -3036,6 +3172,7 @@ end
                                 has_hit = false,
                                 delay_from_prev = delay,
                                 facing_left = is_facing_left,
+                                counter_type = 0, -- sera mis à jour au moment du hit (CH/PC détecté via flags)
                                 next_auto_id = nil -- Sera rempli si l'action suivante est automatique
                             })
                             trial_step_idx = #trial_state.sequence
@@ -3122,6 +3259,16 @@ end
                                             trial_state.sequence[trial_step_idx].has_hit = false
                                             trial_state.sequence[trial_step_idx].last_frame_diff = frame_diff
                                             trial_state.current_step = trial_state.current_step + 1
+
+                                            -- Appliquer le counter du prochain step à faire
+                                            -- Sauf si le step qu'on vient de valider doit encore toucher en CH/PC
+                                            local just_validated = trial_state.sequence[trial_state.current_step - 1]
+                                            if not just_validated or just_validated.counter_type == 0 then
+                                                local next_step = trial_state.sequence[trial_state.current_step]
+                                                if next_step and next_step.counter_type then
+                                                    set_dummy_counter_type(next_step.counter_type)
+                                                end
+                                            end
 
                                             -- INIT UNIVERSAL HOLD : mémoriser le niveau attendu
                                             if expected.is_holdable and expected.charge_status then
@@ -3556,11 +3703,10 @@ local function start_demo()
     demo_state.p1_mask = 0
     
 	save_dummy_counter_type()
-	
-    local hit_t = trial_state.sequence[1].combo_stats and trial_state.sequence[1].combo_stats.hit_type
-    if hit_t == "PC" then set_dummy_counter_type(2)
-    elseif hit_t == "CH" then set_dummy_counter_type(1)
-    else set_dummy_counter_type(0) end
+
+    -- Appliquer le counter_type du premier step
+    local first_ct = trial_state.sequence[1] and trial_state.sequence[1].counter_type or 0
+    set_dummy_counter_type(first_ct)
     
     print("[ComboTrials] DEMO Started for P1")
 end
