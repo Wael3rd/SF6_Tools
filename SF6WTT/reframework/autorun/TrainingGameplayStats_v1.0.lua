@@ -312,16 +312,12 @@ local function get_red_ar(char_name, player_idx)
         dynamic_name = _G.DV_PlayerAdvName[player_idx]
     end
 
-    -- Source de vérité : Viewer prefs pour CE joueur, nom dynamique exact
+    -- Source de vérité unique : Viewer prefs pour CE joueur
     local vp = get_viewer_prefs()
     if vp[player_idx] then
         local v = get_low_ar_from(vp[player_idx], dynamic_name)
         if v > 0 then return v end
     end
-
-    -- Fallback : Logger data
-    local v = get_low_ar_from(wp_attack_data, dynamic_name)
-    if v > 0 then return v end
 
     return 0
 end

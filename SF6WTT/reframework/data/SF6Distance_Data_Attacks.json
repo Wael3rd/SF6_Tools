@@ -1,10 +1,6 @@
 {
     "attacks": {
         "A.K.I.": {
-            "low": {
-                "ar": 192.34225,
-                "input": "2HP"
-            },
             "moves": [
                 {
                     "ar": 216.15102,
@@ -119,17 +115,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 148,
-                "input": "5MK"
-            },
             "yellow_offset": 50
         },
         "Akuma": {
-            "low": {
-                "ar": 147.3336,
-                "input": "2MK"
-            },
             "moves": [
                 {
                     "ar": 253.20502,
@@ -244,25 +232,10 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 195.687,
-                "input": "6HP"
-            },
             "yellow_offset": 50
         },
         "Alex": {
-            "low": {
-                "ar": 188.34224,
-                "input": "2HK"
-            },
             "moves": [
-                {
-                    "ar": 268.91983,
-                    "guard_bit": 7,
-                    "input": "2LPLK",
-                    "is_cancelable": false,
-                    "is_super_cancelable": false
-                },
                 {
                     "ar": 230.24052,
                     "guard_bit": 7,
@@ -369,17 +342,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 230.24052,
-                "input": "5HK (HOLD)"
-            },
             "yellow_offset": 50
         },
         "Alex_Prowler": {
-            "low": {
-                "ar": 202.31801,
-                "input": "5HK"
-            },
             "moves": [
                 {
                     "ar": 314.25732,
@@ -450,19 +415,18 @@
                     "input": "5MP",
                     "is_cancelable": false,
                     "is_super_cancelable": false
+                },
+                {
+                    "ar": 268.91983,
+                    "guard_bit": 7,
+                    "input": "2LPLK",
+                    "is_cancelable": false,
+                    "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 147.65567,
-                "input": "5HP (HOLD)"
-            },
             "yellow_offset": 50
         },
         "Blanka": {
-            "low": {
-                "ar": 310.05701,
-                "input": "3HP"
-            },
             "moves": [
                 {
                     "ar": 310.05701,
@@ -584,17 +548,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 213.722,
-                "input": "2HP"
-            },
             "yellow_offset": 50
         },
         "Cammy": {
-            "low": {
-                "ar": 149,
-                "input": "2MK"
-            },
             "moves": [
                 {
                     "ar": 187.86749,
@@ -702,17 +658,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 187.86749,
-                "input": "5HK"
-            },
             "yellow_offset": 50
         },
         "Chun-Li": {
-            "low": {
-                "ar": 189.68187,
-                "input": "6HK"
-            },
             "moves": [
                 {
                     "ar": 189.68187,
@@ -827,10 +775,6 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 189.68187,
-                "input": "6HK"
-            },
             "yellow_offset": 50
         },
         "ChunLi_Serenity": {
@@ -881,10 +825,6 @@
             "yellow_offset": 50
         },
         "Dee Jay": {
-            "low": {
-                "ar": 218.64388,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 223.44594,
@@ -992,10 +932,6 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 223.44594,
-                "input": "6MK"
-            },
             "yellow_offset": 50
         },
         "Dhalsim": {
@@ -1144,10 +1080,6 @@
             "yellow_offset": 50
         },
         "E. Honda": {
-            "low": {
-                "ar": 211.44299,
-                "input": "6HK"
-            },
             "moves": [
                 {
                     "ar": 211.44299,
@@ -1248,17 +1180,9 @@
                     "is_super_cancelable": true
                 }
             ],
-            "red": {
-                "ar": 168.703,
-                "input": "5MP"
-            },
             "yellow_offset": 50
         },
         "Ed": {
-            "low": {
-                "ar": 187,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 249.78247,
@@ -1352,10 +1276,6 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 249.78247,
-                "input": "6HP"
-            },
             "yellow_offset": 50
         },
         "Elena": {
@@ -1476,10 +1396,6 @@
             "yellow_offset": 50
         },
         "Guile": {
-            "low": {
-                "ar": 207.72719,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 207.72719,
@@ -1615,17 +1531,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 192.0993,
-                "input": "6HP"
-            },
             "yellow_offset": 50
         },
         "JP": {
-            "low": {
-                "ar": 158,
-                "input": "5HP"
-            },
             "moves": [
                 {
                     "ar": 241.4481,
@@ -1733,17 +1641,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 241.4481,
-                "input": "3HP"
-            },
             "yellow_offset": 50
         },
         "Jamie": {
-            "low": {
-                "ar": 193.013,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 223.9498,
@@ -1875,10 +1775,6 @@
             "yellow_offset": 50
         },
         "Juri": {
-            "low": {
-                "ar": 151.724,
-                "input": "2MK"
-            },
             "moves": [
                 {
                     "ar": 226.44043,
@@ -1993,17 +1889,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 226.44043,
-                "input": "5HK"
-            },
             "yellow_offset": 50
         },
         "Ken": {
-            "low": {
-                "ar": 145.9659,
-                "input": "2MK"
-            },
             "moves": [
                 {
                     "ar": 192.1329,
@@ -2090,17 +1978,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 192.1329,
-                "input": "5HK"
-            },
             "yellow_offset": 50
         },
         "Kimberly": {
-            "low": {
-                "ar": 152,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 292.32906,
@@ -2215,17 +2095,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 145.757,
-                "input": "5MK"
-            },
             "yellow_offset": 50
         },
         "Lily": {
-            "low": {
-                "ar": 193.8228,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 210,
@@ -2333,10 +2205,6 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 171,
-                "input": "2HP"
-            },
             "yellow_offset": 50
         },
         "Luke": {
@@ -2457,10 +2325,6 @@
             "yellow_offset": 50
         },
         "M.Bison": {
-            "low": {
-                "ar": 148.21127,
-                "input": "2MK"
-            },
             "moves": [
                 {
                     "ar": 346.9669,
@@ -2568,17 +2432,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 207.1046,
-                "input": "5HP"
-            },
             "yellow_offset": 50
         },
         "Manon": {
-            "low": {
-                "ar": 201,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 228.02916,
@@ -2686,10 +2542,6 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 228.02916,
-                "input": "5HK"
-            },
             "yellow_offset": 50
         },
         "Marisa": {
@@ -2845,10 +2697,6 @@
             "yellow_offset": 50
         },
         "Maï": {
-            "low": {
-                "ar": 170.293,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 197,
@@ -2949,17 +2797,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 197,
-                "input": "5HK"
-            },
             "yellow_offset": 50
         },
         "Rashid": {
-            "low": {
-                "ar": 171.09215,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 243.58856,
@@ -3067,17 +2907,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 243.58856,
-                "input": "6MP"
-            },
             "yellow_offset": 50
         },
         "Ryu": {
-            "low": {
-                "ar": 148.2429,
-                "input": "2MK"
-            },
             "moves": [
                 {
                     "ar": 192.43614,
@@ -3199,10 +3031,6 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 187.66136,
-                "input": "6HP"
-            },
             "yellow_offset": 50
         },
         "Sagat": {
@@ -3323,10 +3151,6 @@
             "yellow_offset": 50
         },
         "Terry": {
-            "low": {
-                "ar": 162.78549,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 180.16724,
@@ -3420,17 +3244,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 180.16724,
-                "input": "5HK"
-            },
             "yellow_offset": 50
         },
         "Viper": {
-            "low": {
-                "ar": 160.08235,
-                "input": "2MK"
-            },
             "moves": [
                 {
                     "ar": 189.03795,
@@ -3531,17 +3347,9 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 181.11972,
-                "input": "6HK"
-            },
             "yellow_offset": 50
         },
         "Zangief": {
-            "low": {
-                "ar": 195.54,
-                "input": "2HK"
-            },
             "moves": [
                 {
                     "ar": 293.6335,
@@ -3670,10 +3478,6 @@
                     "is_super_cancelable": false
                 }
             ],
-            "red": {
-                "ar": 244.6949,
-                "input": "5HP (HOLD)"
-            },
             "yellow_offset": 50
         }
     },
@@ -5486,7 +5290,7 @@
                 },
                 {
                     "x": 1.1349983215332033,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.1576982879638673,
@@ -7998,7 +7802,7 @@
                 },
                 {
                     "x": 1.25,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -9568,7 +9372,7 @@
                 },
                 {
                     "x": 1.2499999999999998,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -10510,7 +10314,7 @@
                 },
                 {
                     "x": 1.25,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -10824,7 +10628,7 @@
                 },
                 {
                     "x": 1.25,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -11138,7 +10942,7 @@
                 },
                 {
                     "x": 1.2500000000000002,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.2750000000000001,
@@ -11452,7 +11256,7 @@
                 },
                 {
                     "x": 1.2499999999999998,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -11766,7 +11570,7 @@
                 },
                 {
                     "x": 1.25,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -12080,7 +11884,7 @@
                 },
                 {
                     "x": 1.25,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -12394,7 +12198,7 @@
                 },
                 {
                     "x": 1.25,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -12708,7 +12512,7 @@
                 },
                 {
                     "x": 1.2499999999999998,
-                    "y": 1.9050064086914062
+                    "y": 1.9050064086914063
                 },
                 {
                     "x": 1.275,
@@ -12819,361 +12623,24 @@
     },
     "player_prefs": {
         "0": {
-            "Alex": {
-                "yellow_offset": 50
-            },
-            "Alex_Prowler": {
-                "red": {
-                    "ar": 314.25732,
-                    "input": "6HP"
-                },
-                "yellow_offset": 10
-            },
-            "Cammy": {
-                "visibility": {
-                    "2LK": true
-                },
-                "yellow_offset": 50
-            },
-            "Chun-Li": {
-                "low": {
-                    "ar": 147.74174,
-                    "input": "2MK"
-                },
-                "red": {
-                    "ar": 189.68187,
-                    "input": "6HK"
-                },
-                "visibility": {
-                    "2HK": true,
-                    "2HP": true,
-                    "2LK": true,
-                    "2LP": true,
-                    "2MK": true,
-                    "2MP": true,
-                    "3HK": true,
-                    "3HP": true,
-                    "4HP": true,
-                    "4MP": true,
-                    "5HK": true,
-                    "5HP": true,
-                    "5LK": true,
-                    "5LP": true,
-                    "5MK": true,
-                    "5MP": true,
-                    "6HK": true
-                },
-                "yellow_offset": 50
-            },
-            "ChunLi_Serenity": {
-                "low": {
-                    "ar": 230,
-                    "input": "5MP"
-                },
-                "red": {
-                    "ar": 230,
-                    "input": "5MP"
-                },
-                "visibility": {
-                    "5HK": true,
-                    "5HP": true,
-                    "5LK": true,
-                    "5LP": true,
-                    "5MK": true,
-                    "5MP": true
-                },
-                "yellow_offset": 200
-            },
-            "Juri": {
-                "visibility": {
-                    "2HK": false,
-                    "2HP": false,
-                    "2LK": false,
-                    "2LP": false,
-                    "2MK": false,
-                    "2MP": false,
-                    "4HK": false,
-                    "5HK": true,
-                    "5HP": false,
-                    "5LK": false,
-                    "5LP": false,
-                    "5MK": false,
-                    "5MP": false,
-                    "6HP": false,
-                    "6MK": false,
-                    "6MP": false
-                },
-                "yellow_offset": 50
-            },
-            "Luke": {
-                "low": {
-                    "ar": 148.218,
-                    "input": "2MK"
-                },
-                "red": {
-                    "ar": 168.70044,
-                    "input": "5HP"
-                },
-                "yellow_offset": 50
-            },
-            "M.Bison": {
-                "low": {
-                    "ar": 148.21127,
-                    "input": "2MK"
-                },
-                "red": {
-                    "ar": 207.1046,
-                    "input": "5HP"
-                },
-                "visibility": null,
-                "yellow_offset": 50
-            },
-            "Marisa": {
-                "low": {
-                    "ar": 195.64099,
-                    "input": "2HK (HOLD)"
-                },
-                "red": {
-                    "ar": 223.7897,
-                    "input": "5HP (HOLD)"
-                },
-                "visibility": {
-                    "2HK": false,
-                    "2HK (HOLD)": false,
-                    "2HP": false,
-                    "2HP (HOLD)": false,
-                    "2LK": false,
-                    "2LP": false,
-                    "2MK": false,
-                    "2MP": false,
-                    "4HP": false,
-                    "4HP (HOLD)": false,
-                    "5HK": false,
-                    "5HK (HOLD)": false,
-                    "5HP": false,
-                    "5HP (HOLD)": true,
-                    "5LK": false,
-                    "5LP": false,
-                    "5MK": false,
-                    "5MP": false,
-                    "6HK": false,
-                    "6HK (HOLD)": false,
-                    "6MP": false
-                },
-                "yellow_offset": 50
-            },
             "Ryu": {
-                "low": {
-                    "ar": 148.2429,
-                    "input": "2MK"
-                },
-                "red": {
-                    "ar": 192.43614,
-                    "input": "6HK"
-                },
-                "visibility": {
-                    "2HK": false,
-                    "2HP": false,
-                    "2LK": false,
-                    "2LP": false,
-                    "2MK": true,
-                    "2MP": false,
-                    "4HK": false,
-                    "4HP": false,
-                    "5HK": false,
-                    "5HP": true,
-                    "5LK": false,
-                    "5LP": false,
-                    "5MK": false,
-                    "5MP": false,
-                    "6HK": false,
-                    "6HP": false,
-                    "6MP": false
-                },
-                "yellow_offset": 100
-            },
-            "Sagat": {
-                "low": {
-                    "ar": 147.96745,
-                    "input": "2MP"
-                },
-                "red": {
-                    "ar": 217.16302,
-                    "input": "5HP"
-                },
+                "low": false,
+                "red": false,
+                "visibility": null,
                 "yellow_offset": 50
             }
         },
         "1": {
             "Chun-Li": {
-                "low": {
-                    "ar": 147.74174,
-                    "input": "2MK"
-                },
-                "red": {
-                    "ar": 175.56313,
-                    "input": "5HP"
-                },
+                "low": false,
+                "red": false,
+                "visibility": null,
                 "yellow_offset": 50
             },
             "ChunLi_Serenity": {
-                "low": {
-                    "ar": 151.8728,
-                    "input": "5LK"
-                },
-                "red": {
-                    "ar": 230,
-                    "input": "5MP"
-                },
-                "yellow_offset": 50
-            },
-            "Dee Jay": {
-                "low": {
-                    "ar": 152.07794,
-                    "input": "2MK"
-                },
-                "red": {
-                    "ar": 193.8503,
-                    "input": "6HK"
-                },
-                "yellow_offset": 50
-            },
-            "E. Honda": {
-                "low": {
-                    "ar": 191.66,
-                    "input": "2HP"
-                },
-                "visibility": {
-                    "2HK": true,
-                    "2HP": true,
-                    "2LK": true,
-                    "2LP": true,
-                    "2MK": true,
-                    "2MP": true,
-                    "3HK": true,
-                    "5HK": true,
-                    "5HP": true,
-                    "5LK": true,
-                    "5LP": true,
-                    "5MK": true,
-                    "5MP": true,
-                    "6HK": true
-                },
-                "yellow_offset": 50
-            },
-            "JP": {
-                "low": {
-                    "ar": 158,
-                    "input": "5HP"
-                },
-                "red": {
-                    "ar": 241.4481,
-                    "input": "3HP"
-                },
-                "yellow_offset": 50
-            },
-            "M.Bison": {
-                "low": {
-                    "ar": 148.21127,
-                    "input": "2MK"
-                },
-                "red": {
-                    "ar": 207.1046,
-                    "input": "5HP"
-                },
-                "visibility": {
-                    "2HK": false,
-                    "2HP": false,
-                    "2LK": false,
-                    "2LP": false,
-                    "2MK": false,
-                    "2MP": true,
-                    "3HK": false,
-                    "4HK": false,
-                    "5HK": false,
-                    "5HP": false,
-                    "5LK": false,
-                    "5LP": false,
-                    "5MK": false,
-                    "5MP": false,
-                    "6HP": false
-                },
-                "yellow_offset": 50
-            },
-            "Ryu": {
-                "low": {
-                    "ar": 101,
-                    "input": "5MP"
-                },
-                "red": {
-                    "ar": 192.43614,
-                    "input": "6HK"
-                },
-                "visibility": {
-                    "2HK": false,
-                    "2HP": false,
-                    "2LP": false,
-                    "2MK": true,
-                    "2MP": false,
-                    "5HK": false,
-                    "5HP": false,
-                    "5LK": false,
-                    "5LP": false,
-                    "5MK": false,
-                    "5MP": false,
-                    "6HK": false,
-                    "6HP": false,
-                    "6MP": false
-                },
-                "yellow_offset": 50
-            },
-            "Alex": {
-                "yellow_offset": 50
-            },
-            "Alex_Prowler": {
-                "red": {
-                    "ar": 314.25732,
-                    "input": "6HP"
-                },
-                "yellow_offset": 10
-            },
-            "Cammy": {
-                "yellow_offset": 50
-            },
-            "Juri": {
-                "yellow_offset": 50
-            },
-            "Luke": {
-                "red": {
-                    "ar": 168.70044,
-                    "input": "5HP"
-                },
-                "low": {
-                    "ar": 148.218,
-                    "input": "2MK"
-                },
-                "yellow_offset": 50
-            },
-            "Marisa": {
-                "red": {
-                    "ar": 223.7897,
-                    "input": "5HP (HOLD)"
-                },
-                "low": {
-                    "ar": 195.64099,
-                    "input": "2HK (HOLD)"
-                },
-                "yellow_offset": 50
-            },
-            "Sagat": {
-                "red": {
-                    "ar": 217.16302,
-                    "input": "5HP"
-                },
-                "low": {
-                    "ar": 147.96745,
-                    "input": "2MP"
-                },
+                "low": false,
+                "red": false,
+                "visibility": null,
                 "yellow_offset": 50
             }
         }

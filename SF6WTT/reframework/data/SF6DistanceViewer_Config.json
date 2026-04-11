@@ -170,7 +170,6 @@
         "p1_show_all": true,
         "p1_show_horizontal_lines": true,
         "p1_show_jump_arc": false,
-        "p1_show_markers": false,
         "p1_show_numbers": true,
         "p1_show_origin_dot": true,
         "p1_show_vertical_cursor": false,
@@ -252,10 +251,10 @@
         "teleport_target_dist": 300.0,
         "tp_p1_border": false,
         "tp_p2_border": true,
-        "ui_scale": 0.75,
+        "ui_scale": 1.0,
         "use_attack_lock": true,
-        "window_pos_x": 2081.0,
-        "window_pos_y": 52.0,
+        "window_pos_x": 1772.0,
+        "window_pos_y": 226.0,
         "zone_opacity": 15
     }
 }

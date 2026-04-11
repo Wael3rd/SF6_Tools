@@ -554,6 +554,7 @@ re.on_frame(function()
                         st.had_hitbox        = false
                         st.is_cancelable     = false
 						st.is_super_cancelable = false
+                        st.attack_char_name  = cname_adv
                     end
 
 
@@ -604,11 +605,12 @@ re.on_frame(function()
 
                     if action_changed or (margin_reached and not st.margin_logged) then
                         -- Log if the action had hitboxes
+                        local log_name = st.attack_char_name or cname_adv
                         if st.logging_active
                            and st.had_hitbox and st.peak_ar > 0.01
                            and st.last_attack_input ~= "5"
-                           and cname_adv ~= "Wait..." then
-                            log_move(cname_adv, st.last_attack_input, st.peak_ar, st.peak_guard_bit, st.is_cancelable, st.is_super_cancelable)
+                           and log_name ~= "Wait..." then
+                            log_move(log_name, st.last_attack_input, st.peak_ar, st.peak_guard_bit, st.is_cancelable, st.is_super_cancelable)
                         end
                         
                         -- Reset states when action ID completely changes

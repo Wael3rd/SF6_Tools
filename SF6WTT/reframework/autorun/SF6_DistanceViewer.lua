@@ -6,6 +6,45 @@ local draw = draw
 local Vector3f = Vector3f
 local Vector2f = Vector2f
 
+-- Conversion numpad → flèches Unicode
+local _numpad_arrows = { ["1"]="↙", ["2"]="↓", ["3"]="↘", ["4"]="←", ["6"]="→", ["7"]="↖", ["8"]="↑", ["9"]="↗" }
+local function input_to_arrows(str)
+    if not str then return str end
+    return str:gsub("^(%d+)", function(digits)
+        local out = ""
+        for i = 1, #digits do
+            local c = digits:sub(i, i)
+            out = out .. (_numpad_arrows[c] or (c == "5" and "" or c))
+        end
+        return out
+    end)
+end
+
+-- Couleur par force du coup
+local COL_HEAVY = 0xFF5555FF   -- Rouge
+local COL_MEDIUM = 0xFF00FFFF  -- Jaune
+local COL_LIGHT = 0xFFFFBB55   -- Bleu clair
+local function get_strength_color(input)
+    if not input then return nil end
+    local upper = input:upper()
+    if upper:find("HP") or upper:find("HK") then return COL_HEAVY end
+    if upper:find("MP") or upper:find("MK") then return COL_MEDIUM end
+    if upper:find("LP") or upper:find("LK") then return COL_LIGHT end
+    return nil
+end
+
+-- Dropdown de moves (imgui.combo natif)
+local function colored_move_dropdown(label, selected_idx, moves, width)
+    local move_names = { "None" }
+    for _, mv in ipairs(moves) do
+        move_names[#move_names + 1] = input_to_arrows(mv.input)
+    end
+    imgui.push_item_width(width)
+    local changed, new_idx = imgui.combo(label, selected_idx, move_names)
+    imgui.pop_item_width()
+    return changed, new_idx
+end
+
 -- =========================================================
 -- [ADVANCED MODE - Distance Logger integration]
 -- =========================================================
@@ -384,33 +423,28 @@ local function get_player_limits(pi, p_data)
     local cdata = advanced_data[char_name]
     if not cdata then return fallback_spacing end
 
-    -- Get prefs for current stance/variant
+    -- Get prefs for current stance/variant (no fallback to attacks data)
     local prefs = advanced_prefs[pi] and advanced_prefs[pi][char_name] or {}
-    local p_red = prefs.red or cdata.red
-    local p_low = prefs.low or cdata.low
-    local p_yoff = prefs.yellow_offset or cdata.yellow_offset or 50
+    local p_red = (prefs.red and prefs.red ~= false) and prefs.red or nil
+    local p_low = (prefs.low and prefs.low ~= false) and prefs.low or nil
+    local p_yoff = prefs.yellow_offset or 50
 
-    -- Fallback to base character if variant has no red/low
-    if not p_red or not p_low then
-        local base_name = esf_names_map[p_data.real_name] or char_name
-        if base_name ~= char_name then
-            local base_cdata = advanced_data[base_name]
-            local base_prefs = advanced_prefs[pi] and advanced_prefs[pi][base_name] or {}
-            if not p_red then p_red = base_prefs.red or (base_cdata and base_cdata.red) end
-            if not p_low then p_low = base_prefs.low or (base_cdata and base_cdata.low) end
-            if p_yoff == 50 then p_yoff = base_prefs.yellow_offset or (base_cdata and base_cdata.yellow_offset) or 50 end
-        end
-    end
+    local red_ar = p_red and (p_red.ar / 100.0) or nil
+    local low_ar = p_low and (p_low.ar / 100.0) or nil
 
-    if p_red and p_low then
-        local red_ar = p_red.ar / 100.0
-        local low_ar = p_low.ar / 100.0
-        return {
-            red = red_ar, low = low_ar, yellow = math.max(red_ar, low_ar) + (p_yoff / 100.0),
-            red_input = p_red.input, low_input = p_low.input
-        }
-    end
-    return fallback_spacing
+    -- Yellow = max(red, low) + offset. Si aucun des deux, yellow = offset seul
+    local base_ar = nil
+    if red_ar and low_ar then base_ar = math.max(red_ar, low_ar)
+    elseif red_ar then base_ar = red_ar
+    elseif low_ar then base_ar = low_ar end
+
+    local yellow = base_ar and (base_ar + (p_yoff / 100.0)) or (p_yoff > 0 and (p_yoff / 100.0) or nil)
+
+    return {
+        red = red_ar, low = low_ar, yellow = yellow,
+        red_input = p_red and p_red.input or nil,
+        low_input = p_low and p_low.input or nil
+    }
 end
 
 local function save_advanced_data()
@@ -572,11 +606,10 @@ local function get_sorted_thresholds(limits, show_title, show_name, prefix)
             end
         end
 
-    local arr = {
-        { name = make_name("Red Zone", limits.low_input), dist = limits.low, color = colors.Red, fill = get_dynamic_color(colors.Red) },
-        { name = make_name("Orange Zone", limits.red_input), dist = limits.red, color = colors.Orange, fill = get_dynamic_color(colors.Orange) },
-        { name = make_name("Yellow Zone", nil), dist = limits.yellow, color = colors.Yellow, fill = get_dynamic_color(colors.Yellow) }
-    }
+    local arr = {}
+    if limits.low then arr[#arr+1] = { name = make_name("Red Zone", limits.low_input), dist = limits.low, color = colors.Red, fill = get_dynamic_color(colors.Red) } end
+    if limits.red then arr[#arr+1] = { name = make_name("Orange Zone", limits.red_input), dist = limits.red, color = colors.Orange, fill = get_dynamic_color(colors.Orange) } end
+    if limits.yellow then arr[#arr+1] = { name = make_name("Yellow Zone", nil), dist = limits.yellow, color = colors.Yellow, fill = get_dynamic_color(colors.Yellow) } end
     table.sort(arr, function(a, b) return a.dist < b.dist end)
     return arr
 end
@@ -634,6 +667,7 @@ local function try_load_font()
             ui_font.obj = font_ui; ui_font.loaded_size = target_size_ui; ui_font.status = "OK ("..target_size_ui.."px)"
         else ui_font.status = "File Not Found" end
     end
+
 end
 
 -- =========================================================
@@ -1806,7 +1840,7 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
 
                     local visible = is_move_visible(pi, s.name, mv.input)
                     local chk_changed, chk_new = imgui.checkbox(
-                        string.format("%-8s %.5f %s [%s]##chk_%s_%s_%d", mv.input, mv.ar, tag, gb_name, s.name, mv.input, pi),
+                        string.format("%-8s %.5f %s [%s]##chk_%s_%s_%d", input_to_arrows(mv.input), mv.ar, tag, gb_name, s.name, mv.input, pi),
                         visible)
 
                     if chk_changed then
@@ -1994,12 +2028,10 @@ local function draw_config_ui()
                             local suffix = #move_sets > 1 and (" " .. ms.label) or ""
                             local uid = p_prefix .. "_" .. ms.name
 
-                            local move_names = { "None" }
                             local red_idx, low_idx = 1, 1
-                            local active_red = prefs.red or cd.red
-                            local active_low = prefs.low or cd.low
+                            local active_red = (prefs.red and prefs.red ~= false) and prefs.red or nil
+                            local active_low = (prefs.low and prefs.low ~= false) and prefs.low or nil
                             for i, mv in ipairs(cd.moves) do
-                                move_names[#move_names + 1] = string.format("[%s]", mv.input)
                                 if active_red and active_red.input == mv.input and red_idx == 1 then red_idx = i + 1 end
                                 if active_low and active_low.input == mv.input and low_idx == 1 then low_idx = i + 1 end
                             end
@@ -2012,32 +2044,26 @@ local function draw_config_ui()
                             end
 
                             -- Red Zone
-                            imgui.push_item_width(150)
-                            local chg_l, nv_l = imgui.combo("##" .. uid .. "_red", low_idx, move_names)
-                            imgui.pop_item_width()
+                            local chg_l, nv_l = colored_move_dropdown("##" .. uid .. "_red", low_idx, cd.moves, 200)
                             imgui.same_line(); imgui.text_colored("Red Zone" .. suffix, COL_RED)
                             imgui.same_line()
                             if imgui.button("TELEPORT##tp_red_" .. uid) then
-                                local idx = low_idx > 1 and low_idx or nv_l
-                                if idx and idx > 1 then apply_teleport_exact(pi, cd.moves[idx-1].ar) end
+                                if low_idx > 1 then apply_teleport_exact(pi, cd.moves[low_idx-1].ar) end
                             end
                             if chg_l then
-                                if nv_l == 1 then prefs.low = nil else prefs.low = { input = cd.moves[nv_l-1].input, ar = cd.moves[nv_l-1].ar } end
+                                if nv_l == 1 then prefs.low = false else prefs.low = { input = cd.moves[nv_l-1].input, ar = cd.moves[nv_l-1].ar } end
                                 save_advanced_prefs(); load_advanced_data()
                             end
 
                             -- Orange Zone
-                            imgui.push_item_width(150)
-                            local chg_r, nv_r = imgui.combo("##" .. uid .. "_org", red_idx, move_names)
-                            imgui.pop_item_width()
+                            local chg_r, nv_r = colored_move_dropdown("##" .. uid .. "_org", red_idx, cd.moves, 200)
                             imgui.same_line(); imgui.text_colored("Orange Zone" .. suffix, COL_ORANGE)
                             imgui.same_line()
                             if imgui.button("TELEPORT##tp_org_" .. uid) then
-                                local idx = red_idx > 1 and red_idx or nv_r
-                                if idx and idx > 1 then apply_teleport_exact(pi, cd.moves[idx-1].ar) end
+                                if red_idx > 1 then apply_teleport_exact(pi, cd.moves[red_idx-1].ar) end
                             end
                             if chg_r then
-                                if nv_r == 1 then prefs.red = nil else prefs.red = { input = cd.moves[nv_r-1].input, ar = cd.moves[nv_r-1].ar } end
+                                if nv_r == 1 then prefs.red = false else prefs.red = { input = cd.moves[nv_r-1].input, ar = cd.moves[nv_r-1].ar } end
                                 save_advanced_prefs(); load_advanced_data()
                             end
 
@@ -2464,8 +2490,8 @@ re.on_frame(function()
         return mx >= (cx - w/2) and mx <= (cx + w/2) and my >= top and my <= bot
     end
 
-    -- [LEFT-CLICK: CYCLE DISPLAY ON CHARACTER]
-    if imgui.is_mouse_clicked(0) then
+    -- [LEFT-CLICK: CYCLE DISPLAY ON CHARACTER] (bloqué quand menu REF ouvert)
+    if not ref_open and imgui.is_mouse_clicked(0) then
         local m = imgui.get_mouse()
         if m and not point_in_any_rect(m.x, m.y) then
             if check_char_click(m.x, m.y, p1_cache) then
@@ -2477,8 +2503,8 @@ re.on_frame(function()
         end
     end
 
-    -- [RIGHT-CLICK ON P1/P2: TOGGLE DEBUG WINDOW]
-    if imgui.is_mouse_clicked(1) then
+    -- [RIGHT-CLICK ON P1/P2: TOGGLE DEBUG WINDOW] (bloqué quand menu REF ouvert)
+    if not ref_open and imgui.is_mouse_clicked(1) then
         local m = imgui.get_mouse()
         if m and not point_in_any_rect(m.x, m.y) then
             if check_char_click(m.x, m.y, p1_cache) or check_char_click(m.x, m.y, p2_cache) then
