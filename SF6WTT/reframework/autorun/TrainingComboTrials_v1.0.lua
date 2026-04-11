@@ -1977,6 +1977,25 @@ re.on_frame(function()
         _replay_cleaned = false
     end
 
+    -- Mise à jour live de flip_inputs (seulement avant le premier coup de la séquence)
+    if trial_state.is_playing and trial_state.current_step == 1 then
+        pcall(function()
+            local gB = sdk.find_type_definition("gBattle")
+            if not gB then return end
+            local sP = gB:get_field("Player"):get_data(nil)
+            if not sP or not sP.mcPlayer or not sP.mcPlayer[0] or not sP.mcPlayer[1] then return end
+            local r1 = sP.mcPlayer[0].pos.x.v
+            local r2 = sP.mcPlayer[1].pos.x.v
+            local facing_left = false
+            if trial_state.playing_player == 0 then
+                facing_left = (r1 > r2)
+            else
+                facing_left = (r2 > r1)
+            end
+            trial_state.flip_inputs = facing_left
+        end)
+    end
+
     if _G.CurrentTrainerMode ~= 4 then
         -- Clean shutdown if switching scripts during an active Trial/Demo
         if trial_state.is_playing or (demo_state and demo_state.is_playing) then
@@ -2136,7 +2155,6 @@ re.on_frame(function()
     end
 
 
-
     -- INJECTION HP EXACT VIA PLAYER OBJECT
     -- Injecte en continu tant que le trial attend le premier coup (current_step == 1)
     -- Après un refresh (forced pos), attend que le refresh finisse d'abord
@@ -2153,6 +2171,7 @@ re.on_frame(function()
     if not cmd_obj then return end
     local player_obj = gBattle:get_field("Player"):get_data(nil)
     if not player_obj then return end
+
 
     -- INJECTION HP EXACT VIA PLAYER OBJECT
     -- Injecte en continu tant que le trial attend le premier coup (current_step == 1)
@@ -2425,7 +2444,8 @@ end
                                         trial_state.fail_reason = "HOLD TIMING" .. diff_str .. " (Combo Drop)"
                                     end
                                     trial_state.active_universal_hold = nil
-                                elseif not opponent_knocked_down and not is_reset_expected then
+                                elseif not opponent_knocked_down and not is_reset_expected
+                                    and not (last_validated.expected_combo == (trial_state.current_step >= 3 and trial_state.sequence[trial_state.current_step - 2].expected_combo or 0)) then
                                     trial_state.fail_timer = d2d_cfg.fail_display_frames or 120
                                     if last_validated.last_frame_diff and last_validated.last_frame_diff < -2 then
                                         trial_state.fail_reason = string.format("TOO EARLY (%df)", math.abs(last_validated.last_frame_diff))
@@ -3068,6 +3088,9 @@ end
                                                     if opponent_knocked_down and (current_combo or 0) == 0 and prev_step.expected_combo == 0 then
                                                         combo_ok = true
                                                     elseif prev_step.expected_combo == 0 and (current_combo or 0) > 0 then
+                                                        combo_ok = true
+                                                    elseif (current_combo or 0) == 0 and prev_step.expected_combo > 0 then
+                                                        -- Oki / cross-up setup : combo dropped naturellement (adversaire relevé)
                                                         combo_ok = true
                                                     elseif expected and expected.expected_combo == 0 then
                                                         -- RESET TOLERANCE 2.0 (Standing Reset / Oki):

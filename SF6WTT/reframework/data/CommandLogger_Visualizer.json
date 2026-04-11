@@ -144,7 +144,7 @@
         "x": 0.85,
         "y": 0.35
     },
-    "show_combo_count": false,
+    "show_combo_count": true,
     "show_live_single_p1": true,
     "show_live_single_p2": true,
     "show_p1": true,

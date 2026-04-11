@@ -885,10 +885,9 @@ local function d2d_draw_inner()
             if mode == "recording" then
                 current_should_flip = log_item.facing_left or false
             else
-                local record_start_facing_left = trial_state.sequence[1] and
-                    (trial_state.sequence[1].facing_left or false) or false
-                local has_crossed_up = (record_start_facing_left ~= (log_item.facing_left or false))
-                current_should_flip = has_crossed_up and (not trial_state.flip_inputs) or trial_state.flip_inputs
+                -- Flip si la direction live actuelle ne correspond pas à celle de ce step
+                local step_facing_left = log_item.facing_left or false
+                current_should_flip = (trial_state.flip_inputs ~= step_facing_left)
             end
 
             local tokens = parse_motion_to_icons(log_item, mode, current_should_flip, true)

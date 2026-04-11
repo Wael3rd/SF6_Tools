@@ -808,12 +808,6 @@ re.on_draw_ui(function()
             imgui.text("  Replay with exact position, mirror, or free mode.")
         end
 
-        imgui.separator()
-        imgui.text_colored("REPLAY SETTINGS", 0xFF00FFFF)
-        local c_rd, v_rd = imgui.drag_float("Replay Reactivation Delay (s)", _tsm_replay_delay, 0.05, 0.0, 10.0, "%.2f")
-        if c_rd then _tsm_replay_delay = v_rd end
-        imgui.text(string.format("FlowMap: %s", tostring(_G.FlowMapID or "?")))
-        if _G._dbg_replay_rec then imgui.text(_G._dbg_replay_rec) end
 
         imgui.tree_pop()
     end
