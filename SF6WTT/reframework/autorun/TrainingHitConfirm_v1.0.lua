@@ -30,24 +30,27 @@ local TEXTS = {
     resetting       = "RESETTING...",
     
     success_hit     = "SUCCESS: HIT CONFIRM",
-    success_safe    = "SUCCESS: SAFE",
-    safe_generic    = "SAFE",
-    success_block   = "BLOCK SUCCESS",
+    success_safe    = "BLOCK CONFIRMED",
+    safe_generic    = "BLOCK CONFIRMED",
+    success_block   = "BLOCK CONFIRMED",
     
-    fail_drop       = "FAIL: DROP",
+    fail_drop       = "FAIL: HIT NOT CONFIRMED",
     fail_unsafe     = "FAIL: UNSAFE CANCEL",
-    fail_autopilot  = "FAIL: AUTOPILOT", 
+    fail_autopilot  = "FAIL: AUTOPILOT",
+    fail_blk_misconfirm = "FAIL: ON BLOCK MISCONFIRM",
     fail_hit        = "HIT FAIL",
     fail_blk_fast   = "BLOCK FAIL (CANCEL TOO FAST)",
     fail_blk_soon   = "BLOCK FAIL (2ND HIT TOO SOON)",
     
     -- NEW SPECIFIC MESSAGES
-    fail_gap        = "FAIL: GAP DETECTED",
+    fail_gap        = "FAIL: GAP DETECTED AFTER DRC",
     safe_no_gap     = "SAFE: TRUE BLOCKSTRING",
     fail_optimal    = "FAIL: SUBOPTIMAL (NEED HEAVY)",
-    perfect_dr      = "PERFECT: MED -> DR -> HEAVY",
-    perfect_dr_light = "PERFECT: LIGHT -> DR -> LIGHT",
-    fail_heavy_dr   = "FAIL: HEAVY DR CANCEL", -- [NEW MESSAGE]
+    perfect_dr      = "SUCCESS: OPTIMAL DRC HIT CONFIRM",
+    perfect_dr_light = "SUCCESS: OPTIMAL DRC HIT CONFIRM",
+    fail_heavy_dr   = "FAIL: HEAVY DR CANCEL",
+    attack_ignored  = "ATTACK IGNORED",
+    fail_combo_drop = "FAIL: GAP IN COMBO AFTER HIT CONFIRMED",
     
     started         = "STARTED!",
     stopped_export  = "STOPPED & EXPORTED",
@@ -509,6 +512,7 @@ local function update_detection()
                     end
                 end
 
+
                 local is_ft_trig = is_in(work_tables.trigger, p1_data.ft)
                 local is_dmg_allowed = is_in(work_tables.dmg_hit, detection.live_dmg)
                 
@@ -549,6 +553,13 @@ local function update_detection()
                 
                 -- =======================================================
                 -- MONITOR DR CANCEL START (MEDIUM + HEAVY)
+                if _G._hc_logging then
+                    if not _G._hc_log_lines then _G._hc_log_lines = {} end
+                    table.insert(_G._hc_log_lines, string.format("[%d] lock=%s mon=%s/%s trig_h=%s trig_b=%s combo=%d hs=%d ft1=%d ft2=%d new_act=%s",
+                        detection.abs_clock or 0, tostring(detection.lockout), tostring(detection.monitor.active), tostring(detection.monitor.type),
+                        tostring(trig_hit), tostring(trig_blk), detection.live_combo or 0, detection.live_hs or 0,
+                        p1_data.ft, p2_data.ft, tostring(detection.monitor.saw_new_action)))
+                end
                 -- =======================================================
                 -- [MODIFIED] Now triggers for Heavy on Block too
                 if (trig_hit or trig_blk) and (is_medium_buffered or is_heavy_buffered) and not detection.dr_monitor.active then
@@ -562,12 +573,22 @@ local function update_detection()
                     detection.dr_monitor.was_light = is_light_buffered -- Remember if initial hit was light
                 end
                 
+
                 if trig_hit and not detection.lockout then
                     detection.mem_hit[active_head_index] = detection.abs_clock
                     if session.history_map[detection.abs_clock] then session.history_map[detection.abs_clock].tag = "HIT" end
                     if not detection.monitor.active or detection.monitor.type ~= "HIT" then
                         detection.monitor.active = true; detection.monitor.type = "HIT"; detection.monitor.has_reset_hs = false
-                        detection.monitor.target_combo = required_combo_start + 1 
+                        detection.monitor.target_combo = required_combo_start + 1
+                        detection.monitor.peak_combo = detection.live_combo or 0
+                        detection.monitor.was_light = is_light_buffered
+                        detection.monitor.start_action_id = get_p1_action_id()
+                        detection.monitor.saw_new_action = false
+                        detection.monitor.is_multihit = false
+                        detection.monitor.is_cancelable = false
+                        detection.monitor.last_ft = p1_data.ft
+                        detection.monitor.saw_recovery = false
+                        detection.monitor.saw_recovery_to_startup = false
                         detection.mem_res[active_head_index] = { status = "HIT LANDED", time = detection.abs_clock }
                         update_history_status(detection.abs_clock, "HIT LANDED")
                         if user_config.show_early_detection then 
@@ -577,10 +598,22 @@ local function update_detection()
                         end
                     end
                 elseif trig_blk and not detection.lockout then
+                    -- Si un HIT monitor est actif et le combo a droppé → fail avant de passer en BLOCK
+                    if detection.monitor.active and detection.monitor.type == "HIT" and detection.live_combo == 0 then
+                        local did_confirm = (detection.monitor.peak_combo and detection.monitor.peak_combo >= detection.monitor.target_combo) or detection.monitor.saw_new_action or detection.monitor.saw_recovery_to_startup
+                        local fail_txt = did_confirm and TEXTS.fail_combo_drop or TEXTS.fail_drop
+                        detection.mem_res[active_head_index] = { status = fail_txt, time = detection.abs_clock }; update_history_status(detection.abs_clock, fail_txt)
+                        detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = false
+                        session.score = session.score - 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
+                        set_feedback(fail_txt, COLORS.Red, 1.5)
+                    end
+                    if not detection.lockout and not (detection.monitor.active and detection.monitor.type == "HIT" and detection.live_combo > 0) then
                     detection.mem_blk[active_head_index] = detection.abs_clock
                     if session.history_map[detection.abs_clock] then session.history_map[detection.abs_clock].tag = "BLOCK" end
                     if not detection.monitor.active or detection.monitor.type ~= "BLOCK" then
                         detection.monitor.active = true; detection.monitor.type = "BLOCK"; detection.monitor.has_reset_hs = false
+                        detection.monitor.start_action_id = get_p1_action_id()
+                        detection.monitor.saw_new_action = false
                         
                         -- MEMORIZE IF THIS IS A MEDIUM HIT
                         detection.monitor.is_medium = is_medium_buffered
@@ -588,6 +621,7 @@ local function update_detection()
                         detection.mem_res[active_head_index] = { status = "BLOCK LANDED", time = detection.abs_clock }
                         update_history_status(detection.abs_clock, "BLOCK LANDED")
                         if user_config.show_early_detection then set_feedback(TEXTS.blk_detected, COLORS.Cyan, 2.0) end
+                    end
                     end
                 end
                 
@@ -665,41 +699,123 @@ local function update_detection()
                 
                 -- STANDARD MONITOR (RUNS ONLY IF DR MONITOR IS NOT HANDLING THINGS AND NOT LOCKED OUT)
                 if detection.monitor.active and not detection.dr_monitor.active and not detection.lockout then
+                    -- Track peak combo reached
+                    if detection.monitor.peak_combo and (detection.live_combo or 0) > detection.monitor.peak_combo then
+                        detection.monitor.peak_combo = detection.live_combo
+                    end
+                    -- Track trigger_notice (cancelable)
+                    pcall(function()
+                        local gB = sdk.find_type_definition("gBattle")
+                        if not gB then return end
+                        local sP = gB:get_field("Player"):get_data(nil)
+                        if not sP or not sP.mcPlayer or not sP.mcPlayer[0] then return end
+                        local tn = sP.mcPlayer[0].trigger_notice or 0
+                        if tn >= 1 then detection.monitor.is_cancelable = true end
+                    end)
+                    -- Tracker RECOVERY→START (= nouveau coup) — même avec des frames neutres entre les deux
+                    local cur_ft = p1_data.ft
+                    if cur_ft == 8 then detection.monitor.saw_recovery = true end
+                    if detection.monitor.saw_recovery and cur_ft == 7 then
+                        detection.monitor.saw_recovery_to_startup = true
+                    end
+                    -- Multi-hit : même action ID, pas de RECOVERY→START, combo a monté sans nouvelle action
+                    if not detection.monitor.is_multihit and not detection.monitor.saw_recovery_to_startup
+                       and not detection.monitor.saw_new_action and detection.monitor.start_action_id then
+                        local cur_id = get_p1_action_id()
+                        -- Si le combo a atteint ou dépassé target avec le même action ID → multi-hit
+                        if cur_id == detection.monitor.start_action_id and detection.live_combo >= detection.monitor.target_combo then
+                            detection.monitor.is_multihit = true
+                            detection.monitor.target_combo = detection.live_combo + 1
+                            detection.monitor.has_reset_hs = false
+                        -- Si un 2e hitstop apparaît avec le même action ID → multi-hit
+                        elseif cur_id == detection.monitor.start_action_id and detection.monitor.has_reset_hs and detection.live_hs > 0 then
+                            detection.monitor.is_multihit = true
+                            detection.monitor.target_combo = (detection.live_combo or 0) + 1
+                            detection.monitor.has_reset_hs = false
+                        end
+                    end
+                    detection.monitor.last_ft = cur_ft
+                    -- Détecter si l'action ID a changé (vrai cancel)
+                    if not detection.monitor.saw_new_action and detection.monitor.start_action_id then
+                        local cur_id = get_p1_action_id()
+                        if cur_id ~= detection.monitor.start_action_id and cur_id ~= -1 and p1_data.ft ~= 0 then
+                            detection.monitor.saw_new_action = true
+                            detection.monitor.combo_at_new_action = detection.live_combo or 0
+                        end
+                    end
                     if detection.live_hs == 0 then detection.monitor.has_reset_hs = true end
                     if detection.monitor.has_reset_hs then
                         if detection.monitor.type == "HIT" then
-                            -- [FIX] Use the SNAPSHOTTED target_combo, do not recalculate!
                             if detection.live_combo >= detection.monitor.target_combo then
                                 detection.mem_res[active_head_index] = { status = TEXTS.success_hit, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.success_hit)
                                 detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = true
                                 session.score = session.score + 1; session.hit_ok = session.hit_ok + 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
                                 set_feedback(TEXTS.success_hit, COLORS.Green, 1.5)
                             elseif detection.live_combo == 0 then
-                                detection.mem_res[active_head_index] = { status = TEXTS.fail_hit, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.fail_hit)
-                                detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = false
-                                session.score = session.score - 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
-                                set_feedback(TEXTS.fail_drop, COLORS.Red, 1.5)
+                                -- Check si le coup doit être ignoré (pas cancelable ET advantage < 4)
+                                local frame_adv = 99
+                                pcall(function()
+                                    local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+                                    if not tm then return end
+                                    local tc = tm:get_field("_tCommon")
+                                    if not tc then return end
+                                    local snap = tc:get_field("SnapShotDatas")
+                                    if not snap then return end
+                                    local s0 = snap[0]
+                                    if not s0 then return end
+                                    local dd = s0:get_field("_DisplayData")
+                                    if not dd then return end
+                                    local fm = dd:get_field("FrameMeterSSData")
+                                    if not fm then return end
+                                    local md = fm:get_field("MeterDatas")
+                                    if not md then return end
+                                    local m0 = md:call("get_Item", 0)
+                                    if m0 then
+                                        local sf = m0:get_field("StunFrame")
+                                        if sf then
+                                            local num = tonumber(tostring(sf))
+                                            if num then frame_adv = num
+                                            else
+                                                local extracted = tostring(sf):match("([%-]?%d+)")
+                                                if extracted then frame_adv = tonumber(extracted) or 99 end
+                                            end
+                                        end
+                                    end
+                                end)
+                                if not detection.monitor.is_cancelable and frame_adv < 4 then
+                                    detection.mem_res[active_head_index] = { status = TEXTS.attack_ignored, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.attack_ignored)
+                                    detection.monitor.active = false; detection.lockout = true
+                                    set_feedback(TEXTS.attack_ignored, COLORS.White, 1.5)
+                                else
+                                    local did_confirm = (detection.monitor.peak_combo and detection.monitor.peak_combo >= detection.monitor.target_combo) or detection.monitor.saw_new_action or detection.monitor.saw_recovery_to_startup
+                                    local fail_txt = did_confirm and TEXTS.fail_combo_drop or TEXTS.fail_drop
+                                    detection.mem_res[active_head_index] = { status = fail_txt, time = detection.abs_clock }; update_history_status(detection.abs_clock, fail_txt)
+                                    detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = false
+                                    session.score = session.score - 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
+                                    set_feedback(fail_txt, COLORS.Red, 1.5)
+                                end
                             end
                         end
                         if detection.monitor.type == "BLOCK" then
-                            
-                            -- IF (Break List Detected) => FAIL UNSAFE
-                            if is_in(work_tables.break_list, p1_data.ft) then
-                                detection.mem_res[active_head_index] = { status = TEXTS.fail_blk_fast, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.fail_blk_fast)
+
+                            -- IF (Break List Detected) => ON BLOCK MISCONFIRM (seulement si nouvelle action)
+                            if is_in(work_tables.break_list, p1_data.ft) and (detection.monitor.saw_new_action or detection.monitor.saw_recovery_to_startup) then
+                                detection.mem_res[active_head_index] = { status = TEXTS.fail_blk_misconfirm, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.fail_blk_misconfirm)
                                 detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = false
                                 session.score = session.score - 1; session.blk_tot = session.blk_tot + 1; session.total = session.total + 1
-                                set_feedback(TEXTS.fail_unsafe, COLORS.Red, 1.5)
-                            elseif is_in(work_tables.success, p1_data.ft) and not is_in(work_tables.trigger, p1_data.ft) and detection.live_hs > 0 then
-                                detection.mem_res[active_head_index] = { status = TEXTS.fail_blk_soon, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.fail_blk_soon)
+                                set_feedback(TEXTS.fail_blk_misconfirm, COLORS.Red, 1.5)
+                            elseif is_in(work_tables.success, p1_data.ft) and not is_in(work_tables.trigger, p1_data.ft) and detection.live_hs > 0 and (detection.monitor.saw_new_action or detection.monitor.saw_recovery_to_startup) then
+                                detection.mem_res[active_head_index] = { status = TEXTS.fail_blk_misconfirm, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.fail_blk_misconfirm)
                                 detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = false
                                 session.score = session.score - 1; session.blk_tot = session.blk_tot + 1; session.total = session.total + 1
-                                set_feedback(TEXTS.fail_autopilot, COLORS.Red, 1.5)
+                                set_feedback(TEXTS.fail_blk_misconfirm, COLORS.Red, 1.5)
                             elseif not is_in(work_tables.dmg_block, detection.live_dmg) then
-                                detection.mem_res[active_head_index] = { status = TEXTS.success_block, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.success_block)
+                                local blk_msg = TEXTS.success_block
+                                detection.mem_res[active_head_index] = { status = blk_msg, time = detection.abs_clock }; update_history_status(detection.abs_clock, blk_msg)
                                 detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = false
                                 session.blk_ok = session.blk_ok + 1; session.blk_tot = session.blk_tot + 1; session.total = session.total + 1;
-                                if not user_config.dont_count_blocked then session.score = session.score + 1; set_feedback(TEXTS.success_safe, COLORS.Green, 1.5)
-                                else set_feedback(TEXTS.safe_generic, COLORS.White, 1.5) end
+                                if not user_config.dont_count_blocked then session.score = session.score + 1; set_feedback(blk_msg, COLORS.Green, 1.5)
+                                else set_feedback(blk_msg, COLORS.White, 1.5) end
                             end
                         end
                     end

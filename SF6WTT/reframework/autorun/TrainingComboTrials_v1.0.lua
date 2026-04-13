@@ -1870,9 +1870,6 @@ local function handle_combo_shortcuts()
             trial_state.is_playing = false
         end
         if is_pressed(BTN_RIGHT) or kb_pressed(KB_3) then
-            if ctx.start_demo then ctx.start_demo() end
-        end
-        if is_pressed(BTN_DOWN) or kb_pressed(KB_4) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             save_d2d_config()
@@ -1890,6 +1887,9 @@ local function handle_combo_shortcuts()
                 item.last_frame_diff = nil
             end
             if ctx.reset_visuals then ctx.reset_visuals() end
+        end
+        if is_pressed(BTN_DOWN) or kb_pressed(KB_4) then
+            if ctx.start_demo then ctx.start_demo() end
         end
 
     else

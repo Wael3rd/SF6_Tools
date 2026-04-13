@@ -467,20 +467,23 @@ local function draw_single_line_content()
 
         imgui.same_line(0, sp)
         if trial_state.is_playing then
-            if styled_sf6_button("DEMO (" .. sc("R") .. ")", false, btn_w, true, false, P2_COLORS) then
-                if ctx.start_demo then ctx.start_demo() end
-            end
-            imgui.same_line(0, sp)
-        end
-
-        if styled_sf6_button(switch_pos_label() .. " (" .. (trial_state.is_playing and sc("D") or sc("R")) .. ")", false, btn_w, true, false, SWITCH_COLORS) then
-            d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
-            if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
-            ctx.save_d2d_config()
-            if trial_state.is_playing then
+            if styled_sf6_button(switch_pos_label() .. " (" .. sc("R") .. ")", false, btn_w, true, false, SWITCH_COLORS) then
+                d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
+                if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
+                ctx.save_d2d_config()
                 ctx.apply_forced_position()
                 ctx.reset_trial_steps_and_load(trial_state.playing_player)
                 if ctx.reset_visuals then ctx.reset_visuals() end
+            end
+            imgui.same_line(0, sp)
+            if styled_sf6_button("DEMO (" .. sc("D") .. ")", false, btn_w, true, false, P2_COLORS) then
+                if ctx.start_demo then ctx.start_demo() end
+            end
+        else
+            if styled_sf6_button(switch_pos_label() .. " (" .. sc("R") .. ")", false, btn_w, true, false, SWITCH_COLORS) then
+                d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
+                if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
+                ctx.save_d2d_config()
             end
         end
 

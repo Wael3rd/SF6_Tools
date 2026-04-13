@@ -809,6 +809,19 @@ re.on_draw_ui(function()
         end
 
 
+        imgui.separator()
+        if not _G._hc_logging then
+            if imgui.button("START HC LOG") then _G._hc_logging = true; _G._hc_log_lines = {} end
+        else
+            if imgui.button("STOP & SAVE LOG") then
+                _G._hc_logging = false
+                if _G._hc_log_lines then
+                    local f = io.open("HitConfirm_Debug.txt", "w")
+                    if f then f:write(table.concat(_G._hc_log_lines, "\n")); f:close() end
+                end
+            end
+            imgui.same_line(); imgui.text(#(_G._hc_log_lines or {}) .. " lines")
+        end
         imgui.tree_pop()
     end
 end)
