@@ -1,0 +1,29 @@
+{
+    "__Fields": {
+        "<PrevStatus>k__BackingField": 11,
+        "<Status>k__BackingField": 8
+    },
+    "__Methods": [
+        "get_Status (Args: 0)",
+        "set_Status (Args: 1)",
+        "get_PrevStatus (Args: 0)",
+        "set_PrevStatus (Args: 1)",
+        "Login (Args: 0)",
+        "StartOnlineMatch (Args: 1)",
+        "StartBattleHub (Args: 0)",
+        "DisconnectBattleHub (Args: 0)",
+        "StartCustomRoom (Args: 0)",
+        "DisconnectCustomRoom (Args: 0)",
+        "RequestUpdateOnlineStatus (Args: 0)",
+        "RegisterMessagingCallback (Args: 0)",
+        "OnReconnectComplete (Args: 1)",
+        "UpdateOnlineStatus (Args: 2)",
+        "OnUpdateFlow (Args: 1)",
+        "GetOnlineStatusFromFlowMap (Args: 1)",
+        "GetOnlineStatusFromBattleMode (Args: 1)",
+        "doStart (Args: 0)",
+        "doOnDestroy (Args: 0)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.PresenceManager"
+}

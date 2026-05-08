@@ -1,0 +1,18 @@
+{
+    "app.worldtour.om.WTCityOMSave": [
+        ".ctor (Args: 0)",
+        "AddSpawnSaveDataMoveCityCount (Args: 0)",
+        "ConvertSaveData (Args: 1)",
+        "GetSaveData (Args: 0)",
+        "LoadSaveData (Args: 1)",
+        "RegisterSaveData (Args: 0)",
+        "RequestSaveData (Args: 2)",
+        "ResetSaveData (Args: 0)",
+        "SaveSaveData (Args: 0)",
+        "UnregisterSaveData (Args: 0)",
+        "doOnDestroy (Args: 0)",
+        "doStart (Args: 0)",
+        "get_SaveDataHash (Args: 0)",
+        "get_SaveDataVersion (Args: 0)"
+    ]
+}

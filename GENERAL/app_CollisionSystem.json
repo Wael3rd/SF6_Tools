@@ -1,0 +1,1513 @@
+{
+    "__Fields": {
+        "FilterInfoDict": {
+            "Items": [
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                },
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                },
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                },
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                },
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                },
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                },
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                },
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                },
+                {
+                    "__Methods": [
+                        "get_Layer (Args: 0)",
+                        "set_Layer (Args: 1)",
+                        "get_Group (Args: 0)",
+                        "set_Group (Args: 1)",
+                        "get_SubGroup (Args: 0)",
+                        "set_SubGroup (Args: 1)",
+                        "get_IgnoreSubGroup (Args: 0)",
+                        "set_IgnoreSubGroup (Args: 1)",
+                        "get_MaskBits (Args: 0)",
+                        "set_MaskBits (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.physics.FilterInfo"
+                }
+            ],
+            "__Count": 9,
+            "__Fields": {
+                "_buckets": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "mValue": 0
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 2
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 3
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 4
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 5
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 6
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 7
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 8
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        }
+                    ],
+                    "__Count": 17,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "System.Int32[]"
+                },
+                "_comparer": "<Circular>",
+                "_count": 9,
+                "_entries": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 1,
+                                "key": 1,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 2,
+                                "key": 2,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 3,
+                                "key": 3,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 4,
+                                "key": 4,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 5,
+                                "key": 5,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 6,
+                                "key": 6,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 7,
+                                "key": 7,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 8,
+                                "key": 8,
+                                "next": -1,
+                                "value": "<Circular>"
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,via.physics.FilterInfo>"
+                        }
+                    ],
+                    "__Count": 17,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "System.Collections.Generic.Dictionary`2.Entry[[System.Int32, mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[via.physics.FilterInfo, mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]][]"
+                },
+                "_freeCount": 0,
+                "_freeList": -1
+            },
+            "__Methods": [
+                "get_Comparer (Args: 0)",
+                "get_Count (Args: 0)",
+                "get_Keys (Args: 0)",
+                "System.Collections.Generic.IDictionary<TKey,TValue>.get_Keys (Args: 0)",
+                "get_Values (Args: 0)",
+                "System.Collections.Generic.IDictionary<TKey,TValue>.get_Values (Args: 0)",
+                "get_Item (Args: 1)",
+                "set_Item (Args: 2)",
+                "System.Collections.ICollection.get_SyncRoot (Args: 0)",
+                "System.Collections.IDictionary.get_Keys (Args: 0)",
+                "System.Collections.IDictionary.get_Values (Args: 0)",
+                "System.Collections.Generic.IReadOnlyDictionary<TKey,TValue>.get_Keys (Args: 0)",
+                "System.Collections.Generic.IReadOnlyDictionary<TKey,TValue>.get_Values (Args: 0)",
+                "System.Collections.IDictionary.get_Item (Args: 1)",
+                "System.Collections.IDictionary.set_Item (Args: 2)",
+                ".ctor (Args: 0)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 2)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 2)",
+                "Add (Args: 2)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Add (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Contains (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Remove (Args: 1)",
+                "Clear (Args: 0)",
+                "ContainsKey (Args: 1)",
+                "ContainsValue (Args: 1)",
+                "CopyTo (Args: 2)",
+                "GetEnumerator (Args: 0)",
+                "System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<TKey,TValue>>.GetEnumerator (Args: 0)",
+                "FindEntry (Args: 1)",
+                "Initialize (Args: 1)",
+                "Insert (Args: 3)",
+                "Resize (Args: 0)",
+                "Remove (Args: 1)",
+                "TryGetValue (Args: 2)",
+                "GetValueOrDefault (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.CopyTo (Args: 2)",
+                "System.Collections.ICollection.CopyTo (Args: 2)",
+                "System.Collections.IEnumerable.GetEnumerator (Args: 0)",
+                "IsCompatibleKey (Args: 1)",
+                "System.Collections.IDictionary.Add (Args: 2)",
+                "System.Collections.IDictionary.Contains (Args: 1)",
+                "System.Collections.IDictionary.GetEnumerator (Args: 0)",
+                "System.Collections.IDictionary.Remove (Args: 1)"
+            ],
+            "__Type": "System.Collections.Generic.Dictionary`2<System.Int32,via.physics.FilterInfo>"
+        },
+        "FilterInfoUserData": {
+            "__Fields": {
+                "FilterDataArray": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 1
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 2
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 3
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 4
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 5
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 6
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 7
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 8
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData"
+                        }
+                    ],
+                    "__Count": 9,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "app.CollisionSystem.CollisionFilterInfoUserData.FilterData[]"
+                }
+            },
+            "__Methods": [
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "app.CollisionSystem.CollisionFilterInfoUserData"
+        },
+        "LayerInfoDict": {
+            "Items": [
+                3,
+                7,
+                11
+            ],
+            "__Count": 3,
+            "__Fields": {
+                "_buckets": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "mValue": 0
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 2
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        }
+                    ],
+                    "__Count": 3,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "System.Int32[]"
+                },
+                "_comparer": {
+                    "__Methods": [
+                        "Equals (Args: 2)",
+                        "GetHashCode (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "System.Collections.Generic.GenericEqualityComparer`1<System.Int32>"
+                },
+                "_count": 3,
+                "_entries": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": -1,
+                                "value": 3
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,System.UInt32>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 1,
+                                "key": 1,
+                                "next": -1,
+                                "value": 7
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,System.UInt32>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 2,
+                                "key": 2,
+                                "next": -1,
+                                "value": 11
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.Int32,System.UInt32>"
+                        }
+                    ],
+                    "__Count": 3,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "System.Collections.Generic.Dictionary`2.Entry[[System.Int32, mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[System.UInt32, mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]][]"
+                },
+                "_freeCount": 0,
+                "_freeList": -1
+            },
+            "__Methods": [
+                "get_Comparer (Args: 0)",
+                "get_Count (Args: 0)",
+                "get_Keys (Args: 0)",
+                "System.Collections.Generic.IDictionary<TKey,TValue>.get_Keys (Args: 0)",
+                "get_Values (Args: 0)",
+                "System.Collections.Generic.IDictionary<TKey,TValue>.get_Values (Args: 0)",
+                "get_Item (Args: 1)",
+                "set_Item (Args: 2)",
+                "System.Collections.ICollection.get_SyncRoot (Args: 0)",
+                "System.Collections.IDictionary.get_Keys (Args: 0)",
+                "System.Collections.IDictionary.get_Values (Args: 0)",
+                "System.Collections.Generic.IReadOnlyDictionary<TKey,TValue>.get_Keys (Args: 0)",
+                "System.Collections.Generic.IReadOnlyDictionary<TKey,TValue>.get_Values (Args: 0)",
+                "System.Collections.IDictionary.get_Item (Args: 1)",
+                "System.Collections.IDictionary.set_Item (Args: 2)",
+                ".ctor (Args: 0)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 2)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 2)",
+                "Add (Args: 2)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Add (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Contains (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Remove (Args: 1)",
+                "Clear (Args: 0)",
+                "ContainsKey (Args: 1)",
+                "ContainsValue (Args: 1)",
+                "CopyTo (Args: 2)",
+                "GetEnumerator (Args: 0)",
+                "System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<TKey,TValue>>.GetEnumerator (Args: 0)",
+                "FindEntry (Args: 1)",
+                "Initialize (Args: 1)",
+                "Insert (Args: 3)",
+                "Resize (Args: 0)",
+                "Remove (Args: 1)",
+                "TryGetValue (Args: 2)",
+                "GetValueOrDefault (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.CopyTo (Args: 2)",
+                "System.Collections.ICollection.CopyTo (Args: 2)",
+                "System.Collections.IEnumerable.GetEnumerator (Args: 0)",
+                "IsCompatibleKey (Args: 1)",
+                "System.Collections.IDictionary.Add (Args: 2)",
+                "System.Collections.IDictionary.Contains (Args: 1)",
+                "System.Collections.IDictionary.GetEnumerator (Args: 0)",
+                "System.Collections.IDictionary.Remove (Args: 1)"
+            ],
+            "__Type": "System.Collections.Generic.Dictionary`2<System.Int32,System.UInt32>"
+        },
+        "LayerUserData": {
+            "__Fields": {
+                "LayerDataArray": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionLayerUserData.LayerData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 1
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionLayerUserData.LayerData"
+                        },
+                        {
+                            "__Fields": {
+                                "collisionFilterInfo": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.physics.CollisionFilterResourceHolder"
+                                },
+                                "layerID": 2
+                            },
+                            "__Methods": null,
+                            "__Type": "app.CollisionSystem.CollisionLayerUserData.LayerData"
+                        }
+                    ],
+                    "__Count": 3,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "app.CollisionSystem.CollisionLayerUserData.LayerData[]"
+                }
+            },
+            "__Methods": [
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "app.CollisionSystem.CollisionLayerUserData"
+        }
+    },
+    "__Methods": [
+        "get_PointCloud (Args: 0)",
+        "set_PointCloud (Args: 1)",
+        "registWTPointCloud (Args: 2)",
+        "unregistWTPointCloud (Args: 1)",
+        "GetFilterInfo (Args: 1)",
+        "getLayerIndex (Args: 1)",
+        "getFilterResource (Args: 1)",
+        "castSphere (Args: 7)",
+        "castSphere (Args: 6)",
+        "castSphere (Args: 6)",
+        "castSphere (Args: 6)",
+        "castSphere (Args: 6)",
+        "castSphere_SupportedBox (Args: 6)",
+        "tryGetTriangle (Args: 3)",
+        "getMeshNormal (Args: 1)",
+        "isNeghborhoodMesh (Args: 2)",
+        "castSphere_HighQuality (Args: 6)",
+        "getCapsuleContactVsBox (Args: 9)",
+        "getCapsuleContactVsCapsule (Args: 9)",
+        "getCapsuleContactVsSphere (Args: 9)",
+        "getCapsuleContactVsTriangle (Args: 9)",
+        "castRay (Args: 5)",
+        "castRay (Args: 5)",
+        "castRay (Args: 5)",
+        "castRay (Args: 5)",
+        "castRay (Args: 5)",
+        "castRayAll (Args: 5)",
+        "castRayAll (Args: 5)",
+        "pointCloudNearestPoint (Args: 5)",
+        "pointCloudNearestNeighbors (Args: 5)",
+        "getWTEColMaterialID (Args: 3)",
+        "getPointCloud (Args: 2)",
+        "IsLayer (Args: 2)",
+        "doAwake (Args: 0)",
+        ".ctor (Args: 0)",
+        ".cctor (Args: 0)"
+    ],
+    "__Type": "app.CollisionSystem"
+}

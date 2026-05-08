@@ -1,0 +1,670 @@
+{
+    "__Fields": {
+        "DeviceCount": 1,
+        "InputDevice": {
+            "Items": [
+                {
+                    "__Methods": [
+                        "clear (Args: 0)",
+                        "getMotorPower (Args: 1)",
+                        "isDown (Args: 1)",
+                        "isDown (Args: 1)",
+                        "isRelease (Args: 1)",
+                        "isRelease (Args: 1)",
+                        "isRepeat (Args: 1)",
+                        "isRepeat (Args: 1)",
+                        "isTrigger (Args: 1)",
+                        "isTrigger (Args: 1)",
+                        "makeNullDevice (Args: 0)",
+                        "resetAllFeedback (Args: 0)",
+                        "resetExtraButton (Args: 0)",
+                        "resetExtraButtonDown (Args: 0)",
+                        "resetExtraButtonRepeat (Args: 0)",
+                        "resetExtraButtonUp (Args: 0)",
+                        "resetMotors (Args: 0)",
+                        "resetOrientation (Args: 0)",
+                        "setAngularVelocityDeadbandState (Args: 1)",
+                        "setExtraButton (Args: 2)",
+                        "setExtraButtonDown (Args: 2)",
+                        "setExtraButtonRepeat (Args: 2)",
+                        "setExtraButtonUp (Args: 2)",
+                        "setMotorPower (Args: 2)",
+                        "setTiltCorrectionState (Args: 1)",
+                        "showAccountPicker (Args: 1)",
+                        "get_Button (Args: 0)",
+                        "set_Button (Args: 1)",
+                        "get_ButtonDown (Args: 0)",
+                        "set_ButtonDown (Args: 1)",
+                        "get_ButtonUp (Args: 0)",
+                        "set_ButtonUp (Args: 1)",
+                        "get_ButtonRepeat (Args: 0)",
+                        "set_ButtonRepeat (Args: 1)",
+                        "get_AnyExtraButtonDown (Args: 0)",
+                        "get_AnyExtraButtonTrigger (Args: 0)",
+                        "get_AnyExtraButtonRelease (Args: 0)",
+                        "get_RawAxisL (Args: 0)",
+                        "set_RawAxisL (Args: 1)",
+                        "get_RawAxisR (Args: 0)",
+                        "set_RawAxisR (Args: 1)",
+                        "get_AxisL (Args: 0)",
+                        "set_AxisL (Args: 1)",
+                        "get_AxisR (Args: 0)",
+                        "set_AxisR (Args: 1)",
+                        "get_AnalogL (Args: 0)",
+                        "set_AnalogL (Args: 1)",
+                        "get_AnalogR (Args: 0)",
+                        "set_AnalogR (Args: 1)",
+                        "get_Orientation (Args: 0)",
+                        "set_Orientation (Args: 1)",
+                        "get_Acceleration (Args: 0)",
+                        "set_Acceleration (Args: 1)",
+                        "get_AngularVelocity (Args: 0)",
+                        "set_AngularVelocity (Args: 1)",
+                        "get_AsyncBufferedState (Args: 0)",
+                        "get_PositionLeft (Args: 0)",
+                        "get_PositionRight (Args: 0)",
+                        "get_OrientationLeft (Args: 0)",
+                        "get_OrientationRight (Args: 0)",
+                        "get_AccelerationLeft (Args: 0)",
+                        "get_AccelerationRight (Args: 0)",
+                        "get_AngularVelocityLeft (Args: 0)",
+                        "get_AngularVelocityRight (Args: 0)",
+                        "get_AccountPickerState (Args: 0)",
+                        "get_AccountPickerResults (Args: 0)",
+                        "get_ForceFeedbackEnable (Args: 0)",
+                        "set_ForceFeedbackEnable (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.hid.GamePadDevice"
+                },
+                "<Item Error>"
+            ],
+            "__Count": 2,
+            "__Methods": [
+                "Set (Args: 2)",
+                "Get (Args: 1)",
+                "Address (Args: 1)",
+                "GetEnumerator (Args: 0)",
+                "Add (Args: 1)",
+                "Clear (Args: 0)",
+                "Contains (Args: 1)",
+                "CopyTo (Args: 2)",
+                "Remove (Args: 1)",
+                "get_Item (Args: 1)",
+                "set_Item (Args: 2)",
+                "IndexOf (Args: 1)",
+                "Insert (Args: 2)",
+                "RemoveAt (Args: 1)"
+            ],
+            "__Type": "via.hid.GamePadDevice[]"
+        },
+        "PadVibrationInfo": {
+            "__Fields": {
+                "_InfoList": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.0,
+                                "MotorPowerR": 0.0,
+                                "VibTrigger": 0,
+                                "VibrationTime": 0.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.10000000149011612,
+                                "VibTrigger": 1,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.30000001192092896,
+                                "MotorPowerR": 0.30000001192092896,
+                                "VibTrigger": 2,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.699999988079071,
+                                "MotorPowerR": 0.699999988079071,
+                                "VibTrigger": 3,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 1.0,
+                                "MotorPowerR": 1.0,
+                                "VibTrigger": 4,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.5,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 5,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.5,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 6,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.5,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 7,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.20000000298023224,
+                                "MotorPowerR": 0.4000000059604645,
+                                "VibTrigger": 8,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.4000000059604645,
+                                "VibTrigger": 9,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.5,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 10,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.5,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 11,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.20000000298023224,
+                                "MotorPowerR": 0.20000000298023224,
+                                "VibTrigger": 12,
+                                "VibrationTime": 0.20000000298023224
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.6000000238418579,
+                                "MotorPowerR": 0.6000000238418579,
+                                "VibTrigger": 13,
+                                "VibrationTime": 0.4000000059604645
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.30000001192092896,
+                                "MotorPowerR": 0.30000001192092896,
+                                "VibTrigger": 14,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.5,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 15,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.4000000059604645,
+                                "MotorPowerR": 0.4000000059604645,
+                                "VibTrigger": 16,
+                                "VibrationTime": 0.4000000059604645
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.4000000059604645,
+                                "MotorPowerR": 0.4000000059604645,
+                                "VibTrigger": 17,
+                                "VibrationTime": 0.4000000059604645
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.4000000059604645,
+                                "MotorPowerR": 0.4000000059604645,
+                                "VibTrigger": 18,
+                                "VibrationTime": 0.4000000059604645
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.6000000238418579,
+                                "MotorPowerR": 0.6000000238418579,
+                                "VibTrigger": 19,
+                                "VibrationTime": 0.6000000238418579
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.30000001192092896,
+                                "MotorPowerR": 0.6000000238418579,
+                                "VibTrigger": 20,
+                                "VibrationTime": 0.20000000298023224
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.6000000238418579,
+                                "MotorPowerR": 0.6000000238418579,
+                                "VibTrigger": 21,
+                                "VibrationTime": 0.6000000238418579
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.5,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 22,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.30000001192092896,
+                                "MotorPowerR": 0.800000011920929,
+                                "VibTrigger": 23,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.20000000298023224,
+                                "MotorPowerR": 0.699999988079071,
+                                "VibTrigger": 24,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.20000000298023224,
+                                "MotorPowerR": 0.699999988079071,
+                                "VibTrigger": 25,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.699999988079071,
+                                "VibTrigger": 26,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.6000000238418579,
+                                "VibTrigger": 27,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 28,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.4000000059604645,
+                                "VibTrigger": 29,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.30000001192092896,
+                                "VibTrigger": 30,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.20000000298023224,
+                                "VibTrigger": 31,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.10000000149011612,
+                                "MotorPowerR": 0.10000000149011612,
+                                "VibTrigger": 32,
+                                "VibrationTime": 0.5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.20000000298023224,
+                                "MotorPowerR": 0.6000000238418579,
+                                "VibTrigger": 33,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        },
+                        {
+                            "__Fields": {
+                                "MotorPowerL": 0.5,
+                                "MotorPowerR": 0.5,
+                                "VibTrigger": 34,
+                                "VibrationTime": 1.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PadVibrationInfo"
+                        }
+                    ],
+                    "__Count": 35,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "app.PadVibrationInfo[]"
+                }
+            },
+            "__Methods": [
+                "get_InfoList (Args: 0)",
+                "set_InfoList (Args: 1)",
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "app.udPadVibrationInfoList"
+        },
+        "VibrationTimer": {
+            "Items": [
+                {
+                    "__Fields": {
+                        "mValue": 0.0
+                    },
+                    "__Methods": [
+                        "ToString (Args: 0)",
+                        "ToString (Args: 1)",
+                        "Equals (Args: 1)",
+                        "Equals (Args: 1)",
+                        "ToString (Args: 2)",
+                        "Parse (Args: 1)",
+                        "TryParse (Args: 2)",
+                        "System.IConvertible.ToBoolean (Args: 1)",
+                        "System.IConvertible.ToByte (Args: 1)",
+                        "System.IConvertible.ToChar (Args: 1)",
+                        "System.IConvertible.ToDateTime (Args: 1)",
+                        "System.IConvertible.ToDecimal (Args: 1)",
+                        "System.IConvertible.ToDouble (Args: 1)",
+                        "System.IConvertible.ToInt16 (Args: 1)",
+                        "System.IConvertible.ToInt32 (Args: 1)",
+                        "System.IConvertible.ToInt64 (Args: 1)",
+                        "System.IConvertible.ToSByte (Args: 1)",
+                        "System.IConvertible.ToSingle (Args: 1)",
+                        "System.IConvertible.ToType (Args: 2)",
+                        "System.IConvertible.ToUInt16 (Args: 1)",
+                        "System.IConvertible.ToUInt32 (Args: 1)",
+                        "System.IConvertible.ToUInt64 (Args: 1)",
+                        "ToString (Args: 1)",
+                        "GetTypeCode (Args: 0)",
+                        "CompareTo (Args: 1)",
+                        "CompareTo (Args: 1)",
+                        "GetHashCode (Args: 0)",
+                        "IsInfinity (Args: 1)",
+                        "IsPositiveInfinity (Args: 1)",
+                        "IsNegativeInfinity (Args: 1)",
+                        "IsNaN (Args: 1)",
+                        ".ctor (Args: 1)"
+                    ],
+                    "__Type": "System.Single"
+                },
+                {
+                    "__Fields": {
+                        "mValue": 0.0
+                    },
+                    "__Methods": [
+                        "ToString (Args: 0)",
+                        "ToString (Args: 1)",
+                        "Equals (Args: 1)",
+                        "Equals (Args: 1)",
+                        "ToString (Args: 2)",
+                        "Parse (Args: 1)",
+                        "TryParse (Args: 2)",
+                        "System.IConvertible.ToBoolean (Args: 1)",
+                        "System.IConvertible.ToByte (Args: 1)",
+                        "System.IConvertible.ToChar (Args: 1)",
+                        "System.IConvertible.ToDateTime (Args: 1)",
+                        "System.IConvertible.ToDecimal (Args: 1)",
+                        "System.IConvertible.ToDouble (Args: 1)",
+                        "System.IConvertible.ToInt16 (Args: 1)",
+                        "System.IConvertible.ToInt32 (Args: 1)",
+                        "System.IConvertible.ToInt64 (Args: 1)",
+                        "System.IConvertible.ToSByte (Args: 1)",
+                        "System.IConvertible.ToSingle (Args: 1)",
+                        "System.IConvertible.ToType (Args: 2)",
+                        "System.IConvertible.ToUInt16 (Args: 1)",
+                        "System.IConvertible.ToUInt32 (Args: 1)",
+                        "System.IConvertible.ToUInt64 (Args: 1)",
+                        "ToString (Args: 1)",
+                        "GetTypeCode (Args: 0)",
+                        "CompareTo (Args: 1)",
+                        "CompareTo (Args: 1)",
+                        "GetHashCode (Args: 0)",
+                        "IsInfinity (Args: 1)",
+                        "IsPositiveInfinity (Args: 1)",
+                        "IsNegativeInfinity (Args: 1)",
+                        "IsNaN (Args: 1)",
+                        ".ctor (Args: 1)"
+                    ],
+                    "__Type": "System.Single"
+                }
+            ],
+            "__Count": 2,
+            "__Methods": [
+                "Set (Args: 2)",
+                "Get (Args: 1)",
+                "Address (Args: 1)",
+                "GetEnumerator (Args: 0)",
+                "Add (Args: 1)",
+                "Clear (Args: 0)",
+                "Contains (Args: 1)",
+                "CopyTo (Args: 2)",
+                "Remove (Args: 1)",
+                "get_Item (Args: 1)",
+                "set_Item (Args: 2)",
+                "IndexOf (Args: 1)",
+                "Insert (Args: 2)",
+                "RemoveAt (Args: 1)"
+            ],
+            "__Type": "System.Single[]"
+        }
+    },
+    "__Methods": [
+        "doUpdate (Args: 0)",
+        "triggerVibration (Args: 2)",
+        "stopVibration (Args: 1)",
+        "checkHIDConnect (Args: 0)",
+        "updateVibration (Args: 0)",
+        "isHdVibrarion (Args: 0)",
+        "updateDeviceCount (Args: 0)",
+        "getConnectingDevices (Args: 1)",
+        "getConnectingDeviceID (Args: 1)",
+        ".ctor (Args: 0)",
+        ".cctor (Args: 0)"
+    ],
+    "__Type": "app.PadVibrationManager"
+}

@@ -1,0 +1,19 @@
+{
+    "app.StoreManager": [
+        ".ctor (Args: 0)",
+        "Debug_OpenStore (Args: 0)",
+        "Debug_OpenStoreCategory (Args: 0)",
+        "Debug_OpenStoreProduct (Args: 0)",
+        "FinalizeStore (Args: 0)",
+        "GetPlatformStoreType (Args: 0)",
+        "InitializeStore (Args: 0)",
+        "OnNtcOpen (Args: 2)",
+        "RequestOpenStore (Args: 0)",
+        "RequestOpenStore (Args: 2)",
+        "doOnDestroy (Args: 0)",
+        "doStart (Args: 0)",
+        "get_IsShow (Args: 0)",
+        "get_IsValid (Args: 0)",
+        "set_IsValid (Args: 1)"
+    ]
+}

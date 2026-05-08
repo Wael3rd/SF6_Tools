@@ -1,0 +1,11 @@
+{
+    "app.GeometryManager": [
+        ".ctor (Args: 0)",
+        "GetDestinationId (Args: 1)",
+        "GetGeometry (Args: 0)",
+        "GetRegionId (Args: 1)",
+        "get_Destination (Args: 0)",
+        "get_Geometry (Args: 0)",
+        "get_Region (Args: 0)"
+    ]
+}

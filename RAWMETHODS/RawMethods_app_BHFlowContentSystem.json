@@ -1,0 +1,32 @@
+{
+    "app.BHFlowContentSystem": [
+        ".ctor (Args: 0)",
+        "Activate (Args: 0)",
+        "ClearAdmissionEvent (Args: 0)",
+        "ClearContentContainer (Args: 0)",
+        "Deactivate (Args: 0)",
+        "DuringUpdateContentContainer (Args: 0)",
+        "GetContentDataHolder (Args: 0)",
+        "GetTmpKey (Args: 0)",
+        "IsActivated (Args: 0)",
+        "IsLoadingContentData (Args: 0)",
+        "IsLoadingContentSet (Args: 0)",
+        "LoadContentData (Args: 0)",
+        "LoadContentSet (Args: 0)",
+        "SetAdmissionEvent (Args: 3)",
+        "SetState (Args: 1)",
+        "SetupContentContainer (Args: 0)",
+        "UnloadContentData (Args: 0)",
+        "UnloadContentSet (Args: 0)",
+        "UpdateStateActivating (Args: 0)",
+        "doUpdate (Args: 0)",
+        "get_mAdmissionEventId (Args: 0)",
+        "get_mAdmissionEventType (Args: 0)",
+        "get_mPatternId (Args: 0)",
+        "get_mStateCnt (Args: 0)",
+        "set_mAdmissionEventId (Args: 1)",
+        "set_mAdmissionEventType (Args: 1)",
+        "set_mPatternId (Args: 1)",
+        "set_mStateCnt (Args: 1)"
+    ]
+}

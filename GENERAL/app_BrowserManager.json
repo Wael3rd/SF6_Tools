@@ -1,0 +1,35 @@
+{
+    "__Fields": {
+        "BrowserOpenEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "System.Action"
+        },
+        "Setting": {
+            "__Fields": {
+                "ACLinkPrivacyPolicyUrl": "https://www.taito.co.jp/sf6_ac/pp",
+                "CapcomIdPrivacyPolicyUrl": "https://c.cid.capcom.com/info/policy_ingame/privacy/",
+                "EulaUrl": "https://www.streetfighter.com/6/eula/",
+                "GamePrivacyPolicyUrl": "https://www.capcom.co.jp/privacy/game/"
+            },
+            "__Methods": [
+                "GetSupportUrl (Args: 0)",
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "app.udBrowserSetting"
+        }
+    },
+    "__Methods": [
+        "add_BrowserOpenEvent (Args: 1)",
+        "remove_BrowserOpenEvent (Args: 1)",
+        "OpenGamePrivacyPolicy (Args: 0)",
+        "OpenCapcomIdPrivacyPolicy (Args: 0)",
+        "OpenEula (Args: 0)",
+        "OpenACLinkPrivacyPolicy (Args: 0)",
+        "OpenSupport (Args: 1)",
+        "OpenUrl (Args: 2)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.BrowserManager"
+}

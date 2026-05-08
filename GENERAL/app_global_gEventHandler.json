@@ -1,0 +1,953 @@
+{
+    "__Fields": {
+        "BHApparelShopOpenEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHApparelShopOpenDelegate"
+        },
+        "BHCollaboMotorcycleAccessEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHCollaboMotorcycleAccessDelegate"
+        },
+        "BHDJBoothAccessEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHDJBoothAccessDelegate"
+        },
+        "BHDailyTournamentJoinEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHDailyTournamentJoinDelegate"
+        },
+        "BHEventJoinEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHEventJoinDelegate"
+        },
+        "BHJoinEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHJoinDelegate"
+        },
+        "BHMonitorChairSitEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHMonitorChairSitDelegate"
+        },
+        "BHRaidAttackEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHRaidAttackDelegate"
+        },
+        "BHRaidCpuAvatarBattlePlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.BHRaidCpuAvatarBattlePlayDelegate"
+        },
+        "BHRaidCpuCabinetBattlePlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.BHRaidCpuCabinetBattlePlayDelegate"
+        },
+        "BHRaidGroupAttackEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHRaidGroupAttackDelegate"
+        },
+        "BHRivalAIBattlePlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.BHRivalAIBattlePlayDelegate"
+        },
+        "BHRivalAIBattleSpectateEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHRivalAIBattleSpectateDelegate"
+        },
+        "BHRivalAIRankAchieveEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.BHRivalAIRankAchieveDelegate"
+        },
+        "BHRivalAITaskAchieveEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.BHRivalAITaskAchieveDelegate"
+        },
+        "CFNFighterListOpenEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.CFNFighterListOpenDelegate"
+        },
+        "CFNFightersClubOpenEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.CFNFightersClubOpenDelegate"
+        },
+        "CFNRankingOpenEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CFNRankingOpenDelegate"
+        },
+        "CFNReplayOpenEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CFNReplayOpenDelegate"
+        },
+        "CommonArcadeCabinetAccessEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonArcadeCabinetAccessDelegate"
+        },
+        "CommonAvatarCreateEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonAvatarCreateDelegate"
+        },
+        "CommonBattlePlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonBattlePlayDelegate"
+        },
+        "CommonBattleSpectateDetailEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonBattleSpectateDetailDelegate"
+        },
+        "CommonBattleSpectateEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonBattleSpectateDelegate"
+        },
+        "CommonChatSendEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonChatSendDelegate"
+        },
+        "CommonCircleJoinEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonCircleJoinDelegate"
+        },
+        "CommonEmoteUseEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonEmoteUseDelegate"
+        },
+        "CommonEmoteUsePotatoNormalEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonEmoteUsePotatoNormalDelegate"
+        },
+        "CommonEmoteUsePotatoSpecialEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonEmoteUsePotatoSpecialDelegate"
+        },
+        "CommonEmulatorPlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonEmulatorPlayDelegate"
+        },
+        "CommonFriendRegisterEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonFriendRegisterDelegate"
+        },
+        "CommonGetDemoEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonGetDemoDelegate"
+        },
+        "CommonGetIllustEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonGetIllustDelegate"
+        },
+        "CommonGoodSendEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonGoodSendDelegate"
+        },
+        "CommonItemPurchaseEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonItemPurchaseDelegate"
+        },
+        "CommonReplayViewEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonReplayViewDelegate"
+        },
+        "CommonTitleGetEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonTitleGetDelegate"
+        },
+        "CommonTotalEnjoyPointUpdateEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.CommonTotalEnjoyPointUpdateDelegate"
+        },
+        "FGArcadeBonusStageClearEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.FGArcadeBonusStageClearDelegate"
+        },
+        "FGArcadeClearEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.FGArcadeClearDelegate"
+        },
+        "FGArcadeScoreUploadEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.FGArcadeScoreUploadDelegate"
+        },
+        "FGCharacterGuideClearEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.FGCharacterGuideClearDelegate"
+        },
+        "FGCharacterGuidePlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.FGCharacterGuidePlayDelegate"
+        },
+        "FGComboTrialClearEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.FGComboTrialClearDelegate"
+        },
+        "FGComboTrialPlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.FGComboTrialPlayDelegate"
+        },
+        "FGTrainingPlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.FGTrainingPlayDelegate"
+        },
+        "FGTrainingPlayingEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.FGTrainingPlayingDelegate"
+        },
+        "FGTutorialClearEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.FGTutorialClearDelegate"
+        },
+        "FGTutorialPlayEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.FGTutorialPlayDelegate"
+        },
+        "MultiMenuRewardsOpenEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.MultiMenuRewardsOpenDelegate"
+        },
+        "MultiMenuShopOpenEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.MultiMenuShopOpenDelegate"
+        },
+        "OnlineShopProductBuyEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.OnlineShopProductBuyDelegate"
+        },
+        "WTAcceptMissionEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTAcceptMission"
+        },
+        "WTAccesMissionZoneEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTAccesMissionZone"
+        },
+        "WTAddItemEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTAddItem"
+        },
+        "WTBattleActionCheckEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleActionCheck"
+        },
+        "WTBattleAppealUseEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleAppealUseDelegate"
+        },
+        "WTBattleAttackHitEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleAttackHitDelegate"
+        },
+        "WTBattleComboHitEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleComboHitDelegate"
+        },
+        "WTBattleDriveParrySuccessEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleDriveParrySuccessDelegate"
+        },
+        "WTBattleDriveStepUseEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleDriveStepUseDelegate"
+        },
+        "WTBattleEnemyDownEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleEnemyDownDelegate"
+        },
+        "WTBattleEnemyStanEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleEnemyStanDelegate"
+        },
+        "WTBattleFinishEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleFinishDelegate"
+        },
+        "WTBattleSAUseEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleSAUseDelegate"
+        },
+        "WTBattleZoneInEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTBattleZoneInDelegate"
+        },
+        "WTCameraInCheckEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTCameraInCheck"
+        },
+        "WTCancelMissionEvent": {
+            "__Methods": [
+                "Invoke (Args: 3)"
+            ],
+            "__Type": "app.global.gEventHandler.WTCancelMission"
+        },
+        "WTChangeChapterIdEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTChangeChapterId"
+        },
+        "WTChangeCityPhaseEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTChangeCityPhase"
+        },
+        "WTChangeDuringTutorialFlagEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTChangeDuringTutorialFlag"
+        },
+        "WTChangeMoneyEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTChangeMoney"
+        },
+        "WTChangeOMStatusEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTChangeOMStatus"
+        },
+        "WTClearMinigameEvent": {
+            "__Methods": [
+                "Invoke (Args: 3)"
+            ],
+            "__Type": "app.global.gEventHandler.WTClearMinigame"
+        },
+        "WTClearMissionPhaseEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTClearMissionPhase"
+        },
+        "WTCloseDeviceEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTCloseDevice"
+        },
+        "WTCompleteMissionEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTCompleteMission"
+        },
+        "WTContactFinishEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTContactFinishDelegate"
+        },
+        "WTEmoteToNpcEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTEmoteToNpcDelegate"
+        },
+        "WTEntryCityEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTEntryCity"
+        },
+        "WTEntryMasterEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTEntryMaster"
+        },
+        "WTEquipItemEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTEquipItem"
+        },
+        "WTFavoriteUpEvent": {
+            "__Methods": [
+                "Invoke (Args: 3)"
+            ],
+            "__Type": "app.global.gEventHandler.WTFavoriteUp"
+        },
+        "WTFlagSetEvent": {
+            "__Methods": [
+                "Invoke (Args: 3)"
+            ],
+            "__Type": "app.global.gEventHandler.WTFlagSet"
+        },
+        "WTGetUnlockCostumeColorItemEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTGetUnlockCostumeColorItem"
+        },
+        "WTLevelUpEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTLevelUp"
+        },
+        "WTMasterActionHitToNpcEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTMasterActionHitToNpcDelegate"
+        },
+        "WTOMDestroyEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTOMDestroyDelegate"
+        },
+        "WTOpenTreasureBoxEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTOpenTreasureBoxDelegate"
+        },
+        "WTPhotoModeCheckEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTPhotoModeCheck"
+        },
+        "WTPlayMinigameEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTPlayMinigame"
+        },
+        "WTReadIMEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTReadIM"
+        },
+        "WTReadItemEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTReadItem"
+        },
+        "WTReceiveIMEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTReceiveIM"
+        },
+        "WTRemoveNpcEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTRemoveNpcDelegate"
+        },
+        "WTReplyIMEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTReplyIM"
+        },
+        "WTSetNpcEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTSetNpcDelegate"
+        },
+        "WTShopEatEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTShopEat"
+        },
+        "WTStoryClearEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTStoryClearDelegate"
+        },
+        "WTStyleLevelUpEvent": {
+            "__Methods": [
+                "Invoke (Args: 2)"
+            ],
+            "__Type": "app.global.gEventHandler.WTStyleLevelUp"
+        },
+        "WTSubMissionClearEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTSubMissionClearDelegate"
+        },
+        "WTTutorialEndEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTTutorialEndDelegate"
+        },
+        "WTUnlockIMHolderEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTUnlockIMHolder"
+        },
+        "WTUseMessageAppEvent": {
+            "__Methods": [
+                "Invoke (Args: 0)"
+            ],
+            "__Type": "app.global.gEventHandler.WTUseMessageApp"
+        },
+        "WTUseShopEvent": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "app.global.gEventHandler.WTUseShop"
+        }
+    },
+    "__Methods": [
+        "add_CommonBattlePlayEvent (Args: 1)",
+        "remove_CommonBattlePlayEvent (Args: 1)",
+        "ExecuteCommonBattlePlay (Args: 1)",
+        "add_CommonBattleSpectateEvent (Args: 1)",
+        "remove_CommonBattleSpectateEvent (Args: 1)",
+        "ExecuteCommonBattleSpectate (Args: 1)",
+        "add_CommonBattleSpectateDetailEvent (Args: 1)",
+        "remove_CommonBattleSpectateDetailEvent (Args: 1)",
+        "ExecuteCommonBattleSpectateDetail (Args: 1)",
+        "add_CommonAvatarCreateEvent (Args: 1)",
+        "remove_CommonAvatarCreateEvent (Args: 1)",
+        "ExecuteCommonAvatarCreate (Args: 0)",
+        "add_CommonChatSendEvent (Args: 1)",
+        "remove_CommonChatSendEvent (Args: 1)",
+        "ExecuteCommonChatSend (Args: 1)",
+        "add_CommonEmoteUseEvent (Args: 1)",
+        "remove_CommonEmoteUseEvent (Args: 1)",
+        "ExecuteCommonEmoteUse (Args: 0)",
+        "add_CommonEmoteUsePotatoNormalEvent (Args: 1)",
+        "remove_CommonEmoteUsePotatoNormalEvent (Args: 1)",
+        "ExecuteCommonEmoteUsePotatoNormal (Args: 0)",
+        "add_CommonEmoteUsePotatoSpecialEvent (Args: 1)",
+        "remove_CommonEmoteUsePotatoSpecialEvent (Args: 1)",
+        "ExecuteCommonEmoteUsePotatoSpecial (Args: 0)",
+        "add_CommonGoodSendEvent (Args: 1)",
+        "remove_CommonGoodSendEvent (Args: 1)",
+        "ExecuteCommonGoodSend (Args: 0)",
+        "add_CommonTotalEnjoyPointUpdateEvent (Args: 1)",
+        "remove_CommonTotalEnjoyPointUpdateEvent (Args: 1)",
+        "ExecuteCommonTotalEnjoyPointUpdate (Args: 1)",
+        "add_CommonFriendRegisterEvent (Args: 1)",
+        "remove_CommonFriendRegisterEvent (Args: 1)",
+        "ExecuteCommonFriendRegister (Args: 0)",
+        "add_CommonCircleJoinEvent (Args: 1)",
+        "remove_CommonCircleJoinEvent (Args: 1)",
+        "ExecuteCommonCircleJoin (Args: 0)",
+        "add_CommonItemPurchaseEvent (Args: 1)",
+        "remove_CommonItemPurchaseEvent (Args: 1)",
+        "ExecuteCommonItemPurchase (Args: 0)",
+        "add_CommonTitleGetEvent (Args: 1)",
+        "remove_CommonTitleGetEvent (Args: 1)",
+        "ExecuteCommonTitleGet (Args: 0)",
+        "add_CommonReplayViewEvent (Args: 1)",
+        "remove_CommonReplayViewEvent (Args: 1)",
+        "ExecuteCommonReplayView (Args: 0)",
+        "add_CommonArcadeCabinetAccessEvent (Args: 1)",
+        "remove_CommonArcadeCabinetAccessEvent (Args: 1)",
+        "ExecuteCommonArcadeCabinetAccess (Args: 0)",
+        "add_CommonGetIllustEvent (Args: 1)",
+        "remove_CommonGetIllustEvent (Args: 1)",
+        "ExecuteCommonGetIllust (Args: 0)",
+        "add_CommonGetDemoEvent (Args: 1)",
+        "remove_CommonGetDemoEvent (Args: 1)",
+        "ExecuteCommonGetDemo (Args: 0)",
+        "add_CommonEmulatorPlayEvent (Args: 1)",
+        "remove_CommonEmulatorPlayEvent (Args: 1)",
+        "ExecuteCommonEmulatorPlay (Args: 1)",
+        "add_BHJoinEvent (Args: 1)",
+        "remove_BHJoinEvent (Args: 1)",
+        "ExecuteBHJoin (Args: 0)",
+        "add_BHDailyTournamentJoinEvent (Args: 1)",
+        "remove_BHDailyTournamentJoinEvent (Args: 1)",
+        "ExecuteBHDailyTournamentJoin (Args: 0)",
+        "add_BHEventJoinEvent (Args: 1)",
+        "remove_BHEventJoinEvent (Args: 1)",
+        "ExecuteBHEventJoin (Args: 0)",
+        "add_BHDJBoothAccessEvent (Args: 1)",
+        "remove_BHDJBoothAccessEvent (Args: 1)",
+        "ExecuteBHDJBoothAccess (Args: 0)",
+        "add_BHMonitorChairSitEvent (Args: 1)",
+        "remove_BHMonitorChairSitEvent (Args: 1)",
+        "ExecuteBHMonitorChairSit (Args: 0)",
+        "add_BHApparelShopOpenEvent (Args: 1)",
+        "remove_BHApparelShopOpenEvent (Args: 1)",
+        "ExecuteBHApparelShopOpen (Args: 0)",
+        "add_BHCollaboMotorcycleAccessEvent (Args: 1)",
+        "remove_BHCollaboMotorcycleAccessEvent (Args: 1)",
+        "ExecuteBHCollaboMotorcycleAccess (Args: 0)",
+        "add_BHRaidCpuCabinetBattlePlayEvent (Args: 1)",
+        "remove_BHRaidCpuCabinetBattlePlayEvent (Args: 1)",
+        "ExecuteBHRaidCpuCabinetBattlePlay (Args: 1)",
+        "add_BHRaidCpuAvatarBattlePlayEvent (Args: 1)",
+        "remove_BHRaidCpuAvatarBattlePlayEvent (Args: 1)",
+        "ExecuteBHRaidCpuAvatarBattlePlay (Args: 1)",
+        "add_BHRaidGroupAttackEvent (Args: 1)",
+        "remove_BHRaidGroupAttackEvent (Args: 1)",
+        "ExecuteBHRaidGroupAttack (Args: 0)",
+        "add_BHRaidAttackEvent (Args: 1)",
+        "remove_BHRaidAttackEvent (Args: 1)",
+        "ExecuteBHRaidAttack (Args: 0)",
+        "add_BHRivalAIBattlePlayEvent (Args: 1)",
+        "remove_BHRivalAIBattlePlayEvent (Args: 1)",
+        "ExecuteBHRivalAIBattlePlay (Args: 1)",
+        "add_BHRivalAIBattleSpectateEvent (Args: 1)",
+        "remove_BHRivalAIBattleSpectateEvent (Args: 1)",
+        "ExecuteBHRivalAIBattleSpectate (Args: 0)",
+        "add_BHRivalAITaskAchieveEvent (Args: 1)",
+        "remove_BHRivalAITaskAchieveEvent (Args: 1)",
+        "ExecuteBHRivalAITaskAchieve (Args: 0)",
+        "add_BHRivalAIRankAchieveEvent (Args: 1)",
+        "remove_BHRivalAIRankAchieveEvent (Args: 1)",
+        "ExecuteBHRivalAIRankAchieve (Args: 2)",
+        "add_CFNFighterListOpenEvent (Args: 1)",
+        "remove_CFNFighterListOpenEvent (Args: 1)",
+        "ExecuteCFNFighterListOpen (Args: 1)",
+        "add_CFNFightersClubOpenEvent (Args: 1)",
+        "remove_CFNFightersClubOpenEvent (Args: 1)",
+        "ExecuteCFNFightersClubOpen (Args: 1)",
+        "add_CFNReplayOpenEvent (Args: 1)",
+        "remove_CFNReplayOpenEvent (Args: 1)",
+        "ExecuteCFNReplayOpen (Args: 0)",
+        "add_CFNRankingOpenEvent (Args: 1)",
+        "remove_CFNRankingOpenEvent (Args: 1)",
+        "ExecuteCFNRankingOpen (Args: 0)",
+        "add_MultiMenuRewardsOpenEvent (Args: 1)",
+        "remove_MultiMenuRewardsOpenEvent (Args: 1)",
+        "ExecuteMultiMenuRewardsOpen (Args: 0)",
+        "add_MultiMenuShopOpenEvent (Args: 1)",
+        "remove_MultiMenuShopOpenEvent (Args: 1)",
+        "ExecuteMultiMenuShopOpen (Args: 0)",
+        "add_OnlineShopProductBuyEvent (Args: 1)",
+        "remove_OnlineShopProductBuyEvent (Args: 1)",
+        "ExecuteOnlineShopProductBuy (Args: 0)",
+        "add_FGArcadeClearEvent (Args: 1)",
+        "remove_FGArcadeClearEvent (Args: 1)",
+        "ExecuteFGArcadeClear (Args: 1)",
+        "add_FGArcadeScoreUploadEvent (Args: 1)",
+        "remove_FGArcadeScoreUploadEvent (Args: 1)",
+        "ExecuteFGArcadeScoreUpload (Args: 2)",
+        "add_FGArcadeBonusStageClearEvent (Args: 1)",
+        "remove_FGArcadeBonusStageClearEvent (Args: 1)",
+        "ExecuteBonusStageFGArcadeClear (Args: 1)",
+        "add_FGTrainingPlayEvent (Args: 1)",
+        "remove_FGTrainingPlayEvent (Args: 1)",
+        "ExecuteFGTrainingPlay (Args: 1)",
+        "add_FGTrainingPlayingEvent (Args: 1)",
+        "remove_FGTrainingPlayingEvent (Args: 1)",
+        "ExecuteFGTrainingPlaying (Args: 1)",
+        "add_FGCharacterGuidePlayEvent (Args: 1)",
+        "remove_FGCharacterGuidePlayEvent (Args: 1)",
+        "ExecuteFGCharacterGuidePlay (Args: 1)",
+        "add_FGCharacterGuideClearEvent (Args: 1)",
+        "remove_FGCharacterGuideClearEvent (Args: 1)",
+        "ExecuteFGCharacterGuideClear (Args: 1)",
+        "add_FGTutorialPlayEvent (Args: 1)",
+        "remove_FGTutorialPlayEvent (Args: 1)",
+        "ExecuteFGTutorialPlay (Args: 0)",
+        "add_FGTutorialClearEvent (Args: 1)",
+        "remove_FGTutorialClearEvent (Args: 1)",
+        "ExecuteFGTutorialClear (Args: 0)",
+        "add_FGComboTrialPlayEvent (Args: 1)",
+        "remove_FGComboTrialPlayEvent (Args: 1)",
+        "ExecuteFGComboTrialPlay (Args: 1)",
+        "add_FGComboTrialClearEvent (Args: 1)",
+        "remove_FGComboTrialClearEvent (Args: 1)",
+        "ExecuteFGComboTrialClear (Args: 2)",
+        "add_WTTutorialEndEvent (Args: 1)",
+        "remove_WTTutorialEndEvent (Args: 1)",
+        "ExecuteWTTutorialEnd (Args: 0)",
+        "add_WTStoryClearEvent (Args: 1)",
+        "remove_WTStoryClearEvent (Args: 1)",
+        "ExecuteWTStoryClear (Args: 0)",
+        "add_WTSubMissionClearEvent (Args: 1)",
+        "remove_WTSubMissionClearEvent (Args: 1)",
+        "ExecuteWTSubMissionClear (Args: 1)",
+        "add_WTOMDestroyEvent (Args: 1)",
+        "remove_WTOMDestroyEvent (Args: 1)",
+        "ExecuteWTOMDestroy (Args: 0)",
+        "add_WTOpenTreasureBoxEvent (Args: 1)",
+        "remove_WTOpenTreasureBoxEvent (Args: 1)",
+        "ExecuteWTOpenTreasureBox (Args: 0)",
+        "add_WTMasterActionHitToNpcEvent (Args: 1)",
+        "remove_WTMasterActionHitToNpcEvent (Args: 1)",
+        "ExecuteWTMasterActionHitToNpc (Args: 0)",
+        "add_WTEmoteToNpcEvent (Args: 1)",
+        "remove_WTEmoteToNpcEvent (Args: 1)",
+        "ExecuteWTEmoteToNpc (Args: 0)",
+        "add_WTSetNpcEvent (Args: 1)",
+        "remove_WTSetNpcEvent (Args: 1)",
+        "ExecuteWTSetNpc (Args: 1)",
+        "add_WTRemoveNpcEvent (Args: 1)",
+        "remove_WTRemoveNpcEvent (Args: 1)",
+        "ExecuteWTRemoveNpc (Args: 1)",
+        "add_WTBattleAttackHitEvent (Args: 1)",
+        "remove_WTBattleAttackHitEvent (Args: 1)",
+        "ExecuteWTBattleAttackHit (Args: 1)",
+        "add_WTBattleComboHitEvent (Args: 1)",
+        "remove_WTBattleComboHitEvent (Args: 1)",
+        "ExecuteWTBattleComboHit (Args: 1)",
+        "add_WTBattleDriveParrySuccessEvent (Args: 1)",
+        "remove_WTBattleDriveParrySuccessEvent (Args: 1)",
+        "ExecuteWTBattleDriveParrySuccess (Args: 0)",
+        "add_WTBattleSAUseEvent (Args: 1)",
+        "remove_WTBattleSAUseEvent (Args: 1)",
+        "ExecuteWTBattleSAUse (Args: 0)",
+        "add_WTBattleDriveStepUseEvent (Args: 1)",
+        "remove_WTBattleDriveStepUseEvent (Args: 1)",
+        "ExecuteWTBattleDriveStepUse (Args: 0)",
+        "add_WTBattleAppealUseEvent (Args: 1)",
+        "remove_WTBattleAppealUseEvent (Args: 1)",
+        "ExecuteWTBattleAppealUse (Args: 0)",
+        "add_WTBattleEnemyDownEvent (Args: 1)",
+        "remove_WTBattleEnemyDownEvent (Args: 1)",
+        "ExecuteWTBattleEnemyDown (Args: 0)",
+        "add_WTBattleEnemyStanEvent (Args: 1)",
+        "remove_WTBattleEnemyStanEvent (Args: 1)",
+        "ExecuteWTBattleEnemyStan (Args: 0)",
+        "add_WTBattleZoneInEvent (Args: 1)",
+        "remove_WTBattleZoneInEvent (Args: 1)",
+        "ExecuteWTBattleZoneIn (Args: 0)",
+        "add_WTContactFinishEvent (Args: 1)",
+        "remove_WTContactFinishEvent (Args: 1)",
+        "ExecuteWTContactFinish (Args: 1)",
+        "add_WTBattleFinishEvent (Args: 1)",
+        "remove_WTBattleFinishEvent (Args: 1)",
+        "ExecuteWTBattleFinish (Args: 1)",
+        "add_WTAccesMissionZoneEvent (Args: 1)",
+        "remove_WTAccesMissionZoneEvent (Args: 1)",
+        "ExecuteWTAccesMissionZone (Args: 2)",
+        "add_WTEntryCityEvent (Args: 1)",
+        "remove_WTEntryCityEvent (Args: 1)",
+        "ExecuteWTEntryCity (Args: 2)",
+        "add_WTAcceptMissionEvent (Args: 1)",
+        "remove_WTAcceptMissionEvent (Args: 1)",
+        "ExecuteWTAcceptMission (Args: 1)",
+        "add_WTCompleteMissionEvent (Args: 1)",
+        "remove_WTCompleteMissionEvent (Args: 1)",
+        "ExecuteWTCompleteMission (Args: 1)",
+        "add_WTClearMissionPhaseEvent (Args: 1)",
+        "remove_WTClearMissionPhaseEvent (Args: 1)",
+        "ExecuteWTClearMissionPhaseEvent (Args: 2)",
+        "add_WTCancelMissionEvent (Args: 1)",
+        "remove_WTCancelMissionEvent (Args: 1)",
+        "ExecuteWTCancelMission (Args: 3)",
+        "add_WTEntryMasterEvent (Args: 1)",
+        "remove_WTEntryMasterEvent (Args: 1)",
+        "ExecuteWTEntryMasterEvent (Args: 1)",
+        "add_WTUseShopEvent (Args: 1)",
+        "remove_WTUseShopEvent (Args: 1)",
+        "ExecuteWTUseShopEvent (Args: 1)",
+        "add_WTEquipItemEvent (Args: 1)",
+        "remove_WTEquipItemEvent (Args: 1)",
+        "ExecuteWTEquipItemEvent (Args: 1)",
+        "add_WTUseMessageAppEvent (Args: 1)",
+        "remove_WTUseMessageAppEvent (Args: 1)",
+        "ExecuteWTUseMessageAppEvent (Args: 0)",
+        "add_WTPlayMinigameEvent (Args: 1)",
+        "remove_WTPlayMinigameEvent (Args: 1)",
+        "ExecuteWTPlayMinigameEvent (Args: 2)",
+        "add_WTClearMinigameEvent (Args: 1)",
+        "remove_WTClearMinigameEvent (Args: 1)",
+        "ExecuteWTClearMinigameEvent (Args: 3)",
+        "add_WTReceiveIMEvent (Args: 1)",
+        "remove_WTReceiveIMEvent (Args: 1)",
+        "ExecuteWTReceiveIMEvent (Args: 1)",
+        "add_WTReadIMEvent (Args: 1)",
+        "remove_WTReadIMEvent (Args: 1)",
+        "ExecuteWTReadIMEvent (Args: 1)",
+        "add_WTReplyIMEvent (Args: 1)",
+        "remove_WTReplyIMEvent (Args: 1)",
+        "ExecuteWTReplyIMEvent (Args: 1)",
+        "add_WTUnlockIMHolderEvent (Args: 1)",
+        "remove_WTUnlockIMHolderEvent (Args: 1)",
+        "ExecuteWTUnlockIMHolderEvent (Args: 1)",
+        "add_WTChangeOMStatusEvent (Args: 1)",
+        "remove_WTChangeOMStatusEvent (Args: 1)",
+        "ExecuteWTChangeOMStatusEvent (Args: 2)",
+        "add_WTLevelUpEvent (Args: 1)",
+        "remove_WTLevelUpEvent (Args: 1)",
+        "ExecuteLevelUp (Args: 1)",
+        "add_WTStyleLevelUpEvent (Args: 1)",
+        "remove_WTStyleLevelUpEvent (Args: 1)",
+        "ExecuteStyleLevelUpEvent (Args: 2)",
+        "add_WTFavoriteUpEvent (Args: 1)",
+        "remove_WTFavoriteUpEvent (Args: 1)",
+        "ExecuteFavoriteUpEvent (Args: 3)",
+        "add_WTCameraInCheckEvent (Args: 1)",
+        "remove_WTCameraInCheckEvent (Args: 1)",
+        "ExecuteCameraInCheck (Args: 0)",
+        "add_WTCloseDeviceEvent (Args: 1)",
+        "remove_WTCloseDeviceEvent (Args: 1)",
+        "ExecuteWTCloseDevice (Args: 0)",
+        "add_WTFlagSetEvent (Args: 1)",
+        "remove_WTFlagSetEvent (Args: 1)",
+        "ExecuteWTFlagSet (Args: 3)",
+        "add_WTChangeCityPhaseEvent (Args: 1)",
+        "remove_WTChangeCityPhaseEvent (Args: 1)",
+        "ExecuteWTChangeCityPhase (Args: 1)",
+        "add_WTReadItemEvent (Args: 1)",
+        "remove_WTReadItemEvent (Args: 1)",
+        "ExecuteWTReadItem (Args: 1)",
+        "add_WTAddItemEvent (Args: 1)",
+        "remove_WTAddItemEvent (Args: 1)",
+        "ExecuteWTAddItem (Args: 2)",
+        "add_WTChangeMoneyEvent (Args: 1)",
+        "remove_WTChangeMoneyEvent (Args: 1)",
+        "ExecuteChangeMoneyEvent (Args: 2)",
+        "add_WTShopEatEvent (Args: 1)",
+        "remove_WTShopEatEvent (Args: 1)",
+        "ExecuteShopEatEvent (Args: 2)",
+        "add_WTBattleActionCheckEvent (Args: 1)",
+        "remove_WTBattleActionCheckEvent (Args: 1)",
+        "ExecuteBattleActionCheckEvent (Args: 0)",
+        "add_WTPhotoModeCheckEvent (Args: 1)",
+        "remove_WTPhotoModeCheckEvent (Args: 1)",
+        "ExecutePhotoModeCheckEvent (Args: 1)",
+        "add_WTChangeDuringTutorialFlagEvent (Args: 1)",
+        "remove_WTChangeDuringTutorialFlagEvent (Args: 1)",
+        "ExecuteWTChangeDuringTutorialFlag (Args: 1)",
+        "add_WTChangeChapterIdEvent (Args: 1)",
+        "remove_WTChangeChapterIdEvent (Args: 1)",
+        "ExecuteWTChangeChapterId (Args: 1)",
+        "add_WTGetUnlockCostumeColorItemEvent (Args: 1)",
+        "remove_WTGetUnlockCostumeColorItemEvent (Args: 1)",
+        "ExecuteWTGetUnlockCostumeColorItemEvent (Args: 1)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.global.gEventHandler"
+}

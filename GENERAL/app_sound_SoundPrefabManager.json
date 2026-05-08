@@ -1,0 +1,181 @@
+{
+    "__Fields": {
+        "<DefaultFolder>k__BackingField": {
+            "__Methods": [
+                "getAllSubFolders (Args: 0)",
+                "get_Children (Args: 0)",
+                "get_Folders (Args: 0)",
+                "addMatchFolder (Args: 2)",
+                "op_Implicit (Args: 1)",
+                "op_Equality (Args: 2)",
+                "op_Inequality (Args: 2)",
+                "activate (Args: 0)",
+                "activate (Args: 1)",
+                "deactivate (Args: 0)",
+                "destroy (Args: 1)",
+                "equals (Args: 2)",
+                "find (Args: 1)",
+                "ToString (Args: 0)",
+                "get_Name (Args: 0)",
+                "get_Path (Args: 0)",
+                "get_Tag (Args: 0)",
+                "set_Tag (Args: 1)",
+                "get_Update (Args: 0)",
+                "get_Draw (Args: 0)",
+                "get_Select (Args: 0)",
+                "set_Select (Args: 1)",
+                "get_UpdateSelf (Args: 0)",
+                "set_UpdateSelf (Args: 1)",
+                "get_DrawSelf (Args: 0)",
+                "set_DrawSelf (Args: 1)",
+                "get_Active (Args: 0)",
+                "get_Activating (Args: 0)",
+                "get_Valid (Args: 0)",
+                "get_Standby (Args: 0)",
+                "set_Standby (Args: 1)",
+                "get_Ready (Args: 0)",
+                "get_Exist (Args: 0)",
+                "get_SceneFolder (Args: 0)",
+                "get_Parent (Args: 0)",
+                "get_Scene (Args: 0)",
+                "get_Child (Args: 0)",
+                "get_Next (Args: 0)",
+                "get_TagValue (Args: 0)",
+                "set_TagValue (Args: 1)",
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "via.Folder"
+        },
+        "PrefabTypeMax": 8,
+        "_ContainerList": {
+            "Items": [
+                {
+                    "__Fields": {
+                        "_PrefabType": 0
+                    },
+                    "__Methods": [
+                        "doAwake (Args: 0)",
+                        "update (Args: 0)",
+                        "doOnDestroy (Args: 0)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.sound.SoundPrefabContainer"
+                },
+                {
+                    "__Fields": {
+                        "_PrefabType": 1
+                    },
+                    "__Methods": [
+                        "doAwake (Args: 0)",
+                        "update (Args: 0)",
+                        "doOnDestroy (Args: 0)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.sound.SoundPrefabContainer"
+                },
+                {
+                    "__Fields": {
+                        "_PrefabType": 2
+                    },
+                    "__Methods": [
+                        "doAwake (Args: 0)",
+                        "update (Args: 0)",
+                        "doOnDestroy (Args: 0)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.sound.SoundPrefabContainer"
+                },
+                {
+                    "__Fields": {
+                        "_PrefabType": 3
+                    },
+                    "__Methods": [
+                        "doAwake (Args: 0)",
+                        "update (Args: 0)",
+                        "doOnDestroy (Args: 0)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.sound.SoundPrefabContainer"
+                },
+                {
+                    "__Fields": {
+                        "_PrefabType": 4
+                    },
+                    "__Methods": [
+                        "doAwake (Args: 0)",
+                        "update (Args: 0)",
+                        "doOnDestroy (Args: 0)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.sound.SoundPrefabContainer"
+                },
+                {
+                    "__Fields": {
+                        "_PrefabType": 5
+                    },
+                    "__Methods": [
+                        "doAwake (Args: 0)",
+                        "update (Args: 0)",
+                        "doOnDestroy (Args: 0)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.sound.SoundPrefabContainer"
+                },
+                {
+                    "__Fields": {
+                        "_PrefabType": 6
+                    },
+                    "__Methods": [
+                        "doAwake (Args: 0)",
+                        "update (Args: 0)",
+                        "doOnDestroy (Args: 0)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.sound.SoundPrefabContainer"
+                },
+                {
+                    "__Fields": {
+                        "_PrefabType": 7
+                    },
+                    "__Methods": [
+                        "doAwake (Args: 0)",
+                        "update (Args: 0)",
+                        "doOnDestroy (Args: 0)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.sound.SoundPrefabContainer"
+                }
+            ],
+            "__Count": 8,
+            "__Methods": [
+                "Set (Args: 2)",
+                "Get (Args: 1)",
+                "Address (Args: 1)",
+                "GetEnumerator (Args: 0)",
+                "Add (Args: 1)",
+                "Clear (Args: 0)",
+                "Contains (Args: 1)",
+                "CopyTo (Args: 2)",
+                "Remove (Args: 1)",
+                "get_Item (Args: 1)",
+                "set_Item (Args: 2)",
+                "IndexOf (Args: 1)",
+                "Insert (Args: 2)",
+                "RemoveAt (Args: 1)"
+            ],
+            "__Type": "app.sound.SoundPrefabContainer[]"
+        }
+    },
+    "__Methods": [
+        "get_DefaultFolder (Args: 0)",
+        "set_DefaultFolder (Args: 1)",
+        "createObject (Args: 4)",
+        "registerContainer (Args: 2)",
+        "removeContainer (Args: 2)",
+        "doAwake (Args: 0)",
+        "doStart (Args: 0)",
+        ".ctor (Args: 0)",
+        ".cctor (Args: 0)"
+    ],
+    "__Type": "app.sound.SoundPrefabManager"
+}

@@ -1,0 +1,23 @@
+{
+    "app.UIDataManager": [
+        ".ctor (Args: 0)",
+        "GetGameMode (Args: 0)",
+        "Init (Args: 1)",
+        "doAwake (Args: 0)",
+        "doUpdate (Args: 0)",
+        "get_Battle (Args: 0)",
+        "get_DropLock (Args: 0)",
+        "get_GameMode (Args: 0)",
+        "get_Master (Args: 0)",
+        "get_Profile (Args: 0)",
+        "get_Style (Args: 0)",
+        "set_GameMode (Args: 1)"
+    ],
+    "app.UIDataManager.Battle": [
+        ".ctor (Args: 0)",
+        "GetAliveEnemyNum (Args: 0)",
+        "GetFighterName (Args: 2)",
+        "GetFighterNameBySlotId (Args: 2)",
+        "GetTotalEnemyNum (Args: 0)"
+    ]
+}

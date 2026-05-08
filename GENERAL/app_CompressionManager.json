@@ -1,0 +1,17 @@
+{
+    "__Fields": {
+        "<Ticket>k__BackingField": 0,
+        "_IsCompress": false,
+        "_IsDecompress": false
+    },
+    "__Methods": [
+        "get_Ticket (Args: 0)",
+        "set_Ticket (Args: 1)",
+        "doStart (Args: 0)",
+        "Compression (Args: 4)",
+        "Decompression (Args: 2)",
+        "doUpdate (Args: 0)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.CompressionManager"
+}

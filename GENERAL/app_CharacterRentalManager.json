@@ -1,0 +1,291 @@
+{
+    "__Fields": {
+        "<TicketInfoDic>k__BackingField": {
+            "Items": [
+                "<Item Error>"
+            ],
+            "__Count": 1,
+            "__Fields": {
+                "_buckets": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": 0
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        },
+                        {
+                            "__Fields": {
+                                "mValue": -1
+                            },
+                            "__Methods": [
+                                "ToString (Args: 0)",
+                                "ToString (Args: 1)",
+                                "Equals (Args: 1)",
+                                "Equals (Args: 1)",
+                                "ToString (Args: 2)",
+                                "CompareTo (Args: 1)",
+                                "CompareTo (Args: 1)",
+                                "Parse (Args: 1)",
+                                "TryParse (Args: 2)",
+                                "GetHashCode (Args: 0)",
+                                "GetTypeCode (Args: 0)",
+                                "System.IConvertible.ToBoolean (Args: 1)",
+                                "System.IConvertible.ToByte (Args: 1)",
+                                "System.IConvertible.ToChar (Args: 1)",
+                                "System.IConvertible.ToDateTime (Args: 1)",
+                                "System.IConvertible.ToDecimal (Args: 1)",
+                                "System.IConvertible.ToDouble (Args: 1)",
+                                "System.IConvertible.ToInt16 (Args: 1)",
+                                "System.IConvertible.ToInt32 (Args: 1)",
+                                "System.IConvertible.ToInt64 (Args: 1)",
+                                "System.IConvertible.ToSByte (Args: 1)",
+                                "System.IConvertible.ToSingle (Args: 1)",
+                                "System.IConvertible.ToType (Args: 2)",
+                                "System.IConvertible.ToUInt16 (Args: 1)",
+                                "System.IConvertible.ToUInt32 (Args: 1)",
+                                "System.IConvertible.ToUInt64 (Args: 1)",
+                                "ToString (Args: 1)"
+                            ],
+                            "__Type": "System.Int32"
+                        }
+                    ],
+                    "__Count": 3,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "System.Int32[]"
+                },
+                "_comparer": {
+                    "__Methods": [
+                        "Equals (Args: 2)",
+                        "GetHashCode (Args: 1)",
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "System.Collections.Generic.GenericEqualityComparer`1<System.UInt32>"
+                },
+                "_count": 1,
+                "_entries": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "hashCode": 1,
+                                "key": 1,
+                                "next": -1,
+                                "value": {
+                                    "__Fields": {
+                                        "amount": 1,
+                                        "item_category": 18,
+                                        "item_id": 1
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.network.api.HatoClientAPI.Component.CommonInventoryRentalTicketInfo"
+                                }
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.UInt32,app.network.api.HatoClientAPI.Component.CommonInventoryRentalTicketInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.UInt32,app.network.api.HatoClientAPI.Component.CommonInventoryRentalTicketInfo>"
+                        },
+                        {
+                            "__Fields": {
+                                "hashCode": 0,
+                                "key": 0,
+                                "next": 0
+                            },
+                            "__Methods": null,
+                            "__Type": "System.Collections.Generic.Dictionary`2.Entry<System.UInt32,app.network.api.HatoClientAPI.Component.CommonInventoryRentalTicketInfo>"
+                        }
+                    ],
+                    "__Count": 3,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "System.Collections.Generic.Dictionary`2.Entry[[System.UInt32, mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[app.network.api.HatoClientAPI.Component.CommonInventoryRentalTicketInfo, mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]][]"
+                },
+                "_freeCount": 0,
+                "_freeList": -1
+            },
+            "__Methods": [
+                "get_Comparer (Args: 0)",
+                "get_Count (Args: 0)",
+                "get_Keys (Args: 0)",
+                "System.Collections.Generic.IDictionary<TKey,TValue>.get_Keys (Args: 0)",
+                "get_Values (Args: 0)",
+                "System.Collections.Generic.IDictionary<TKey,TValue>.get_Values (Args: 0)",
+                "get_Item (Args: 1)",
+                "set_Item (Args: 2)",
+                "System.Collections.ICollection.get_SyncRoot (Args: 0)",
+                "System.Collections.IDictionary.get_Keys (Args: 0)",
+                "System.Collections.IDictionary.get_Values (Args: 0)",
+                "System.Collections.Generic.IReadOnlyDictionary<TKey,TValue>.get_Keys (Args: 0)",
+                "System.Collections.Generic.IReadOnlyDictionary<TKey,TValue>.get_Values (Args: 0)",
+                "System.Collections.IDictionary.get_Item (Args: 1)",
+                "System.Collections.IDictionary.set_Item (Args: 2)",
+                ".ctor (Args: 0)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 2)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 2)",
+                "Add (Args: 2)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Add (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Contains (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.Remove (Args: 1)",
+                "Clear (Args: 0)",
+                "ContainsKey (Args: 1)",
+                "ContainsValue (Args: 1)",
+                "CopyTo (Args: 2)",
+                "GetEnumerator (Args: 0)",
+                "System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<TKey,TValue>>.GetEnumerator (Args: 0)",
+                "FindEntry (Args: 1)",
+                "Initialize (Args: 1)",
+                "Insert (Args: 3)",
+                "Resize (Args: 0)",
+                "Remove (Args: 1)",
+                "TryGetValue (Args: 2)",
+                "GetValueOrDefault (Args: 1)",
+                "System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<TKey,TValue>>.CopyTo (Args: 2)",
+                "System.Collections.ICollection.CopyTo (Args: 2)",
+                "System.Collections.IEnumerable.GetEnumerator (Args: 0)",
+                "IsCompatibleKey (Args: 1)",
+                "System.Collections.IDictionary.Add (Args: 2)",
+                "System.Collections.IDictionary.Contains (Args: 1)",
+                "System.Collections.IDictionary.GetEnumerator (Args: 0)",
+                "System.Collections.IDictionary.Remove (Args: 1)"
+            ],
+            "__Type": "System.Collections.Generic.Dictionary`2<System.UInt32,app.network.api.HatoClientAPI.Component.CommonInventoryRentalTicketInfo>"
+        },
+        "OnExpiredRental": {
+            "__Methods": [
+                "Invoke (Args: 1)"
+            ],
+            "__Type": "System.Action`1<System.UInt32>"
+        }
+    },
+    "__Methods": [
+        "get_RentalInfoDic (Args: 0)",
+        "set_RentalInfoDic (Args: 1)",
+        "get_TicketInfoDic (Args: 0)",
+        "set_TicketInfoDic (Args: 1)",
+        "add_OnExpiredRental (Args: 1)",
+        "remove_OnExpiredRental (Args: 1)",
+        "RequestCharacterRentaiInfo (Args: 2)",
+        "GetCharacterRentalInfo (Args: 1)",
+        "IsRentalCharacter (Args: 1)",
+        "GetCharacterRentalTicketNum (Args: 1)",
+        "AddCharacterRentalTicketNum (Args: 2)",
+        "GetCharacterRentalTicketValidMinute (Args: 1)",
+        "RequestRentCharacter (Args: 4)",
+        "SetTicketInfo (Args: 1)",
+        "RequestExpireCharacter (Args: 1)",
+        "SetRentalInfo (Args: 1)",
+        "SetInfo (Args: 2)",
+        "ClearCache (Args: 0)",
+        "doUpdate (Args: 0)",
+        ".ctor (Args: 0)",
+        ".cctor (Args: 0)",
+        "<RequestExpireCharacter>b__19_0 (Args: 1)",
+        "<SetRentalInfo>b__20_0 (Args: 1)"
+    ],
+    "__Type": "app.CharacterRentalManager"
+}

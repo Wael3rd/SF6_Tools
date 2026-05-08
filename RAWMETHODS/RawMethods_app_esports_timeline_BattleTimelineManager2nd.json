@@ -1,0 +1,29 @@
+{
+    "app.esports.timeline.BattleTimelineManager2nd": [
+        ".ctor (Args: 0)",
+        "DefaultRequest (Args: 0)",
+        "EnableUpdate (Args: 0)",
+        "GetPlayType (Args: 0)",
+        "IsAnyBind (Args: 0)",
+        "RefleshTimeLineDict (Args: 0)",
+        "ReleaseTimelineResource (Args: 0)",
+        "ReselectRequestType (Args: 0)",
+        "SyncTimeline (Args: 0)",
+        "TryGetTimelineBehavior (Args: 2)",
+        "doOnDestroy (Args: 0)",
+        "doStart (Args: 0)",
+        "doUpdate (Args: 0)",
+        "get_PlayType (Args: 0)",
+        "get__roundNo (Args: 0)",
+        "get__stageTimer (Args: 0)",
+        "get__timelineDict (Args: 0)",
+        "get__timelineRequest (Args: 0)",
+        "get__visualManager (Args: 0)",
+        "set_PlayType (Args: 1)",
+        "set__roundNo (Args: 1)",
+        "set__stageTimer (Args: 1)",
+        "set__timelineDict (Args: 1)",
+        "set__timelineRequest (Args: 1)",
+        "set__visualManager (Args: 1)"
+    ]
+}

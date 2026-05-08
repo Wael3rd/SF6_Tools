@@ -1,0 +1,572 @@
+{
+    "__Fields": {
+        "<BonusScheduleList>k__BackingField": {
+            "Items": null,
+            "__Count": 0,
+            "__Fields": {
+                "_items": {
+                    "Items": null,
+                    "__Count": 0,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "app.PlayPointManager.PlayPointBonusSchedule[]"
+                },
+                "_size": 0,
+                "_version": 0
+            },
+            "__Methods": [
+                ".ctor (Args: 0)",
+                ".ctor (Args: 1)",
+                ".ctor (Args: 1)",
+                "get_Capacity (Args: 0)",
+                "set_Capacity (Args: 1)",
+                "get_Count (Args: 0)",
+                "System.Collections.ICollection.get_SyncRoot (Args: 0)",
+                "get_Item (Args: 1)",
+                "set_Item (Args: 2)",
+                "IsCompatibleObject (Args: 1)",
+                "System.Collections.IList.get_Item (Args: 1)",
+                "System.Collections.IList.set_Item (Args: 2)",
+                "Add (Args: 1)",
+                "AddWithResize (Args: 1)",
+                "System.Collections.IList.Add (Args: 1)",
+                "AddRange (Args: 1)",
+                "AsReadOnly (Args: 0)",
+                "BinarySearch (Args: 4)",
+                "BinarySearch (Args: 1)",
+                "BinarySearch (Args: 2)",
+                "Clear (Args: 0)",
+                "Contains (Args: 1)",
+                "System.Collections.IList.Contains (Args: 1)",
+                "CopyTo (Args: 1)",
+                "System.Collections.ICollection.CopyTo (Args: 2)",
+                "CopyTo (Args: 4)",
+                "CopyTo (Args: 2)",
+                "EnsureCapacity (Args: 1)",
+                "Exists (Args: 1)",
+                "Find (Args: 1)",
+                "FindAll (Args: 1)",
+                "FindIndex (Args: 1)",
+                "FindIndex (Args: 2)",
+                "FindIndex (Args: 3)",
+                "FindLast (Args: 1)",
+                "FindLastIndex (Args: 1)",
+                "FindLastIndex (Args: 2)",
+                "FindLastIndex (Args: 3)",
+                "ForEach (Args: 1)",
+                "GetEnumerator (Args: 0)",
+                "System.Collections.Generic.IEnumerable<T>.GetEnumerator (Args: 0)",
+                "System.Collections.IEnumerable.GetEnumerator (Args: 0)",
+                "GetRange (Args: 2)",
+                "IndexOf (Args: 1)",
+                "System.Collections.IList.IndexOf (Args: 1)",
+                "IndexOf (Args: 2)",
+                "IndexOf (Args: 3)",
+                "Insert (Args: 2)",
+                "System.Collections.IList.Insert (Args: 2)",
+                "InsertRange (Args: 2)",
+                "LastIndexOf (Args: 1)",
+                "LastIndexOf (Args: 2)",
+                "LastIndexOf (Args: 3)",
+                "Remove (Args: 1)",
+                "System.Collections.IList.Remove (Args: 1)",
+                "RemoveAll (Args: 1)",
+                "RemoveAt (Args: 1)",
+                "RemoveRange (Args: 2)",
+                "Reverse (Args: 0)",
+                "Reverse (Args: 2)",
+                "Sort (Args: 0)",
+                "Sort (Args: 1)",
+                "Sort (Args: 3)",
+                "Sort (Args: 1)",
+                "ToArray (Args: 0)",
+                "TrimExcess (Args: 0)",
+                "TrueForAll (Args: 1)",
+                ".cctor (Args: 0)"
+            ],
+            "__Type": "System.Collections.Generic.List`1<app.PlayPointManager.PlayPointBonusSchedule>"
+        },
+        "<IntervalElapsedTime>k__BackingField": 0.0,
+        "<IntervalTime>k__BackingField": 0.0,
+        "<PrevClearComboTrialId>k__BackingField": -1,
+        "<TrainingCharacterId>k__BackingField": 0,
+        "<TrainingInputCount>k__BackingField": 0,
+        "<TrainingRequestElapsedTime>k__BackingField": 0.0,
+        "<TrainingRequestInterval>k__BackingField": 60.0,
+        "<TrainingTotalPoint>k__BackingField": 0,
+        "PlayPointSetting": {
+            "__Fields": {
+                "Data": {
+                    "__Fields": {
+                        "BattlePointList": {
+                            "Items": [
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 5,
+                                        "Battle3RoundMatchPoint": 7,
+                                        "Battle5RoundMatchPoint": 10,
+                                        "Content": 1,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 5,
+                                        "Battle3RoundMatchPoint": 5,
+                                        "Battle5RoundMatchPoint": 5,
+                                        "Content": 2,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 1,
+                                        "Battle3RoundMatchPoint": 1,
+                                        "Battle5RoundMatchPoint": 1,
+                                        "Content": 2,
+                                        "IsTeam": true
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 0,
+                                        "Battle3RoundMatchPoint": 5,
+                                        "Battle5RoundMatchPoint": 0,
+                                        "Content": 7,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 0,
+                                        "Battle3RoundMatchPoint": 30,
+                                        "Battle5RoundMatchPoint": 0,
+                                        "Content": 8,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 0,
+                                        "Battle3RoundMatchPoint": 30,
+                                        "Battle5RoundMatchPoint": 0,
+                                        "Content": 9,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 10,
+                                        "Battle3RoundMatchPoint": 10,
+                                        "Battle5RoundMatchPoint": 10,
+                                        "Content": 10,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 0,
+                                        "Battle3RoundMatchPoint": 30,
+                                        "Battle5RoundMatchPoint": 0,
+                                        "Content": 11,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 0,
+                                        "Battle3RoundMatchPoint": 30,
+                                        "Battle5RoundMatchPoint": 0,
+                                        "Content": 13,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 2,
+                                        "Battle3RoundMatchPoint": 0,
+                                        "Battle5RoundMatchPoint": 0,
+                                        "Content": 1000,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Battle1RoundMatchPoint": 5,
+                                        "Battle3RoundMatchPoint": 5,
+                                        "Battle5RoundMatchPoint": 5,
+                                        "Content": 1001,
+                                        "IsTeam": false
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.BattlePoint"
+                                }
+                            ],
+                            "__Count": 11,
+                            "__Methods": [
+                                "Set (Args: 2)",
+                                "Get (Args: 1)",
+                                "Address (Args: 1)",
+                                "GetEnumerator (Args: 0)",
+                                "Add (Args: 1)",
+                                "Clear (Args: 0)",
+                                "Contains (Args: 1)",
+                                "CopyTo (Args: 2)",
+                                "Remove (Args: 1)",
+                                "get_Item (Args: 1)",
+                                "set_Item (Args: 2)",
+                                "IndexOf (Args: 1)",
+                                "Insert (Args: 2)",
+                                "RemoveAt (Args: 1)"
+                            ],
+                            "__Type": "app.PlayPointSetting.BattlePoint[]"
+                        },
+                        "BonusSchedule": {
+                            "__Fields": {
+                                "BonusScheduleUpdateBaseTime": 3300.0,
+                                "BonusScheduleUpdateJitterTime": 180.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PlayPointSetting.BonusSchedule"
+                        },
+                        "ClearPointList": {
+                            "Items": [
+                                {
+                                    "__Fields": {
+                                        "Content": 4,
+                                        "Point": 0
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.ClearPoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Content": 5,
+                                        "Point": 5
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.ClearPoint"
+                                },
+                                {
+                                    "__Fields": {
+                                        "Content": 6,
+                                        "Point": 5
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.ClearPoint"
+                                }
+                            ],
+                            "__Count": 3,
+                            "__Methods": [
+                                "Set (Args: 2)",
+                                "Get (Args: 1)",
+                                "Address (Args: 1)",
+                                "GetEnumerator (Args: 0)",
+                                "Add (Args: 1)",
+                                "Clear (Args: 0)",
+                                "Contains (Args: 1)",
+                                "CopyTo (Args: 2)",
+                                "Remove (Args: 1)",
+                                "get_Item (Args: 1)",
+                                "set_Item (Args: 2)",
+                                "IndexOf (Args: 1)",
+                                "Insert (Args: 2)",
+                                "RemoveAt (Args: 1)"
+                            ],
+                            "__Type": "app.PlayPointSetting.ClearPoint[]"
+                        },
+                        "CpuAvatarBattlePoint": 5,
+                        "CpuCabinetBattlePoint": 5,
+                        "EventJoinPoint": 30,
+                        "NpcBattlePoint": {
+                            "__Fields": {
+                                "Content": 16,
+                                "DiffHighLv": 5,
+                                "DiffLowLv": 5,
+                                "PointList": {
+                                    "Items": [
+                                        {
+                                            "__Fields": {
+                                                "BattleHighLvNpcPoint": "<Max Depth>",
+                                                "BattleLowerLvNpcPoint": "<Max Depth>",
+                                                "BattleNearLvNpcPoint": "<Max Depth>"
+                                            },
+                                            "__Methods": [
+                                                ".ctor (Args: 0)"
+                                            ],
+                                            "__Type": "app.PlayPointSetting.NpcBattlePointLvPoint"
+                                        }
+                                    ],
+                                    "__Count": 1,
+                                    "__Methods": [
+                                        "Set (Args: 2)",
+                                        "Get (Args: 1)",
+                                        "Address (Args: 1)",
+                                        "GetEnumerator (Args: 0)",
+                                        "Add (Args: 1)",
+                                        "Clear (Args: 0)",
+                                        "Contains (Args: 1)",
+                                        "CopyTo (Args: 2)",
+                                        "Remove (Args: 1)",
+                                        "get_Item (Args: 1)",
+                                        "set_Item (Args: 2)",
+                                        "IndexOf (Args: 1)",
+                                        "Insert (Args: 2)",
+                                        "RemoveAt (Args: 1)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.NpcBattlePointLvPoint[]"
+                                }
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PlayPointSetting.NpcBattlePoint"
+                        },
+                        "RivalAIPoint": {
+                            "__Fields": {
+                                "BattlePlayPoint": 20,
+                                "BattleSpectatePoint": 5
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PlayPointSetting.RivalAIPoint"
+                        },
+                        "SpectatePointList": {
+                            "Items": [
+                                {
+                                    "__Fields": {
+                                        "Content": 12,
+                                        "Point": 10
+                                    },
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "app.PlayPointSetting.SpectatePoint"
+                                }
+                            ],
+                            "__Count": 1,
+                            "__Methods": [
+                                "Set (Args: 2)",
+                                "Get (Args: 1)",
+                                "Address (Args: 1)",
+                                "GetEnumerator (Args: 0)",
+                                "Add (Args: 1)",
+                                "Clear (Args: 0)",
+                                "Contains (Args: 1)",
+                                "CopyTo (Args: 2)",
+                                "Remove (Args: 1)",
+                                "get_Item (Args: 1)",
+                                "set_Item (Args: 2)",
+                                "IndexOf (Args: 1)",
+                                "Insert (Args: 2)",
+                                "RemoveAt (Args: 1)"
+                            ],
+                            "__Type": "app.PlayPointSetting.SpectatePoint[]"
+                        },
+                        "TrainingPoint": {
+                            "__Fields": {
+                                "Content": 3,
+                                "InputCount": 300,
+                                "Point": 1,
+                                "SendInterval": 60.0
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.PlayPointSetting.TrainingPoint"
+                        }
+                    },
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "app.PlayPointSetting.Setting"
+                }
+            },
+            "__Methods": [
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "app.PlayPointSetting"
+        }
+    },
+    "__Methods": [
+        "get_Available (Args: 0)",
+        "get_TrainingInputCount (Args: 0)",
+        "set_TrainingInputCount (Args: 1)",
+        "get_TrainingCharacterId (Args: 0)",
+        "set_TrainingCharacterId (Args: 1)",
+        "get_TrainingTotalPoint (Args: 0)",
+        "set_TrainingTotalPoint (Args: 1)",
+        "get_TrainingRequestInterval (Args: 0)",
+        "set_TrainingRequestInterval (Args: 1)",
+        "get_TrainingRequestElapsedTime (Args: 0)",
+        "set_TrainingRequestElapsedTime (Args: 1)",
+        "get_PrevClearComboTrialId (Args: 0)",
+        "set_PrevClearComboTrialId (Args: 1)",
+        "AddArcadePoint (Args: 2)",
+        "AddVersusPoint (Args: 2)",
+        "AddVersusTeamPoint (Args: 2)",
+        "AddExtremeBattlePoint (Args: 1)",
+        "AddRankMatchPoint (Args: 1)",
+        "AddCasualMatchPoint (Args: 1)",
+        "AddCustomRoomPoint (Args: 2)",
+        "AddCabinetBattlePoint (Args: 1)",
+        "AddAvatarBattlePoint (Args: 1)",
+        "AddSpectatePoint (Args: 0)",
+        "AddTutorialPoint (Args: 0)",
+        "AddCharacterGuidePoint (Args: 1)",
+        "AddComboTrialPoint (Args: 2)",
+        "AddTrainingPoint (Args: 1)",
+        "AddEventJoinPoint (Args: 0)",
+        "AddCpuCabinetBattlePoint (Args: 1)",
+        "AddCpuAvatarBattlePoint (Args: 1)",
+        "AddRivalAIBattlePlayPoint (Args: 1)",
+        "AddRivalAIBattleSpectatePoint (Args: 0)",
+        "AddWTNpcBattlePoint (Args: 3)",
+        "DoStartCommon (Args: 0)",
+        "DoUpdateCommon (Args: 0)",
+        "DoOnDestroyCommon (Args: 0)",
+        "RegisterFlowHandler (Args: 0)",
+        "UnregisterFlowHandler (Args: 0)",
+        "OnFlowNotify (Args: 1)",
+        "GetBattlePoint (Args: 3)",
+        "GetSpectatePoint (Args: 1)",
+        "GetClearPoint (Args: 1)",
+        "GetNpcBattlePoint (Args: 2)",
+        "UpdateTrainingPlayPoint (Args: 0)",
+        "RequestAddPlayPoint (Args: 3)",
+        "doStart (Args: 0)",
+        "doUpdate (Args: 0)",
+        "doOnDestroy (Args: 0)",
+        "get_BonusScheduleList (Args: 0)",
+        "set_BonusScheduleList (Args: 1)",
+        "get_IntervalTime (Args: 0)",
+        "set_IntervalTime (Args: 1)",
+        "get_IntervalElapsedTime (Args: 0)",
+        "set_IntervalElapsedTime (Args: 1)",
+        "ExistsActiveBonusSchedule (Args: 0)",
+        "GetActiveBonusScheduleList (Args: 0)",
+        "IsActiveBonusSchedule (Args: 1)",
+        "IsBonusCharacter (Args: 1)",
+        "GetCharacterBonusRatio (Args: 1)",
+        "GetBonusCharacterList (Args: 0)",
+        "RequestGetBonusSchedule (Args: 1)",
+        "DoStartBonus (Args: 0)",
+        "DoUpdateBonus (Args: 0)",
+        "InitInterval (Args: 0)",
+        "UpdateBonusSchedule (Args: 0)",
+        "IsEnableUpdateBonusScheduleZone (Args: 0)",
+        "ConvertServerDataToClientData (Args: 1)",
+        "FGArcadeBattle1Round (Args: 1)",
+        "FGArcadeBattle3Round (Args: 1)",
+        "FGArcadeBattle5Round (Args: 1)",
+        "FGVersusBattle1Round (Args: 1)",
+        "FGVersusBattle3Round (Args: 1)",
+        "FGVersusBattle5Round (Args: 1)",
+        "FGVersusBattleTeam1Round (Args: 1)",
+        "FGVersusBattleTeam3Round (Args: 1)",
+        "FGVersusBattleTeam5Round (Args: 1)",
+        "FGTrainingPlaying (Args: 1)",
+        "FGCharacterTutorialClear (Args: 0)",
+        "FGCharacterGuideClear (Args: 1)",
+        "FGComboTrialClear (Args: 2)",
+        "FGExtremeBattle (Args: 1)",
+        "FGRanckedMatchBattle (Args: 1)",
+        "FGCasualMatchBattle (Args: 1)",
+        "FGCustomRoomBattle1Round (Args: 1)",
+        "FGCustomRoomBattle3Round (Args: 1)",
+        "FGCustomRoomBattle5Round (Args: 1)",
+        "BHCabinetBattle (Args: 1)",
+        "BHSpectateCabinetBattle (Args: 0)",
+        "BHAvatarBattle (Args: 1)",
+        "BHSpectateAvatarBattle (Args: 0)",
+        "BHEventJoin (Args: 0)",
+        "BHCpuCabinetBattle (Args: 1)",
+        "BHCpuAvatarBattle (Args: 1)",
+        "BHRivalAIBattlePlay (Args: 1)",
+        "BHRivalAIBattleSpectate (Args: 0)",
+        "WTBattleNpc (Args: 3)",
+        "DoStartEvent (Args: 0)",
+        "DoOnDestroyEvent (Args: 0)",
+        "RegisterEventHandler (Args: 0)",
+        "UnregisterEventHandler (Args: 0)",
+        "OnCommonBattlePlayEvent (Args: 1)",
+        "OnCommonBattleSpectateDetailEvent (Args: 1)",
+        "OnFGTrainingPlayingEvent (Args: 1)",
+        "OnFGTutorialClearEvent (Args: 0)",
+        "OnFGCharacterGuideClearEvent (Args: 1)",
+        "OnFGComboTrialClearEvent (Args: 2)",
+        "OnBHEventJoinEvent (Args: 0)",
+        "OnBHRaidCpuCabinetBattlePlayEvent (Args: 1)",
+        "OnBHRaidCpuAvatarBattlePlayEvent (Args: 1)",
+        "OnBHRivalAIBattlePlayEvent (Args: 1)",
+        "OnBHRivalAIBattleSpectateEvent (Args: 0)",
+        "OnWTBattleFinishEvent (Args: 1)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.PlayPointManager"
+}

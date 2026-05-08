@@ -1,0 +1,241 @@
+{
+    "__Fields": {
+        "Setting": {
+            "__Fields": {
+                "AntennaScoreList": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "Antenna": 1,
+                                "Score": 1000000
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.network.udServerSelectSetting.AntennaScore"
+                        },
+                        {
+                            "__Fields": {
+                                "Antenna": 2,
+                                "Score": 2000000
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.network.udServerSelectSetting.AntennaScore"
+                        },
+                        {
+                            "__Fields": {
+                                "Antenna": 3,
+                                "Score": 3000000
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.network.udServerSelectSetting.AntennaScore"
+                        },
+                        {
+                            "__Fields": {
+                                "Antenna": 4,
+                                "Score": 4000000
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.network.udServerSelectSetting.AntennaScore"
+                        },
+                        {
+                            "__Fields": {
+                                "Antenna": 5,
+                                "Score": 5000000
+                            },
+                            "__Methods": [
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.network.udServerSelectSetting.AntennaScore"
+                        }
+                    ],
+                    "__Count": 5,
+                    "__Fields": {
+                        "_items": {
+                            "Items": [
+                                "<Circular>",
+                                "<Circular>",
+                                "<Circular>",
+                                "<Circular>",
+                                "<Circular>"
+                            ],
+                            "__Count": 5,
+                            "__Methods": [
+                                "Set (Args: 2)",
+                                "Get (Args: 1)",
+                                "Address (Args: 1)",
+                                "GetEnumerator (Args: 0)",
+                                "Add (Args: 1)",
+                                "Clear (Args: 0)",
+                                "Contains (Args: 1)",
+                                "CopyTo (Args: 2)",
+                                "Remove (Args: 1)",
+                                "get_Item (Args: 1)",
+                                "set_Item (Args: 2)",
+                                "IndexOf (Args: 1)",
+                                "Insert (Args: 2)",
+                                "RemoveAt (Args: 1)"
+                            ],
+                            "__Type": "app.network.udServerSelectSetting.AntennaScore[]"
+                        },
+                        "_size": 5,
+                        "_version": 0
+                    },
+                    "__Methods": [
+                        ".ctor (Args: 0)",
+                        ".ctor (Args: 1)",
+                        ".ctor (Args: 1)",
+                        "get_Capacity (Args: 0)",
+                        "set_Capacity (Args: 1)",
+                        "get_Count (Args: 0)",
+                        "System.Collections.ICollection.get_SyncRoot (Args: 0)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IsCompatibleObject (Args: 1)",
+                        "System.Collections.IList.get_Item (Args: 1)",
+                        "System.Collections.IList.set_Item (Args: 2)",
+                        "Add (Args: 1)",
+                        "AddWithResize (Args: 1)",
+                        "System.Collections.IList.Add (Args: 1)",
+                        "AddRange (Args: 1)",
+                        "AsReadOnly (Args: 0)",
+                        "BinarySearch (Args: 4)",
+                        "BinarySearch (Args: 1)",
+                        "BinarySearch (Args: 2)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "System.Collections.IList.Contains (Args: 1)",
+                        "CopyTo (Args: 1)",
+                        "System.Collections.ICollection.CopyTo (Args: 2)",
+                        "CopyTo (Args: 4)",
+                        "CopyTo (Args: 2)",
+                        "EnsureCapacity (Args: 1)",
+                        "Exists (Args: 1)",
+                        "Find (Args: 1)",
+                        "FindAll (Args: 1)",
+                        "FindIndex (Args: 1)",
+                        "FindIndex (Args: 2)",
+                        "FindIndex (Args: 3)",
+                        "FindLast (Args: 1)",
+                        "FindLastIndex (Args: 1)",
+                        "FindLastIndex (Args: 2)",
+                        "FindLastIndex (Args: 3)",
+                        "ForEach (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "System.Collections.Generic.IEnumerable<T>.GetEnumerator (Args: 0)",
+                        "System.Collections.IEnumerable.GetEnumerator (Args: 0)",
+                        "GetRange (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "System.Collections.IList.IndexOf (Args: 1)",
+                        "IndexOf (Args: 2)",
+                        "IndexOf (Args: 3)",
+                        "Insert (Args: 2)",
+                        "System.Collections.IList.Insert (Args: 2)",
+                        "InsertRange (Args: 2)",
+                        "LastIndexOf (Args: 1)",
+                        "LastIndexOf (Args: 2)",
+                        "LastIndexOf (Args: 3)",
+                        "Remove (Args: 1)",
+                        "System.Collections.IList.Remove (Args: 1)",
+                        "RemoveAll (Args: 1)",
+                        "RemoveAt (Args: 1)",
+                        "RemoveRange (Args: 2)",
+                        "Reverse (Args: 0)",
+                        "Reverse (Args: 2)",
+                        "Sort (Args: 0)",
+                        "Sort (Args: 1)",
+                        "Sort (Args: 3)",
+                        "Sort (Args: 1)",
+                        "ToArray (Args: 0)",
+                        "TrimExcess (Args: 0)",
+                        "TrueForAll (Args: 1)",
+                        ".cctor (Args: 0)"
+                    ],
+                    "__Type": "System.Collections.Generic.List`1<app.network.udServerSelectSetting.AntennaScore>"
+                },
+                "BeginnerServerForBeginerScore": 210000,
+                "IntermediateServerForBeginerScore": 110000,
+                "IntermediateServerForIntermediateScore": 110000,
+                "PickupCount": 3,
+                "RecommendPlayerCountScoreWeight": 4000,
+                "ServerNoScoreWeight": 1,
+                "VisitorCountScoreCurve": {
+                    "__Methods": [
+                        ".ctor (Args: 0)",
+                        ".ctor (Args: 2)",
+                        "addKey (Args: 1)",
+                        "appendKey (Args: 1)",
+                        "deepCopy (Args: 1)",
+                        "evaluate (Args: 1)",
+                        "findHermiteRate (Args: 5)",
+                        "findIndex (Args: 1)",
+                        "findNext (Args: 1)",
+                        "findPrev (Args: 1)",
+                        "findSolutionOfCubicEquation (Args: 5)",
+                        "getKeys (Args: 1)",
+                        "getKeysCount (Args: 0)",
+                        "hermite (Args: 5)",
+                        "linear (Args: 3)",
+                        "setKeys (Args: 2)",
+                        "setKeysCount (Args: 1)",
+                        "get_Length (Args: 0)",
+                        "get_Keys (Args: 0)",
+                        "get_MinValue (Args: 0)",
+                        "set_MinValue (Args: 1)",
+                        "get_MaxValue (Args: 0)",
+                        "set_MaxValue (Args: 1)",
+                        "get_MinTime (Args: 0)",
+                        "get_MaxTime (Args: 0)",
+                        "get_EnableClamp (Args: 0)",
+                        "set_EnableClamp (Args: 1)",
+                        "get_LoopStartTime (Args: 0)",
+                        "set_LoopStartTime (Args: 1)",
+                        "get_LoopEndTime (Args: 0)",
+                        "set_LoopEndTime (Args: 1)",
+                        "get_LoopCount (Args: 0)",
+                        "set_LoopCount (Args: 1)",
+                        "get_LoopWrapNo (Args: 0)",
+                        "set_LoopWrapNo (Args: 1)"
+                    ],
+                    "__Type": "via.AnimationCurve"
+                },
+                "VisitorCountScoreWeight": 100000
+            },
+            "__Methods": [
+                "GetAntennaScore (Args: 1)",
+                "GetServerScore (Args: 2)",
+                "GetVisitorCountScore (Args: 1)",
+                "GetRecommendPlayerCountScore (Args: 1)",
+                "GetServerNoScore (Args: 1)",
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "app.network.udServerSelectSetting"
+        }
+    },
+    "__Methods": [
+        "get_RawData (Args: 0)",
+        "set_RawData (Args: 1)",
+        "get_UserProfile (Args: 0)",
+        "set_UserProfile (Args: 1)",
+        "get_ServerList (Args: 0)",
+        "set_ServerList (Args: 1)",
+        "RequestServerList (Args: 1)",
+        "RequestServerData (Args: 2)",
+        "MeasureConnectionStrength (Args: 1)",
+        "MeasureConnectionStrength (Args: 2)",
+        "SetUseServer (Args: 1)",
+        "GetRecommendServer (Args: 0)",
+        "OutputKpiLog (Args: 2)",
+        "GetServerById (Args: 1)",
+        "UpdateServerListAntenna (Args: 0)",
+        "GetRecommendScore (Args: 2)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.ServerSelectManager"
+}

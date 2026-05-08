@@ -1,0 +1,16 @@
+{
+    "app.UIFlowManager": [
+        ".cctor (Args: 0)",
+        ".ctor (Args: 0)",
+        "Active (Args: 1)",
+        "AddHandle (Args: 1)",
+        "End (Args: 1)",
+        "End (Args: 1)",
+        "GetHandles (Args: 1)",
+        "GetStrOnExceptionKPI (Args: 1)",
+        "UpdateFlags (Args: 0)",
+        "doLateUpdate (Args: 0)",
+        "get_IsInput (Args: 0)",
+        "get_Updating (Args: 0)"
+    ]
+}

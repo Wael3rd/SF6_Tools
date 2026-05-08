@@ -1,0 +1,19 @@
+{
+    "app.BattleAssetLoadManager": [
+        ".ctor (Args: 0)",
+        "CheckEnableLoad (Args: 0)",
+        "CheckLoadAsset (Args: 0)",
+        "IsLoadFighterAsset (Args: 1)",
+        "LoadFighterAsset (Args: 4)",
+        "SetFighterAssetLoadMax (Args: 1)",
+        "UnloadFigherAsset (Args: 0)",
+        "UnloadFigherAsset (Args: 4)",
+        "doAwake (Args: 0)",
+        "doLateUpdate (Args: 0)",
+        "get_FighterAssetLoadMax (Args: 0)",
+        "get_IsEnableLoad (Args: 0)",
+        "get_IsValid (Args: 0)",
+        "set_IsEnableLoad (Args: 1)",
+        "set_IsValid (Args: 1)"
+    ]
+}

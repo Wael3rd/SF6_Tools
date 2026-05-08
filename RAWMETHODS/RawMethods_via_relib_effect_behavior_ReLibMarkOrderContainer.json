@@ -1,0 +1,24 @@
+{
+    "via.relib.effect.behavior.ReLibMarkOrderContainer": [
+        ".ctor (Args: 0)",
+        "addMarkOrderData (Args: 2)",
+        "add_InstantiateDecalHander (Args: 1)",
+        "add_PreInstantiateDecalHander (Args: 1)",
+        "createPrefab (Args: 2)",
+        "doStart (Args: 0)",
+        "getDecalOrder (Args: 2)",
+        "getDecalOrder (Args: 3)",
+        "getDecalOrderInternal (Args: 3)",
+        "getStampOrder (Args: 2)",
+        "getStampOrder (Args: 3)",
+        "getStampOrderInternal (Args: 3)",
+        "get_createFolderPath (Args: 0)",
+        "instantiate (Args: 5)",
+        "instantiate (Args: 6)",
+        "removeMarkOrderData (Args: 1)",
+        "removeMarkOrderDataAll (Args: 0)",
+        "remove_InstantiateDecalHander (Args: 1)",
+        "remove_PreInstantiateDecalHander (Args: 1)",
+        "set_createFolderPath (Args: 1)"
+    ]
+}

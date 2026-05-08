@@ -1,0 +1,31 @@
+{
+    "__Fields": {
+        "_CachedTS": {
+            "__Methods": [
+                "requestToDraw (Args: 0)",
+                "requestToDraw (Args: 3)",
+                "get_RenderTargetTexture (Args: 0)",
+                "set_RenderTargetTexture (Args: 1)",
+                "get_SourceTexture (Args: 0)",
+                "set_SourceTexture (Args: 1)",
+                "get_ScalingMethod (Args: 0)",
+                "set_ScalingMethod (Args: 1)",
+                "get_RequestQueueCount (Args: 0)",
+                "get_DebugDraw (Args: 0)",
+                "set_DebugDraw (Args: 1)",
+                "get_DebugDrawMode (Args: 0)",
+                "set_DebugDrawMode (Args: 1)",
+                "get_DebugDrawRect (Args: 0)",
+                "set_DebugDrawRect (Args: 1)",
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "via.render.TextureScaler"
+        }
+    },
+    "__Methods": [
+        "Request (Args: 3)",
+        "doAwake (Args: 0)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.TextureScalerManager"
+}

@@ -1,0 +1,20 @@
+{
+    "__Fields": {
+        "<IsValid>k__BackingField": true,
+        "Setting": {
+            "__Methods": [
+                ".ctor (Args: 0)"
+            ],
+            "__Type": "app.worldtour.udWTWalletManagerSettingUserData"
+        }
+    },
+    "__Methods": [
+        "get_IsValid (Args: 0)",
+        "set_IsValid (Args: 1)",
+        "IsExistWallet (Args: 1)",
+        "GetWalletMax (Args: 1)",
+        "doAwake (Args: 0)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.worldtour.WTWalletManager"
+}

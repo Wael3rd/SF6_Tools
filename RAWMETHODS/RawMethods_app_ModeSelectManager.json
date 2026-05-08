@@ -1,0 +1,11 @@
+{
+    "app.ModeSelectManager": [
+        ".ctor (Args: 0)",
+        "GetActiveEventSchedule (Args: 0)",
+        "GetActiveEventType (Args: 0)",
+        "GetEventTypeDataRecord (Args: 1)",
+        "RequestEventSchedule (Args: 1)",
+        "get_EventScheduleList (Args: 0)",
+        "set_EventScheduleList (Args: 1)"
+    ]
+}

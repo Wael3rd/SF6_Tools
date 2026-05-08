@@ -1,0 +1,10 @@
+{
+    "app.bSceneTransition": [
+        ".ctor (Args: 0)",
+        "doOnDestroy (Args: 0)",
+        "doStart (Args: 0)",
+        "isContainDeactivatingFolders (Args: 1)",
+        "refactRequest (Args: 4)",
+        "updateRequest (Args: 0)"
+    ]
+}

@@ -1,0 +1,15 @@
+{
+    "app.PadVibrationManager": [
+        ".cctor (Args: 0)",
+        ".ctor (Args: 0)",
+        "checkHIDConnect (Args: 0)",
+        "doUpdate (Args: 0)",
+        "getConnectingDeviceID (Args: 1)",
+        "getConnectingDevices (Args: 1)",
+        "isHdVibrarion (Args: 0)",
+        "stopVibration (Args: 1)",
+        "triggerVibration (Args: 2)",
+        "updateDeviceCount (Args: 0)",
+        "updateVibration (Args: 0)"
+    ]
+}

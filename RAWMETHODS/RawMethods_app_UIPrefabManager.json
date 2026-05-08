@@ -1,0 +1,14 @@
+{
+    "app.UIPrefabManager": [
+        ".cctor (Args: 0)",
+        ".ctor (Args: 0)",
+        "CancelRequest (Args: 1)",
+        "CreateObject (Args: 3)",
+        "DestroyObject (Args: 1)",
+        "RegisterContainer (Args: 1)",
+        "RemoveContainer (Args: 1)",
+        "doStart (Args: 0)",
+        "get_DefaultFolder (Args: 0)",
+        "set_DefaultFolder (Args: 1)"
+    ]
+}

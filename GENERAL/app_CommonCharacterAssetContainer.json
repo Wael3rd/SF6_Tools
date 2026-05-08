@@ -1,0 +1,445 @@
+{
+    "__Fields": {
+        "_assets": {
+            "__Fields": {
+                "_FemaleJointConstraints": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.JointConstraintsResourceHolder"
+                },
+                "_FemaleMotion": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_FemaleSkeleton": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.SkeletonResourceHolder"
+                },
+                "_MaleJointConstraints": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.JointConstraintsResourceHolder"
+                },
+                "_MaleSkeleton": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.SkeletonResourceHolder"
+                },
+                "_NPCMotion": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_RetargetAsset": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.RetargetBodySizeResourceHolder"
+                },
+                "_assetTypeMotionAssets": {
+                    "Items": [
+                        {
+                            "__Fields": {
+                                "AssetType": 1,
+                                "FacialMotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                },
+                                "Gender": 1,
+                                "MotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                }
+                            },
+                            "__Methods": [
+                                "get_isUseGender (Args: 0)",
+                                "isSetState (Args: 2)",
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.CommonCharacterAssetUserData.NpcAssetTypeAsset"
+                        },
+                        {
+                            "__Fields": {
+                                "AssetType": 1,
+                                "FacialMotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                },
+                                "Gender": 2,
+                                "MotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                }
+                            },
+                            "__Methods": [
+                                "get_isUseGender (Args: 0)",
+                                "isSetState (Args: 2)",
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.CommonCharacterAssetUserData.NpcAssetTypeAsset"
+                        },
+                        {
+                            "__Fields": {
+                                "AssetType": 2,
+                                "FacialMotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                },
+                                "Gender": 0,
+                                "MotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                }
+                            },
+                            "__Methods": [
+                                "get_isUseGender (Args: 0)",
+                                "isSetState (Args: 2)",
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.CommonCharacterAssetUserData.NpcAssetTypeAsset"
+                        },
+                        {
+                            "__Fields": {
+                                "AssetType": 2,
+                                "FacialMotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                },
+                                "Gender": 0,
+                                "MotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                }
+                            },
+                            "__Methods": [
+                                "get_isUseGender (Args: 0)",
+                                "isSetState (Args: 2)",
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.CommonCharacterAssetUserData.NpcAssetTypeAsset"
+                        },
+                        {
+                            "__Fields": {
+                                "AssetType": 3,
+                                "FacialMotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                },
+                                "Gender": 0,
+                                "MotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                }
+                            },
+                            "__Methods": [
+                                "get_isUseGender (Args: 0)",
+                                "isSetState (Args: 2)",
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.CommonCharacterAssetUserData.NpcAssetTypeAsset"
+                        },
+                        {
+                            "__Fields": {
+                                "AssetType": 3,
+                                "FacialMotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                },
+                                "Gender": 0,
+                                "MotionBankAsset": {
+                                    "__Methods": [
+                                        ".ctor (Args: 0)"
+                                    ],
+                                    "__Type": "via.motion.MotionBankResourceHolder"
+                                }
+                            },
+                            "__Methods": [
+                                "get_isUseGender (Args: 0)",
+                                "isSetState (Args: 2)",
+                                ".ctor (Args: 0)"
+                            ],
+                            "__Type": "app.CommonCharacterAssetUserData.NpcAssetTypeAsset"
+                        }
+                    ],
+                    "__Count": 6,
+                    "__Methods": [
+                        "Set (Args: 2)",
+                        "Get (Args: 1)",
+                        "Address (Args: 1)",
+                        "GetEnumerator (Args: 0)",
+                        "Add (Args: 1)",
+                        "Clear (Args: 0)",
+                        "Contains (Args: 1)",
+                        "CopyTo (Args: 2)",
+                        "Remove (Args: 1)",
+                        "get_Item (Args: 1)",
+                        "set_Item (Args: 2)",
+                        "IndexOf (Args: 1)",
+                        "Insert (Args: 2)",
+                        "RemoveAt (Args: 1)"
+                    ],
+                    "__Type": "app.CommonCharacterAssetUserData.NpcAssetTypeAsset[]"
+                },
+                "_avatarHeadLodGroup": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.JointLODGroupResourceHolder"
+                },
+                "_avatarHeadROMMotionBank": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_avatarJointMap": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.JointMapResourceHolder"
+                },
+                "_avatarLightHeadLodGroup": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.JointLODGroupResourceHolder"
+                },
+                "_avatarLightLodGroup": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.JointLODGroupResourceHolder"
+                },
+                "_avatarLodGroup": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.JointLODGroupResourceHolder"
+                },
+                "_femaleBoneMat": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.render.MeshMaterialResourceHolder"
+                },
+                "_femaleBoneMesh": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.render.MeshResourceHolder"
+                },
+                "_femaleEditMotionBank": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_femaleHeadMat": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.render.MeshMaterialResourceHolder"
+                },
+                "_femaleHeadMesh": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.render.MeshResourceHolder"
+                },
+                "_femalePlayerMotion": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_maleBoneMat": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.render.MeshMaterialResourceHolder"
+                },
+                "_maleBoneMesh": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.render.MeshResourceHolder"
+                },
+                "_maleEditMotionBank": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_maleHeadMat": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.render.MeshMaterialResourceHolder"
+                },
+                "_maleHeadMesh": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.render.MeshResourceHolder"
+                },
+                "_malePlayerMotion": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_npcFacialMotion": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_npcFemaleFacialMotion": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_npcJointMap": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.JointMapResourceHolder"
+                },
+                "_playerFacialMotionBank": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionBankResourceHolder"
+                },
+                "_playerPhotoFacialMotion": {
+                    "__Methods": [
+                        ".ctor (Args: 0)"
+                    ],
+                    "__Type": "via.motion.MotionListResourceHolder"
+                }
+            },
+            "__Methods": [
+                "get_MaleSkeleton (Args: 0)",
+                "set_MaleSkeleton (Args: 1)",
+                "get_MaleJointConstraints (Args: 0)",
+                "set_MaleJointConstraints (Args: 1)",
+                "get_MaleEditMotionBank (Args: 0)",
+                "set_MaleEditMotionBank (Args: 1)",
+                "get_FemaleSkeleton (Args: 0)",
+                "set_FemaleSkeleton (Args: 1)",
+                "get_FemaleJointConstraints (Args: 0)",
+                "set_FemaleJointConstraints (Args: 1)",
+                "get_FemaleEditMotionBank (Args: 0)",
+                "set_FemaleEditMotionBank (Args: 1)",
+                "get_RetargetAsset (Args: 0)",
+                "set_RetargetAsset (Args: 1)",
+                "get_AvatarLodGroup (Args: 0)",
+                "set_AvatarLodGroup (Args: 1)",
+                "get_AvatarLightLodGroup (Args: 0)",
+                "set_AvatarLightLodGroup (Args: 1)",
+                "get_MaleBoneMesh (Args: 0)",
+                "set_MaleBoneMesh (Args: 1)",
+                "get_MaleBoneMat (Args: 0)",
+                "set_MaleBoneMat (Args: 1)",
+                "get_FemaleBoneMesh (Args: 0)",
+                "set_FemaleBoneMesh (Args: 1)",
+                "get_FemaleBoneMat (Args: 0)",
+                "set_FemaleBoneMat (Args: 1)",
+                "get_AvatarHeadROMMotionBank (Args: 0)",
+                "set_AvatarHeadROMMotionBank (Args: 1)",
+                "get_AvatarHeadLodGroup (Args: 0)",
+                "set_AvatarHeadLodGroup (Args: 1)",
+                "get_AvatarLightHeadLodGroup (Args: 0)",
+                "set_AvatarLightHeadLodGroup (Args: 1)",
+                "get_PlayerMotion (Args: 0)",
+                "set_PlayerMotion (Args: 1)",
+                "get_FemalePlayerMotion (Args: 0)",
+                "set_FemalePlayerMotion (Args: 1)",
+                "get_AvatarJointMap (Args: 0)",
+                "set_AvatarJointMap (Args: 1)",
+                "get_MaleHeadMesh (Args: 0)",
+                "set_MaleHeadMesh (Args: 1)",
+                "get_MaleHeadMat (Args: 0)",
+                "set_MaleHeadMat (Args: 1)",
+                "get_FemaleHeadMesh (Args: 0)",
+                "set_FemaleHeadMesh (Args: 1)",
+                "get_FemaleHeadMat (Args: 0)",
+                "set_FemaleHeadMat (Args: 1)",
+                "get_PlayerFacialMotionBank (Args: 0)",
+                "set_PlayerFacialMotionBank (Args: 1)",
+                "get_PlayerPhotoFacialMotion (Args: 0)",
+                "set_PlayerPhotoFacialMotion (Args: 1)",
+                "get_NPCMotion (Args: 0)",
+                "set_NPCMotion (Args: 1)",
+                "get_FemaleMotion (Args: 0)",
+                "set_FemaleMotion (Args: 1)",
+                "get_NPCJointMap (Args: 0)",
+                "set_NPCJointMap (Args: 1)",
+                "get_NpcFacialMotion (Args: 0)",
+                "set_NpcFacialMotion (Args: 1)",
+                "get_NpcFemaleFacialMotion (Args: 0)",
+                "set_NpcFemaleFacialMotion (Args: 1)",
+                "get_NpcPhotoFacialMotion (Args: 0)",
+                "set_NpcPhotoFacialMotion (Args: 1)",
+                "get_AssetTypeMotionAssets (Args: 0)",
+                "set_AssetTypeMotionAssets (Args: 1)",
+                "SetDefaultVisualAsset (Args: 5)",
+                "createBone (Args: 4)",
+                "SetDefaultPlayerVisualHeadAsset (Args: 2)",
+                "GetSexMotionBank (Args: 1)",
+                "GetGenderMotionBank (Args: 2)",
+                "SetNpcAssetTypeAssets (Args: 3)",
+                "SetNpcAssetTypeFacialAssets (Args: 3)",
+                "isSetAssetType (Args: 1)",
+                ".ctor (Args: 0)",
+                "<SetDefaultVisualAsset>g__setMotion|133_0 (Args: 2)",
+                "<SetDefaultVisualAsset>g__setJointMap|133_1 (Args: 2)",
+                "<SetDefaultVisualAsset>g__setJointLod|133_2 (Args: 2)",
+                "<createBone>g___isExistBone|134_0 (Args: 1)"
+            ],
+            "__Type": "app.CommonCharacterAssetUserData"
+        }
+    },
+    "__Methods": [
+        "get_Assets (Args: 0)",
+        "set_Assets (Args: 1)",
+        "doAwake (Args: 0)",
+        "SetDefaultVisualAsset (Args: 5)",
+        "SetDefaultPlayerVisualHeadAsset (Args: 2)",
+        "SetNpcAssetTypeAssets (Args: 3)",
+        "GetSexMotionBank (Args: 1)",
+        ".ctor (Args: 0)"
+    ],
+    "__Type": "app.CommonCharacterAssetContainer"
+}

@@ -1,0 +1,15 @@
+{
+    "app.ServerAntennaMeasureManager": [
+        ".ctor (Args: 0)",
+        "GetAntenna (Args: 1)",
+        "GetMeasureEndpoint (Args: 1)",
+        "MeasureConnectionStrength (Args: 1)",
+        "MeasureConnectionStrength (Args: 2)",
+        "MeasureConnectionStrength (Args: 3)",
+        "doUpdate (Args: 0)",
+        "get_IsUseCustomProperty (Args: 0)",
+        "get_MesureCount (Args: 0)",
+        "set_IsUseCustomProperty (Args: 1)",
+        "set_MesureCount (Args: 1)"
+    ]
+}

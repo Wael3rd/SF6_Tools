@@ -1,0 +1,42 @@
+{
+    "app.bFadeController": [
+        ".ctor (Args: 0)",
+        "DuringFadeOutProc (Args: 0)",
+        "FadeIn (Args: 1)",
+        "FadeOut (Args: 1)",
+        "FadeOut (Args: 2)",
+        "IsBlackOut (Args: 0)",
+        "IsFade (Args: 0)",
+        "IsFadeCameraEnable (Args: 0)",
+        "IsFadeInReady (Args: 0)",
+        "IsFadeOut (Args: 0)",
+        "IsNormalBlackOut (Args: 0)",
+        "SetFadeCapture (Args: 1)",
+        "SetFadeNormal (Args: 0)",
+        "SetFadeNormal (Args: 2)",
+        "SetFadeTimeline (Args: 4)",
+        "SetFadeTips (Args: 0)",
+        "doAwake (Args: 0)",
+        "doLateUpdate (Args: 0)",
+        "get_SelectFade (Args: 0)",
+        "get_mFadeType (Args: 0)",
+        "requestFadeIn (Args: 0)",
+        "requestFadeOut (Args: 0)",
+        "set_mFadeType (Args: 1)"
+    ],
+    "app.bFadeController.SelectFade": [
+        ".ctor (Args: 0)",
+        "CheckRenderOutputID (Args: 0)",
+        "FadeIn (Args: 1)",
+        "FadeOut (Args: 1)",
+        "IsBlackOut (Args: 0)",
+        "IsFadeOut (Args: 0)",
+        "SetFadeColor (Args: 1)",
+        "SetState (Args: 1)",
+        "awake (Args: 0)",
+        "calcFrame (Args: 2)",
+        "lateUpdate (Args: 0)",
+        "resetFade (Args: 0)",
+        "update (Args: 0)"
+    ]
+}

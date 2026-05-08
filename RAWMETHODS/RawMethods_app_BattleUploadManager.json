@@ -1,0 +1,19 @@
+{
+    "app.BattleUploadManager": [
+        ".ctor (Args: 0)",
+        "<doUpdate>b__23_0 (Args: 1)",
+        "<doUpdate>b__23_1 (Args: 0)",
+        "<doUpdate>b__23_3 (Args: 0)",
+        "DisableUpload (Args: 0)",
+        "EnableUpload (Args: 0)",
+        "Reqeust (Args: 4)",
+        "doAwake (Args: 0)",
+        "doUpdate (Args: 0)",
+        "get_IsBusy (Args: 0)",
+        "get_IsEnableUpload (Args: 0)",
+        "get_IsValid (Args: 0)",
+        "set_IsBusy (Args: 1)",
+        "set_IsEnableUpload (Args: 1)",
+        "set_IsValid (Args: 1)"
+    ]
+}

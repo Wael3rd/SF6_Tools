@@ -1,0 +1,27 @@
+{
+    "app.CharacterRentalManager": [
+        ".cctor (Args: 0)",
+        ".ctor (Args: 0)",
+        "<RequestExpireCharacter>b__19_0 (Args: 1)",
+        "<SetRentalInfo>b__20_0 (Args: 1)",
+        "AddCharacterRentalTicketNum (Args: 2)",
+        "ClearCache (Args: 0)",
+        "GetCharacterRentalInfo (Args: 1)",
+        "GetCharacterRentalTicketNum (Args: 1)",
+        "GetCharacterRentalTicketValidMinute (Args: 1)",
+        "IsRentalCharacter (Args: 1)",
+        "RequestCharacterRentaiInfo (Args: 2)",
+        "RequestExpireCharacter (Args: 1)",
+        "RequestRentCharacter (Args: 4)",
+        "SetInfo (Args: 2)",
+        "SetRentalInfo (Args: 1)",
+        "SetTicketInfo (Args: 1)",
+        "add_OnExpiredRental (Args: 1)",
+        "doUpdate (Args: 0)",
+        "get_RentalInfoDic (Args: 0)",
+        "get_TicketInfoDic (Args: 0)",
+        "remove_OnExpiredRental (Args: 1)",
+        "set_RentalInfoDic (Args: 1)",
+        "set_TicketInfoDic (Args: 1)"
+    ]
+}
