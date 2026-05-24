@@ -1,8 +1,0 @@
-{
-    "app.GLDataTableDictionary": [
-        ".ctor (Args: 0)",
-        "GetDicMameRomRegionKeys (Args: 0)",
-        "GetDicMameRomRegionValue (Args: 1)",
-        "GetDicMameRomRegionValues (Args: 0)"
-    ]
-}
