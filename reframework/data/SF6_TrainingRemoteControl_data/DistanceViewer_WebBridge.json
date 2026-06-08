@@ -1,6 +1,8 @@
 {
   "_aa": {
-    "fw_mode": "manual"
+    "enabled": true
   },
-  "_web_timestamp": 1780671489.367394
+  "_web_timestamp": 1780778369.490609,
+  "p1_show_all": false,
+  "p2_show_all": true
 }

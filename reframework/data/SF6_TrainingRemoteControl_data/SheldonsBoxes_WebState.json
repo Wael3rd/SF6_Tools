@@ -38,5 +38,5 @@
         "throwhurtboxes": false,
         "uniqueboxes": false
     },
-    "vr_visible": true
+    "vr_visible": false
 }

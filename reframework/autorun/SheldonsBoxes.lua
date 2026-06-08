@@ -45,8 +45,8 @@ local config = {
     arrow_y_offset = 0.0,
     arrow_thickness = 40.0,
     hud_x_padding = 0.286,
-    hud_y_pos = 0.087,
-    font_base_size = 94,
+    hud_y_pos = (reframework:get_commit_count() <= 1695) and 0.084 or 0.132,
+    font_base_size = (reframework:get_commit_count() <= 1695) and 99 or 24,
     font_filename = "frutigerltarabic-57cn.ttf",
     outline_thickness = 1.13,
     -- Charge Bars
@@ -128,7 +128,16 @@ if loaded_conf then
             end
         elseif k == "display" and type(v) == "table" then config.display = v
         else config[k] = v end
-    end 
+    end
+end
+local _sb_ver_font = (reframework:get_commit_count() <= 1695) and 99 or 24
+local _sb_ver_ypos = (reframework:get_commit_count() <= 1695) and 0.084 or 0.132
+config.font_base_size = _sb_ver_font
+config.hud_y_pos = _sb_ver_ypos
+if config.layout_per_hud then
+    for _, lay in pairs(config.layout_per_hud) do
+        if type(lay) == "table" then lay.hud_y_pos = _sb_ver_ypos end
+    end
 end
 if not config.box_fill_alphas then config.box_fill_alphas = {} end
 if not config.box_thicknesses then config.box_thicknesses = {} end

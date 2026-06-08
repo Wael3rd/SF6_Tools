@@ -12,6 +12,22 @@ require("func/SharedHooks")
 local _numpad_arrows = { ["1"]="↙", ["2"]="↓", ["3"]="↘", ["4"]="←", ["6"]="→", ["7"]="↖", ["8"]="↑", ["9"]="↗" }
 local function input_to_arrows(str)
     if not str then return str end
+    local name = str:match("^%-%-(.-)%-%-")
+    if name then
+        local rest = str:match("^%-%-.-%-%-(.+)$")
+        if rest then
+            rest = rest:match("^%s*(.-)%s*$")
+            return name .. " " .. rest:gsub("^(%d+)", function(digits)
+                local out = ""
+                for i = 1, #digits do
+                    local c = digits:sub(i, i)
+                    out = out .. (_numpad_arrows[c] or (c == "5" and "" or c))
+                end
+                return out
+            end)
+        end
+        return name
+    end
     return str:gsub("^(%d+)", function(digits)
         local out = ""
         for i = 1, #digits do
@@ -59,6 +75,7 @@ local auto_activate = {
     active_move = nil,
     active_sequence = {},
     is_firing = false,
+    fire_delay = 0,
     waiting_neutral = false,
     current_step = 1,
     current_frame = 0,
@@ -67,6 +84,7 @@ local auto_activate = {
     cooldown_frames = 4,
     delay_min = 0,
     delay_max = 0,
+    neutral_buffer = 12,
     delay_counter = 0,
     tracked_action_id = -1,
     dbg_action_id = -1,
@@ -273,7 +291,8 @@ local config = {
     adv_show_line_labels = true,
     aa_delay_min = 0,
     aa_delay_max = 0,
-    aa_delay_cancel = true
+    aa_delay_cancel = true,
+    aa_neutral_buffer = 12
 }
 
 local settings_file = "SF6_DistanceViewer_data/SF6DistanceViewer_Config.json"
@@ -328,6 +347,7 @@ end
 load_settings()
 auto_activate.delay_min = config.aa_delay_min or config.aa_delay_frames or 0
 auto_activate.delay_max = config.aa_delay_max or config.aa_delay_frames or 0
+auto_activate.neutral_buffer = config.aa_neutral_buffer or 12
 
 -- =========================================================
 -- [WEB BRIDGE] — Poll for external config changes
@@ -405,6 +425,10 @@ local function poll_web_bridge()
                 end
                 if bridge._aa.delay_cancel ~= nil then
                     config.aa_delay_cancel = bridge._aa.delay_cancel
+                end
+                if bridge._aa.neutral_buffer ~= nil then
+                    auto_activate.neutral_buffer = bridge._aa.neutral_buffer
+                    config.aa_neutral_buffer = bridge._aa.neutral_buffer
                 end
                 if bridge._aa.set_sub then
                     local input = bridge._aa.set_sub.input
@@ -899,35 +923,46 @@ local function parse_input_string(input_str, facing_right)
     local icons = {}
     local strength = ""
 
-    if string.upper(input_str):find("JUMP") then return {}, input_str end
+    local display_name = input_str:match("^%-%-(.-)%-%-")
+    local actual_input = input_str
+    if display_name then
+        actual_input = input_str:match("^%-%-.-%-%-(.+)$")
+        if actual_input then actual_input = actual_input:match("^%s*(.-)%s*$") else actual_input = "" end
+    end
 
-    -- 1. HOLD specific catch
-    if string.upper(input_str):find("HOLD") or input_str:find("%[") then
+    if display_name and actual_input == "" then
+        return {}, "", display_name
+    end
+
+    local parse_target = actual_input
+
+    if string.upper(parse_target):find("JUMP") then return {}, parse_target, display_name end
+
+    if string.upper(parse_target):find("HOLD") or parse_target:find("%[") then
         table.insert(icons, "HOLD")
     end
 
-
-    -- 2. Direction logic (Ignore neutral "5", flip if facing left)
-    local dir = input_str:match("%d+")
-    if dir and dir ~= "5" then
-        dir = flip_numpad(dir, facing_right)
-        table.insert(icons, dir)
+    local dir = parse_target:match("%d+")
+    if dir then
+        for c = 1, #dir do
+            local d = dir:sub(c, c)
+            if d ~= "5" then
+                table.insert(icons, flip_numpad(d, facing_right))
+            end
+        end
     end
 
-    -- 3. Strict button extraction (lp, mp, hp, lk, mk, hk)
-    local btn = string.lower(input_str):match("[lmh][pk]")
+    local btn = string.lower(parse_target):match("[lmh][pk]")
     if btn then
         table.insert(icons, btn)
         strength = string.upper(string.sub(btn, 1, 1))
     end
 
-    -- 4. THROW specific catch
-    if string.upper(input_str):find("THROW") or input_str:find("%[") then
+    if string.upper(parse_target):find("THROW") or parse_target:find("%[") then
         table.insert(icons, "THROW")
     end
 
-
-    return icons, strength
+    return icons, strength, display_name
 end
 
 local debug_dist_status = "Not Loaded"
@@ -1428,11 +1463,13 @@ local function draw_text_above_head_independent(text, pos, color, offset_x, offs
         local before_txt, input_core, after_txt = string.match(line, "^(.-){(.-)}(.*)$")
         local parsed_icons, parsed_strength
         
+        local display_name
         if input_core then
-            parsed_icons, parsed_strength = parse_input_string(input_core, facing_right)
+            parsed_icons, parsed_strength, display_name = parse_input_string(input_core, facing_right)
             local icon_letter_gap = 4 -- <<< CHANGE THIS VALUE FOR SPACING
-            
+
             if before_txt and before_txt ~= "" then true_width = true_width + imgui.calc_text_size(before_txt).x end
+            if display_name then true_width = true_width + imgui.calc_text_size(display_name).x + 4 end
             true_width = true_width + (#parsed_icons * icon_size)
             if #parsed_icons > 0 and parsed_strength ~= "" then true_width = true_width + icon_letter_gap end
             if parsed_strength ~= "" then true_width = true_width + imgui.calc_text_size(parsed_strength).x + 5 end
@@ -1455,9 +1492,16 @@ local function draw_text_above_head_independent(text, pos, color, offset_x, offs
                 imgui.set_cursor_pos(Vector2f.new(current_x, current_y)); imgui.text_colored(before_txt, color)
                 current_x = current_x + b_w
             end
-            
+
+            if display_name then
+                local dn_w = math.floor(imgui.calc_text_size(display_name).x + 0.5)
+                imgui.set_cursor_pos(Vector2f.new(current_x + 2, current_y + 2)); imgui.text_colored(display_name, 0xFF000000)
+                imgui.set_cursor_pos(Vector2f.new(current_x, current_y)); imgui.text_colored(display_name, color)
+                current_x = current_x + dn_w + 4
+            end
+
             local y_with_offset = math.floor(current_y + ((config.icon_offset_y or 0.0) * scale_factor) + 0.5)
-            
+
             for _, icon_key in ipairs(parsed_icons) do
                 table.insert(d2d_queue, { key = icon_key, x = current_x, y = y_with_offset, size = icon_size })
                 current_x = current_x + icon_size
@@ -2204,18 +2248,32 @@ end
 local aa_dir_to_mask = { ["7"]=9, ["8"]=1, ["9"]=5, ["4"]=8, ["5"]=0, ["6"]=4, ["1"]=10, ["2"]=2, ["3"]=6 }
 local aa_btn_to_mask = { LP=16, MP=32, HP=64, LK=128, MK=256, HK=512 }
 
-local function aa_parse_move_input(input_str)
+local function aa_parse_move_input(input_str, move_entry)
     if not input_str then return {} end
-    if input_str == "FORWARD JUMP" then
+    if move_entry and move_entry.input_sequence and #move_entry.input_sequence > 0 then
+        return move_entry.input_sequence
+    end
+    local actual_input = input_str:match("^%-%-.-%-%-(.+)$")
+    if actual_input then actual_input = actual_input:match("^%s*(.-)%s*$") else actual_input = input_str end
+    if actual_input == "FORWARD JUMP" then
         return { { frames = 3, mask = 5 }, { frames = 8, mask = 0 } }
     end
-    if input_str == "THROW" then
+    if actual_input == "THROW" then
         return { { frames = 3, mask = 144 }, { frames = 8, mask = 0 } }
     end
-    local is_hold = input_str:find("%(HOLD%)") or input_str:find("HOLD")
-    local clean_input = input_str:gsub("%s*%(HOLD%)%s*", ""):gsub("%s*HOLD%s*", "")
+    local is_hold = actual_input:find("%(HOLD%)") or actual_input:find("HOLD")
+    local clean_input = actual_input:gsub("%s*%(HOLD%)%s*", ""):gsub("%s*HOLD%s*", "")
     local dirs, btn_str = clean_input:match("^(%d+)(.*)")
-    if not dirs then return {} end
+    if not dirs then
+        local btn_mask = 0
+        for b in clean_input:gmatch("%u%u") do
+            if aa_btn_to_mask[b] then btn_mask = btn_mask | aa_btn_to_mask[b] end
+        end
+        if btn_mask > 0 then
+            return { { frames = 3, mask = btn_mask }, { frames = 8, mask = 0 } }
+        end
+        return {}
+    end
 
     local btn_mask = 0
     for b in btn_str:gmatch("%u%u") do
@@ -2272,6 +2330,7 @@ local function aa_start_fire()
     auto_activate.active_move = chosen
     auto_activate.active_sequence = seq
     auto_activate.is_firing = true
+    auto_activate.fire_delay = auto_activate.neutral_buffer
     auto_activate.current_step = 1
     auto_activate.current_frame = 0
     auto_activate.p2_mask = 0
@@ -2289,9 +2348,16 @@ end
 
 local function aa_stop_fire()
     auto_activate.is_firing = false
-    auto_activate.waiting_neutral = true
     local engine = aa_get_p2_engine()
-    auto_activate.tracked_action_id = engine and engine:get_ActionID() or -1
+    local cur_id = engine and engine:get_ActionID() or -1
+    if cur_id <= 1 then
+        auto_activate.waiting_neutral = false
+        auto_activate.cooldown = auto_activate.cooldown_frames
+        auto_activate.was_in_range = true
+    else
+        auto_activate.waiting_neutral = true
+        auto_activate.tracked_action_id = cur_id
+    end
     auto_activate.current_step = 1
     auto_activate.current_frame = 0
     auto_activate.p2_mask = 0
@@ -2698,6 +2764,29 @@ local function draw_config_ui()
         local dc_changed, dc_val = imgui.checkbox("Delay Cancel", config.aa_delay_cancel)
         if dc_changed then config.aa_delay_cancel = dc_val; save_settings() end
 
+        imgui.text("NEUTRAL BUFFER")
+        imgui.same_line()
+        imgui.push_item_width(40)
+        local nbc, nbv = imgui.input_text("##aa_nbuf", tostring(auto_activate.neutral_buffer), 4)
+        if nbc then local n = tonumber(nbv); if n and n >= 0 and n <= 99 then auto_activate.neutral_buffer = math.floor(n); config.aa_neutral_buffer = auto_activate.neutral_buffer; save_settings() end end
+        imgui.pop_item_width()
+
+        local log_label = _aa_log.active and "STOP LOG##aalog" or "LOG##aalog"
+        if imgui.button(log_label) then
+            if _aa_log.active then
+                if _aa_log.file then _aa_log.file:close(); _aa_log.file = nil end
+                _aa_log.active = false
+            else
+                _aa_log.file = io.open("reframework\\aa_debug_log.txt", "w")
+                if _aa_log.file then
+                    _aa_log.file:write("FRAME\tgrace\tp1_in\tin_range\twas_in\tcooldown\tis_firing\twait_neutral\tp1_act\tp2_mask\tdelay_cnt\troll\n")
+                    _aa_log.frame = 0
+                    _aa_log.active = true
+                end
+            end
+        end
+        if _aa_log.active then imgui.same_line(); imgui.text_colored("LOGGING " .. _aa_log.frame .. "f", 0xFF00A5FF) end
+
         local fw_changed, fw_val = imgui.checkbox("Footwork", auto_activate.footwork_enabled)
         if fw_changed then
             auto_activate.footwork_enabled = fw_val
@@ -2776,9 +2865,9 @@ local function draw_config_ui()
                     if not is_main then
                         auto_activate.move = mv
                         auto_activate.move_idx = i + 1
-                        auto_activate.sequence = aa_parse_move_input(input)
+                        auto_activate.sequence = aa_parse_move_input(input, mv)
                         if not is_sub then
-                            auto_activate.sub_moves[input] = { move = mv, weight = 1, sequence = aa_parse_move_input(input) }
+                            auto_activate.sub_moves[input] = { move = mv, weight = 1, sequence = aa_parse_move_input(input, mv) }
                         end
                         auto_activate.was_in_range = true
                         if auto_activate.is_firing then aa_stop_fire() end
@@ -2798,7 +2887,7 @@ local function draw_config_ui()
                 if is_sub then imgui.pop_style_color(1) end
                 if sc then
                     if sv then
-                        auto_activate.sub_moves[input] = { move = mv, weight = 1, sequence = aa_parse_move_input(input) }
+                        auto_activate.sub_moves[input] = { move = mv, weight = 1, sequence = aa_parse_move_input(input, mv) }
                     else
                         if is_main then
                             auto_activate.move = nil
@@ -2826,7 +2915,7 @@ local function draw_config_ui()
                         auto_activate.was_in_range = false
                         if auto_activate.is_firing then aa_stop_fire() end
                     elseif wv > 0 and not is_sub then
-                        auto_activate.sub_moves[input] = { move = mv, weight = wv, sequence = aa_parse_move_input(input) }
+                        auto_activate.sub_moves[input] = { move = mv, weight = wv, sequence = aa_parse_move_input(input, mv) }
                         auto_activate.was_in_range = false
                     elseif is_sub then
                         auto_activate.sub_moves[input].weight = wv
@@ -2835,7 +2924,12 @@ local function draw_config_ui()
 
                 imgui.same_line()
                 local col = is_main and 0xFF00FFFF or (is_sub and 0xFF00FF00 or 0xFFCCCCCC)
-                imgui.text_colored(input, col)
+                local display = input:match("^%-%-(.-)%-%-") or input
+                if mv.input_sequence and #mv.input_sequence > 0 then
+                    imgui.text_colored(display .. " [SPE]", col)
+                else
+                    imgui.text_colored(display, col)
+                end
             end
 
             imgui.end_child_window()
@@ -2946,6 +3040,9 @@ local function aa_best_range()
     return get_effective_ar(auto_activate.move, 1), false
 end
 
+_G._aa_log = { active = false, file = nil, frame = 0 }
+local _aa_log = _G._aa_log
+
 local function aa_tick()
     if not _G.TrainingModeActive or _G.IsInReplay or _G.FlowMapID == 10 then
         auto_activate.p2_mask = 0
@@ -2954,10 +3051,54 @@ local function aa_tick()
 
     if auto_activate.cooldown > 0 then auto_activate.cooldown = auto_activate.cooldown - 1 end
 
+    local p1_input_val = 0
+    pcall(function()
+        local sp = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil)
+        if sp and sp.mcPlayer then
+            local p1 = sp.mcPlayer[0]
+            if p1 then
+                local td = p1:get_type_definition()
+                local f_in = td:get_field("pl_input_new")
+                p1_input_val = (f_in and f_in:get_data(p1)) or 0
+            end
+        end
+    end)
+    _G._aa_dbg_p1_input = p1_input_val
+    _G._aa_dbg_reset = auto_activate.reset_grace > 0
+    _G._aa_dbg_firing = auto_activate.is_firing
+    _G._aa_dbg_wait_n = auto_activate.waiting_neutral
+    _G._aa_dbg_cooldown = auto_activate.cooldown
+
+    if _aa_log.active and _aa_log.file then
+        _aa_log.frame = _aa_log.frame + 1
+        local p2_act = -1
+        pcall(function()
+            local e = aa_get_p2_engine()
+            if e then p2_act = e:get_ActionID() end
+        end)
+        _aa_log.file:write(string.format("%d\tgr=%d\tp1=%d\tcd=%d\tfire=%s\twn=%s\twin=%s\tmask=%d\tdly=%d\ttrk=%d\tp2act=%d\n",
+            _aa_log.frame, auto_activate.reset_grace, p1_input_val,
+            auto_activate.cooldown, tostring(auto_activate.is_firing),
+            tostring(auto_activate.waiting_neutral), tostring(auto_activate.was_in_range),
+            auto_activate.p2_mask, auto_activate.delay_counter or 0,
+            auto_activate.tracked_action_id or -1, p2_act))
+    end
+
+    if auto_activate.reset_grace > 0 and p1_input_val ~= 0 then
+        auto_activate.reset_grace = 0
+        auto_activate.was_in_range = true
+        auto_activate.cooldown = 0
+        auto_activate.waiting_neutral = false
+        auto_activate.tracked_action_id = -1
+    end
+    _G._aa_dbg_grace = auto_activate.reset_grace
     if auto_activate.reset_grace > 0 then
         auto_activate.reset_grace = auto_activate.reset_grace - 1
         auto_activate.was_in_range = true
         auto_activate.cooldown = 0
+        auto_activate.waiting_neutral = false
+        auto_activate.tracked_action_id = -1
+        if auto_activate.is_firing then aa_stop_fire(); auto_activate.waiting_neutral = false end
         return
     end
 
@@ -2981,7 +3122,7 @@ local function aa_tick()
                     if best_ar > 0 and dist then
                         local in_r = dist <= best_ar + 0.0000001
                         if has_cr and math.random() < 0.2 then
-                            auto_activate.footwork_dir = 2
+                            auto_activate.footwork_dir = 10
                             auto_activate.footwork_cur_limit = auto_activate.footwork_cr + math.random(0, math.floor(auto_activate.footwork_cr * 0.5))
                         elseif in_r then
                             auto_activate.footwork_dir = 8
@@ -2998,14 +3139,14 @@ local function aa_tick()
                     local cr_mx = math.max(auto_activate.footwork_cr_min, auto_activate.footwork_cr_max)
                     if mx > 0 or cr_mx > 0 then
                         local dirs = {4, 8}
-                        if cr_mx > 0 then dirs[#dirs+1] = 2 end
+                        if cr_mx > 0 then dirs[#dirs+1] = 10 end
                         local candidates = {}
                         for _, d in ipairs(dirs) do
                             if d ~= auto_activate.footwork_last_dir then candidates[#candidates+1] = d end
                         end
                         if #candidates == 0 then candidates = dirs end
                         auto_activate.footwork_dir = candidates[math.random(#candidates)]
-                        if auto_activate.footwork_dir == 2 then
+                        if auto_activate.footwork_dir == 10 then
                             auto_activate.footwork_cur_limit = cr_mn + math.random(0, cr_mx - cr_mn)
                         else
                             auto_activate.footwork_cur_limit = mn + math.random(0, mx - mn)
@@ -3015,11 +3156,11 @@ local function aa_tick()
                     if auto_activate.footwork_dir == 4 then
                         auto_activate.footwork_dir = 8
                     elseif auto_activate.footwork_dir == 8 and has_cr then
-                        auto_activate.footwork_dir = 2
+                        auto_activate.footwork_dir = 10
                     else
                         auto_activate.footwork_dir = 4
                     end
-                    if auto_activate.footwork_dir == 2 then
+                    if auto_activate.footwork_dir == 10 then
                         auto_activate.footwork_cur_limit = auto_activate.footwork_cr
                     elseif auto_activate.footwork_dir == 4 then
                         auto_activate.footwork_cur_limit = auto_activate.footwork_fw
@@ -3027,7 +3168,7 @@ local function aa_tick()
                         auto_activate.footwork_cur_limit = auto_activate.footwork_bw
                     end
                 end
-                if prev_dir ~= 0 and prev_dir ~= 2 and auto_activate.footwork_dir ~= 2 and prev_dir ~= auto_activate.footwork_dir then
+                if prev_dir ~= 0 and prev_dir ~= 10 and auto_activate.footwork_dir ~= 2 and prev_dir ~= auto_activate.footwork_dir then
                     auto_activate.footwork_neutral = math.random(1, 3)
                 end
             end
@@ -3047,6 +3188,11 @@ local function aa_tick()
     end
 
     if auto_activate.is_firing then
+        if auto_activate.fire_delay > 0 then
+            auto_activate.fire_delay = auto_activate.fire_delay - 1
+            auto_activate.p2_mask = 0
+            return
+        end
         local step = auto_activate.active_sequence[auto_activate.current_step]
         if step then
             auto_activate.p2_mask = step.mask
@@ -3054,6 +3200,9 @@ local function aa_tick()
             if auto_activate.current_frame >= step.frames then
                 auto_activate.current_step = auto_activate.current_step + 1
                 auto_activate.current_frame = 0
+                if not auto_activate.active_sequence[auto_activate.current_step] then
+                    aa_stop_fire()
+                end
             end
         else
             aa_stop_fire()
@@ -3068,7 +3217,8 @@ local function aa_tick()
             local cur_frame = math.floor(read_sfix(engine:get_ActionFrame()))
             local margin = math.floor(read_sfix(engine:get_MarginFrame()))
             local done = cur_id ~= auto_activate.tracked_action_id
-            if not done and margin > 0 and cur_frame >= margin then done = true end
+            local is_projectile = auto_activate.active_move and auto_activate.active_move.is_projectile
+            if not done and not is_projectile and margin > 0 and cur_frame >= margin then done = true end
             if done then
                 auto_activate.waiting_neutral = false
                 auto_activate.cooldown = auto_activate.cooldown_frames
@@ -3102,7 +3252,13 @@ local function aa_tick()
         in_range = dist <= effective_ar + 0.0000001
     end
 
-    if in_range and not auto_activate.was_in_range and auto_activate.cooldown <= 0 then
+    local p1_act_st = 0
+    pcall(function()
+        local p1 = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil).mcPlayer[0]
+        if p1 then p1_act_st = tonumber(tostring(p1:get_type_definition():get_field("act_st"):get_data(p1))) or 0 end
+    end)
+
+    if in_range and not auto_activate.was_in_range and auto_activate.cooldown <= 0 and p1_act_st ~= 9 and p1_act_st ~= 10 then
         local delay = roll or (d_min + math.random(0, d_max - d_min))
         if delay <= 0 then
             aa_start_fire()
@@ -3124,18 +3280,11 @@ local function aa_tick()
         end
     end
 
-    local p1_act_st = 0
-    pcall(function()
-        local p1 = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil).mcPlayer[0]
-        if p1 then p1_act_st = tonumber(tostring(p1:get_type_definition():get_field("act_st"):get_data(p1))) or 0 end
-    end)
-
-    if p1_act_st ~= 32 and p1_act_st ~= 35 then
-        auto_activate.was_in_range = in_range
-    end
+    auto_activate.was_in_range = in_range
     if auto_activate.was_in_range and not in_range then auto_activate._anticipation_roll = nil end
     auto_activate.dbg_in_range = in_range
     auto_activate.dbg_p1_ft = p1_act_st
+
 end
 
 -- Register AA input injection with shared pl_input_sub hook (0_SharedHooks.lua)
@@ -3248,6 +3397,7 @@ re.on_frame(function()
                 aa_delay_min = auto_activate.delay_min,
                 aa_delay_max = auto_activate.delay_max,
                 aa_delay_cancel = config.aa_delay_cancel,
+                aa_neutral_buffer = auto_activate.neutral_buffer,
                 aa_footwork = auto_activate.footwork_enabled,
                 aa_fw = auto_activate.footwork_fw,
                 aa_bw = auto_activate.footwork_bw,
@@ -3302,7 +3452,7 @@ re.on_frame(function()
             if mv.input == target then
                 auto_activate.move_idx = i + 1
                 auto_activate.move = mv
-                auto_activate.sequence = aa_parse_move_input(mv.input)
+                auto_activate.sequence = aa_parse_move_input(mv.input, mv)
                 auto_activate.sub_moves[target] = nil
                 auto_activate.was_in_range = true
                 if auto_activate.is_firing then aa_stop_fire() end
@@ -3315,7 +3465,7 @@ re.on_frame(function()
         _G._dv_aa_pending_sub = nil
         for _, mv in ipairs(_G._dv_aa_moves) do
             if mv.input == ps.input then
-                auto_activate.sub_moves[ps.input] = { move = mv, weight = ps.weight, sequence = aa_parse_move_input(ps.input) }
+                auto_activate.sub_moves[ps.input] = { move = mv, weight = ps.weight, sequence = aa_parse_move_input(ps.input, mv) }
                 break
             end
         end
@@ -3567,12 +3717,19 @@ re.on_frame(function()
                 end
                 
                 if item.raw_input then
-                    local icons, strength = parse_input_string(item.raw_input, item.facing_right)
-                    
+                    local icons, strength, disp_name = parse_input_string(item.raw_input, item.facing_right)
+
                     local icon_size = math.floor(item.size * (config.icon_scale or 1.0) + 0.5)
                     local y_with_offset = math.floor(item.y + ((config.icon_offset_y or 0.0) * scale_factor) + 0.5)
                     local current_x = math.floor(current_x + 0.5)
-                    
+
+                    if disp_name then
+                        local dn_w = math.floor(imgui.calc_text_size(disp_name).x + 0.5)
+                        imgui.set_cursor_pos(Vector2f.new(current_x + 2, item.y + 2)); imgui.text_colored(disp_name, 0xFF000000)
+                        imgui.set_cursor_pos(Vector2f.new(current_x, item.y)); imgui.text_colored(disp_name, item.color)
+                        current_x = current_x + dn_w + 4
+                    end
+
                     for _, icon_key in ipairs(icons) do
                         table.insert(d2d_queue, { key = icon_key, x = current_x, y = y_with_offset, size = icon_size })
                         current_x = current_x + icon_size

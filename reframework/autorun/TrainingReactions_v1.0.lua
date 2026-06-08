@@ -584,6 +584,9 @@ local function update_logic()
             session.score_processed = false
             session._p2_was_parried = false
             session._p2_was_di = false
+            session.feedback.timer = 0
+            session.feedback.text = TEXTS.waiting
+            session.feedback.color = COLORS.Grey
         end
     end
 
@@ -652,10 +655,22 @@ local function update_logic()
         end
     end
 
-    session.p1_max_frame = 0 
+    session.p1_max_frame = 0
     session.p2_max_frame = 0
-    session.p2_is_end_flag = false 
-    
+    session.p2_is_end_flag = false
+
+    local p2_act_st = 0
+    pcall(function()
+        local gB = sdk.find_type_definition("gBattle")
+        local pm = gB:get_field("Player"):get_data(nil)
+        local p2obj = pm:call("getPlayer", 1)
+        if p2obj then
+            local ast = p2obj:get_type_definition():get_field("act_st"):get_data(p2obj)
+            p2_act_st = tonumber(tostring(ast)) or 0
+        end
+    end)
+    local p2_is_neutral = (p2_act_st == 0)
+
     local p1 = session.p1_state
     local p2 = session.p2_state
     
@@ -738,7 +753,7 @@ local function update_logic()
             end
         end
         
-        if p2 == STATE_NEUTRAL or p2_ended then
+        if p2_is_neutral then
             session.is_tracking = false
             if session.track_timer > 2 then
                 if not session.score_processed then
@@ -944,7 +959,8 @@ local function draw_hud_overlay()
     local is_trials = (user_config.session_mode == 2)
     SharedUI.draw_standard_hud("HUD_Reaction", user_config, session, TEXTS.mode_label, show_timer and not is_trials, function(cx, cy, sw, sh)
         if is_trials then
-            local center_y = sh / 2
+            local lb_off = SharedUI.get_letterbox_offset()
+            local center_y = lb_off + sh / 2
             local remaining = math.max(0, user_config.trial_count - session.total)
             local t_txt = session.is_running and tostring(remaining) or tostring(user_config.trial_count)
             local hud_cfg = SharedUI.HUD_CONFIG[_G.CurrentHudSuffix or "Default"] or SharedUI.HUD_CONFIG["Default"]
@@ -1253,6 +1269,17 @@ re.on_draw_ui(function()
             imgui.text("P2 State: " .. session.p2_state)
             imgui.text("Active Slot: " .. game_state.current_slot_index)
             imgui.text("Last P1 Act: " .. session.last_act_id)
+            imgui.text_colored(string.format("Grace: %d | P1in: %d | CD: %d", _G._aa_dbg_grace or 0, _G._aa_dbg_p1_input or 0, _G._aa_dbg_cooldown or 0), 0xFF00FFFF)
+            local aa_ready = not (_G._aa_dbg_reset or false) and not (_G._aa_dbg_firing or false) and not (_G._aa_dbg_wait_n or false) and (_G._aa_dbg_cooldown or 0) <= 0
+            if aa_ready then imgui.text_colored("DUMMY READY", 0xFF00FF00)
+            else
+                local reason = ""
+                if _G._aa_dbg_reset then reason = "GRACE"
+                elseif _G._aa_dbg_firing then reason = "FIRING"
+                elseif _G._aa_dbg_wait_n then reason = "WAIT NEUTRAL"
+                elseif (_G._aa_dbg_cooldown or 0) > 0 then reason = "COOLDOWN" end
+                imgui.text_colored("DUMMY NOT READY: " .. reason, 0xFF0000FF)
+            end
         end
         
         imgui.tree_pop()

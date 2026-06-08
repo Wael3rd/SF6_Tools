@@ -335,6 +335,47 @@ local function get_p1_action_id()
     return engine:get_ActionID() or -1
 end
 
+local CANCEL_BASE_GROUPS = { [0] = true, [15] = true }
+
+local function get_elements_safe(obj)
+    if not obj then return nil end
+    local s, arr = pcall(function() return obj:get_elements() end)
+    if s and arr then return arr end
+    pcall(function()
+        local items = obj:get_field("_items")
+        if items then arr = items:get_elements() end
+    end)
+    return arr
+end
+
+local function check_p1_cancelable()
+    local cancelable = false
+    pcall(function()
+        local sP = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil)
+        if not sP or not sP.mcPlayer or not sP.mcPlayer[0] then return end
+        local p1 = sP.mcPlayer[0]
+        local keys_obj = p1.mpActParam.ActionPart._Engine:get_field("mParam"):get_field("action"):get_field("Keys")
+        local groups = get_elements_safe(keys_obj)
+        if not groups then return end
+        for _, group in ipairs(groups) do
+            local keys = get_elements_safe(group)
+            if keys then
+                for _, key in ipairs(keys) do
+                    local td = key:get_type_definition()
+                    if td and td:get_name() == "TriggerKey" then
+                        local tg = tonumber(key:get_field("TriggerGroup") or 0)
+                        if not CANCEL_BASE_GROUPS[tg] then
+                            cancelable = true
+                            return
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    return cancelable
+end
+
 -- Keep Hardware reader ONLY for menu navigation shortcuts
 local function get_hardware_pad_mask()
     local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
@@ -624,6 +665,7 @@ local function update_detection()
                         detection.monitor.saw_new_action = false
                         detection.monitor.is_multihit = false
                         detection.monitor.is_cancelable = false
+                        detection._saw_cancelable = check_p1_cancelable()
                         detection.monitor.last_ft = p1_data.ft
                         detection.monitor.saw_recovery = false
                         detection.monitor.saw_recovery_to_startup = false
@@ -658,6 +700,7 @@ local function update_detection()
                         detection.monitor.start_action_id = get_p1_action_id()
                         detection.monitor.saw_new_action = false
                         detection.monitor.was_light = is_light_buffered
+                        detection._saw_cancelable = check_p1_cancelable()
 
                         -- MEMORIZE IF THIS IS A MEDIUM HIT
                         detection.monitor.is_medium = is_medium_buffered
@@ -1257,7 +1300,8 @@ local function draw_hud_overlay()
     SharedUI.draw_standard_hud("HUD_Overlay", user_config, session, TEXTS.mode_label, not is_trials, function(cx, cy, sw, sh)
         -- In trials mode, draw trial counter at timer position
         if is_trials then
-            local center_y = sh / 2
+            local lb_off = SharedUI.get_letterbox_offset()
+            local center_y = lb_off + sh / 2
             local remaining = math.max(0, user_config.trial_count - session.total)
             local t_txt = session.is_running and tostring(remaining) or tostring(user_config.trial_count)
             local hud_cfg = SharedUI.HUD_CONFIG[_G.CurrentHudSuffix or "Default"] or SharedUI.HUD_CONFIG["Default"]
@@ -1420,15 +1464,6 @@ re.on_frame(function()
     if not tm then return end
 
     detection._live_tn = 0
-    local gb_tn = sdk.find_type_definition("gBattle")
-    if gb_tn then
-        local sP_tn = gb_tn:get_field("Player"):get_data(nil)
-        if sP_tn and sP_tn.mcPlayer then
-            local p1_tn = sP_tn.mcPlayer[0]
-            if p1_tn then detection._live_tn = p1_tn.trigger_notice or 0 end
-        end
-    end
-    if detection._live_tn > 0 then detection._saw_cancelable = true end
 
     local should_update_logic = true
     local should_draw_hud = true

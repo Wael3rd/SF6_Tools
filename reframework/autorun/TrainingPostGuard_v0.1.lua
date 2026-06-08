@@ -665,7 +665,8 @@ local function draw_hud()
     local is_trials = (user_config.session_mode == "trials")
     SharedUI.draw_standard_hud("HUD_PostGuard", user_config, session, "POST GUARD", not is_trials, function(cx, cy, sw, sh)
         if is_trials then
-            local center_y = sh / 2
+            local lb_off = SharedUI.get_letterbox_offset()
+            local center_y = lb_off + sh / 2
             local remaining = math.max(0, user_config.trial_count - session.total)
             local t_txt = session.is_running and tostring(remaining) or tostring(user_config.trial_count)
             local hud_cfg = SharedUI.HUD_CONFIG[_G.CurrentHudSuffix or "Default"] or SharedUI.HUD_CONFIG["Default"]

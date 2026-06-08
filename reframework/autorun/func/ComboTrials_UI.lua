@@ -987,10 +987,12 @@ re.on_frame(function()
             if hud_overlay_font then imgui.push_font(hud_overlay_font) end
 
             local cx = sw / 2
-            local cy = sh / 2
-            local line1_y = cy + (d2d_cfg.hud_global_y * sh)
-            local line2_y = line1_y + (d2d_cfg.hud_spacing_y * sh)
-            local line3_y = line2_y + (d2d_cfg.hud_spacing_y * sh)
+            local game_h = sw * 9 / 16
+            local lb_off = (sh > game_h) and ((sh - game_h) / 2) or 0
+            local cy = lb_off + game_h / 2
+            local line1_y = cy + (d2d_cfg.hud_global_y * game_h)
+            local line2_y = line1_y + (d2d_cfg.hud_spacing_y * game_h)
+            local line3_y = line2_y + (d2d_cfg.hud_spacing_y * game_h)
 
             local outline_color = 0xFF444444
             local outline_thick = 0.1

@@ -1,100 +1,69 @@
 {
     "activate_on_load": false,
-    "char_name": "Ryu",
+    "char_name": "Jamie",
     "combo_files": [
-        "Ryu_COMBO_1070_D0_SA0.json",
-        "Ryu_COMBO_1070_D0_SA0_20260420_001125.json",
-        "Ryu_COMBO_1420_D1.6_SA0.json",
-        "Ryu_COMBO_1600_D0_SA0.json",
-        "Ryu_COMBO_1900_D0_SA0.json",
-        "Ryu_COMBO_1960_D0_SA0.json",
-        "Ryu_COMBO_2000_D0_SA0.json",
-        "Ryu_COMBO_2000_D2.7_SA0.json",
-        "Ryu_COMBO_2000_D2.8_SA0.json",
-        "Ryu_COMBO_2240_D1.1_SA0.json",
-        "Ryu_COMBO_2420_D1_SA0.json",
-        "Ryu_COMBO_2480_D1_SA0.json",
-        "Ryu_COMBO_2538_D6_SA0.json",
-        "Ryu_COMBO_2699_D3_SA0.json",
-        "Ryu_COMBO_2768_D1_SA0.json",
-        "Ryu_COMBO_2784_D4_SA0.json",
-        "Ryu_COMBO_2810_D2_SA0.json",
-        "Ryu_COMBO_2870_D2.7_SA0.json",
-        "Ryu_COMBO_2880_D2.8_SA0.json",
-        "Ryu_COMBO_3256_D6_SA0.json",
-        "Ryu_COMBO_3480_D0_SA0.json",
-        "Ryu_COMBO_3600_D2_SA1.json",
-        "Ryu_COMBO_3664_D6_SA0.json",
-        "Ryu_COMBO_5984_D6_SA3.json",
-        "Ryu_COMBO_6234_D6_SA3.json",
-        "Ryu_COMBO_6594_D6_SA2.5.json",
-        "Ryu_COMBO_7171_D6_SA2.5.json",
-        "Ryu_COMBO_800_D1_SA0.json",
-        "Ryu_COMBO_800_D1_SA0_20260527_025445.json",
-        "Ryu_COMBO_900_D0_SA0.json",
-        "Ryu_OKI_2000_D1_SA0.json",
-        "Ryu_OKI_2610_D0_SA0.json",
-        "Ryu_OKI_2790_D0_SA0.json",
-        "Ryu_OKI_3289_D3_SA1.json",
-        "Ryu_OKI_3510_D2_SA0.json",
-        "Ryu_OKI_3660_D0_SA0.json",
-        "Ryu_OKI_3930_D2_SA1.json",
-        "Ryu_OKI_5831_D6_SA2.5.json"
+        "Jamie_combo_20260312_071446.json",
+        "Jamie_combo_20260312_071513.json",
+        "Jamie_combo_20260312_071824.json",
+        "Jamie_combo_20260312_072201.json",
+        "Jamie_combo_20260312_073224.json",
+        "Jamie_combo_20260312_074222.json",
+        "Jamie_combo_20260312_074259.json",
+        "Jamie_combo_20260312_074336.json",
+        "Jamie_combo_20260312_074943.json"
     ],
     "files": [
-        "Ryu_Base.json",
-        "Ryu_CNQ.json",
-        "Ryu_Xerna.json"
+        "Jamie_Base.json"
     ],
     "selected_file": "",
     "slots": [
         {
             "active": false,
-            "frames": 59,
+            "frames": 0,
             "name": "",
-            "valid": true,
-            "weight": 3
-        },
-        {
-            "active": false,
-            "frames": 59,
-            "name": "",
-            "valid": true,
+            "valid": false,
             "weight": 1
         },
         {
             "active": false,
-            "frames": 39,
+            "frames": 0,
             "name": "",
-            "valid": true,
+            "valid": false,
             "weight": 1
         },
         {
             "active": false,
-            "frames": 28,
+            "frames": 0,
             "name": "",
-            "valid": true,
+            "valid": false,
             "weight": 1
         },
         {
             "active": false,
-            "frames": 59,
+            "frames": 0,
             "name": "",
-            "valid": true,
+            "valid": false,
             "weight": 1
         },
         {
             "active": false,
-            "frames": 97,
+            "frames": 0,
             "name": "",
-            "valid": true,
+            "valid": false,
             "weight": 1
         },
         {
             "active": false,
-            "frames": 51,
+            "frames": 0,
             "name": "",
-            "valid": true,
+            "valid": false,
+            "weight": 1
+        },
+        {
+            "active": false,
+            "frames": 0,
+            "name": "",
+            "valid": false,
             "weight": 1
         },
         {
@@ -105,5 +74,5 @@
             "weight": 1
         }
     ],
-    "status_msg": "Char selected : Ryu"
+    "status_msg": "Char selected : Jamie"
 }

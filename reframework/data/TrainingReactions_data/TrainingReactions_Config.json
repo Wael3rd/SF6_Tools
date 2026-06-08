@@ -1,4 +1,5 @@
 {
+    "auto_reset_delay": 0.1,
     "hud_auto_scale": true,
     "hud_base_size": 20.24,
     "hud_n_global_y": -0.33799999952316284,
@@ -29,5 +30,5 @@
     "timer_minutes": 1,
     "timer_mode_enabled": false,
     "timer_offset_x": 0.0,
-    "trial_count": 10
+    "trial_count": 50
 }

@@ -1,13 +1,13 @@
 {
   "vr_visible": true,
-  "_web_timestamp": 1780524500.3654354,
+  "_web_timestamp": 1780921805.880813,
   "hud_text_visible": true,
   "p1": {
     "hitboxes": true,
     "hurtboxes": true,
     "throwboxes": false,
     "charge_bars": false,
-    "hud_pos": false,
+    "hud_pos": true,
     "hud_hp": true,
     "hud_sa": true,
     "hud_dr": true,
@@ -29,6 +29,6 @@
     "proximityboxes": false,
     "uniqueboxes": false,
     "charge_bars": false,
-    "hud_pos": false
+    "hud_pos": true
   }
 }

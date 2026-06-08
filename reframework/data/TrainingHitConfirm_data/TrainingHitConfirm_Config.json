@@ -57,6 +57,6 @@
         "timer_minutes": 2,
         "timer_mode_enabled": false,
         "timer_offset_x": 0.0,
-        "trial_count": 10
+        "trial_count": 50
     }
 }

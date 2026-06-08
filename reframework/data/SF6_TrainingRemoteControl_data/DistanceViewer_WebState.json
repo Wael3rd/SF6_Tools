@@ -1,7 +1,7 @@
 {
     "aa_bw": 10,
     "aa_delay_cancel": false,
-    "aa_delay_max": 4,
+    "aa_delay_max": 0,
     "aa_delay_min": 0,
     "aa_enabled": false,
     "aa_footwork": false,
@@ -12,29 +12,31 @@
     "aa_fw_mode": "manual",
     "aa_move": "",
     "aa_moves": [
-        "6HK",
-        "6HP",
+        "6HK 4 Drinks",
+        "6HK 0 Drink",
         "2HK",
-        "6MP",
-        "5HK",
-        "5MK",
+        "6MK",
         "4HK",
+        "5HK",
         "5HP",
+        "5MK",
         "2MK",
-        "5LK",
-        "2HP",
-        "2MP",
-        "2LK",
-        "5LP",
         "5MP",
-        "2LP",
         "4HP",
+        "2KK",
+        "2HP",
+        "2LK",
+        "5LK",
+        "2MP",
+        "2LP",
+        "5LP",
         "THROW",
         "FORWARD JUMP"
     ],
+    "aa_neutral_buffer": 0,
     "aa_subs": null,
     "is_replay": false,
-    "p1_char": "Ryu",
+    "p1_char": "Alex",
     "p1_facing_right": true,
     "p1_prefs": {
         "A.K.I.": {
@@ -67,6 +69,41 @@
             "red": {
                 "ar": 147.62376,
                 "input": "5HP"
+            },
+            "visibility": {
+                "2HK": false,
+                "2HP": false,
+                "2LK": false,
+                "2LP": false,
+                "2MK": false,
+                "2MP": true,
+                "4MK": false,
+                "5HK": false,
+                "5HK (HOLD)": false,
+                "5HP": false,
+                "5HP (HOLD)": false,
+                "5LK": false,
+                "5LP": false,
+                "5MP": false,
+                "6HK": false,
+                "THROW": false
+            },
+            "yellow_offset": 50
+        },
+        "Alex_Prowler": {
+            "visibility": {
+                "2LPLK": false,
+                "2THROW": false,
+                "5HK": false,
+                "5HP": false,
+                "5HP (HOLD)": false,
+                "5LP": false,
+                "5MK": false,
+                "5MP": false,
+                "6HP": false,
+                "6LP": false,
+                "6MP": false,
+                "THROW": false
             },
             "yellow_offset": 50
         },
@@ -422,7 +459,7 @@
         }
     },
     "p1_show_all": true,
-    "p2_char": "Ryu",
+    "p2_char": "Jamie",
     "p2_facing_right": false,
     "p2_prefs": {
         "A.K.I.": {
@@ -485,8 +522,8 @@
         },
         "Chun-Li": {
             "low": {
-                "ar": 80,
-                "input": "THROW"
+                "ar": 175.56312561035156,
+                "input": "5HP"
             },
             "red": false,
             "yellow_offset": 50
@@ -592,6 +629,27 @@
             "red": {
                 "ar": 180.3,
                 "input": "5HK"
+            },
+            "visibility": {
+                "2HK": false,
+                "2HP": false,
+                "2KK": false,
+                "2LK": false,
+                "2LP": false,
+                "2MK": true,
+                "2MP": false,
+                "4HK": false,
+                "4HP": false,
+                "5HK": false,
+                "5HP": false,
+                "5LK": false,
+                "5LP": false,
+                "5MK": false,
+                "5MP": false,
+                "6HK 0 Drink": false,
+                "6HK 4 Drinks": false,
+                "6MK": false,
+                "THROW": false
             },
             "yellow_offset": 50
         },
@@ -722,8 +780,8 @@
                 "input": "2MK"
             },
             "red": {
-                "ar": 156.44165,
-                "input": "4HK"
+                "ar": 154.506,
+                "input": "5HP"
             },
             "visibility": {
                 "2HK": false,

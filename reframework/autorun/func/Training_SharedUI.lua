@@ -38,16 +38,23 @@ UI.HUD_CONFIG = {
 }
 
 function UI.get_screen_size()
-    local w, h = 1920, 1080 
+    local w, h = 1920, 1080
     if imgui.get_display_size then
         local result = imgui.get_display_size()
         if type(result) == "userdata" then
             pcall(function() w, h = result.x, result.y end)
-        elseif type(result) == "number" then 
-            w, h = imgui.get_display_size() 
+        elseif type(result) == "number" then
+            w, h = imgui.get_display_size()
         end
     end
     return w, h
+end
+
+function UI.get_letterbox_offset()
+    local sw, sh = UI.get_screen_size()
+    local game_h = sw * 9 / 16
+    if game_h >= sh then return 0 end
+    return (sh - game_h) / 2
 end
 
 function UI.update_fonts(cfg)
@@ -152,34 +159,35 @@ function UI.draw_standard_hud(window_name, cfg, session, mode_label, show_timer,
     if imgui.begin_window(window_name, true, win_flags) then
         UI.push_main()
         
-        local center_x = sw / 2; local center_y = sh / 2
-        local top_y = center_y + ((cfg.hud_n_global_y or -0.33) * sh)
+        local lb_off = UI.get_letterbox_offset()
+        local game_h = sh - lb_off * 2
+        local center_x = sw / 2; local center_y = lb_off + game_h / 2
+        local top_y = center_y + ((cfg.hud_n_global_y or -0.33) * game_h)
         local spread_score_px = (cfg.hud_n_spread_score or 0.09) * sw
-        local spacing_y_px    = (cfg.hud_n_spacing_y or 0.03) * sh
-        
+        local spacing_y_px    = (cfg.hud_n_spacing_y or 0.03) * game_h
+
         local off_score_px = (cfg.hud_n_offset_score or 0.0) * sw
         local off_total_px = (cfg.hud_n_offset_total or 0.0) * sw
         local off_timer_px = (cfg.hud_n_offset_timer or 0.0) * sw
-        local off_status_px = (cfg.hud_n_offset_status_y or 0.0) * sh
+        local off_status_px = (cfg.hud_n_offset_status_y or 0.0) * game_h
 
         -- 1. TIMER
         if show_timer then
             local current_hud = _G.CurrentHudSuffix or "Default"
             local hud_cfg = UI.HUD_CONFIG[current_hud] or UI.HUD_CONFIG["Default"]
-            
+
             local time_show = session.is_running and session.time_rem or ((cfg.timer_minutes or 0) * 60)
             local t_txt = UI.format_time(time_show)
-            
+
             UI.pop_main(); UI.push_timer()
-            
+
             local w_t = imgui.calc_text_size(t_txt).x
             local t_col = UI.COLORS.White
             if session.is_paused then t_col = UI.COLORS.Yellow
             elseif session.time_rem and session.time_rem < 10 and session.is_running then t_col = UI.COLORS.Red end
             if session.is_time_up then t_col = UI.COLORS.Red end
-            
-            -- FIX : On utilise le Y et X spécifiques au HUD détecté
-            UI.draw_timer(t_txt, center_x - (w_t / 2) + (hud_cfg.x * sw), center_y + (hud_cfg.y * sh), t_col)
+
+            UI.draw_timer(t_txt, center_x - (w_t / 2) + (hud_cfg.x * sw), center_y + (hud_cfg.y * game_h), t_col)
             
             UI.pop_timer(); UI.push_main()
         end
@@ -199,7 +207,7 @@ function UI.draw_standard_hud(window_name, cfg, session, mode_label, show_timer,
 
         -- 3. SPECIFIC STATS INJECTION (Callback)
         local stat_y = top_y + spacing_y_px
-        if custom_stats_func then custom_stats_func(center_x, stat_y, sw, sh) end
+        if custom_stats_func then custom_stats_func(center_x, stat_y, sw, game_h) end
 
         -- 4. STATUS
         local final_msg = session.feedback and session.feedback.text or ""

@@ -174,6 +174,7 @@ local SM_THEME = {
     hdr_logger = { base = 0xFFB6599B, hover = 0xFFC770AC, active = 0xFFA04885 },
 	hdr_liveSlots = { base = 0xFF4E9F5F, hover = 0xFF66B576, active = 0xFF367844 },
     hdr_sequencer = { base = 0xFF5B7FC7, hover = 0xFF7394D6, active = 0xFF4568AF },
+    hdr_help = { base = 0xFF5D6DDA, hover = 0xFF7382E6, active = 0xFF4555C9 },
 }
 
 local function sm_styled_header(label, style)
@@ -1518,6 +1519,28 @@ re.on_draw_ui(function()
                 if seq_state.waiting then status = status .. "  [WAITING act_st=" .. (seq_state._dbg_act_st or "?") .. "]" end
                 imgui.text(status)
             end
+        end
+
+        if sm_styled_header("--- HELP ---", SM_THEME.hdr_help) then
+            imgui.text_colored("SOLO OPERATIONS", 0xFF00FFFF)
+            imgui.text("  IMPORT: Load slot data from a per-character JSON file.")
+            imgui.text("  EXPORT: Save current slots to the default character file.")
+            imgui.text("  SAVE AS: Save with a custom filename.")
+            imgui.text("  EXPORT ALL CHARS: Hold 1s to mass-export all characters.")
+            imgui.spacing()
+
+            imgui.text_colored("LIVE SLOTS", 0xFF00FFFF)
+            imgui.text("  Active: Enable/disable a slot for dummy playback.")
+            imgui.text("  Weight: Higher = picked more often in random playback.")
+            imgui.text("  Import Combo Data: Load a CustomCombo file into a slot.")
+            imgui.spacing()
+
+            imgui.text_colored("INPUT SEQUENCER", 0xFF00FFFF)
+            imgui.text("  Program input sequences line by line (direction + buttons).")
+            imgui.text("  Supported motions: QCF, QCB, HCF, HCB, 360, SRK.")
+            imgui.text("  Frames: How many frames to hold the input.")
+            imgui.text("  W (WAIT): Pause until the current action completes.")
+            imgui.text("  Loop: Repeat the sequence continuously.")
         end
 
         imgui.separator()
