@@ -3,35 +3,6 @@
         "A.K.I.": {
             "moves": [
                 {
-                    "ar": 248,
-                    "guard_bit": 7,
-                    "input": "1236LP",
-                    "input_sequence": [
-                        {
-                            "frames": 1,
-                            "mask": 10
-                        },
-                        {
-                            "frames": 1,
-                            "mask": 2
-                        },
-                        {
-                            "frames": 1,
-                            "mask": 6
-                        },
-                        {
-                            "frames": 1,
-                            "mask": 20
-                        },
-                        {
-                            "frames": 8,
-                            "mask": 0
-                        }
-                    ],
-                    "is_cancelable": false,
-                    "is_super_cancelable": false
-                },
-                {
                     "ar": 216.15102,
                     "guard_bit": 7,
                     "input": "6HP",
@@ -41,14 +12,14 @@
                 {
                     "ar": 192.34225,
                     "guard_bit": 6,
-                    "input": "2HP",
+                    "input": "3HP",
                     "is_cancelable": false,
                     "is_super_cancelable": false
                 },
                 {
                     "ar": 192.34225,
                     "guard_bit": 6,
-                    "input": "3HP",
+                    "input": "2HP",
                     "is_cancelable": false,
                     "is_super_cancelable": false
                 },
@@ -842,13 +813,6 @@
                     "ar": 80,
                     "guard_bit": 0,
                     "input": "THROW",
-                    "is_cancelable": false,
-                    "is_super_cancelable": false
-                },
-                {
-                    "ar": 80,
-                    "guard_bit": 7,
-                    "input": "5LPLK",
                     "is_cancelable": false,
                     "is_super_cancelable": false
                 },
@@ -2179,6 +2143,31 @@
         "Ken": {
             "moves": [
                 {
+                    "ar": 316.5871,
+                    "guard_bit": 7,
+                    "input": "623HK",
+                    "input_sequence": [
+                        {
+                            "frames": 1,
+                            "mask": 4
+                        },
+                        {
+                            "frames": 1,
+                            "mask": 2
+                        },
+                        {
+                            "frames": 1,
+                            "mask": 518
+                        },
+                        {
+                            "frames": 8,
+                            "mask": 0
+                        }
+                    ],
+                    "is_cancelable": false,
+                    "is_super_cancelable": false
+                },
+                {
                     "ar": 192.1329,
                     "guard_bit": 7,
                     "input": "5HK",
@@ -2631,39 +2620,6 @@
                     "ar": 80,
                     "guard_bit": 0,
                     "input": "THROW",
-                    "is_cancelable": false,
-                    "is_super_cancelable": false
-                },
-                {
-                    "ar": 200.0,
-                    "guard_bit": 7,
-                    "input": "236LP",
-                    "input_sequence": [
-                        {
-                            "frames": 1,
-                            "mask": 8
-                        },
-                        {
-                            "frames": 1,
-                            "mask": 10
-                        },
-                        {
-                            "frames": 1,
-                            "mask": 2
-                        },
-                        {
-                            "frames": 1,
-                            "mask": 6
-                        },
-                        {
-                            "frames": 1,
-                            "mask": 20
-                        },
-                        {
-                            "frames": 8,
-                            "mask": 0
-                        }
-                    ],
                     "is_cancelable": false,
                     "is_super_cancelable": false
                 }
@@ -3293,7 +3249,7 @@
         "Ryu": {
             "moves": [
                 {
-                    "ar": 192.43614196777344,
+                    "ar": 192.43614,
                     "guard_bit": 7,
                     "input": "6HK",
                     "is_cancelable": false,
@@ -3335,7 +3291,7 @@
                     "is_super_cancelable": false
                 },
                 {
-                    "ar": 156.441650390625,
+                    "ar": 156.44165,
                     "guard_bit": 7,
                     "input": "4HK",
                     "is_cancelable": false,
@@ -3352,6 +3308,13 @@
                     "ar": 148.2429,
                     "guard_bit": 6,
                     "input": "2MK",
+                    "is_cancelable": false,
+                    "is_super_cancelable": false
+                },
+                {
+                    "ar": 130,
+                    "guard_bit": 7,
+                    "input": "5LK",
                     "is_cancelable": false,
                     "is_super_cancelable": false
                 },
@@ -3373,6 +3336,13 @@
                     "ar": 105,
                     "guard_bit": 6,
                     "input": "2LK",
+                    "is_cancelable": false,
+                    "is_super_cancelable": false
+                },
+                {
+                    "ar": 101,
+                    "guard_bit": 7,
+                    "input": "5LP",
                     "is_cancelable": false,
                     "is_super_cancelable": false
                 },
@@ -3407,7 +3377,7 @@
                 {
                     "ar": 300.0,
                     "guard_bit": 7,
-                    "input": "41236LP",
+                    "input": "236HP",
                     "input_sequence": [
                         {
                             "frames": 1,
@@ -3427,7 +3397,7 @@
                         },
                         {
                             "frames": 1,
-                            "mask": 20
+                            "mask": 68
                         },
                         {
                             "frames": 8,
@@ -3903,13 +3873,6 @@
                     "ar": 133.36099,
                     "guard_bit": 7,
                     "input": "3MP",
-                    "is_cancelable": false,
-                    "is_super_cancelable": false
-                },
-                {
-                    "ar": 102,
-                    "guard_bit": 7,
-                    "input": "5LPLK",
                     "is_cancelable": false,
                     "is_super_cancelable": false
                 },
@@ -13411,41 +13374,6 @@
                     "ar": 147.62376,
                     "input": "5HP"
                 },
-                "visibility": {
-                    "2HK": false,
-                    "2HP": false,
-                    "2LK": false,
-                    "2LP": false,
-                    "2MK": false,
-                    "2MP": true,
-                    "4MK": false,
-                    "5HK": false,
-                    "5HK (HOLD)": false,
-                    "5HP": false,
-                    "5HP (HOLD)": false,
-                    "5LK": false,
-                    "5LP": false,
-                    "5MP": false,
-                    "6HK": false,
-                    "THROW": false
-                },
-                "yellow_offset": 50
-            },
-            "Alex_Prowler": {
-                "visibility": {
-                    "2LPLK": false,
-                    "2THROW": false,
-                    "5HK": false,
-                    "5HP": false,
-                    "5HP (HOLD)": false,
-                    "5LP": false,
-                    "5MK": false,
-                    "5MP": false,
-                    "6HP": false,
-                    "6LP": false,
-                    "6MP": false,
-                    "THROW": false
-                },
                 "yellow_offset": 50
             },
             "Blanka": {
@@ -13831,6 +13759,7 @@
                     "ar": 230.24052,
                     "input": "5HK (HOLD)"
                 },
+                "visibility": null,
                 "yellow_offset": 50
             },
             "Alex_Prowler": {
@@ -13860,8 +13789,8 @@
             },
             "Chun-Li": {
                 "low": {
-                    "ar": 175.56312561035156,
-                    "input": "5HP"
+                    "ar": 80,
+                    "input": "THROW"
                 },
                 "red": false,
                 "yellow_offset": 50
@@ -13968,27 +13897,6 @@
                     "ar": 180.3,
                     "input": "5HK"
                 },
-                "visibility": {
-                    "2HK": false,
-                    "2HP": false,
-                    "2KK": false,
-                    "2LK": false,
-                    "2LP": false,
-                    "2MK": true,
-                    "2MP": false,
-                    "4HK": false,
-                    "4HP": false,
-                    "5HK": false,
-                    "5HP": false,
-                    "5LK": false,
-                    "5LP": false,
-                    "5MK": false,
-                    "5MP": false,
-                    "6HK 0 Drink": false,
-                    "6HK 4 Drinks": false,
-                    "6MK": false,
-                    "THROW": false
-                },
                 "yellow_offset": 50
             },
             "Juri": {
@@ -14058,14 +13966,6 @@
                 "yellow_offset": 50
             },
             "Mai": {
-                "low": {
-                    "ar": 170.293,
-                    "input": "2HK"
-                },
-                "red": {
-                    "ar": 197,
-                    "input": "5HK"
-                },
                 "yellow_offset": 50
             },
             "Manon": {
@@ -14118,8 +14018,8 @@
                     "input": "2MK"
                 },
                 "red": {
-                    "ar": 154.506,
-                    "input": "5HP"
+                    "ar": 156.44165,
+                    "input": "4HK"
                 },
                 "visibility": {
                     "2HK": false,

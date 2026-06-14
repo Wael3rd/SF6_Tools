@@ -13,6 +13,8 @@ local draw = draw
 local json = json
 
 require("func/SharedHooks")
+local GS = require("func/GameState")
+local UIKit = require("func/UIKit")
 local Vector3f = Vector3f
 
 -- =========================================================
@@ -27,21 +29,20 @@ local v_p1 = Vector3f.new(0, 0, 0)
 local v_p2 = Vector3f.new(0, 0, 0)
 
 -- =========================================================
--- [1. CONFIGURATION & VARIABLES GLOBALES]
+-- [1. CONFIGURATION & GLOBAL VARIABLES]
 -- =========================================================
 local charges_file = "SheldonsBoxes_data/SheldonsBoxes_Charges.json"
 local saved_charge_db = {}
-local loaded_db = json.load_file(charges_file)
+local loaded_db = _G.safe_load_json(charges_file)
 if loaded_db then saved_charge_db = loaded_db end
 local function save_charge_db() json.dump_file(charges_file, saved_charge_db) end
 local player_max_charges = { [0] = { last_loaded_esf = nil }, [1] = { last_loaded_esf = nil } }
 
--- Configuration (Normalisée)
+-- Configuration (Normalized)
 local config_file = "SheldonsBoxes_data/SheldonsBoxes_Config.json"
 local config = { 
     show_distance_arrow = true,
 	divide_distance_display = false,
-    arrow_y_offset = 0.0,
     arrow_y_offset = 0.0,
     arrow_thickness = 40.0,
     hud_x_padding = 0.286,
@@ -96,7 +97,7 @@ local config = {
         seg2_angle    = 0,
     },
 }
-local loaded_conf = json.load_file(config_file)
+local loaded_conf = _G.safe_load_json(config_file)
 if loaded_conf then 
     for k,v in pairs(loaded_conf) do 
         if k == "box_colors" and type(v) == "table" then for ck, cv in pairs(v) do config.box_colors[ck] = cv end
@@ -216,25 +217,17 @@ local COL_GREY   = 0xFF888888
 local COL_GOLD   = 0xFF00D5FF
 
 local UI_THEME = {
-    hdr_info    = { base = 0xFFDB9834, hover = 0xFFE6A94D, active = 0xFFC78320 },
-    hdr_session = { base = 0xFFB6599B, hover = 0xFFC770AC, active = 0xFFA04885 },
-    hdr_rules   = { base = 0xFF5D6DDA, hover = 0xFF7382E6, active = 0xFF4555C9 },
+    hdr_info    = UIKit.THEME.hdr_gold,
+    hdr_session = UIKit.THEME.hdr_purple,
+    hdr_rules   = UIKit.THEME.hdr_blue,
 }
 
-local function styled_header(label, style)
-    imgui.push_style_color(24, style.base); imgui.push_style_color(25, style.hover); imgui.push_style_color(26, style.active)
-    local is_open = imgui.collapsing_header(label)
-    imgui.pop_style_color(3)
-    return is_open
-end
+local styled_header = UIKit.styled_header
 
 -- =========================================================
 -- [BOX COLOR SYSTEM]
 -- =========================================================
-local function argb_to_abgr(argb)
-    local a = (argb >> 24) & 0xFF; local r = (argb >> 16) & 0xFF; local g = (argb >> 8) & 0xFF; local b = argb & 0xFF
-    return (a << 24) | (b << 16) | (g << 8) | r
-end
+local argb_to_abgr = UIKit.argb_to_abgr
 local function make_fill(abgr_num, alpha) return ((alpha & 0xFF) << 24) | (abgr_num & 0x00FFFFFF) end
 
 local box_col = {}
@@ -306,11 +299,11 @@ end
 local property_text_font_size=14
 local colors = { Red=0xFF0000FF, Green=0xFF00FF00, Grey=0xFF5b5b5b, White=0xFFFFFFFF, VisualChargeMeterFillStart={r=255, g=255, b=0, a=178}, VisualChargeMeterFillEnd={r=0, g=255, b=0, a=178}, VisualChargeMeterBackground=0xB3333333, VisualChargeMeterOutline=0xB3000000, VisualChargeMeterText=0xFFFFFFFF }
 
--- [SUPPRESSION DE L'ANCIENNE LOGIQUE PAUSE]
--- Les variables timer ne sont plus nécessaires ici
+-- [REMOVED OLD PAUSE LOGIC]
+-- Timer variables are no longer needed here
 
 -- =========================================================
--- [2. SYSTÈME DE POLICE & HELPERS]
+-- [2. FONT SYSTEM & HELPERS]
 -- =========================================================
 local custom_font = { obj = nil, last_h = 0, last_name = "", last_size = 0 }
 local function try_load_font()
@@ -370,13 +363,10 @@ end)
 
 local gBattle = nil
 local function get_player_data(pi)
+    local p = (pi == 0) and GS.p1 or GS.p2
+    if not p then return end
     if gBattle==nil then gBattle=sdk.find_type_definition("gBattle")end
     if gBattle==nil then return end
-    local sP=gBattle:get_field("Player"):get_data(nil)
-    if sP==nil then return end
-    local cP=sP.mcPlayer
-    if cP==nil or cP[pi]==nil then return end
-    local p=cP[pi]
     local BT=gBattle:get_field("Team"):get_data(nil)
     if BT==nil then return end
     local cT=BT.mcTeam
@@ -402,7 +392,7 @@ local function draw_dynamic_charge_bars(p_data, pi, display_w, display_h, y_offs
     if p_data and p_data.charge_infos then
         if p_data.charge_infos:get_Count() <= 0 then return end
         
-        -- Calcul des dimensions dynamiques
+        -- Calculate dynamic dimensions
         local lay = get_layout()
         local bar_w = lay.charge_width * display_w
         local bar_h = lay.charge_height * display_h
@@ -610,12 +600,7 @@ local charge_p2_rect = { x = 0, y = 0, w = 0, h = 0 }
 local click_flash_frames = 0
 
 local function vr_get_vital_max(player_idx)
-    if not gBattle then return nil end
-    local ok, sP = pcall(gBattle.get_field, gBattle, "Player")
-    if not ok or not sP then return nil end
-    local ok2, data = pcall(sP.get_data, sP, nil)
-    if not ok2 or not data or not data.mcPlayer then return nil end
-    local p = data.mcPlayer[player_idx]
+    local p = (player_idx == 0) and GS.p1 or GS.p2
     if not p then return nil end
     local v = p.vital_max
     if v and v > 0 then return v end
@@ -627,15 +612,9 @@ end
 -- =========================================================
 re.on_frame(function()
     try_load_font()
+    if not GS.valid then return end
+    if GS.in_pause_menu then return end
     if gBattle == nil then gBattle = sdk.find_type_definition("gBattle") end; if gBattle == nil then return end
-
-    -- [NOUVELLE DETECTION PAUSE - COPIÉE DE DISTANCE VIEWER]
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
-		  if pause_bit ~= 64 and pause_bit ~= 2112 then return end
-    end
-    -- [FIN DE LA NOUVELLE LOGIQUE]
 
     local p1_data = get_player_data(0)
     local p2_data = get_player_data(1)
@@ -732,7 +711,7 @@ re.on_frame(function()
         hud_p2_rect.h = total_h + 10
     end
 
-    -- 3. DISPLAY CHARGE METER (Passage de display_h ici)
+    -- 3. DISPLAY CHARGE METER (passing display_h here)
     if config.show_charge_bars then
         local charge_lay = get_layout()
         local bar_w = charge_lay.charge_width * display_w
@@ -771,7 +750,7 @@ re.on_frame(function()
                 end
             end
         end
-        local sPlayer = gBattle:get_field("Player"):get_data(nil)
+        local sPlayer = GS.sP
         if sPlayer and sPlayer.mcPlayer then
             for i, player in pairs(sPlayer.mcPlayer) do
                 if player and player.mpActParam and player.pos and player.pos.x and player.pos.y then
@@ -977,7 +956,6 @@ re.on_frame(function()
         end
     end
 
-    -- collectgarbage("step", 10)
 end)
 
 -- =========================================================

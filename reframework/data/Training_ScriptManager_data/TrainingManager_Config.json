@@ -1,33 +1,4 @@
 {
-    "btn_alphas": {
-        "c1": 200,
-        "c2": 200,
-        "c3": 200,
-        "c4": 200
-    },
-    "btn_colors": {
-        "c1": 4294901760,
-        "c2": 4278255360,
-        "c3": 4278190335,
-        "c4": 4292608255
-    },
     "func_button": 16384,
-    "hide_btn": {
-        "h_pct": 0.07500000298023224,
-        "w_pct": 0.07500000298023224,
-        "x_pct": 0.4625000059604645,
-        "y_pct": 0.05000000074505806
-    },
-    "switch_key": 48,
-    "switch_modifiers": null,
-    "top_alphas": {
-        "active": 170,
-        "inactive": 120,
-        "switch": 170
-    },
-    "top_colors": {
-        "active": 4278320896,
-        "inactive": 4284900966,
-        "switch": 4278216447
-    }
+    "switch_key": 48
 }

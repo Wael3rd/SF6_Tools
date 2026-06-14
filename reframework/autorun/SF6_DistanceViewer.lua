@@ -7,8 +7,10 @@ local Vector3f = Vector3f
 local Vector2f = Vector2f
 
 require("func/SharedHooks")
+local GS = require("func/GameState")
+local UIKit = require("func/UIKit")
 
--- Conversion numpad → flèches Unicode
+-- Numpad to Unicode arrow conversion
 local _numpad_arrows = { ["1"]="↙", ["2"]="↓", ["3"]="↘", ["4"]="←", ["6"]="→", ["7"]="↖", ["8"]="↑", ["9"]="↗" }
 local function input_to_arrows(str)
     if not str then return str end
@@ -38,10 +40,10 @@ local function input_to_arrows(str)
     end)
 end
 
--- Couleur par force du coup
-local COL_HEAVY = 0xFF5555FF   -- Rouge
-local COL_MEDIUM = 0xFF00FFFF  -- Jaune
-local COL_LIGHT = 0xFFFFBB55   -- Bleu clair
+-- Color by attack strength
+local COL_HEAVY = 0xFF5555FF   -- Red
+local COL_MEDIUM = 0xFF00FFFF  -- Yellow
+local COL_LIGHT = 0xFFFFBB55   -- Light blue
 local function get_strength_color(input)
     if not input then return nil end
     local upper = input:upper()
@@ -51,7 +53,7 @@ local function get_strength_color(input)
     return nil
 end
 
--- Dropdown de moves (imgui.combo natif)
+-- Move dropdown (native imgui.combo)
 local function colored_move_dropdown(label, selected_idx, moves, width)
     local move_names = { "None" }
     for _, mv in ipairs(moves) do
@@ -116,7 +118,6 @@ local UNIFIED_FILE = "SF6_DistanceViewer_data/SF6Distance_Data_Attacks.json"
 local advanced_data = {}
 
 local fallback_spacing = { yellow = 2.50, red = 2.00, low = 1.50 }
-local spacing_thresholds = {}
 local jump_data_store = {}
 
 local advanced_prefs = { [0] = {}, [1] = {} }
@@ -221,9 +222,9 @@ local config = {
     p1_opp_zone_fixed_x = 0.0, p1_opp_zone_fixed_y = 0.0,
     p1_opp_zone_cursor_off_x = 15.0,
     -- =======================================================
-    -- [TWEAKS MANUELS P1] (Valeurs de 0.0 à 1.0 = Hauteur écran)
-    -- h_1 = Mode Distance Only (1)
-    -- Le texte se dessine "vers le haut" depuis cette coordonnée.
+    -- [MANUAL TWEAKS P1] (Values from 0.0 to 1.0 = Screen height)
+    -- h_1 = Distance Only mode (1)
+    -- Text draws "upward" from this coordinate.
     -- =======================================================
     p1_opp_zone_cursor_h_1 = 0.48, p1_opp_zone_cursor_h_2 = 0.85, p1_opp_zone_cursor_h_3 = 0.16, p1_opp_zone_cursor_h_4 = 0.45,
     p1_opp_zone_cursor_input_h_1 = 0.80, p1_opp_zone_cursor_input_h_2 = 0.90, p1_opp_zone_cursor_input_h_3 = 0.20, p1_opp_zone_cursor_input_h_4 = 0.49,
@@ -267,7 +268,7 @@ local config = {
     p2_opp_zone_fixed_x = 0.42, p2_opp_zone_fixed_y = 0.145,
     p2_opp_zone_cursor_off_x = 15.0,
 	-- =======================================================
-    -- [TWEAKS MANUELS P2] (Valeurs de 0.0 à 1.0 = Hauteur écran)
+    -- [MANUAL TWEAKS P2] (Values from 0.0 to 1.0 = Screen height)
     -- =======================================================
     p2_opp_zone_cursor_h_1 = 0.51, p2_opp_zone_cursor_h_2 = 0.85, p2_opp_zone_cursor_h_3 = 0.16, p2_opp_zone_cursor_h_4 = 0.51,
     p2_opp_zone_cursor_input_h_1 = 0.55, p2_opp_zone_cursor_input_h_2 = 0.90, p2_opp_zone_cursor_input_h_3 = 0.20, p2_opp_zone_cursor_input_h_4 = 0.55,
@@ -298,7 +299,7 @@ local config = {
 local settings_file = "SF6_DistanceViewer_data/SF6DistanceViewer_Config.json"
 local function save_settings() local d={config=config}; json.dump_file(settings_file, d) end
 local function load_settings() 
-    local d=json.load_file(settings_file)
+    local d=_G.safe_load_json(settings_file)
     if d and d.config then 
         for k,v in pairs(d.config) do 
             if config[k]~=nil then config[k]=v end 
@@ -491,7 +492,7 @@ local function apply_teleport_exact(attacker_id, distance, is_retry, is_throw)
     local px2_raw = p2.pos.x.v
     local p1_is_left = px1_raw < px2_raw
 
-    -- LECTURE DIRECTE DU CACHE GLOBAL
+    -- DIRECT READ FROM GLOBAL CACHE
     local p1_offset = (attacker_id == 1) and shared_combat.p1_front_offset or 0.0
     local p2_offset = (attacker_id == 0) and shared_combat.p2_front_offset or 0.0
     if is_throw then
@@ -553,7 +554,6 @@ end
 
 local first_draw = true
 local is_binding_mode = false
-local text_pos_modes = { "Follow Head", "Follow Root", "Fixed Screen" }
 
 -- Functions utilizing the loaded config for visibility
 local function is_move_visible(pi, char_name, input)
@@ -586,11 +586,6 @@ local function get_real_name(esf_key)
     return esf_names_map[esf_key] or esf_key
 end
 
--- Map inverse : nom réel -> clé ESF (pour patcher spacing_thresholds)
-local real_to_esf = {}
-for esf_key, real_name in pairs(esf_names_map) do
-    real_to_esf[real_name] = esf_key
-end
 
 local function load_advanced_data()
     local f = json.load_file(UNIFIED_FILE)
@@ -645,7 +640,7 @@ local function get_player_limits(pi, p_data)
     local red_ar = p_red and get_effective_ar(p_red, pi) or nil
     local low_ar = p_low and get_effective_ar(p_low, pi) or nil
 
-    -- Yellow = max(red, low) + offset. Si aucun des deux, yellow = offset seul
+    -- Yellow = max(red, low) + offset. If neither is set, yellow = offset only
     local base_ar = nil
     if red_ar and low_ar then base_ar = math.max(red_ar, low_ar)
     elseif red_ar then base_ar = red_ar
@@ -718,7 +713,7 @@ local function get_ar_range(pi, char_name)
         end
     end
     if not has_visible then return 0, 1 end
-    -- Évite la division par zéro si un seul coup est sélectionné
+    -- Avoid division by zero when only one move is selected
     if mn == mx then return mn, mx + 0.1 end 
     return mn, mx
 end
@@ -776,19 +771,14 @@ local COL_GREY   = 0xFF888888
 local COL_GOLD   = 0xFF00D5FF
 
 local UI_THEME = {
-    hdr_info      = { base = 0xFF32C8F5, hover = 0xFF50D7FF, active = 0xFF1EAAEE }, -- Jaune soutenu
-    hdr_rules     = { base = 0xFF2882F0, hover = 0xFF3C96FF, active = 0xFF1464D2 }, -- Orange vibrant
-    hdr_session_1 = { base = 0xFF4B4BE1, hover = 0xFF5F5FF5, active = 0xFF3232C3 }, -- Rouge doux mais franc
-    hdr_session_2 = { base = 0xFFE69646, hover = 0xFFFAAA5A, active = 0xFFC87832 }, -- Bleu océan
-    hdr_debug     = { base = 0xFF5AC850, hover = 0xFF6EDC64, active = 0xFF46AA3C }, -- Vert prairie
+    hdr_info      = { base = 0xFF32C8F5, hover = 0xFF50D7FF, active = 0xFF1EAAEE }, -- Bold yellow
+    hdr_rules     = { base = 0xFF2882F0, hover = 0xFF3C96FF, active = 0xFF1464D2 }, -- Vibrant orange
+    hdr_session_1 = { base = 0xFF4B4BE1, hover = 0xFF5F5FF5, active = 0xFF3232C3 }, -- Soft bold red
+    hdr_session_2 = { base = 0xFFE69646, hover = 0xFFFAAA5A, active = 0xFFC87832 }, -- Ocean blue
+    hdr_debug     = { base = 0xFF5AC850, hover = 0xFF6EDC64, active = 0xFF46AA3C }, -- Meadow green
 }
 
-local function styled_header(label, style)
-    imgui.push_style_color(24, style.base); imgui.push_style_color(25, style.hover); imgui.push_style_color(26, style.active)
-    local is_open = imgui.collapsing_header(label)
-    imgui.pop_style_color(3)
-    return is_open
-end
+local styled_header = UIKit.styled_header
 
 local function styled_tree_node(label, color)
     imgui.push_style_color(0, color)
@@ -888,7 +878,7 @@ end
 -- =========================================================
 local d2d_icons = {}
 local d2d_queue = {}
-local icons_to_draw = {} -- Déclaré en global ici !
+local icons_to_draw = {} -- Declared as global here!
 local d2d_initialized = false
 
 
@@ -970,8 +960,7 @@ local debug_jump_status = "Not Loaded"
 local debug_dist_color = 0xFF0000FF 
 local debug_jump_color = 0xFF0000FF
 
--- 1. INIT DISTANCES (Strictement via Advanced Data maintenant)
-spacing_thresholds = {}
+-- 1. INIT DISTANCES (Strictly via Advanced Data now)
 debug_dist_status = "Waiting for Data..."
 debug_dist_color = 0xFF888888
 
@@ -1054,12 +1043,9 @@ local function get_char_root_screen_pos(player_obj)
     return nil
 end
 
-local gBattle = nil
 local function update_player_cache(pi, cache_table)
-    if gBattle==nil then gBattle=sdk.find_type_definition("gBattle") end; if gBattle==nil then cache_table.valid = false; return end
-    local sP=gBattle:get_field("Player"):get_data(nil); if sP==nil then cache_table.valid = false; return end
-    local cP=sP.mcPlayer; if cP==nil or cP[pi]==nil then cache_table.valid = false; return end
-    local p=cP[pi]; 
+    local p = (pi == 0) and GS.p1 or GS.p2
+    if not p then cache_table.valid = false; return end
     
     cache_table.obj = p
     if p.pos and p.pos.x and p.pos.x.v and p.pos.y and p.pos.y.v then 
@@ -1343,7 +1329,7 @@ local function update_combat_distances()
 
     local p1_is_left = p1_cache.world_x < p2_cache.world_x
     
-    -- [CRITICAL FIX] : Prise en compte du Lock pour calculer la distance depuis l'origine gelée
+    -- [CRITICAL FIX] : Account for Lock to calculate distance from the frozen origin
     local p1_ref_x = p1_cache.world_x
     local p2_ref_x = p2_cache.world_x
     if config.use_attack_lock then
@@ -1385,7 +1371,7 @@ local function evaluate_player_zone(pi, cache_data, opponent_data)
     if auto_activate.enabled and auto_activate.move and pi == 1 then is_adv = true end
     local char_name = cache_data.adv_name or get_real_name(cache_data.real_name)
     
-    -- La Source de Vérité absorbe l'erreur de 1 millimètre du moteur 3D ici.
+    -- The Source of Truth absorbs the 1mm 3D engine rounding error here.
     
     if is_adv then
         local cdata = advanced_data[char_name]
@@ -1596,7 +1582,7 @@ local function get_opp_zone_info(cache_data, opponent_data)
         return "Out Of Range", colors.White
     end
 
-    -- MY ZONE LOGIC: On évalue sa propre position par rapport à la zone de l'adversaire
+    -- MY ZONE LOGIC: Evaluate own position relative to the opponent's zone
     local _, dist_target = get_closest_edge(cache_data.id)
     if not dist_target then return "No Data", colors.Grey end
 
@@ -1604,7 +1590,7 @@ local function get_opp_zone_info(cache_data, opponent_data)
     if cache_data.id == 0 then prefix = "P1"
     elseif cache_data.id == 1 then prefix = "P2" end
 
-    local show_t, show_n = true, true -- Forcé à TRUE pour toujours avoir Titre + Coup
+    local show_t, show_n = true, true -- Forced TRUE to always show Title + Move
 
     local is_adv = false
     if cache_data.id == 0 then is_adv = config.p1_advanced_mode else is_adv = config.p2_advanced_mode end
@@ -1784,7 +1770,7 @@ local function draw_spacing_horizontal(owner_data, target_data, settings, scale_
                 if x_start and x_end then draw_thick_line(x_start, y, x_end, y, scaled_thickness, zone.color) end
             end
             if dist_target <= zone.dist + 0.0000001 then 
-                prev_dist = dist_target -- Empêche la ligne verte de s'écrire par dessus
+                prev_dist = dist_target -- Prevent the green line from drawing over
                 break 
             end
             prev_dist = zone.dist
@@ -1897,7 +1883,7 @@ local function draw_vertical_overlay(owner_data, target_data, settings, scale_fa
                                 y = label_y,
                                 size = scaled_font_size,
                                 color = col,
-                                facing_right = owner_data.facing_right -- Stockage de la direction
+                                facing_right = owner_data.facing_right -- Store facing direction
                             })
                         end
                     end
@@ -2337,10 +2323,9 @@ local function aa_start_fire()
 end
 
 local function _dv_fetch_p2_engine()
-    local gB = sdk.find_type_definition("gBattle")
-    local sP = gB:get_field("Player"):get_data(nil)
-    if not sP or not sP.mcPlayer then return nil end
-    return sP.mcPlayer[1].mpActParam.ActionPart._Engine
+    local p2 = GS.p2
+    if not p2 then return nil end
+    return p2.mpActParam.ActionPart._Engine
 end
 local function aa_get_p2_engine()
     local ok, engine = pcall(_dv_fetch_p2_engine)
@@ -2611,7 +2596,7 @@ local function draw_config_ui()
             local c_txt1, v_txt1 = imgui.checkbox("Text ##p1", config.p1_opp_zone_show)
             if c_txt1 then config.p1_opp_zone_show = v_txt1; changed_any = true end
             
-            -- Options indépendantes du Custom
+            -- Options independent of Custom mode
             local c_col1, v_col1 = imgui.checkbox("Color Text##p1", config.p1_opp_zone_color_text)
             if c_col1 then config.p1_opp_zone_color_text = v_col1; config.p1_crossup_color_text = v_col1; changed = true end
             imgui.same_line()
@@ -2649,7 +2634,7 @@ local function draw_config_ui()
             local c_txt2, v_txt2 = imgui.checkbox("Text ##p2", config.p2_opp_zone_show)
             if c_txt2 then config.p2_opp_zone_show = v_txt2; changed_any = true end
             
-            -- Options indépendantes du Custom
+            -- Options independent of Custom mode
             local c_col2, v_col2 = imgui.checkbox("Color Text##p2", config.p2_opp_zone_color_text)
             if c_col2 then config.p2_opp_zone_color_text = v_col2; config.p2_crossup_color_text = v_col2; changed = true end
             imgui.same_line()
@@ -2717,7 +2702,7 @@ local function draw_config_ui()
         pcall(_dv_draw_live_box_dump)
     end
     
-    end -- FIN DU BLOC "if not config.simple_mode_enabled"
+    end -- END OF BLOCK "if not config.simple_mode_enabled"
 
     -- ==========================================
     -- AUTO ACTIVATE MOVE (P2 dummy)
@@ -3047,14 +3032,11 @@ _G._aa_log = { active = false, file = nil, frame = 0 }
 local _aa_log = _G._aa_log
 
 local function _dv_read_p1_input_new()
-    local sp = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil)
-    if sp and sp.mcPlayer then
-        local p1 = sp.mcPlayer[0]
-        if p1 then
-            local td = p1:get_type_definition()
-            local f_in = td:get_field("pl_input_new")
-            return (f_in and f_in:get_data(p1)) or 0
-        end
+    local p1 = GS.p1
+    if p1 then
+        local td = p1:get_type_definition()
+        local f_in = td:get_field("pl_input_new")
+        return (f_in and f_in:get_data(p1)) or 0
     end
     return 0
 end
@@ -3066,9 +3048,7 @@ local function _dv_read_p2_action_id()
 end
 
 local function _dv_read_p1_act_st()
-    local p1 = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil).mcPlayer[0]
-    if p1 then return tonumber(tostring(p1:get_type_definition():get_field("act_st"):get_data(p1))) or 0 end
-    return 0
+    return GS.p1_act_st or 0
 end
 
 local function aa_tick()
@@ -3536,19 +3516,15 @@ re.on_frame(function()
         return point_in_any_rect(display.root_screen_pos.x, display.root_screen_pos.y)
     end
 
-    if gBattle == nil then gBattle = sdk.find_type_definition("gBattle") end; if gBattle == nil then return end
+    if not GS.valid then return end
 
     -- Hide everything when session recap is displayed
     if _G.SessionRecapVisible then return end
 
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
-		  if pause_bit ~= 64 and pause_bit ~= 2112 then return end
-    end
+    if GS.in_pause_menu then return end
 
     local should_update = true
-    local sGame = gBattle:get_field("Game"):get_data(nil)
+    local sGame = _dv_gBattle_td and _dv_gBattle_td:get_field("Game"):get_data(nil)
     if sGame then
         local success, current_timer = pcall(_dv_read_stage_timer, sGame)
         if success and current_timer ~= nil then
@@ -3575,9 +3551,9 @@ re.on_frame(function()
         update_player_cache(0, p1_cache)
         update_player_cache(1, p2_cache)
         _G.DV_PlayerAdvName = { [0] = p1_cache.adv_name, [1] = p2_cache.adv_name }
-        update_combat_distances() -- <<< NOTRE DÉTECTION UNIQUE
+        update_combat_distances() -- <<< OUR SINGLE DETECTION PASS
 
-		-- [SSOT] Détection unique des zones stockée dans le cache
+		-- [SSOT] Single zone detection stored in cache
         if p1_cache.valid and p2_cache.valid then
             p1_cache.active_zone = evaluate_player_zone(0, p1_cache, p2_cache)
             p2_cache.active_zone = evaluate_player_zone(1, p2_cache, p1_cache)
@@ -3618,11 +3594,11 @@ re.on_frame(function()
         local bot = cache.root_screen_pos.y
         local cx = cache.root_screen_pos.x
         local h = bot - top
-        local w = math.abs(h * 0.55) -- Largeur estimée à 55% de la hauteur
+        local w = math.abs(h * 0.55) -- Estimated width at 55% of height
         return mx >= (cx - w/2) and mx <= (cx + w/2) and my >= top and my <= bot
     end
 
-    -- [LEFT-CLICK: CYCLE DISPLAY ON CHARACTER] (bloqué quand menu REF ou fenêtre flottante ouverts)
+    -- [LEFT-CLICK: CYCLE DISPLAY ON CHARACTER] (blocked when REF menu or floating window open)
     if not ref_open and not config.show_debug_window and imgui.is_mouse_clicked(0) then
         local m = imgui.get_mouse()
         if m and not point_in_any_rect(m.x, m.y) then
@@ -3635,7 +3611,7 @@ re.on_frame(function()
         end
     end
 
-    -- [RIGHT-CLICK ON P1/P2: TOGGLE DEBUG WINDOW] (bloqué quand menu REF ouvert)
+    -- [RIGHT-CLICK ON P1/P2: TOGGLE DEBUG WINDOW] (blocked when REF menu open)
     if imgui.is_mouse_clicked(1) then
         local m = imgui.get_mouse()
         if m and not point_in_any_rect(m.x, m.y) then
@@ -3666,7 +3642,7 @@ re.on_frame(function()
             if lock_states[0].active then
                  p1_display.world_x = lock_states[0].locked_x
                  p1_display.world_y = lock_states[0].locked_y
-                 -- On recalcule la position 2D du texte basée sur la coordonnée gelée
+                 -- Recalculate the 2D text position based on the frozen coordinate
                  p1_display.root_screen_pos = world_to_screen_optimized(lock_states[0].locked_x, lock_states[0].locked_y, 0)
                  if p1_cache.head_world_y then
                      p1_display.head_screen_pos = world_to_screen_optimized(lock_states[0].locked_x, p1_cache.head_world_y, 0)
@@ -3675,7 +3651,7 @@ re.on_frame(function()
             if lock_states[1].active then
                  p2_display.world_x = lock_states[1].locked_x
                  p2_display.world_y = lock_states[1].locked_y
-                 -- On recalcule la position 2D du texte basée sur la coordonnée gelée
+                 -- Recalculate the 2D text position based on the frozen coordinate
                  p2_display.root_screen_pos = world_to_screen_optimized(lock_states[1].locked_x, lock_states[1].locked_y, 0)
                  if p2_cache.head_world_y then
                      p2_display.head_screen_pos = world_to_screen_optimized(lock_states[1].locked_x, p2_cache.head_world_y, 0)
@@ -4028,7 +4004,7 @@ re.on_frame(function()
 
         if custom_font.obj then imgui.pop_font() end
 
-        -- Rendu des nombres de distance avec leur propre police
+        -- Render distance numbers with their own font
         if #numbers_to_draw > 0 then
             if custom_font_num.obj then imgui.push_font(custom_font_num.obj) end
             for _, nd in ipairs(numbers_to_draw) do

@@ -1,0 +1,102 @@
+[
+    {
+        "empty": false,
+        "id": 1,
+        "name": "Wiggle",
+        "timeline": [
+            "6f : 4",
+            "10f : 6",
+            "8f : 4",
+            "1f : 5",
+            "6f : 6",
+            "6f : 4",
+            "2f : 5",
+            "6f : 6",
+            "6f : 5"
+        ],
+        "weight": 2
+    },
+    {
+        "empty": false,
+        "id": 2,
+        "name": "Fw Walk",
+        "timeline": [
+            "21f : 4",
+            "3f : 5"
+        ],
+        "weight": 2
+    },
+    {
+        "empty": false,
+        "id": 3,
+        "name": "Back Walk",
+        "timeline": [
+            "21f : 6"
+        ],
+        "weight": 2
+    },
+    {
+        "empty": false,
+        "id": 4,
+        "name": "Walk Fwd Jump HP",
+        "timeline": [
+            "19f : 4",
+            "24f : 7",
+            "5f : 4",
+            "1f : 5",
+            "35f : 5 + HP",
+            "2f : 5"
+        ],
+        "weight": 1
+    },
+    {
+        "empty": false,
+        "id": 5,
+        "name": "Walk Fwd CrossUp MK",
+        "timeline": [
+            "28f : 4",
+            "29f : 7",
+            "4f : 4",
+            "6f : 4 + MK",
+            "11f : 5 + MK",
+            "15f : 5"
+        ],
+        "weight": 1
+    },
+    {
+        "empty": false,
+        "id": 6,
+        "name": "Stand HK",
+        "timeline": [
+            "5f : 5 + HK",
+            "68f : 5"
+        ],
+        "weight": 1
+    },
+    {
+        "empty": false,
+        "id": 7,
+        "name": "MicroWalk Crouch MP",
+        "timeline": [
+            "13f : 4",
+            "7f : 2",
+            "22f : 2 + MP",
+            "9f : 5"
+        ],
+        "weight": 1
+    },
+    {
+        "empty": false,
+        "id": 8,
+        "name": "MicroWalk Crouch MK",
+        "timeline": [
+            "13f : 4",
+            "2f : 5",
+            "4f : 2",
+            "23f : 2 + MK",
+            "1f : 2",
+            "15f : 5"
+        ],
+        "weight": 1
+    }
+]

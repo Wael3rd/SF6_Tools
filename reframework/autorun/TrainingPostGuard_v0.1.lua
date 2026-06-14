@@ -1,8 +1,10 @@
 local re = re
 local sdk = sdk
 local imgui = imgui
-local draw = draw
 local json = json
+require("func/SharedHooks") -- error registry (_G.safe_load_json)
+local GS = require("func/GameState") -- per-frame snapshot (players, act_st, pause)
+local UIKit = require("func/UIKit")
 
 -- =========================================================
 -- TrainingPostGuard (V1.13 - Flicker Fix)
@@ -17,19 +19,14 @@ local MY_TRAINER_ID = 3
 local CONFIG_FILENAME = "TrainingPostGuard_data/TrainingPostGuard_Config.json"
 local LOG_FILENAME    = "Stats/PostGuard_Stats.txt"
 
-local COLORS = {
-    White  = 0xFFDADADA, Green  = 0xFF00FF00, Red    = 0xFF0000FF,
-    Grey   = 0x99FFFFFF, DarkGrey = 0xFF888888, Orange = 0xFF00A5FF, 
-    Cyan   = 0xFFFFFF00, Yellow = 0xFF00FFFF, 
-    Shadow = 0xFF000000, Blue   = 0xFFFFAA00 
-}
+local COLORS = UIKit.COLORS
 
 local UI_THEME = {
-    hdr_info    = { base = 0xFFDB9834, hover = 0xFFE6A94D, active = 0xFFC78320 },
-    hdr_session = { base = 0xFFB6599B, hover = 0xFFC770AC, active = 0xFFA04885 },
-    btn_neutral = { base = 0xFF444444, hover = 0xFF666666, active = 0xFF222222 },
-    btn_green   = { base = 0xFF00AA00, hover = 0xFF00CC22, active = 0xFF007700 },
-    btn_red     = { base = 0xFF0000CC, hover = 0xFF2222FF, active = 0xFF000099 },
+    hdr_info    = UIKit.THEME.hdr_gold,
+    hdr_session = UIKit.THEME.hdr_purple,
+    btn_neutral = UIKit.THEME.btn_neutral,
+    btn_green   = UIKit.THEME.btn_green,
+    btn_red     = UIKit.THEME.btn_red,
 }
 
 local SharedUI = require("func/Training_SharedUI")
@@ -63,7 +60,7 @@ local function save_conf()
 end
 
 local function load_conf()
-    local d = json.load_file(CONFIG_FILENAME)
+    local d = _G.safe_load_json(CONFIG_FILENAME)
     if d then
         for k, v in pairs(d) do
             if user_config[k] ~= nil then user_config[k] = v end
@@ -107,9 +104,9 @@ local session = {
     p2_was_in_air = false,
     p2_air_attack_confirmed = false,
     p2_has_di = false,
-    p2_throw_tech_detected = false,  -- Flag: a-t-on vu un throw tech ?
-    p2_was_in_parry = false,  -- Flag: P2 était en parry
-    throw_in_progress = false,  -- Flag: une choppe est en cours
+    p2_throw_tech_detected = false,  -- Flag: have we seen a throw tech?
+    p2_was_in_parry = false,  -- Flag: P2 was in parry
+    throw_in_progress = false,  -- Flag: a throw is in progress
     _p2_was_di = false,
     
     -- Time Up
@@ -125,36 +122,22 @@ local session = {
 -- =========================================================
 
 
-local function styled_button(label, style, text_col) imgui.push_style_color(21, style.base); imgui.push_style_color(22, style.hover); imgui.push_style_color(23, style.active); if text_col then imgui.push_style_color(0, text_col) end; local clicked = imgui.button(label); if text_col then imgui.pop_style_color(1) end; imgui.pop_style_color(3); return clicked end
-local function styled_header(label, style) imgui.push_style_color(24, style.base); imgui.push_style_color(25, style.hover); imgui.push_style_color(26, style.active); local is_open = imgui.collapsing_header(label); imgui.pop_style_color(3); return is_open end
+local styled_button = UIKit.styled_button
+local styled_header = UIKit.styled_header
 
 -- =========================================================
 -- GAME MEMORY READERS
 -- =========================================================
 
 local function get_act_st(player_index)
-    local gBattle = sdk.find_type_definition("gBattle")
-    if not gBattle then return 0 end
-    local player_mgr = gBattle:get_field("Player"):get_data(nil)
-    if not player_mgr then return 0 end
-    local player = player_mgr:call("getPlayer", player_index)
-    if not player then return 0 end
-    
-    local t = player:get_type_definition()
-    if not t then return 0 end
-    local field = t:get_field("act_st")
-    if not field then return 0 end
-    local val = field:get_data(player)
-    return tonumber(tostring(val)) or 0
+    -- Read from the per-frame GameState snapshot (was 1 full gBattle chain per call)
+    if player_index == 0 then return GS.p1_act_st end
+    return GS.p2_act_st
 end
 
 local function get_p1_extended_info()
     local info = { catch_flag = false, trade_dm_flag = false, damage_type = 0, muteki_time = 0 }
-    local gBattle = sdk.find_type_definition("gBattle")
-    if not gBattle then return info end
-    local player_mgr = gBattle:get_field("Player"):get_data(nil)
-    if not player_mgr then return info end
-    local p1 = player_mgr:call("getPlayer", 0)
+    local p1 = GS.p1
     if not p1 then return info end
 
     local catch = p1:get_field("catch_flag")
@@ -174,21 +157,17 @@ end
 
 local function get_p2_extended_info()
     local info = { pose_st = 0, suki_flag = false, catch_muteki = 0, throw_tech_no = 0 }
-    local gBattle = sdk.find_type_definition("gBattle")
-    if not gBattle then return info end
-    local player_mgr = gBattle:get_field("Player"):get_data(nil)
-    if not player_mgr then return info end
-    local p2 = player_mgr:call("getPlayer", 1) 
+    local p2 = GS.p2
     if not p2 then return info end
     
     local pose = p2:get_field("pose_st"); if pose then info.pose_st = tonumber(tostring(pose)) end
     local suki = p2:get_field("land_suki_flag"); if suki then info.suki_flag = (tostring(suki) == "true") end
     
-    -- Lecture de catch_muteki (3 = en train de se faire chopper)
+    -- Read catch_muteki (3 = being thrown)
     local muteki = p2:get_field("catch_muteki")
     if muteki then info.catch_muteki = tonumber(tostring(muteki)) or 0 end
     
-    -- Lecture de throw_tech_no (0 = choppe réussie, >0 = throw tech)
+    -- Read throw_tech_no (0 = throw succeeded, >0 = throw tech)
     local tech_no = p2:get_field("throw_tech_no")
     if tech_no then info.throw_tech_no = tonumber(tostring(tech_no)) or 0 end
     
@@ -198,7 +177,7 @@ end
 local function export_stats()
     local file = io.open(LOG_FILENAME, "a"); if not file then return end
     
-    -- On ajoute la colonne DETAILS au header si le fichier est vide
+    -- Add the DETAILS column to the header if the file is empty
     if file:seek("end") == 0 then file:write("DATE\tDURATION\tSCORE\tSUCCESS_PCT\tTOTAL\tDETAILS\n") end
     
     local now = os.date("%Y-%m-%d %H:%M:%S")
@@ -209,11 +188,11 @@ local function export_stats()
         pct = (session.success_count / session.total) * 100.0 
     end
     
-    -- Création de la chaîne de caractères pour les détails (Format: Clé:Valeur|Clé:Valeur...)
+    -- Build the details string (Format: Key=Value|Key=Value...)
     local details_str = ""
     if session.detailed_stats then
         for k, v in pairs(session.detailed_stats) do
-            -- On nettoie un peu le texte pour éviter les tabulations ou retours à la ligne
+            -- Clean up the text to avoid tabs or newlines
             local clean_key = string.gsub(k, "\t", " ")
             details_str = details_str .. clean_key .. "=" .. v .. "|"
         end
@@ -243,7 +222,7 @@ local function reset_session_stats()
     session.timer_action = 0
     session.time_up_delay = 0
     
-    -- NOUVEAU : Table pour stocker le détail des outcomes
+    -- Table to store detailed outcome counts
     session.detailed_stats = {} 
     
     session.p2_has_attacked_ground = false
@@ -280,7 +259,7 @@ end
 local function evaluate_outcome(success, reason)
     session.total = session.total + 1
     
-    -- NOUVEAU : On incrémente le compteur pour cette raison spécifique
+    -- Increment the counter for this specific reason
     if session.detailed_stats then
         if not session.detailed_stats[reason] then
             session.detailed_stats[reason] = 0
@@ -291,19 +270,19 @@ local function evaluate_outcome(success, reason)
     if success then
         session.score = session.score + 1
         session.success_count = session.success_count + 1 
-        set_feedback(reason, COLORS.Green, 0.5) -- Délai court comme vu ensemble
+        set_feedback(reason, COLORS.Green, 0.5) -- Short delay as agreed
     else
         session.score = session.score - 1
         set_feedback(reason, COLORS.Red, 0.5)
     end
     session.phase = PHASE_RESULT
-    session.timer_action = 30 -- ~0.5 sec de pause logique
+    session.timer_action = 30 -- ~0.5 sec logical pause
 end
 
 local function update_logic()
     local dt = 0.016 
     
-    -- GESTION SCORE VISUEL
+    -- VISUAL SCORE MANAGEMENT
     if session.score ~= session.last_score then session.score_col = (session.score > session.last_score) and COLORS.Green or COLORS.Red; session.score_timer = 30; session.last_score = session.score end
     if session.score_timer > 0 then session.score_timer = session.score_timer - 1; if session.score_timer <= 0 then session.score_col = COLORS.White end end
     
@@ -353,10 +332,10 @@ local function update_logic()
     end
     
     -- =========================================================
-    -- LECTURE DES ETATS (ACT_ST & FRAMEDATA)
+    -- READ STATES (ACT_ST & FRAMEDATA)
     -- =========================================================
-    
-    -- Mise à jour des FrameDataState via le Hook
+
+    -- Update FrameDataState via the Hook
     session.p1_state = session.p1_max_frame -- 13 = Active, 9 = Hurt
     session.p2_state = session.p2_max_frame
     session.p1_max_frame = 0; session.p2_max_frame = 0 
@@ -364,15 +343,15 @@ local function update_logic()
     local p1_act_st = get_act_st(0) -- P1 Action (37 = Throwing)
     local p2_act_st = get_act_st(1) -- P2 Action (39 = Parry, 38 = Thrown)
 	local p1_mem = get_p1_extended_info()
-    local p2_mem = get_p2_extended_info() -- Pour le Tech et l'Air state
+    local p2_mem = get_p2_extended_info() -- For Tech and Air state
 
     -- =========================================================
-    -- LOGIQUE DE CHOPPE (GLOBAL)
+    -- THROW LOGIC (GLOBAL)
     -- =========================================================
 
     if p2_mem.throw_tech_no > 0 then session.p2_throw_tech_detected = true end
 
-    -- Animation de choppe
+    -- Throw animation
     if p1_act_st == 37 and p2_act_st == 38 then
         session.throw_in_progress = true
     end
@@ -389,7 +368,7 @@ local function update_logic()
     end
 
     -- =========================================================
-    -- PHASES DE JEU
+    -- GAME PHASES
     -- =========================================================
 
     if session.phase == PHASE_WAIT_BLOCK then
@@ -425,42 +404,42 @@ local function update_logic()
              return
         end
 		
-        -- [PRIORITÉ 0] FAIL CRITIQUE : JE ME SUIS FAIT TOUCHER
-        -- Si P1 est touché (State 9), c'est perdu tout de suite.
-        -- On exclut le cas du DI (géré plus bas) pour avoir le bon message d'erreur.
+        -- [PRIORITY 0] CRITICAL FAIL: GOT HIT
+        -- If P1 is hit (State 9), it's an immediate loss.
+        -- Exclude DI case (handled below) to show the correct error message.
         if session.p1_state == STATE_HURT and session.p2_state ~= STATE_DI then 
             evaluate_outcome(false, "FAIL: GOT HIT")
             return 
         end
 
-        -- 1. DETECTION PARRY (Flag)
+        -- 1. PARRY DETECTION (Flag)
         if p2_act_st == 39 then session.p2_has_parried = true end
 
-        -- 2. CHECK FAIL : TAPER DANS LE PARRY
-        -- Si P2 Parry (39) ET P1 Active (13) -> Fail
+        -- 2. CHECK FAIL: HIT INTO PARRY
+        -- If P2 Parry (39) AND P1 Active (13) -> Fail
         if p2_act_st == 39 and session.p1_state == STATE_ACTIVE then
-            if p1_act_st ~= 37 then -- Sauf si c'est une choppe
+            if p1_act_st ~= 37 then -- Unless it's a throw
                 evaluate_outcome(false, "FAIL: HIT PARRY!")
                 return
             end
         end
 
-        -- 3. CHECK SUCCESS : CHOPPE PUNISH
+        -- 3. CHECK SUCCESS: THROW PUNISH
         if p1_act_st == 37 and p2_act_st == 38 and not session.p2_throw_tech_detected then
              evaluate_outcome(true, "SUCCESS: THROW PUNISH!")
              return
         end
 
-        -- 4. CHECK SUCCESS : PUNITION REUSSIE (HURT)
+        -- 4. CHECK SUCCESS: PUNISH LANDED (HURT)
         if session.p2_state == STATE_HURT then
              evaluate_outcome(true, "SUCCESS: PUNISH!")
              return
         end
 
-        -- 5. CHECK FAIL : WHIFF PUNISH RATÉ (LOGIQUE PARRY/DRIVE RUSH)
+        -- 5. CHECK FAIL: MISSED WHIFF PUNISH (PARRY/DRIVE RUSH LOGIC)
         if session.p2_has_parried then
-            -- On ne valide l'échec QUE si P2 est revenu au Neutre (0).
-            -- S'il est en Startup (7) ou Dash (18) ou autre, on continue d'attendre.
+            -- Only confirm the failure if P2 returned to Neutral (0).
+            -- If in Startup (7) or Dash (18) or other, keep waiting.
             if p2_act_st == 0 then
                 evaluate_outcome(false, "FAIL: MISSED PARRY PUNISH")
                 return
@@ -476,8 +455,8 @@ local function update_logic()
             return
         end
         
-        -- 7. TIMEOUT / SAFE / ANTI-AIR RATÉ
-        -- Gestion classique si ce n'était pas un Parry
+        -- 7. TIMEOUT / SAFE / MISSED ANTI-AIR
+        -- Standard handling if it was not a Parry
         if not session.p2_has_parried then
             if p2_mem.pose_st >= 2 then session.p2_was_in_air = true; if p2_mem.suki_flag then session.p2_air_attack_confirmed = true end end
             
@@ -506,10 +485,10 @@ local function update_logic()
 
     elseif session.phase == PHASE_RESULT then
 	
-	-- AJOUT : Si on retape dans la garde (P2 Block), on relance tout de suite
+	-- If we hit into guard again (P2 Block), restart immediately
         if session.p2_state == STATE_BLOCK then
-            reset_round() -- Réinitialise les variables et revient en mode attente
-            return        -- On arrête là pour cette frame, la prochaine frame lancera l'OBSERVATION
+            reset_round() -- Reset variables and return to wait mode
+            return        -- Stop here for this frame, next frame will start OBSERVATION
         end
 		
         session.timer_action = session.timer_action - 1
@@ -832,7 +811,6 @@ local debug_p2_mem = get_p2_extended_info()
     end
 end)
 
-local last_trainer_mode_pg = 0
 re.on_frame(function()
     if _G.CurrentTrainerMode == 3 then
         if _G._tsm_web_cmd then
@@ -854,47 +832,37 @@ re.on_frame(function()
         _G.TrainingSession_Mode = user_config.session_mode
     end
     local cur_mode = _G.CurrentTrainerMode or 0
-    last_trainer_mode_pg = cur_mode
     if DEPENDANT_ON_MANAGER and cur_mode ~= MY_TRAINER_ID then return end
     if not sdk.get_managed_singleton("app.training.TrainingManager") then return end
 
     local should_update = true
     local should_draw = true
 
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
-        if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then
-            -- Pause Menu / System
-            if session.is_running and not session.is_paused then
-                session.is_paused = true
-                session._auto_paused = true
-            end
-            should_update = false
-            should_draw = false
-        else
-            if session._auto_paused and session.is_paused then
-                session.is_paused = false
-                session._auto_paused = false
-            end
+    if GS.in_pause_menu then
+        if user_config.session_mode == "timer" and session.is_running and not session.is_paused then
+            session.is_paused = true
+            session._auto_paused = true
+        end
+        should_update = false
+        should_draw = false
+    else
+        if session._auto_paused then
+            session._auto_paused = false
         end
     end
-    
+
     if should_update then
         handle_input()
         update_logic()
         manage_ticker_visibility()
     end
-    
+
     if should_draw then
         draw_hud()
     end
 
     -- FLOATING SESSION WINDOW (hide during pause menu)
-    local _pm = sdk.get_managed_singleton("app.PauseManager")
-    local _pb = _pm and _pm:get_field("_CurrentPauseTypeBit")
-    local _in_menu = _pb and (_pb ~= 64 and _pb ~= 2112)
-    if user_config.show_floating and not _in_menu and not _G._tsm_hide_ui then
+    if user_config.show_floating and not GS.in_pause_menu and not _G._tsm_hide_ui then
         draw_session_floating()
     end
 end)

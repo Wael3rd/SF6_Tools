@@ -9,6 +9,7 @@ local sdk = sdk
 local imgui = imgui
 local re = re
 local json = json
+local UIKit = require("func/UIKit")
 
 local M = {}
 local ctx
@@ -33,8 +34,8 @@ local _replay_saved_fname_p1 = nil
 local _replay_saved_fname_p2 = nil
 local _prev_is_recording = false
 
--- Raccourcis dynamiques : pad (FUNC+DIR) ou clavier (1/2/3/4)
--- Positions gauche→droite : L=1, U=2, R=3, D=4 (4-btn) | L=1, R=2 (2-btn)
+-- Dynamic shortcuts: gamepad (FUNC+DIR) or keyboard (1/2/3/4)
+-- Left-to-right positions: L=1, U=2, R=3, D=4 (4-btn) | L=1, R=2 (2-btn)
 local SharedUI = require("func/Training_SharedUI")
 local CT_KB_MAP = { L = "1", U = "2", R = "3", D = "4", A = "8" }
 local function sc(pad_key, kb_override)
@@ -47,34 +48,22 @@ local function sc_max(pad_key)
 end
 
 -- =========================================================
--- THEME ET STYLES UI (Inspirés du Training Hit Confirm)
+-- UI THEME AND STYLES (Inspired by Training Hit Confirm)
 -- =========================================================
-local COLORS = {
-    White = 0xFFDADADA,
-    Green = 0xFF00FF00,
-    Red = 0xFF0000FF,
-    Grey = 0x99FFFFFF,
-    DarkGrey = 0xFF888888,
-    Orange = 0xFF00A5FF,
-    Cyan = 0xFFFFFF00,
-    Yellow = 0xFF00FFFF,
-    Shadow = 0xFF000000,
-    Blue = 0xFFFFAA00
-}
+local COLORS = UIKit.COLORS
 
 local UI_THEME = {
-    hdr_info    = { base = 0xFFDB9834, hover = 0xFFE6A94D, active = 0xFFC78320 },
-    hdr_session = { base = 0xFFB6599B, hover = 0xFFC770AC, active = 0xFFA04885 },
-    hdr_rules   = { base = 0xFF5D6DDA, hover = 0xFF7382E6, active = 0xFF4555C9 },
-    hdr_matrix  = { base = 0xFF9CBC1A, hover = 0xFFAED12B, active = 0xFF8AA814 },
-
-    btn_neutral = { base = 0xFF444444, hover = 0xFF666666, active = 0xFF222222 },
-    btn_green   = { base = 0xFF00AA00, hover = 0xFF00CC22, active = 0xFF007700 },
-    btn_red     = { base = 0xFF0000CC, hover = 0xFF2222FF, active = 0xFF000099 },
-    btn_orange  = { base = 0xFFFF8800, hover = 0xFFFFAA33, active = 0xFFCC6600 }
+    hdr_info    = UIKit.THEME.hdr_gold,
+    hdr_session = UIKit.THEME.hdr_purple,
+    hdr_rules   = UIKit.THEME.hdr_blue,
+    hdr_matrix  = UIKit.THEME.hdr_green,
+    btn_neutral = UIKit.THEME.btn_neutral,
+    btn_green   = UIKit.THEME.btn_green,
+    btn_red     = UIKit.THEME.btn_red,
+    btn_orange  = UIKit.THEME.btn_easy,
 }
 
--- Combo dropdown ouvrable et navigable par raccourci (remplace imgui.combo pour ##FilesP1)
+-- Shortcut-openable and navigable combo dropdown (replaces imgui.combo for ##FilesP1)
 local _dropdown_highlight_idx = nil
 local _dropdown_scroll_needed = false
 
@@ -82,25 +71,25 @@ local function combo_openable(label, current_idx, items, force_open, btn_width)
     local popup_id = label .. "_popup"
     local preview = (items and items[current_idx]) or "---"
 
-    -- Capturer la position écran du bouton avant de le dessiner
+    -- Capture button screen position before drawing it
     local win_pos = imgui.get_window_pos()
     local cursor_pos = imgui.get_cursor_pos()
     local btn_screen_x = win_pos.x + cursor_pos.x
     local btn_screen_y = win_pos.y + cursor_pos.y
 
-    -- Bouton pleine largeur avec ▼
+    -- Full-width button with down arrow
     local w = btn_width or -1
     local clicked = imgui.button(preview .. "  \xe2\x96\xbc" .. label, Vector2f.new(w, 0))
 
     local should_open = force_open or clicked
     if should_open then
-        -- Estimer la hauteur du popup : nb items * hauteur ligne, plafonné
+        -- Estimate popup height: item count * line height, capped
         local line_h = imgui.calc_text_size("W").y + 6
         local max_visible = 10
         local visible_count = math.min(#items, max_visible)
         local popup_h = (visible_count * line_h) + 8
 
-        -- Positionner le popup juste au-dessus du bouton, aligné à gauche
+        -- Position the popup just above the button, left-aligned
         imgui.set_next_window_pos(Vector2f.new(btn_screen_x, btn_screen_y - popup_h), 1)
 
         imgui.open_popup(popup_id)
@@ -109,7 +98,7 @@ local function combo_openable(label, current_idx, items, force_open, btn_width)
         if force_open then _G.ComboTrials_OpenDropdown = false end
     end
 
-    -- Navigation par raccourci (flags posés par le handler d'input)
+    -- Shortcut navigation (flags set by the input handler)
     if _G.ComboTrials_DropdownNavUp then
         _G.ComboTrials_DropdownNavUp = false
         if _dropdown_highlight_idx and _dropdown_highlight_idx > 1 then
@@ -131,7 +120,7 @@ local function combo_openable(label, current_idx, items, force_open, btn_width)
     if imgui.begin_popup(popup_id) then
         _G.ComboTrials_DropdownOpen = true
 
-        -- Sélection par raccourci (func+Cross/A ou touche 8)
+        -- Shortcut selection (func+Cross/A or key 8)
         if _G.ComboTrials_DropdownSelect then
             _G.ComboTrials_DropdownSelect = false
             if _dropdown_highlight_idx then
@@ -147,7 +136,7 @@ local function combo_openable(label, current_idx, items, force_open, btn_width)
                 new_idx = i
                 changed = true
             end
-            -- Scroll vers l'élément surligné
+            -- Scroll to highlighted item
             if is_highlighted and _dropdown_scroll_needed then
                 pcall(imgui.set_scroll_here_y)
                 _dropdown_scroll_needed = false
@@ -162,25 +151,10 @@ local function combo_openable(label, current_idx, items, force_open, btn_width)
     return changed, new_idx
 end
 
-local function styled_button(label, style, text_col)
-    imgui.push_style_color(21, style.base); imgui.push_style_color(22, style.hover); imgui.push_style_color(23,
-        style.active)
-    if text_col then imgui.push_style_color(0, text_col) end
-    local clicked = imgui.button(label)
-    if text_col then imgui.pop_style_color(1) end
-    imgui.pop_style_color(3)
-    return clicked
-end
+local styled_button = UIKit.styled_button
+local styled_header = UIKit.styled_header
 
-local function styled_header(label, style)
-    imgui.push_style_color(24, style.base); imgui.push_style_color(25, style.hover); imgui.push_style_color(26,
-        style.active)
-    local is_open = imgui.collapsing_header(label)
-    imgui.pop_style_color(3)
-    return is_open
-end
-
--- Fonction de tri alphanumérique pour les exceptions
+-- Alphanumeric sort function for exceptions
 local function sort_ids(dict)
     local keys = {}
     for k in pairs(dict) do table.insert(keys, k) end
@@ -193,7 +167,7 @@ local function sort_ids(dict)
 end
 
 -- =========================================================
--- FONCTION PARTAGÉE : CONTENU DE L'ONGLET 1
+-- SHARED FUNCTION: TAB 1 CONTENT
 -- =========================================================
 local show_trial_overlay = true
 
@@ -203,7 +177,7 @@ local hud_overlay_font = nil
 local font_attempted = false
 
 -- =========================================================
--- FONCTION BOUTONS (Caméléon : Néon ou Natif)
+-- BUTTON FUNCTION (Chameleon: Neon or Native)
 -- =========================================================
 -- Dynamic colors from Training Script Manager (_G.TrainingSCColors)
 -- Fallbacks in case ScriptManager hasn't loaded yet
@@ -228,7 +202,7 @@ local function styled_sf6_button(label, is_active, width, is_floating, is_disabl
     local co = color_override
     if type(co) == "function" then co = co() end
 
-    -- MODE DOCKÉ (Menu Debug natif)
+    -- DOCKED MODE (Native Debug Menu)
     if not is_floating then
         if co then
             imgui.push_style_color(5,  co.text)
@@ -250,7 +224,7 @@ local function styled_sf6_button(label, is_active, width, is_floating, is_disabl
         end
     end
 
-    -- MODE FLOTTANT (Néon SF6)
+    -- FLOATING MODE (SF6 Neon)
     if sf6_btn_font then imgui.push_font(sf6_btn_font) end
 
     if co then
@@ -294,7 +268,7 @@ local function styled_sf6_button(label, is_active, width, is_floating, is_disabl
     return clicked
 end
 
--- Petite fonction utilitaire pour calculer la largeur du bouton le plus long
+-- Utility function to calculate the width of the longest button
 local function get_max_text_width(texts, is_floating)
     local use_custom = is_floating and sf6_btn_font
     if use_custom then imgui.push_font(sf6_btn_font) end
@@ -304,7 +278,7 @@ local function get_max_text_width(texts, is_floating)
         if w > max_w then max_w = w end
     end
     if use_custom then imgui.pop_font() end
-    return max_w + (use_custom and 30 or 15) -- Marges ajustées selon le mode
+    return max_w + (use_custom and 30 or 15) -- Margins adjusted per mode
 end
 
 
@@ -329,7 +303,7 @@ local function draw_single_line_content()
     local pad_x = sw * 0.01
     local pad_y = sh * 0.01
 
-    -- Largeurs sans les boutons P2
+    -- Widths excluding P2 buttons
     local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("R") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("R") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("R") .. ")" }, true)
     local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("D") .. ")" }, true)
 
@@ -337,7 +311,7 @@ local function draw_single_line_content()
 
     local arrow_margin = 0
 
-    -- Répartition dynamique : boutons = taille fixe (texte), dropdown = tout le reste
+    -- Dynamic layout: buttons = fixed text size, dropdown = remaining space
     local usable_w = w_width - (pad_x * 2) - (sp * 5)
 
     -- 1. Buttons take their natural text width (all same size, based on longest label)
@@ -354,7 +328,7 @@ local function draw_single_line_content()
         -- In record/demo/replay/spectate mode, distribute the massive 4-button space into 2
         dynamic_rec_w = (actual_btn_w * 4 + sp * 2) / 2
     end
-    -- Largeur fixe pour replay : toujours basée sur le layout idle
+    -- Fixed width for replay: always based on idle layout
     -- dd_P1 + sp + btn + sp + btn + sp + dd_P2 = usable_w
     local replay_btn_w = actual_btn_w
     local replay_dd_w = (usable_w - (replay_btn_w * 2) - (sp * 3)) / 2
@@ -543,7 +517,7 @@ local function draw_single_line_content()
             if ctx.stop_demo then ctx.stop_demo() end
         end
     else
-        -- Mode Normal / Playing : dropdown P1 + 3 boutons
+        -- Normal / Playing mode: P1 dropdown + 3 buttons
         if #file_system.saved_combos_display_p1 == 0 then
             imgui.push_item_width(dd_w)
             imgui.combo("##EmptyP1", 1, { "No P1 files" })
@@ -638,10 +612,10 @@ local function draw_combo_trials_content(is_floating)
 
     if mode_all_inline then
         if trial_state.is_recording then
-            -- Mode 'Replay & Recording Settings' en Record : Colonne 3 vide, Colonne 2 prend tout le reste
+            -- Record mode: Column 3 empty, Column 2 takes all remaining space
             col1_w = math.max(150, (w_width - (spacing_cols * 3)) / 3)
             col2_x = col1_w + spacing_cols
-            col3_x = w_width -- Ignoré
+            col3_x = w_width -- Ignored
             rec_btn_w = w_width - col2_x - spacing_cols
         else
             col3_x = math.max(w_width - play_btn_w - spacing_cols, 10)
@@ -666,7 +640,7 @@ local function draw_combo_trials_content(is_floating)
     end
 
     -- =====================================
-    -- Colonne 1 : MANAGEMENT
+    -- Column 1: MANAGEMENT
     -- =====================================
     imgui.begin_group()
     if not is_floating then imgui.text_colored("1. MANAGEMENT", COLORS.Cyan) end
@@ -688,7 +662,7 @@ local function draw_combo_trials_content(is_floating)
     imgui.end_group()
 
     -- =====================================
-    -- Colonne 2 : RECORDING
+    -- Column 2: RECORDING
     -- =====================================
     if mode_all_inline then imgui.same_line(col2_x) else imgui.spacing(); imgui.separator(); imgui.spacing() end
 
@@ -725,7 +699,7 @@ local function draw_combo_trials_content(is_floating)
             stop_recording_and_save()
         end
 
-        -- Toujours forcer l'empilement (stack) avec un espacement en mode fenêtré
+        -- Always force stacking with spacing in windowed mode
         imgui.spacing()
 
         if styled_sf6_button("CANCEL (" .. sc("R", "2") .. ")", false, rec_btn_w, is_floating, false, P1_COLORS) then
@@ -743,7 +717,7 @@ local function draw_combo_trials_content(is_floating)
     imgui.end_group()
 
     -- =====================================
-    -- Colonne 3 : PLAYBACK
+    -- Column 3: PLAYBACK
     -- =====================================
     if mode_all_stacked then imgui.spacing(); imgui.separator(); imgui.spacing()
     elseif mode_col2_3_inline then imgui.same_line(0, spacing_x)
@@ -767,7 +741,7 @@ local function draw_combo_trials_content(is_floating)
     
     if mode_all_stacked then imgui.spacing() end
     
-    -- SWITCH POS (Invisible en record)
+    -- SWITCH POS (Hidden during recording)
     if not trial_state.is_recording then
         if styled_sf6_button(switch_pos_label() .. " (" .. sc("D") .. ")", false, play_btn_w, is_floating, false, SWITCH_COLORS) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
@@ -775,7 +749,7 @@ local function draw_combo_trials_content(is_floating)
             ctx.save_d2d_config()
             
             local is_demo_active = (ctx.demo_state and ctx.demo_state.is_playing)
-            -- On applique physiquement la position UNIQUEMENT si un trial ou une démo est en cours
+            -- Only physically apply position if a trial or demo is active
             if is_demo_active or trial_state.is_playing then
                 ctx.apply_forced_position()
                 if is_demo_active then
@@ -792,7 +766,7 @@ local function draw_combo_trials_content(is_floating)
 end
 
 -- =========================================================
--- RENDU FENÊTRE FLOTTANTE INDÉPENDANTE (Dans re.on_frame)
+-- STANDALONE FLOATING WINDOW RENDERING (In re.on_frame)
 -- =========================================================
 -- sf6_menu_state is received from ctx in init()
 
@@ -856,16 +830,16 @@ re.on_frame(function()
     end
     _G.ComboTrialsD2DEnabled = is_game_active
 
-    -- Utilisation de l'API ImGui exacte pour le positionnement de la fenêtre
+    -- Use exact ImGui API for window positioning
     local sw, sh = get_imgui_screen_size()
     if sw == nil or sh == nil or sw <= 0 or sh <= 0 then return end
 
-    -- DÉTECTION ET COOLDOWN
+    -- DETECTION AND COOLDOWN
     local res_changed = false
     if last_sw ~= sw or last_sh ~= sh then
         if last_sw ~= 0 then
             res_changed = true
-            res_cooldown = 5 -- Freeze la position pendant 5 frames
+            res_cooldown = 5 -- Freeze position for 5 frames
         end
         last_sw = sw
         last_sh = sh
@@ -880,7 +854,7 @@ re.on_frame(function()
     d2d_cfg.float_pos.x = 0.0
     d2d_cfg.float_size.w = 1.0
 
-    -- RECHARGEMENT DES POLICES (Uniquement à la frame exacte du changement)
+    -- FONT RELOAD (Only on the exact frame of change)
     if not font_attempted or res_changed then
         local font_scale = sh / 1080.0
         pcall(function()
@@ -894,15 +868,15 @@ re.on_frame(function()
     end
 
     -- =========================================================
-    -- HUD OVERLAY : Combo Stats sur les lignes natives (pattern HitConfirm)
+    -- HUD OVERLAY: Combo Stats on native lines (HitConfirm pattern)
     -- =========================================================
-    -- Déterminer si on doit afficher notre HUD ou laisser le jeu afficher les infos natives
+    -- Determine whether to show our HUD or let the game display native info
     local show_our_hud = false
     local line1, line2, line3 = "", "", ""
     local col1, col2, col3 = 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
 
     if is_game_active and d2d_cfg.hud_show then
-        -- Logic commune pour déterminer la ligne 1 (Trial Title) et sa couleur (format IMGUI ABGR)
+        -- Shared logic to determine line 1 (Trial Title) and its color (IMGUI ABGR format)
         if trial_state.success_timer > 0 then
             line1 = "!!! SUCCESS !!!"; col1 = 0xFF00FF00
             show_our_hud = true
@@ -924,7 +898,7 @@ re.on_frame(function()
             else
                 local total_steps = #trial_state.sequence
                 if total_steps > 0 then
-                    -- Utilisation de l'étape visuelle retardée
+                    -- Use delayed visual step
                     local display_step = trial_state.ui_visual_step or 1
                     local current = math.min(display_step, total_steps)
                     line1 = string.format("[ ACTION %d / %d ]", current, total_steps)
@@ -936,29 +910,29 @@ re.on_frame(function()
                     line1 = line1 .. "  |  " .. trial_state.floating_info
                     col1 = trial_state.floating_color or 0xFF00FFFF
                 else
-                    col1 = 0xFF00FFFF -- Jaune par défaut
+                    col1 = 0xFF00FFFF -- Yellow by default
                 end
             end
             show_our_hud = true
         end
 
         if trial_state.is_recording and trial_state._rec_gauges then
-            -- MODE RECORDING : Affichage LIVE des deltas en cours
+            -- RECORDING MODE: Live display of current deltas
             local rg    = trial_state._rec_gauges
             local dmg   = math.max(0, (rg.victim_hp or 0) - (rg.min_victim_hp or rg.victim_hp or 0))
             local dr    = math.max(0, (rg.attacker_drive or 0) - (rg.min_atk_drive or rg.attacker_drive or 0))
             local sa    = math.max(0, (rg.attacker_super or 0) - (rg.min_atk_super or rg.attacker_super or 0))
 
-            -- Line 2 : Damage live
+            -- Line 2: Live damage
             line2       = string.format("DAMAGE: %d", dmg)
 
-            -- Line 3 : Drive & Super live
+            -- Line 3: Live drive & super
             local parts = {}
             if dr > 0 then table.insert(parts, string.format("DRIVE: -%.1f", dr / 10000)) end
             if sa > 0 then table.insert(parts, string.format("SUPER: -%.1f", sa / 10000)) end
             line3 = #parts > 0 and table.concat(parts, "     ") or ""
         elseif trial_state.is_playing and #trial_state.sequence > 0 and trial_state.sequence[1] then
-            -- MODE TRIAL / SÉQUENCE CHARGÉE : Affichage des stats sauvegardées
+            -- TRIAL MODE / LOADED SEQUENCE: Display saved stats
             local cs = trial_state.sequence[1].combo_stats
 
             if cs then
@@ -976,10 +950,10 @@ re.on_frame(function()
                 line2 = "DAMAGE: ---"
             end
         end
-        -- else : ni recording ni trial → show_our_hud reste false → infos natives visibles
+        -- else: neither recording nor trial -> show_our_hud stays false -> native info visible
     end
 
-    -- Flag global lu par Training_ScriptManager pour cacher/montrer les infos natives
+    -- Global flag read by Training_ScriptManager to hide/show native info
     _G.ComboTrials_HideNativeHUD = show_our_hud
 
     if show_our_hud then
@@ -1088,7 +1062,7 @@ re.on_frame(function()
         end
         _G.TrainingBarsDrawn = true
 
-        -- SAUVEGARDE BLOQUÉE PENDANT LE COOLDOWN (Empêche la corruption des coordonnées)
+        -- SAVE BLOCKED DURING COOLDOWN (Prevents coordinate corruption)
         if size.x > 0 and size.y > 0 and not is_resizing then
             local norm_x = pos.x / sw
             local norm_y = pos.y / sh
@@ -1113,16 +1087,16 @@ re.on_frame(function()
         if visible then
             local w_width = size.x
 
-            -- Calcul du seuil single-line
+            -- Calculate single-line threshold
             local rec_btn_w_check = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("R") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("R") .. ")" }, true)
             local play_btn_w_check = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "START TRIAL P2 (" .. sc_max("U") .. ")", "STOP TRIAL P2 (" .. sc_max("U") .. ")" }, true)
             local min_single_line_w = 200 + (rec_btn_w_check + play_btn_w_check) * 2 + 150 * (sh / 1080.0)
 
             if w_width >= min_single_line_w then
-                -- SINGLE LINE : Pas de header, tout directement sur la zone sombre
+                -- SINGLE LINE: No header, everything directly on the dark area
                 draw_single_line_content()
             else
-                -- MODE NORMAL : Header + contenu classique
+                -- NORMAL MODE: Header + standard content
                 -- Calculate exact actual width to synchronize header transition with UI layout
                 local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("R") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("R") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("R") .. ")" }, true)
                 local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("D") .. ")" }, true)
@@ -1199,7 +1173,7 @@ re.on_frame(function()
 end)
 
 -- =========================================================
--- DESSIN DU MENU UI GLOBAL
+-- GLOBAL UI MENU DRAWING
 -- =========================================================
 local function _ctui_draw_live_positions()
     local gB = sdk.find_type_definition("gBattle")
@@ -1221,7 +1195,7 @@ local function draw_combo_trials_menu_ui()
         imgui.spacing()
 
         -- ==========================================
-        -- ONGLET 1 : COMBO TRIAL GLOBAL (Partagé P1/P2)
+        -- TAB 1: GLOBAL COMBO TRIAL (Shared P1/P2)
         -- ==========================================
         if styled_header("--- COMBO TRIALS (Files & Playback) ---", UI_THEME.hdr_info) then
             local changed, new_val = imgui.checkbox("Detacher en fenetre flottante", show_trial_overlay)
@@ -1242,7 +1216,7 @@ local function draw_combo_trials_menu_ui()
 
 
         -- ==========================================
-        -- ONGLET 2 : D2D VISUALISER
+        -- TAB 2: D2D VISUALIZER
         -- ==========================================
         if styled_header("--- D2D VISUALIZER SETTINGS (Overlay) ---", UI_THEME.hdr_matrix) then
             local changed = false
@@ -1477,10 +1451,10 @@ local function draw_combo_trials_menu_ui()
         end
 
         -- ==========================================
-        -- ONGLET 3 : MENU EXCEPTION EDITOR
+        -- TAB 3: EXCEPTION EDITOR MENU
         -- ==========================================
         if styled_header("--- EXCEPTION MANAGEMENT ---", UI_THEME.hdr_session) then
-            -- L'ÉDITEUR N'APPARAÎT QUE SI ON CLIQUE SUR "GÉRER"
+            -- THE EDITOR ONLY APPEARS WHEN "MANAGE" IS CLICKED
             if p_state.editing_id ~= -1 then
                 imgui.text_colored("=== EXCEPTION SETTINGS : ID " .. p_state.editing_id .. " ===", COLORS.Cyan)
                 imgui.text_colored("(Settings apply immediately in-game for testing)", COLORS.DarkGrey)
@@ -1666,7 +1640,7 @@ local function draw_combo_trials_menu_ui()
                 imgui.separator()
             end
 
-            -- LISTE DES EXCEPTIONS ENREGISTRÉES (AVEC LE TRI CROISSANT)
+            -- LIST OF SAVED EXCEPTIONS (ASCENDING SORT)
             if imgui.tree_node("Active Exceptions (" .. p_state.profile_name .. ")") then
                 if exc_status ~= "" then imgui.text_colored(exc_status, COLORS.Yellow) end
 
@@ -1786,7 +1760,7 @@ local function draw_combo_trials_menu_ui()
         end
 
         -- ==========================================
-        -- ONGLET 4 : LIVE LOG
+        -- TAB 4: LIVE LOG
         -- ==========================================
         if styled_header("--- LIVE LOG : PLAYER " .. tostring(ui_state.viewed_player + 1) .. " ---", UI_THEME.hdr_rules) then
             -- PLAYER SELECTOR (Forces refresh on change)
@@ -1844,7 +1818,7 @@ local function draw_combo_trials_menu_ui()
                             combo_str = string.format(" [Combo: %d]", log.combo_count)
                         end
 
-                        -- Les mots clés traduits : VRAI INPUT -> REAL INPUT, Réel -> Raw
+                        -- Translated keywords: VRAI INPUT -> REAL INPUT, Reel -> Raw
                         local left_col = string.format("REAL INPUT  | %s (ID: %d)%s%s", log.motion, log.id, charge_str,
                             combo_str)
                         local right_col = string.format("Raw: %s (%s)", log.real_input, log.frame_diff)
@@ -1852,7 +1826,7 @@ local function draw_combo_trials_menu_ui()
                         local line_color = COLORS.White
                         if log.is_holdable then
                             local live_status = log.charge_status or ""
-                            -- Calcul en Temps Réel pour l'UI Texte
+                            -- Real-time calculation for the text UI
                             if log.is_holding then
                                 if log.charge_min and log.hold_frames <= log.charge_min then
                                     live_status = "Instant"
@@ -1931,7 +1905,7 @@ local function draw_combo_trials_menu_ui()
         imgui.spacing()
 
         -- ==========================================
-        -- ONGLET 5 : DEBUG & SYSTEM INFO
+        -- TAB 5: DEBUG & SYSTEM INFO
         -- ==========================================
         if styled_header("--- DEBUG & SYSTEM INFO ---", UI_THEME.hdr_rules) then
             imgui.text_colored("Detected Native Game Resolution:", 0xFF00FFFF)
@@ -1956,12 +1930,12 @@ local function draw_combo_trials_menu_ui()
             imgui.unindent(20)
             imgui.spacing()
 
-            -- BOUTON DE DUMP DE FAIL (Apparaît uniquement si un fail est en mémoire)
+            -- FAIL DUMP BUTTON (Only appears if a fail is in memory)
             --[[
             if ctx.trial_state and ctx.trial_state.last_fail_dump then
                 imgui.separator()
                 imgui.spacing()
-                imgui.text_colored("Dernier Trial Echoue !", COLORS.Red)
+                imgui.text_colored("Last Failed Trial!", COLORS.Red)
                 if styled_button("Dump Fail Data to JSON", UI_THEME.btn_red) then
                     if ctx.dump_last_fail then
                         local path = ctx.dump_last_fail()

@@ -40,14 +40,14 @@
     "fail_reset_delay": 1.5,
     "float_pos": {
         "x": 0.025,
-        "y": 0.955
+        "y": 0.9555555555555556
     },
     "float_size": {
-        "h": 0.044375,
+        "h": 0.04351851851851852,
         "w": 0.95
     },
     "font_size": 0.020999999716877937,
-    "forced_position_idx": 2,
+    "forced_position_idx": 3,
     "ghost_filter_frames": 4,
     "hud_font_size": 20,
     "hud_global_y": -0.3370000123977661,

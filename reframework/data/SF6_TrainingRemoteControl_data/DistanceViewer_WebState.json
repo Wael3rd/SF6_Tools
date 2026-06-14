@@ -10,33 +10,38 @@
     "aa_fw_cr_max": 15,
     "aa_fw_cr_min": 5,
     "aa_fw_mode": "manual",
-    "aa_move": "",
+    "aa_move": "236HP",
     "aa_moves": [
-        "6HK 4 Drinks",
-        "6HK 0 Drink",
+        "236HP",
+        "6HK",
+        "6HP",
         "2HK",
-        "6MK",
-        "4HK",
+        "6MP",
         "5HK",
-        "5HP",
         "5MK",
+        "4HK",
+        "5HP",
         "2MK",
-        "5MP",
-        "4HP",
-        "2KK",
-        "2HP",
-        "2LK",
         "5LK",
+        "2HP",
         "2MP",
-        "2LP",
+        "2LK",
+        "5MP",
         "5LP",
+        "2LP",
+        "4HP",
         "THROW",
         "FORWARD JUMP"
     ],
     "aa_neutral_buffer": 0,
-    "aa_subs": null,
+    "aa_subs": [
+        {
+            "input": "236HP",
+            "weight": 1
+        }
+    ],
     "is_replay": false,
-    "p1_char": "Alex",
+    "p1_char": "Ryu",
     "p1_facing_right": true,
     "p1_prefs": {
         "A.K.I.": {
@@ -69,41 +74,6 @@
             "red": {
                 "ar": 147.62376,
                 "input": "5HP"
-            },
-            "visibility": {
-                "2HK": false,
-                "2HP": false,
-                "2LK": false,
-                "2LP": false,
-                "2MK": false,
-                "2MP": true,
-                "4MK": false,
-                "5HK": false,
-                "5HK (HOLD)": false,
-                "5HP": false,
-                "5HP (HOLD)": false,
-                "5LK": false,
-                "5LP": false,
-                "5MP": false,
-                "6HK": false,
-                "THROW": false
-            },
-            "yellow_offset": 50
-        },
-        "Alex_Prowler": {
-            "visibility": {
-                "2LPLK": false,
-                "2THROW": false,
-                "5HK": false,
-                "5HP": false,
-                "5HP (HOLD)": false,
-                "5LP": false,
-                "5MK": false,
-                "5MP": false,
-                "6HP": false,
-                "6LP": false,
-                "6MP": false,
-                "THROW": false
             },
             "yellow_offset": 50
         },
@@ -459,7 +429,7 @@
         }
     },
     "p1_show_all": true,
-    "p2_char": "Jamie",
+    "p2_char": "Ryu",
     "p2_facing_right": false,
     "p2_prefs": {
         "A.K.I.": {
@@ -493,6 +463,7 @@
                 "ar": 230.24052,
                 "input": "5HK (HOLD)"
             },
+            "visibility": null,
             "yellow_offset": 50
         },
         "Alex_Prowler": {
@@ -522,8 +493,8 @@
         },
         "Chun-Li": {
             "low": {
-                "ar": 175.56312561035156,
-                "input": "5HP"
+                "ar": 80,
+                "input": "THROW"
             },
             "red": false,
             "yellow_offset": 50
@@ -630,27 +601,6 @@
                 "ar": 180.3,
                 "input": "5HK"
             },
-            "visibility": {
-                "2HK": false,
-                "2HP": false,
-                "2KK": false,
-                "2LK": false,
-                "2LP": false,
-                "2MK": true,
-                "2MP": false,
-                "4HK": false,
-                "4HP": false,
-                "5HK": false,
-                "5HP": false,
-                "5LK": false,
-                "5LP": false,
-                "5MK": false,
-                "5MP": false,
-                "6HK 0 Drink": false,
-                "6HK 4 Drinks": false,
-                "6MK": false,
-                "THROW": false
-            },
             "yellow_offset": 50
         },
         "Juri": {
@@ -720,14 +670,6 @@
             "yellow_offset": 50
         },
         "Mai": {
-            "low": {
-                "ar": 170.293,
-                "input": "2HK"
-            },
-            "red": {
-                "ar": 197,
-                "input": "5HK"
-            },
             "yellow_offset": 50
         },
         "Manon": {
@@ -780,8 +722,8 @@
                 "input": "2MK"
             },
             "red": {
-                "ar": 154.506,
-                "input": "5HP"
+                "ar": 156.44165,
+                "input": "4HK"
             },
             "visibility": {
                 "2HK": false,

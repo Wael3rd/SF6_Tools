@@ -1,6 +1,6 @@
 -- =========================================================
--- ComboTrials_D2D.lua — Rendu D2D overlay (icônes, trial box)
--- Reçoit un contexte partagé (ctx) depuis le fichier principal.
+-- ComboTrials_D2D.lua -- D2D overlay rendering (icons, trial box)
+-- Receives shared context (ctx) from the main file.
 -- =========================================================
 
 local d2d = d2d
@@ -114,7 +114,7 @@ local function apply_mirror(pos, flip)
 end
 
 -- =========================================================
--- Helpers groupes follow-up
+-- Follow-up group helpers
 -- =========================================================
 local function build_display_lines(sequence)
     local lines = {}
@@ -133,7 +133,7 @@ end
 local function merge_group_log_item(steps)
     local motions = {}
 
-    -- Compter les steps holdables
+    -- Count holdable steps
     local holdable_count = 0
     for _, s in ipairs(steps) do
         if s.is_holdable then holdable_count = holdable_count + 1 end
@@ -142,19 +142,19 @@ local function merge_group_log_item(steps)
     local first_holdable_done = false
     for _, s in ipairs(steps) do
         local m = s.motion or ""
-        -- Pour les follow-ups : s'assurer que > est AVANT [AIR]/J. (pas l'inverse)
+        -- For follow-ups: ensure > is BEFORE [AIR]/J. (not reversed)
         m = m:gsub("^(%[AIR%])%s*(>)", "%2%1")
         m = m:gsub("^(J%.)%s*(>)", "%2%1")
         if s.is_holdable then
             if holdable_count > 3 then
-                -- N'afficher que le premier holdable avec "(xN)", ignorer les autres
+                -- Only display the first holdable with "(xN)", ignore the rest
                 if not first_holdable_done then
                     first_holdable_done = true
                     table.insert(motions, m)
                 end
-                -- les suivants : on ne les ajoute pas
+                -- subsequent ones: not added
             else
-                -- 3 ou moins : hold individuel sur chaque step
+                -- 3 or fewer: individual hold on each step
                 local frames = s.hold_frames
                 if frames and frames > 0 then
                     m = m .. " (Hold " .. frames .. ")"
@@ -175,7 +175,7 @@ local function merge_group_log_item(steps)
 
     return {
         motion         = table.concat(motions, " "),
-        is_holdable    = false,  -- géré inline dans la motion
+        is_holdable    = false,  -- handled inline in the motion
         hold_repeat    = holdable_count > 3 and holdable_count or nil,
         expected_combo = last.expected_combo,
         actual_combo   = last.actual_combo,
@@ -193,38 +193,38 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
     local motion_tokens = {}
     local s = log_entry.motion or ""
 
-    -- On met tout en majuscule IMMÉDIATEMENT pour que le j. devienne J.
+    -- Convert to uppercase IMMEDIATELY so that j. becomes J.
     s = s:upper()
 
-    -- 1. Normalisation inline de l'état Aérien (J. → [AIR], garde chaque [AIR] à sa position)
+    -- 1. Inline normalization of aerial state (J. -> [AIR], keeps each [AIR] at its position)
     s = s:gsub("J%.", "[AIR]")
     s = s:gsub("%[AIR%]%s*", "[AIR] ")
 
-    -- 2. Inversion des commandes (Uniquement Visuelle) pour P2
+    -- 2. Command inversion (Visual Only) for P2
     if should_flip then
-        -- On protège le contenu entre parenthèses (texte pur, ex: "(4 Medals)")
-        -- Marqueurs sans chiffres pour pas être touchés par le swap
+        -- Protect content inside parentheses (plain text, e.g. "(4 Medals)")
+        -- Markers without digits so they are not affected by the swap
         local paren_store = {}
         s = s:gsub("(%b())", function(match)
             table.insert(paren_store, match)
             return "##P" .. string.char(64 + #paren_store) .. "##"
         end)
 
-        -- On protège les cercles complets
+        -- Protect full circle motions
         s = s:gsub("720", "{C2}")
         s = s:gsub("360", "{C1}")
         s = s:gsub("5252", "{D2}")
 
-        -- On inverse la droite et la gauche (1<->3, 4<->6, 7<->9)
+        -- Swap left and right (1<->3, 4<->6, 7<->9)
         local swap = { ["1"] = "3", ["3"] = "1", ["4"] = "6", ["6"] = "4", ["7"] = "9", ["9"] = "7" }
         s = s:gsub("%d", function(c) return swap[c] or c end)
 
-        -- On restaure
+        -- Restore circle motions
         s = s:gsub("{C2}", "720")
         s = s:gsub("{C1}", "360")
         s = s:gsub("{D2}", "5252")
 
-        -- On restaure les parenthèses intactes
+        -- Restore parentheses intact
         s = s:gsub("##P(.)##", function(c)
             return paren_store[string.byte(c) - 64]
         end)
@@ -242,8 +242,8 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
     s = s:gsub("5252", "{2}{2}")
     s = s:gsub("720", "{360}{360}")
 
-    -- Traduction automatique en icônes (Parry et Drive Rush)
-    s = s:gsub("MP%+MK %(PARRY%)", "{parry}") -- Intercepte le texte natif du jeu
+    -- Auto-translate to icons (Parry and Drive Rush)
+    s = s:gsub("MP%+MK %(PARRY%)", "{parry}") -- Intercept native game text
     s = s:gsub("%(PARRY_JUST_[LMH]%)", "{parry}")
     s = s:gsub("PARRY_JUST_[LMH]", "{parry}")
     s = s:gsub("%(PARRY_HIT_[LMH]%)", "{parry}")
@@ -251,9 +251,9 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
     s = s:gsub("%(PARRY%)", "{parry}")
     s = s:gsub("PARRY", "{parry}")
 
-    s = s:gsub("HP%+HK", "{di}") -- Remplace le combo de touches brut
-    s = s:gsub("DI", "{di}")     -- Remplace le mot clé DI
-    s = s:gsub("%(DI%)", "")     -- Supprime (DI) s'il reste
+    s = s:gsub("HP%+HK", "{di}") -- Replace raw button combo
+    s = s:gsub("DI", "{di}")     -- Replace DI keyword
+    s = s:gsub("%(DI%)", "")     -- Remove leftover (DI)
 
     s = s:gsub("%(REVERSAL%)", "{rev}")
     s = s:gsub("REVERSAL", "{rev}")
@@ -359,7 +359,7 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
     end
     motion_tokens = processed_tokens
 
-    -- Swap des followup validés → validfollowup
+    -- Swap validated followups -> validfollowup
     if log_entry.validated_followups and log_entry.validated_followups > 0 then
         local swapped = 0
         for _, tok in ipairs(motion_tokens) do
@@ -371,10 +371,10 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
         end
     end
 
-    -- 3. Gestion du statut Hold
+    -- 3. Hold status handling
     local hold_tokens = {}
     if log_entry.hold_repeat then
-        -- Cas hold répété (>3) : icône hold + "(xN)"
+        -- Repeated hold case (>3): hold icon + "(xN)"
         table.insert(hold_tokens, { type = "img",  val = "hold" })
         table.insert(hold_tokens, { type = "text", val = "(x" .. log_entry.hold_repeat .. ")", col = 0xFFFFFFFF })
     elseif log_entry.is_holdable then
@@ -419,16 +419,16 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
             col = 0xFFFF0000 -- Red
             show_icon = true
         elseif status == "Lv1" then
-            col = 0xFF00AAFF  -- Orange
+            col = 0xFF00AAFF  -- Orange (ABGR)
             show_icon = true
         elseif status == "Lv2" then
-            col = 0xFF00FFFF  -- Jaune
+            col = 0xFF00FFFF  -- Yellow (ABGR)
             show_icon = true
         else
             if frames > 0 then show_icon = true end
         end
 
-        -- On affiche toujours les frames, mais on cache l'icône jaune si c'est Instant
+        -- Always show frames, but hide the yellow icon if Instant
         local charge_str = ""
         if frames > 0 then
             charge_str = string.format("(%d)", frames)
@@ -440,7 +440,7 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
         table.insert(hold_tokens, { type = "text", val = charge_str, col = col })
     end
 
-    -- 4. Combo management
+    -- 4. Combo counter management
     local combo_token = nil
     if d2d_cfg.show_combo_count then
         if trial_mode == "playing" then
@@ -464,7 +464,7 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
         end
     end
 
-    -- 5. ASSEMBLAGE (Inline : chaque [AIR] et (XXX) reste à sa position naturelle)
+    -- 5. ASSEMBLY (Inline: each [AIR] and (XXX) stays at its natural position)
     local final_tokens = {}
     if reverse_layout then
         if combo_token then
@@ -492,7 +492,7 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
         end
     end
 
-    -- Tag (CH) ou (PC) par step
+    -- Tag (CH) or (PC) per step
     local ct = log_entry.counter_type
     if ct == 1 then
         table.insert(final_tokens, { type = "text", val = " (CH)", col = 0xFFFFFFFF })
@@ -830,11 +830,11 @@ local function d2d_draw_inner()
         local c_off_y = (d2d_cfg.cartouche_offset_y or 0) * sh
         local final_rect_x = rect_x + c_off_x
 
-        -- Build display lines (groupes de follow-ups)
+        -- Build display lines (follow-up groups)
         local display_lines = build_display_lines(trial_state.sequence)
         local n_lines = #display_lines
 
-        -- Trouver le display_line actif (celui qui contient current_step)
+        -- Find the active display_line (the one containing current_step)
         local raw_visual_dl = 1
         for dl_idx, dl in ipairs(display_lines) do
             if trial_state.current_step >= dl.first and trial_state.current_step <= dl.last then
@@ -918,7 +918,7 @@ local function d2d_draw_inner()
             local dl = display_lines[dl_idx]
             local log_item = (#dl.steps > 1) and merge_group_log_item(dl.steps) or dl.steps[1]
 
-            -- Nombre de follow-ups validés dans ce groupe (pour swapper followup → validfollowup)
+            -- Number of validated follow-ups in this group (to swap followup -> validfollowup)
             if mode == "playing" and #dl.steps > 1 then
                 log_item.validated_followups = math.max(0, math.min(trial_state.current_step - dl.first, #dl.steps - 1))
             end
@@ -971,7 +971,7 @@ local function d2d_draw_inner()
     end
 
     -- Custom mouse cursor
-    if assets.imgs["cursor"] and (reframework:is_draw_ui() or (sf6_menu_state and sf6_menu_state.active)) then
+    if assets.imgs["cursor"] and (reframework:is_draw_ui() or (ctx.sf6_menu_state and ctx.sf6_menu_state.active)) then
         local mp = imgui.get_mouse()
         if mp then d2d.image(assets.imgs["cursor"], mp.x, mp.y, 32, 32) end
     end

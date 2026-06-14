@@ -1,8 +1,10 @@
 local re = re
 local sdk = sdk
 local imgui = imgui
-local draw = draw
 local json = json
+require("func/SharedHooks") -- error registry (_G.safe_load_json)
+local GS = require("func/GameState") -- per-frame snapshot (players, act_st, pause)
+local UIKit = require("func/UIKit")
 
 -- =========================================================
 -- ReactionTraining Remastered (V6.10 - Recording Fix)
@@ -15,7 +17,6 @@ local STATE_NEUTRAL = 0
 local STATE_HURT    = 9
 local STATE_BLOCK   = 10
 local STATE_DI      = 11
-local STATE_DR      = 12 
 
 -- ATTACK STATES (TRIGGERS)
 local ATTACK_STATES = { 
@@ -36,23 +37,17 @@ local ATTACK_STATES = {
 local CONFIG_FILENAME = "TrainingReactions_data/TrainingReactions_Config.json"
 local LOG_FILENAME    = "Stats/TrainingReactions_SessionStats.txt"
 
-local COLORS = {
-    White  = 0xFFDADADA, Green  = 0xFF00FF00, Red    = 0xFF0000FF,
-    Grey   = 0x99FFFFFF, DarkGrey = 0xFF888888, Orange = 0xFF00A5FF, 
-    Cyan   = 0xFFFFFF00, Yellow = 0xFF00FFFF, 
-    Shadow = 0xFF000000, Blue   = 0xFFFFAA00 
-}
+local COLORS = UIKit.COLORS
 
 local UI_THEME = {
-    hdr_info    = { base = 0xFFDB9834, hover = 0xFFE6A94D, active = 0xFFC78320 },
-    hdr_session = { base = 0xFFB6599B, hover = 0xFFC770AC, active = 0xFFA04885 },
-    hdr_slots   = { base = 0xFF5D6DDA, hover = 0xFF7382E6, active = 0xFF4555C9 },
-    hdr_layout  = { base = 0xFF4DA6FF, hover = 0xFF80BFFF, active = 0xFF0073E6 },
-    hdr_debug   = { base = 0xFF9CBC1A, hover = 0xFFAED12B, active = 0xFF8AA814 },
-    
-    btn_neutral = { base = 0xFF444444, hover = 0xFF666666, active = 0xFF222222 },
-    btn_green   = { base = 0xFF00AA00, hover = 0xFF00CC22, active = 0xFF007700 },
-    btn_red     = { base = 0xFF0000CC, hover = 0xFF2222FF, active = 0xFF000099 },
+    hdr_info    = UIKit.THEME.hdr_gold,
+    hdr_session = UIKit.THEME.hdr_purple,
+    hdr_slots   = UIKit.THEME.hdr_blue,
+    hdr_layout  = UIKit.THEME.hdr_skyblue,
+    hdr_debug   = UIKit.THEME.hdr_green,
+    btn_neutral = UIKit.THEME.btn_neutral,
+    btn_green   = UIKit.THEME.btn_green,
+    btn_red     = UIKit.THEME.btn_red,
 }
 
 local SharedUI = require("func/Training_SharedUI")
@@ -253,21 +248,8 @@ end
 
 local function format_duration(s) if not s or s < 0 then s = 0 end return string.format("%02d:%02d", math.floor(s/60), math.floor(s%60)) end
 
-local function styled_button(label, style, text_col)
-    imgui.push_style_color(21, style.base); imgui.push_style_color(22, style.hover); imgui.push_style_color(23, style.active)
-    if text_col then imgui.push_style_color(0, text_col) end
-    local clicked = imgui.button(label)
-    if text_col then imgui.pop_style_color(1) end
-    imgui.pop_style_color(3)
-    return clicked
-end
-
-local function styled_header(label, style)
-    imgui.push_style_color(24, style.base); imgui.push_style_color(25, style.hover); imgui.push_style_color(26, style.active)
-    local is_open = imgui.collapsing_header(label)
-    imgui.pop_style_color(3)
-    return is_open
-end
+local styled_button = UIKit.styled_button
+local styled_header = UIKit.styled_header
 
 local function input_int_keyboard(label, value)
     local str_val = tostring(value or 0); local changed, new_str = imgui.input_text(label, str_val)
@@ -279,11 +261,7 @@ end
 
 local function get_p1_extended_info()
     local info = { damage_type = 0, trade_dm_flag = false, muteki_time = 0 }
-    local gBattle = sdk.find_type_definition("gBattle")
-    if not gBattle then return info end
-    local player_mgr = gBattle:get_field("Player"):get_data(nil)
-    if not player_mgr then return info end
-    local p1 = player_mgr:call("getPlayer", 0)
+    local p1 = GS.p1
     if not p1 then return info end
 
     local dt = p1:get_field("damage_type")
@@ -300,13 +278,7 @@ end
 
 -- [FIXED] GET P1 ACTION ID (via Engine)
 local function get_p1_action_id()
-    local gBattle = sdk.find_type_definition("gBattle")
-    if not gBattle then return -1 end
-    local player_mgr = gBattle:get_field("Player"):get_data(nil)
-    if not player_mgr then return -1 end
-    local cPlayer = player_mgr.mcPlayer
-    if not cPlayer then return -1 end
-    local p1 = cPlayer[0] 
+    local p1 = GS.p1
     if not p1 then return -1 end
     local actParam = p1.mpActParam
     if not actParam then return -1 end
@@ -353,7 +325,7 @@ local function update_real_slot_info()
 end
 
 local function load_conf()
-    local data = json.load_file(CONFIG_FILENAME)
+    local data = _G.safe_load_json(CONFIG_FILENAME)
     if data then for k,v in pairs(data) do user_config[k] = v end end
     
     if type(user_config.hud_n_global_y) ~= "number" then user_config.hud_n_global_y = -0.35 end
@@ -484,18 +456,6 @@ end
 -- =========================================================
 -- CORE ENGINE
 -- =========================================================
-
-local function is_game_in_menu()
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local field = pm:get_type_definition():get_field("_CurrentPauseBit")
-        if field then 
-            local val = field:get_data(pm)
-            if val and tostring(val) ~= "131072" then return true end 
-        end
-    end
-    return false
-end
 
 local function update_slot_stats(is_success)
     if game_state.current_slot_index >= 1 and game_state.current_slot_index <= 8 then
@@ -884,35 +844,6 @@ end
 -- =========================================================
 
 
-local function manage_ticker_visibility_backup()
-    local should_hide = (user_config.session_mode == 1)
-    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
-    if not mgr then return end
-    local dict = mgr:get_field("_ViewUIWigetDict")
-    if not dict then return end
-    local entries = dict:get_field("_entries")
-    if not entries then return end
-    local count = entries:call("get_Count")
-    for i = 0, count - 1 do
-        local entry = entries:call("get_Item", i)
-        if entry then
-            local widget_list = entry:get_field("value")
-            if widget_list then
-                local w_cnt = widget_list:call("get_Count")
-                for j = 0, w_cnt - 1 do
-                    local widget = widget_list:call("get_Item", j)
-                    if widget then
-                        local type = widget:get_type_definition()
-                        if type and string.find(type:get_name(), "UIWidget_TMTicker") then
-                            widget:call("set_Visible", not should_hide)
-                            return
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
 
 local ui_hide_targets = {
     BattleHud_Timer = { { "c_main", "c_hud", "c_timer", "c_infinite" } }
@@ -944,7 +875,7 @@ if _G.CurrentTrainerMode ~= 1 then return true end
     return true
 end)
 
--- Fonction pour dessiner le HUD (Extraite pour clarté, à appeler dans on_frame)
+-- Draw the HUD (extracted for clarity, called in on_frame)
 local function draw_hud_overlay()
     local show_timer = (user_config.session_mode == 1)
     
@@ -1169,43 +1100,33 @@ re.on_frame(function()
     local should_update_logic = true
     local should_draw_hud = true
 
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
-        -- Si pause active ou état non standard (différent de 64 et 2112)
-        if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then
-            if session.is_running and not session.is_paused then
-                session.is_paused = true
-                session._auto_paused = true
-                set_playback_mode(false) -- AUTO PAUSE
-            end
-            should_update_logic = false
-            should_draw_hud = false
-        else
-            -- Menu closed: keep paused but clear auto flag (user must resume manually)
-            if session._auto_paused then
-                session._auto_paused = false
-            end
+    if GS.in_pause_menu then
+        if user_config.session_mode == 1 and session.is_running and not session.is_paused then
+            session.is_paused = true
+            session._auto_paused = true
+            set_playback_mode(false)
+        end
+        should_update_logic = false
+        should_draw_hud = false
+    else
+        if session._auto_paused then
+            session._auto_paused = false
         end
     end
-    
+
     if should_update_logic then
-        update_real_slot_info() 
+        update_real_slot_info()
         handle_input()
         manage_playback()
         update_logic()
-        manage_ticker_visibility_backup()
     end
-    
+
     if should_draw_hud then
         draw_hud_overlay()
     end
 
     -- FLOATING SESSION WINDOW (hide during pause menu)
-    local _pm = sdk.get_managed_singleton("app.PauseManager")
-    local _pb = _pm and _pm:get_field("_CurrentPauseTypeBit")
-    local _in_menu = _pb and (_pb ~= 64 and _pb ~= 2112)
-    if user_config.show_floating and not _in_menu and not _G._tsm_hide_ui then
+    if user_config.show_floating and not GS.in_pause_menu and not _G._tsm_hide_ui then
         draw_session_floating()
     end
 end)

@@ -3,13 +3,13 @@
     "charge_visible": true,
     "hud_text_visible": true,
     "p1": {
-        "charge_bars": false,
+        "charge_bars": true,
         "clashbox": false,
         "hide_all": false,
         "hitboxes": true,
         "hud_dr": true,
         "hud_hp": true,
-        "hud_pos": true,
+        "hud_pos": false,
         "hud_sa": true,
         "hurtboxes": true,
         "position_dot": true,
@@ -27,7 +27,7 @@
         "hitboxes": true,
         "hud_dr": true,
         "hud_hp": true,
-        "hud_pos": true,
+        "hud_pos": false,
         "hud_sa": true,
         "hurtboxes": true,
         "position_dot": true,
@@ -38,5 +38,5 @@
         "throwhurtboxes": false,
         "uniqueboxes": false
     },
-    "vr_visible": false
+    "vr_visible": true
 }

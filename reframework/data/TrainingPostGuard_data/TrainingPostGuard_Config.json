@@ -10,7 +10,7 @@
     "hud_n_spacing_y": 0.02800000086426735,
     "hud_n_spread_score": 0.09000000357627869,
     "observation_window": 120,
-    "session_mode": "trials",
+    "session_mode": "timer",
     "show_debug": false,
     "show_floating": true,
     "timer_font_size": 80,

@@ -66,7 +66,7 @@ function UI.update_fonts(cfg)
     local sw, sh = UI.get_screen_size()
     local scale = math.max(0.1, sh / 1080.0)
 
-    -- On lit la configuration du HUD actif
+    -- Read the active HUD configuration
     local current_hud = _G.CurrentHudSuffix or "Default"
     local hud_cfg = UI.HUD_CONFIG[current_hud] or UI.HUD_CONFIG["Default"]
 
@@ -78,7 +78,7 @@ function UI.update_fonts(cfg)
         fonts.main_size = t_main
     end
     
-    -- On recharge si la taille OU le nom de la police change !
+    -- Reload if the size OR the font name changes!
     if fonts.timer_size ~= t_timer or fonts.timer_font_name ~= hud_cfg.font then
         fonts.timer = imgui.load_font(hud_cfg.font, t_timer)
         fonts.timer_size = t_timer
@@ -98,7 +98,7 @@ function UI.handle_resolution(cfg)
     
     if sw ~= res.w or sh ~= res.h then res.cooldown = 30; res.w = sw; res.h = sh end
     
-    -- NOUVEAU : Si le joueur change de HUD, on déclenche une mise à jour des polices
+    -- If the player changes HUD, trigger a font update
     if current_hud ~= last_hud_suffix then
         last_hud_suffix = current_hud
         force_update = true
@@ -247,17 +247,6 @@ local function is_keyboard_mode()
     return (ok and kb) or false
 end
 UI.is_keyboard_mode = is_keyboard_mode
-
-function UI.sc(pad_key)
-    local map = { L = "1", U = "2", D = "3", R = "4" }
-    return is_keyboard_mode() and (map[pad_key] or pad_key) or pad_key
-end
-
--- Training scripts: buttons left to right = D(1), U(2), R(3), L(4)
-function UI.sc_t(pad_key)
-    local map = { D = "1", U = "2", R = "3", L = "4" }
-    return is_keyboard_mode() and (map[pad_key] or pad_key) or pad_key
-end
 
 -- ==========================================
 -- FUNC BUTTON NAME + DYNAMIC MESSAGES

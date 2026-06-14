@@ -4,15 +4,17 @@ local re = re
 local json = json
 local fs = fs
 local os = os
+require("func/SharedHooks") -- error registry (_G.safe_load_json)
+local GS = require("func/GameState")
 
 -- =========================================================
--- CONFIGURATION GLOBALE
+-- GLOBAL CONFIGURATION
 -- =========================================================
 local DATA_FOLDER = "SF6_RecordingSlotManager_data"
 local COMBOS_BASE = "TrainingComboTrials_data\\\\CustomCombos"
 local CONFIG_FILE = "SF6_RecordingSlotManager_data/config.json"
 local status_msg = "Ready."
-local force_open_live_slots = false -- La variable qui servira de déclencheur
+local force_open_live_slots = false -- Trigger variable to force-open the Live Slots header
 local current_p1_id = -1
 local current_p2_id = -1
 local game_tick_counter = 0
@@ -48,15 +50,15 @@ local slot_dropdown_indices = { [0]=0, [1]=0, [2]=0, [3]=0, [4]=0, [5]=0, [6]=0,
 local slot_import_msgs = { [0]="", [1]="", [2]="", [3]="", [4]="", [5]="", [6]="", [7]="" }
 local last_filtered_replay_p2_id = -1
 
--- Queue d'actions pour l'allocation mémoire asynchrone
+-- Action queue for async memory allocation
 local action_queue = {} 
 
--- Stockage des noms de fichiers pour l'import ligne par ligne
+-- Per-slot filename storage for line-by-line import
 local slot_file_inputs = {
     [0]="", [1]="", [2]="", [3]="", [4]="", [5]="", [6]="", [7]=""
 }
 
--- Noms custom des slots
+-- Custom slot names
 local slot_names = { [0]="", [1]="", [2]="", [3]="", [4]="", [5]="", [6]="", [7]="" }
 local slot_name_bufs = { [0]="", [1]="", [2]="", [3]="", [4]="", [5]="", [6]="", [7]="" }
 
@@ -154,7 +156,7 @@ end
 
 local _seq_bridge_ts = 0
 
--- IDs Officiels SF6
+-- Official SF6 Character IDs
 local CHARACTER_NAMES = {
     [1] = "Ryu",        [2] = "Luke",       [3] = "Kimberly",   [4] = "Chun-Li",
     [5] = "Manon",      [6] = "Zangief",    [7] = "JP",         [8] = "Dhalsim",
@@ -186,6 +188,8 @@ end
 
 local refresh_file_list
 local refresh_filtered_list
+local refresh_replay_list
+local refresh_filtered_replay_list
 
 -- =========================================================
 -- UTILS & MEMORY
@@ -219,7 +223,8 @@ if t_mediator then
                         dropdown_selected_index = 1
                         if refresh_file_list then refresh_file_list() end
                         if refresh_filtered_list then refresh_filtered_list() end
-                        pcall(function() refresh_replay_list(); refresh_filtered_replay_list() end)
+                        if refresh_replay_list then refresh_replay_list() end
+                        if refresh_filtered_replay_list then refresh_filtered_replay_list() end
                         status_msg = "Char selected : " .. (CHARACTER_NAMES[new_id] or ("Unknown("..tostring(new_id)..")"))
                     end
                 end
@@ -262,7 +267,7 @@ local function get_char_folder(char_name)
 end
 
 local function migrate_legacy_files()
-    local cfg = json.load_file(CONFIG_FILE) or {}
+    local cfg = _G.safe_load_json(CONFIG_FILE) or {}
     if cfg.migration_done then return end
     local all_char_names = {}
     for _, name in pairs(CHARACTER_NAMES) do all_char_names[name] = true end
@@ -342,7 +347,7 @@ refresh_filtered_list = function()
     end
 end
 
-local function refresh_replay_list()
+refresh_replay_list = function()
     cached_replay_list = {}
     if current_p2_id == -1 then return end
     local char_name = get_char_name(current_p2_id)
@@ -357,7 +362,7 @@ local function refresh_replay_list()
     table.sort(cached_replay_list)
 end
 
-local function refresh_filtered_replay_list()
+refresh_filtered_replay_list = function()
     filtered_replay_list = {}
     filtered_replay_display_list = { "" }
     for _, f in ipairs(cached_replay_list) do
@@ -366,10 +371,10 @@ local function refresh_filtered_replay_list()
     end
 end
 
--- Migration des fichiers legacy vers sous-dossiers par personnage
+-- Migrate legacy files into per-character subfolders
 migrate_legacy_files()
 
--- Peupler les listes au chargement
+-- Populate lists on load
 refresh_file_list()
 refresh_filtered_list()
 refresh_replay_list()
@@ -385,7 +390,7 @@ local function save_settings()
 end
 
 local function load_settings()
-    local s = json.load_file(CONFIG_FILE)
+    local s = _G.safe_load_json(CONFIG_FILE)
     if s then
         if s.activate_on_load ~= nil then activate_on_load = s.activate_on_load end
     end
@@ -473,7 +478,7 @@ local function encode_from_numpad(str)
 end
 
 -- =========================================================
--- FONCTION D'IMPORT / EXPORT COMMUNE
+-- SHARED IMPORT / EXPORT FUNCTION
 -- =========================================================
 local function apply_data_to_character(target_id, data_table, source_name, live_slot_idx)
     local use_id = target_id or current_p2_id
@@ -482,7 +487,7 @@ local function apply_data_to_character(target_id, data_table, source_name, live_
     
     local missing_memory_slots = {}
     
-    -- 1. VERIFICATION DE LA MEMOIRE POUR TOUS LES SLOTS
+    -- 1. VERIFY MEMORY FOR ALL SLOTS
     for _, s_data in ipairs(data_table) do
         if not s_data.empty then
             local slot = slots:call("get_Item", s_data.id - 1)
@@ -498,19 +503,19 @@ local function apply_data_to_character(target_id, data_table, source_name, live_
             
             local cap = buffer and buffer:call("get_Length") or 0
             
-            -- Si la capacité est trop faible (ou nulle), on doit allouer
+            -- If capacity is too low (or zero), we need to allocate
             if cap < needed then
                 table.insert(missing_memory_slots, s_data.id - 1)
             end
         end
     end
     
-    -- 2. SI MEMOIRE MANQUANTE -> DECLENCHER L'AUTO-ALLOCATION
+    -- 2. IF MEMORY MISSING -> TRIGGER AUTO-ALLOCATION
     if #missing_memory_slots > 0 then
-        -- On vide la queue actuelle pour prioriser cette opération
+        -- Clear the current queue to prioritize this operation
         action_queue = {}
         
-        -- On ajoute une action d'allocation pour chaque slot vide
+        -- Add an allocation action for each empty slot
         for _, slot_idx in ipairs(missing_memory_slots) do
             table.insert(action_queue, {
                 type = "ALLOC",
@@ -519,7 +524,7 @@ local function apply_data_to_character(target_id, data_table, source_name, live_
             })
         end
         
-        -- A la toute fin, on ajoute une action pour RE-EXECUTER l'écriture des données
+        -- At the very end, add an action to RE-EXECUTE the data write
         table.insert(action_queue, {
             type = "WRITE_DATA",
             target_id = use_id,
@@ -531,7 +536,7 @@ local function apply_data_to_character(target_id, data_table, source_name, live_
         return "Auto-Allocating " .. #missing_memory_slots .. " slots... Please wait."
     end
 
-    -- 3. ECRITURE DES DONNEES (Si mémoire OK)
+    -- 3. WRITE DATA (if memory OK)
     local count = 0
     for _, s_data in ipairs(data_table) do
         local slot = slots:call("get_Item", s_data.id - 1)
@@ -546,7 +551,7 @@ local function apply_data_to_character(target_id, data_table, source_name, live_
             local input_data = slot:get_field("InputData")
             local buffer = input_data:get_field("buff")
             
-            -- Recalcul du needed pour être sûr
+            -- Recalculate needed to be safe
             local needed = 0
             if s_data.timeline then
                  for _, e in ipairs(s_data.timeline) do
@@ -588,7 +593,7 @@ local function apply_data_to_character(target_id, data_table, source_name, live_
 
     update_saved_state_reference()
 
-    -- Si "Activate on Load" est activé, on active tous les slots valides
+    -- If "Activate on Load" is enabled, activate all valid slots
     if activate_on_load then
         for i=0, 7 do
             local s = slots:call("get_Item", i)
@@ -649,7 +654,7 @@ _G._rsm_api = {
 }
 
 -- =========================================================
--- IMPORT REPLAY SINGLE (LIGNE PAR LIGNE)
+-- IMPORT SINGLE REPLAY (LINE BY LINE)
 -- =========================================================
 local function import_single_replay_slot(slot_idx, filename)
     if not filename or filename == "" then return "No filename" end
@@ -678,16 +683,16 @@ local function import_single_replay_slot(slot_idx, filename)
 end
 
 -- =========================================================
--- SYSTEME D'AUTO-ALLOCATION (ACTION QUEUE - LE CERVEAU)
+-- AUTO-ALLOCATION SYSTEM (ACTION QUEUE - THE BRAIN)
 -- =========================================================
 re.on_frame(function()
     if #action_queue > 0 then
         local action = action_queue[1]
         
-        -- === TYPE: ALLOCATION DE MEMOIRE (Méthode Recorder.lua confirmée) ===
+        -- === TYPE: MEMORY ALLOCATION (Recorder.lua method confirmed) ===
         if action.type == "ALLOC" then
             
-            -- ETAPE 1: INIT (Lancer un vrai record sur le slot vide)
+            -- STEP 1: INIT (Start a real recording on the empty slot)
             if action.step == "INIT" then
                 local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
                 local rec_func = mgr and mgr:call("get_RecordFunc")
@@ -707,14 +712,14 @@ re.on_frame(function()
                     table.remove(action_queue, 1)
                 end
 
-            -- ETAPE 2: WAITING (Laisser le jeu enregistrer quelques frames)
+            -- STEP 2: WAITING (Let the game record a few frames)
             elseif action.step == "WAITING" then
                 action.timer = action.timer + 1
                 if action.timer > 10 then
                     action.step = "STOP_PHASE1"
                 end
 
-            -- ETAPE 3: STOP_PHASE1 (Repasser en mode normal)
+            -- STEP 3: STOP_PHASE1 (Switch back to normal mode)
             elseif action.step == "STOP_PHASE1" then
                 local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
                 if mgr then
@@ -722,7 +727,7 @@ re.on_frame(function()
                 end
                 action.step = "STOP_PHASE2"
 
-            -- ETAPE 4: STOP_PHASE2 (Arrêter le record, frame suivante)
+            -- STEP 4: STOP_PHASE2 (Stop recording, next frame)
             elseif action.step == "STOP_PHASE2" then
                 local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
                 local rec_func = mgr and mgr:call("get_RecordFunc")
@@ -735,7 +740,7 @@ re.on_frame(function()
                 table.remove(action_queue, 1)
             end
             
-        -- === TYPE: ECRITURE FINALE DES DONNEES ===
+        -- === TYPE: FINAL DATA WRITE ===
         elseif action.type == "WRITE_DATA" then
             local res
             if action.already_retried then
@@ -930,7 +935,7 @@ re.on_draw_ui(function()
             -- ================= SOLO OPERATIONS =================
             if sm_styled_header("--- SOLO OPERATIONS ---", SM_THEME.hdr_solo) then
 
-                -- Auto-refresh du filtre si le perso change
+                -- Auto-refresh filter if the character changes
                 if current_p2_id ~= last_filtered_p2_id then
                     refresh_filtered_list()
                     last_filtered_p2_id = current_p2_id
@@ -943,7 +948,7 @@ re.on_draw_ui(function()
 
                 imgui.same_line()
 
-                -- Dropdown des fichiers filtrés par personnage (sans .json)
+                -- Dropdown of files filtered by character (without .json)
                 imgui.push_item_width(250)
                 local combo_changed, combo_idx = imgui.combo("##file_picker", dropdown_selected_index, filtered_display_list)
                 if combo_changed then
@@ -1025,7 +1030,7 @@ re.on_draw_ui(function()
 
                 imgui.same_line()
 
-                -- EXPORT ALL CHARS (avec confirmation hold)
+                -- EXPORT ALL CHARS (with hold confirmation)
                 if not mass_export_confirm then
                     if imgui.button("EXPORT ALL CHARS") then
                         mass_export_confirm = true
@@ -1034,7 +1039,7 @@ re.on_draw_ui(function()
                 else
                     imgui.text_colored("Are you sure? This will overwrite existing files.", 0xFF00FFFF)
 
-                    -- Bouton NO
+                    -- NO button
                     imgui.push_style_color(21, 0xFF1B1BAA)
                     imgui.push_style_color(22, 0xFF3030CC)
                     imgui.push_style_color(23, 0xFF101080)
@@ -1046,7 +1051,7 @@ re.on_draw_ui(function()
 
                     imgui.same_line()
 
-                    -- Bouton YES (maintenir 1 seconde)
+                    -- YES button (hold 1 second)
                     imgui.push_style_color(21, 0xFF1B6E1B)
                     imgui.push_style_color(22, 0xFF2A9E2A)
                     imgui.push_style_color(23, 0xFF104E10)
@@ -1083,24 +1088,24 @@ re.on_draw_ui(function()
             end
 
 
-            -- ================= LIVE SLOTS (toujours visible) =================
-			-- Si le logger a demandé l'ouverture, on force le prochain header à s'ouvrir
+            -- ================= LIVE SLOTS (always visible) =================
+			-- If the logger requested opening, force the next header to open
             if force_open_live_slots then
-                imgui.set_next_item_open(true, 1) -- 1 = Condition "Appearing" ou force immediate
-                force_open_live_slots = false     -- On remet à faux pour ne pas le bloquer ouvert tout le temps
+                imgui.set_next_item_open(true, 1) -- 1 = Condition "Appearing" or force immediate
+                force_open_live_slots = false     -- Reset to false so it doesn't stay forced open
             end
             if sm_styled_header("--- LIVE SLOTS ---", SM_THEME.hdr_liveSlots) then
             local slots, msg = get_slots_access()
             if slots then
 
-                -- Auto-refresh du filtre replay si le perso change
+                -- Auto-refresh replay filter if the character changes
                 if current_p2_id ~= last_filtered_replay_p2_id then
                     refresh_replay_list()
                     refresh_filtered_replay_list()
                     last_filtered_replay_p2_id = current_p2_id
                 end
 			
-			-- [ETAPE 1] On analyse l'état actuel : Est-ce que tout est activé ?
+			-- [STEP 1] Analyze current state: are all slots active?
                     local all_active = true
                     local has_valid_slots = false
 
@@ -1118,7 +1123,7 @@ re.on_draw_ui(function()
                         end
                     end
 
-                    -- [ETAPE 2] On affiche LE bouton unique en fonction du résultat
+                    -- [STEP 2] Display the single button based on the result
                     if has_valid_slots then
                         if all_active then
                             imgui.push_style_color(21, 0xFF4A4A99)
@@ -1152,7 +1157,7 @@ re.on_draw_ui(function()
                     end
 
                     imgui.same_line()
-                    -- Bouton toggle "ACTIVATE ON LOAD"
+                    -- Toggle button "ACTIVATE ON LOAD"
                     if activate_on_load then
                         imgui.push_style_color(21, 0xFF4E9F5F)
                         imgui.push_style_color(22, 0xFF66B576)
@@ -1175,7 +1180,7 @@ re.on_draw_ui(function()
                     end
 
 
-                    -- [FIN DES BOUTONS]
+                    -- [END OF BUTTONS]
                 if imgui.begin_table("SlotTbl", 7, 1 << 0) then
 
                     imgui.table_setup_column("ID", 0, 10)
@@ -1233,7 +1238,7 @@ re.on_draw_ui(function()
                             imgui.text_colored("-", 0xFF666666)
                         end
 
-                        -- REPLAY IMPORT COLUMN (dropdown + bouton)
+                        -- REPLAY IMPORT COLUMN (dropdown + button)
                         imgui.table_next_column()
                         imgui.push_item_width(-70)
                         local rd_changed, rd_idx = imgui.combo("##rep_pick", slot_dropdown_indices[i] or 1, filtered_replay_display_list)
@@ -1250,7 +1255,7 @@ re.on_draw_ui(function()
                                 local res = import_single_replay_slot(i, filename)
                                 if string.find(res, "Loaded") or string.find(res, "Allocating") then
                                     slot_import_msgs[i] = res
-                                    slot_dropdown_indices[i] = 1 -- reset à vide
+                                    slot_dropdown_indices[i] = 1 -- reset to empty
                                 else
                                     slot_import_msgs[i] = res
                                 end
@@ -1284,186 +1289,7 @@ re.on_draw_ui(function()
             imgui.text("Waiting for battle...")
         end
 
-        -- ================= SLOT EDITOR (hidden) =================
-        if false and is_ready and sm_styled_header("--- SLOT EDITOR ---", SM_THEME.hdr_liveSlots) then
-            local slots, slots_err = get_slots_access(current_p2_id)
-            if slots then
-                if not _G._sled then _G._sled = { slot = 0, sel = -1, edit_frames = 1, edit_dir = 5, edit_btns = {LP=false,MP=false,HP=false,LK=false,MK=false,HK=false} } end
-                local ed = _G._sled
 
-                imgui.text_colored("Slot", 0xFF00FFFF)
-                imgui.same_line()
-                for si = 0, 7 do
-                    if si > 0 then imgui.same_line() end
-                    local s = slots:call("get_Item", si)
-                    local is_valid = s:get_field("IsValid")
-                    local label = tostring(si + 1)
-                    if ed.slot == si then
-                        imgui.push_style_color(21, 0xFF0055FF)
-                        imgui.button(label .. "##eslot")
-                        imgui.pop_style_color(1)
-                    else
-                        if is_valid then imgui.push_style_color(21, 0xFF005500) end
-                        if imgui.button(label .. "##eslot") then ed.slot = si; ed.sel = -1 end
-                        if is_valid then imgui.pop_style_color(1) end
-                    end
-                end
-
-                local slot = slots:call("get_Item", ed.slot)
-                local frames_total = slot:get_field("Frame") or 0
-                local is_valid = slot:get_field("IsValid")
-                local is_active = slot:get_field("IsActive")
-                local weight = slot:get_field("Weight") or 0
-
-                local ch_a, new_a = imgui.checkbox("Active##sled", is_active == true or is_active == 1)
-                if ch_a then slot:set_field("IsActive", new_a) end
-                imgui.same_line()
-                local ch_w, new_w = imgui.drag_int("Weight##sled", weight, 1, 0, 100)
-                if ch_w then slot:set_field("Weight", new_w) end
-
-                imgui.text(string.format("Frames: %d | Valid: %s", frames_total, tostring(is_valid)))
-                imgui.separator()
-
-                if is_valid and frames_total > 0 then
-                    local buffer = slot:get_field("InputData"):get_field("buff")
-                    if buffer then
-                        local timeline = {}
-                        local current_val = -1
-                        local run_len = 0
-                        for f = 0, frames_total - 1 do
-                            local val = buffer:call("GetValue", f):get_field("mValue")
-                            if f == 0 then current_val = val; run_len = 1
-                            else
-                                if val == current_val then run_len = run_len + 1
-                                else
-                                    table.insert(timeline, {val = current_val, frames = run_len})
-                                    current_val = val; run_len = 1
-                                end
-                            end
-                        end
-                        table.insert(timeline, {val = current_val, frames = run_len})
-
-                        imgui.begin_child_window("sled_tl", 0, 200)
-                        for li, entry in ipairs(timeline) do
-                            local label = string.format("%df : %s", entry.frames, decode_to_numpad(entry.val))
-                            local is_sel = (ed.sel == li)
-                            if is_sel then imgui.push_style_color(21, 0xFF0055FF) end
-                            if imgui.button(label .. "##tl" .. li) then
-                                ed.sel = li
-                                ed.edit_frames = entry.frames
-                                local v = entry.val
-                                ed.edit_dir = 5
-                                local u,d,l,r = (v&1)~=0,(v&2)~=0,(v&8)~=0,(v&4)~=0
-                                if u then if l then ed.edit_dir=7 elseif r then ed.edit_dir=9 else ed.edit_dir=8 end
-                                elseif d then if l then ed.edit_dir=1 elseif r then ed.edit_dir=3 else ed.edit_dir=2 end
-                                else if l then ed.edit_dir=4 elseif r then ed.edit_dir=6 end end
-                                ed.edit_btns.LP = (v&16)~=0; ed.edit_btns.MP = (v&32)~=0; ed.edit_btns.HP = (v&64)~=0
-                                ed.edit_btns.LK = (v&128)~=0; ed.edit_btns.MK = (v&256)~=0; ed.edit_btns.HK = (v&512)~=0
-                            end
-                            if is_sel then imgui.pop_style_color(1) end
-                        end
-                        imgui.end_child_window()
-
-                        imgui.separator()
-                        local ch_f; ch_f, ed.edit_frames = imgui.drag_int("Frames##sled", ed.edit_frames, 1, 1, 9999)
-                        local ch_d; ch_d, ed.edit_dir = imgui.drag_int("Dir (numpad)##sled", ed.edit_dir, 1, 1, 9)
-                        _, ed.edit_btns.LP = imgui.checkbox("LP##sled", ed.edit_btns.LP); imgui.same_line()
-                        _, ed.edit_btns.MP = imgui.checkbox("MP##sled", ed.edit_btns.MP); imgui.same_line()
-                        _, ed.edit_btns.HP = imgui.checkbox("HP##sled", ed.edit_btns.HP)
-                        _, ed.edit_btns.LK = imgui.checkbox("LK##sled", ed.edit_btns.LK); imgui.same_line()
-                        _, ed.edit_btns.MK = imgui.checkbox("MK##sled", ed.edit_btns.MK); imgui.same_line()
-                        _, ed.edit_btns.HK = imgui.checkbox("HK##sled", ed.edit_btns.HK)
-
-                        local function build_numpad_str()
-                            local parts = { tostring(ed.edit_dir) }
-                            if ed.edit_btns.LP then table.insert(parts, "LP") end
-                            if ed.edit_btns.MP then table.insert(parts, "MP") end
-                            if ed.edit_btns.HP then table.insert(parts, "HP") end
-                            if ed.edit_btns.LK then table.insert(parts, "LK") end
-                            if ed.edit_btns.MK then table.insert(parts, "MK") end
-                            if ed.edit_btns.HK then table.insert(parts, "HK") end
-                            return table.concat(parts, " + ")
-                        end
-
-                        imgui.text_colored("Preview: " .. ed.edit_frames .. "f : " .. build_numpad_str(), 0xFF00FFFF)
-
-                        if ed.sel >= 1 and ed.sel <= #timeline then
-                            if imgui.button("Apply##sled") then
-                                local new_line = string.format("%df : %s", ed.edit_frames, build_numpad_str())
-                                timeline[ed.sel] = {val = encode_from_numpad(build_numpad_str()), frames = ed.edit_frames}
-                                local new_data = {{ id = ed.slot + 1, empty = false, weight = weight, timeline = {} }}
-                                for _, e in ipairs(timeline) do
-                                    table.insert(new_data[1].timeline, string.format("%df : %s", e.frames, decode_to_numpad(e.val)))
-                                end
-                                apply_data_to_character(current_p2_id, new_data, "Editor")
-                                status_msg = "Applied edit to slot " .. (ed.slot + 1)
-                            end
-                            imgui.same_line()
-                            if imgui.button("Delete##sled") then
-                                table.remove(timeline, ed.sel)
-                                if #timeline == 0 then
-                                    local s_data = {{ id = ed.slot + 1, empty = true, weight = weight, timeline = {} }}
-                                    apply_data_to_character(current_p2_id, s_data, "Editor")
-                                else
-                                    local new_data = {{ id = ed.slot + 1, empty = false, weight = weight, timeline = {} }}
-                                    for _, e in ipairs(timeline) do
-                                        table.insert(new_data[1].timeline, string.format("%df : %s", e.frames, decode_to_numpad(e.val)))
-                                    end
-                                    apply_data_to_character(current_p2_id, new_data, "Editor")
-                                end
-                                ed.sel = -1
-                                status_msg = "Deleted line from slot " .. (ed.slot + 1)
-                            end
-                            imgui.same_line()
-                        end
-                        if imgui.button("Insert After##sled") then
-                            local new_entry = string.format("%df : %s", ed.edit_frames, build_numpad_str())
-                            local insert_pos = (ed.sel >= 1 and ed.sel <= #timeline) and ed.sel + 1 or #timeline + 1
-                            table.insert(timeline, insert_pos, {val = encode_from_numpad(build_numpad_str()), frames = ed.edit_frames})
-                            local new_data = {{ id = ed.slot + 1, empty = false, weight = weight, timeline = {} }}
-                            for _, e in ipairs(timeline) do
-                                table.insert(new_data[1].timeline, string.format("%df : %s", e.frames, decode_to_numpad(e.val)))
-                            end
-                            apply_data_to_character(current_p2_id, new_data, "Editor")
-                            ed.sel = insert_pos
-                            status_msg = "Inserted line in slot " .. (ed.slot + 1)
-                        end
-                    end
-                else
-                    imgui.text_colored("Slot is empty", 0xFF888888)
-                    imgui.separator()
-                    local ch_f; ch_f, ed.edit_frames = imgui.drag_int("Frames##sled", ed.edit_frames, 1, 1, 9999)
-                    local ch_d; ch_d, ed.edit_dir = imgui.drag_int("Dir (numpad)##sled", ed.edit_dir, 1, 1, 9)
-                    _, ed.edit_btns.LP = imgui.checkbox("LP##sled", ed.edit_btns.LP); imgui.same_line()
-                    _, ed.edit_btns.MP = imgui.checkbox("MP##sled", ed.edit_btns.MP); imgui.same_line()
-                    _, ed.edit_btns.HP = imgui.checkbox("HP##sled", ed.edit_btns.HP)
-                    _, ed.edit_btns.LK = imgui.checkbox("LK##sled", ed.edit_btns.LK); imgui.same_line()
-                    _, ed.edit_btns.MK = imgui.checkbox("MK##sled", ed.edit_btns.MK); imgui.same_line()
-                    _, ed.edit_btns.HK = imgui.checkbox("HK##sled", ed.edit_btns.HK)
-
-                    local function build_numpad_str_empty()
-                        local parts = { tostring(ed.edit_dir) }
-                        if ed.edit_btns.LP then table.insert(parts, "LP") end
-                        if ed.edit_btns.MP then table.insert(parts, "MP") end
-                        if ed.edit_btns.HP then table.insert(parts, "HP") end
-                        if ed.edit_btns.LK then table.insert(parts, "LK") end
-                        if ed.edit_btns.MK then table.insert(parts, "MK") end
-                        if ed.edit_btns.HK then table.insert(parts, "HK") end
-                        return table.concat(parts, " + ")
-                    end
-
-                    if imgui.button("Create Entry##sled") then
-                        local new_data = {{ id = ed.slot + 1, empty = false, weight = weight,
-                            timeline = { string.format("%df : %s", ed.edit_frames, build_numpad_str_empty()) }
-                        }}
-                        apply_data_to_character(current_p2_id, new_data, "Editor")
-                        status_msg = "Created entry in slot " .. (ed.slot + 1)
-                    end
-                end
-            else
-                imgui.text_colored("Slots not accessible", 0xFF4444FF)
-            end
-        end
 
         -- ================= INPUT SEQUENCER =================
         if sm_styled_header("--- INPUT SEQUENCER ---", SM_THEME.hdr_sequencer) then
@@ -1600,10 +1426,7 @@ re.on_draw_ui(function()
 end)
 
 local function _rsm_detect_overlays()
-        local pm = sdk.get_managed_singleton("app.PauseManager")
-        if not pm then return end
-        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
-        if pause_bit == 64 or pause_bit == 2112 then return end
+        if not GS.in_pause_menu then return end
         local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
         if not mgr then return end
         local cpd = mgr:call("get_CurrentParentData")

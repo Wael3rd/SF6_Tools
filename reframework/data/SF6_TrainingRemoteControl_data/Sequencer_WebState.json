@@ -1,13 +1,7 @@
 {
     "seq_current_idx": 0,
-    "seq_lines": [
-        {
-            "frames": 1,
-            "input": "2MK",
-            "wait": false
-        }
-    ],
+    "seq_lines": null,
     "seq_loop": false,
-    "seq_player": 1,
+    "seq_player": 0,
     "seq_playing": false
 }

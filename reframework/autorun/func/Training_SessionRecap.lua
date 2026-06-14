@@ -1,6 +1,6 @@
 -- =========================================================
 -- Training_SessionRecap.lua
--- D2D overlay : barres (Reactions/PostGuard) ou courbes (HitConfirm)
+-- D2D overlay: bars (Reactions/PostGuard) or curves (HitConfirm)
 -- =========================================================
 
 local M = {}
@@ -16,7 +16,6 @@ local _font_title = nil
 local _last_font_h = 0
 local _last_font_h_small = 0
 local _last_font_h_title = 0
-local _debug_msg = ""
 
 -- Colors (ABGR : 0xAABBGGRR)
 local COL_BG        = 0xF00D0D12
@@ -69,13 +68,10 @@ local layout = {
     blkavg_ox = 0.005, blkavg_oy = -0.007,
 }
 
-pcall(function()
-    local data = json.load_file(LAYOUT_FILE)
+require("func/SharedHooks") -- error registry (_G.safe_load_json)
+do
+    local data = _G.safe_load_json(LAYOUT_FILE)
     if data then for k, v in pairs(data) do layout[k] = v end end
-end)
-
-local function save_layout()
-    json.dump_file(LAYOUT_FILE, layout)
 end
 
 local _close_btn = { x = 0, y = 0, w = 0, h = 0 }
@@ -128,7 +124,7 @@ local function extract_short_time(raw)
     return hh and (hh .. ":" .. mm) or "?"
 end
 
--- Reactions : date\tduration\tmode\tp1\tp2\tscore\ttotal  (pas de header)
+-- Reactions: date\tduration\tmode\tp1\tp2\tscore\ttotal  (no header)
 local function parse_reactions(filepath)
     local results = {}
     local f = io.open(filepath, "r")
@@ -155,7 +151,7 @@ local function parse_reactions(filepath)
     return tail_n(results, 10)
 end
 
--- HitConfirm : 14 cols avec hit_pct et blk_pct separees
+-- HitConfirm: 14 cols with hit_pct and blk_pct separated
 -- date\ttime\tmode\tduration\ttotal\tsuccess\tpct%\tscore\thit_tot\thit_ok\thit_pct%\tblk_tot\tblk_ok\tblk_pct%
 local function parse_hitconfirm(filepath)
     local results = {}
@@ -236,26 +232,15 @@ local PARSERS = {
 
 function M.show(mode_name, stats_file, parser_type)
     local parser = PARSERS[parser_type]
-    if not parser then
-        _debug_msg = "ERROR: unknown parser type '" .. tostring(parser_type) .. "'"
-        return
-    end
+    if not parser then return end
 
     local test_f = io.open(stats_file, "r")
-    if not test_f then
-        _debug_msg = "ERROR: file not found '" .. stats_file .. "'"
-        return
-    end
-    local file_content = test_f:read("*a")
+    if not test_f then return end
     test_f:close()
-    local line_count = 0
-    for _ in file_content:gmatch("[^\n]+") do line_count = line_count + 1 end
-    _debug_msg = "File OK: '" .. stats_file .. "' (" .. line_count .. " lines)"
 
     _sessions = parser(stats_file)
     _mode = parser_type
     local n = #_sessions
-    _debug_msg = _debug_msg .. " -> parsed " .. n .. " sessions"
     if n == 0 then return end
     _title = mode_name .. "  -  LAST " .. n .. " SESSION" .. (n > 1 and "S" or "")
     _visible = true
@@ -325,104 +310,8 @@ local function draw_header(panel_x, panel_y, panel_w, header_h, fh, pad)
 end
 
 -- =========================================================
--- D2D: BAR CHART (Reactions / PostGuard)
 -- =========================================================
-
-local function _rec_draw_bar_row(i, s, content_y, row_h, bar_h, fh_s, panel_x, panel_w, content_x, bar_x, bar_max_w, pct_x, score_x)
-    local ry  = content_y + (i - 1) * row_h
-    local by  = ry + (row_h - bar_h) * 0.5
-    local tty = ry + (row_h - fh_s) * 0.5
-
-    -- Alternating row bg
-    if i % 2 == 0 then
-        d2d.fill_rect(panel_x + 1, ry, panel_w - 2, row_h, 0x0CFFFFFF)
-    end
-
-    -- Date
-    d2d.text(_font_small, tostring(s.date or "?"), content_x + 1, tty + 1, COL_SHADOW)
-    d2d.text(_font_small, tostring(s.date or "?"), content_x, tty, COL_TEXT_DIM)
-
-    -- Bar
-    d2d.fill_rect(bar_x, by, bar_max_w, bar_h, COL_BAR_BG)
-    local pct_safe = tonumber(s.pct) or 0
-    local fill_w = bar_max_w * math.min(pct_safe, 100) / 100
-    local col = bar_color(pct_safe)
-    d2d.fill_rect(bar_x, by, fill_w, bar_h, col)
-    d2d.outline_rect(bar_x, by, bar_max_w, bar_h, 1, COL_ACCENT)
-
-    -- Percentage
-    local pct_str = string.format("%d%%", math.floor(pct_safe))
-    d2d.text(_font_small, pct_str, pct_x + 1, tty + 1, COL_SHADOW)
-    d2d.text(_font_small, pct_str, pct_x, tty, col)
-
-    -- Score
-    local sc_str = string.format("%d/%d", tonumber(s.score) or 0, tonumber(s.total) or 0)
-    d2d.text(_font_small, sc_str, score_x + 1, tty + 1, COL_SHADOW)
-    d2d.text(_font_small, sc_str, score_x, tty, COL_TEXT)
-
-    return pct_safe
-end
-
-local function draw_bars(sw, sh, fh, fh_s)
-    local n        = #_sessions
-    local L        = layout
-    local pad      = sh * L.pad
-    local header_h = sh * L.header_h
-    local row_h    = fh_s * 2.6
-    local footer_h = sh * L.footer_h
-    local content_h = n * row_h
-    local panel_w  = sw * L.panel_w * 0.75
-    local panel_h  = header_h + pad + content_h + pad + footer_h + pad
-    local panel_x  = (sw - panel_w) * 0.5
-    local panel_y  = sh * L.panel_cy - panel_h * 0.5
-
-    -- Panel background with shadow
-    d2d.fill_rect(panel_x - 1, panel_y - 1, panel_w + 2, panel_h + 2, COL_SHADOW)
-    d2d.fill_rect(panel_x, panel_y, panel_w, panel_h, COL_BG)
-    d2d.outline_rect(panel_x, panel_y, panel_w, panel_h, 1, COL_BORDER)
-    draw_header(panel_x, panel_y, panel_w, header_h, fh, pad)
-
-    -- Column positions
-    local content_x = panel_x + pad * 1.5
-    local content_y = panel_y + header_h + pad
-    local date_w    = panel_w * 0.18
-    local bar_x     = content_x + date_w + pad
-    local bar_max_w = panel_w * 0.38
-    local pct_x     = bar_x + bar_max_w + pad * 1.5
-    local score_x   = pct_x + panel_w * 0.12
-    local bar_h     = row_h * 0.45
-    local sum_pct   = 0
-
-    for i, s in ipairs(_sessions) do
-        local ok, pct_add = pcall(_rec_draw_bar_row, i, s, content_y, row_h, bar_h, fh_s, panel_x, panel_w, content_x, bar_x, bar_max_w, pct_x, score_x)
-        if ok and pct_add then sum_pct = sum_pct + pct_add end
-    end
-
-    -- Footer separator + content
-    local fy_sep = content_y + content_h + pad * 0.5
-    d2d.fill_rect(panel_x + pad * 1.5, fy_sep, panel_w - pad * 3, 1, COL_ACCENT)
-    local fy = fy_sep + (footer_h - fh) * 0.5
-
-    local avg = sum_pct / n
-
-    if n >= 2 then
-        local trend = _sessions[n].pct - _sessions[1].pct
-        local trend_str = trend >= 0
-            and string.format("TREND: +%d%%", math.floor(trend))
-            or  string.format("TREND: %d%%", math.floor(trend))
-        local trend_col = trend >= 0 and COL_BAR_GRN or COL_BAR_RED
-        d2d.text(_font, trend_str, panel_x + pad * 1.5 + 1, fy + 1, COL_SHADOW)
-        d2d.text(_font, trend_str, panel_x + pad * 1.5, fy, trend_col)
-    end
-
-    local avg_str = string.format("AVG: %d%%", math.floor(avg))
-    local avg_w = #avg_str * fh * 0.6
-    d2d.text(_font, avg_str, panel_x + panel_w - pad * 1.5 - avg_w + 1, fy + 1, COL_SHADOW)
-    d2d.text(_font, avg_str, panel_x + panel_w - pad * 1.5 - avg_w, fy, bar_color(avg))
-end
-
--- =========================================================
--- D2D: LINE CHART (HitConfirm - hit% & block% courbes)
+-- D2D: LINE CHART (HitConfirm - hit% & block% curves)
 -- =========================================================
 
 local COL_SINGLE    = 0xFF44DDFF  -- bright cyan for single-curve mode
@@ -702,8 +591,6 @@ end
 -- =========================================================
 -- D2D MAIN DRAW
 -- =========================================================
-
-local function d2d_init() end
 
 local function _rec_check_pause_hide()
     local pm = sdk.get_managed_singleton("app.PauseManager")

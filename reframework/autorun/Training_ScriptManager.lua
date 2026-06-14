@@ -5,6 +5,9 @@ local re = re
 local sdk = sdk
 local imgui = imgui
 local json = json
+require("func/SharedHooks") -- error registry (_G.safe_load_json) + shared hooks
+local GS = require("func/GameState")
+local UIKit = require("func/UIKit")
 
 -- ==========================================
 -- CUSTOM TICKER SYSTEM
@@ -81,13 +84,7 @@ local config = {
 }
 
 -- ARGB -> ABGR conversion
-local function argb_to_abgr(argb)
-    local a = (argb >> 24) & 0xFF
-    local r = (argb >> 16) & 0xFF
-    local g = (argb >> 8) & 0xFF
-    local b = argb & 0xFF
-    return (a << 24) | (b << 16) | (g << 8) | r
-end
+local argb_to_abgr = UIKit.argb_to_abgr
 
 -- Build SC_COLORS style table from ARGB color + fill alpha
 local function build_sc_color(argb, fill_alpha)
@@ -113,7 +110,7 @@ end
 
 -- Load config
 local function load_config()
-    local data = json.load_file(CONFIG_FILE)
+    local data = _G.safe_load_json(CONFIG_FILE)
     if data then
         if data.func_button then config.func_button = data.func_button end
         if data.switch_key then config.switch_key = data.switch_key end
@@ -158,16 +155,16 @@ end
 -- 0.1 GUARD CONTROL UTILITIES (SAFE PATTERN)
 -- ==========================================
 local last_mode_state = 0
-local saved_guard_state = 0 -- Par défaut 0, stocke l'état précédent
+local saved_guard_state = 0 -- Default 0, stores the previous state
 local is_guard_overridden = false
 
--- IDs de Garde définis par l'utilisateur
+-- Guard IDs
 local GUARD_NO = 0
 local GUARD_AFTER_FIRST_HIT = 2
 local GUARD_ALL = 3
 local GUARD_RANDOM = 4
 
--- Fonction de sécurité pour éviter les crashs
+-- Safety function to avoid crashes
 local function call_fresh(target_type, method, ...)
     local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
     if not mgr then return false end
@@ -186,27 +183,27 @@ local function call_fresh(target_type, method, ...)
     return pcall(function() return obj:call(method, table.unpack(args)) end)
 end
 
--- Fonction pour appliquer la garde proprement
+-- Apply guard type cleanly
 local function set_guard_type(guard_id)
-    -- 1. Applique le type au Dummy (ID 1)
+    -- 1. Apply the guard type to the Dummy (ID 1)
     call_fresh("Guard", "ChangeGuardType", 1, guard_id)
-    -- 2. Force le rafraichissement
+    -- 2. Force refresh
     call_fresh("TM", "set_IsReqRefresh", true)
 end
 
 local function update_guard_logic()
     local current_mode = _G.CurrentTrainerMode or 0
     
-    -- Si le mode n'a pas changé, on ne fait rien
+    -- If mode hasn't changed, do nothing
     if current_mode == last_mode_state then return end
 
-    -- LOGIQUE DE CHANGEMENT
-    
-    -- Si on passe d'un mode inactif (0) à un mode actif (1, 2, 3), on "sauvegarde" l'état fictif
-    -- (Note: Sans fonction get_GuardType fiable, on assume que l'utilisateur commence en No Guard ou veut y revenir)
+    -- CHANGE LOGIC
+
+    -- When switching from inactive (0) to active mode (1, 2, 3), save the guard state
+    -- (Note: Without a reliable get_GuardType, we assume the user starts in No Guard or wants to return to it)
     if last_mode_state == 0 and current_mode ~= 0 then
         if not is_guard_overridden then
-            saved_guard_state = 0 -- On reviendra à 0 par défaut
+            saved_guard_state = 0 -- Will revert to 0 by default
             is_guard_overridden = true
         end
     end
@@ -229,9 +226,9 @@ local function update_guard_logic()
 
 
     elseif current_mode == 0 then
-        -- >>> DISABLED / COMBO TRIALS >>> RESTAURATION
+        -- >>> DISABLED / COMBO TRIALS >>> RESTORE
         if is_guard_overridden then
-            set_guard_type(saved_guard_state) -- Retour à 0 (ou l'état sauvegardé)
+            set_guard_type(saved_guard_state) -- Revert to 0 (or saved state)
             is_guard_overridden = false
         end
     end
@@ -469,14 +466,14 @@ re.on_pre_gui_draw_element(function(element, context)
     
     local name = game_object:call("get_Name")
     
-    -- DÉTECTION FLOUE GLOBALE DU HUD
+    -- GLOBAL FUZZY HUD DETECTION
     if name and string.find(name, "BattleHud_Timer") then
-        -- 1. Extraction du suffixe pour TOUS les autres scripts
+        -- 1. Extract suffix for ALL other scripts
         local suffix = string.match(name, "BattleHud_Timer(.*)")
         if suffix == "" or suffix == nil then suffix = "Default" end
         _G.CurrentHudSuffix = suffix
         
-        -- 2. Gestion de la visibilité du symbole infini (Jamais caché en mode 4)
+        -- 2. Manage infinite symbol visibility (Never hidden in mode 4)
         local hide_infinite = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3)
         
         local view = element:call("get_View")
@@ -495,12 +492,6 @@ local SharedUI = require("func/Training_SharedUI")
 local SWITCH_COLOR  = build_sc_color(config.top_colors.switch, config.top_alphas.switch)
 local MODE_ACTIVE   = build_sc_color(config.top_colors.active, config.top_alphas.active)
 local MODE_INACTIVE = build_sc_color(config.top_colors.inactive, config.top_alphas.inactive)
-
-local function rebuild_top_colors()
-    SWITCH_COLOR  = build_sc_color(config.top_colors.switch, config.top_alphas.switch)
-    MODE_ACTIVE   = build_sc_color(config.top_colors.active, config.top_alphas.active)
-    MODE_INACTIVE = build_sc_color(config.top_colors.inactive, config.top_alphas.inactive)
-end
 
 local top_bar_width = 0.74
 local top_bar_height = 0.0444
@@ -585,7 +576,7 @@ end
 -- ==========================================
 -- 4. MAIN LOOP
 -- ==========================================
-local _tsm_replay_delay = 3.00  -- secondes avant de relancer le script après un replay
+local _tsm_replay_delay = 3.00  -- seconds before reactivating the script after a replay
 local _tsm_replay_timer = 0
 local _tsm_was_replay = false
 
@@ -705,13 +696,13 @@ re.on_frame(function()
         _tsm_last_mode = cur_mode
     end
 
-    -- Détection FlowMap
+    -- FlowMap detection
     local fid = get_flowmap_id()
     _G.FlowMapID = fid
     _G.IsInBattleHub = (fid == 9)
     local is_replay = (fid == 10) or (_G.IsInReplay == true)
 
-    -- HIDE UI BUTTON (fonctionne en training + replay)
+    -- HIDE UI BUTTON (works in training + replay)
     if not _G._tsm_hide_flash then _G._tsm_hide_flash = 0 end
     if not _G._tsm_hide_rect then _G._tsm_hide_rect = { x = 0, y = 0, w = 0, h = 0 } end
     pcall(_tsm_update_hide_rect)
@@ -729,7 +720,7 @@ re.on_frame(function()
         end
     end
 
-    -- BattleHub : toujours désactivé
+    -- BattleHub: always disabled
     if _G.IsInBattleHub then
         if _G.CurrentTrainerMode ~= 0 then _G.CurrentTrainerMode = 0 end
         _G.TrainingModeActive = false
@@ -738,10 +729,10 @@ re.on_frame(function()
         return
     end
 
-    -- Replay : désactiver une seule fois, puis timer, puis désactivé (pas de top bar)
+    -- Replay: disable once, then timer, then disabled (no top bar)
     if is_replay then
         if _tsm_was_replay == false then
-            -- Première détection
+            -- First detection
             _tsm_was_replay = "waiting"
             _tsm_replay_timer = 0
             if _G.CurrentTrainerMode ~= 0 then _G.CurrentTrainerMode = 0 end
@@ -756,19 +747,19 @@ re.on_frame(function()
                 _G.CurrentTrainerMode = 4
             end
         end
-        -- En replay : toujours return, pas de top bar, pas de guard logic
+        -- In replay: always return, no top bar, no guard logic
         _G.TrainingFloatingBarTop = nil
         _G.TrainingModeActive = true
         return
     end
 
-    -- Reset quand on quitte le replay
+    -- Reset when leaving replay
     if _tsm_was_replay ~= false then
         _tsm_was_replay = false
     end
-    -- COUPE CIRCUIT ABSOLU : Aucune lecture de manette ou logique hors du training
+    -- ABSOLUTE KILLSWITCH: No gamepad reading or logic outside training
     if not is_in_training_mode() then
-        -- AUTO-RESET : On éteint tous les modes actifs si on sort du mode Training
+        -- AUTO-RESET: Disable all active modes when leaving Training Mode
         if _G.CurrentTrainerMode ~= 0 then
             _G.CurrentTrainerMode = 0
         end
@@ -826,11 +817,8 @@ re.on_frame(function()
     update_guard_logic()
 
     -- TOP FLOATING BAR (hide during pause menu)
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    local pause_bit = pm and pm:get_field("_CurrentPauseTypeBit")
-    local in_pause_menu = pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112)
-    _G.TrainingGamePaused = in_pause_menu
-    if not in_pause_menu and not _G._tsm_hide_ui then
+    _G.TrainingGamePaused = GS.in_pause_menu
+    if not GS.in_pause_menu and not _G._tsm_hide_ui then
         draw_top_floating_bar()
     elseif _G._tsm_hide_ui then
         _G.TrainingBarsDrawn = true
@@ -857,21 +845,14 @@ end)
 -- ==========================================
 -- 5. USER INTERFACE
 -- ==========================================
--- Styled headers (same as ComboTrials)
+-- Styled headers
 local UI_THEME = {
-    hdr_modes   = { base = 0xFFDB9834, hover = 0xFFE6A94D, active = 0xFFC78320 },
-    hdr_config  = { base = 0xFFB6599B, hover = 0xFFC770AC, active = 0xFFA04885 },
-    hdr_help    = { base = 0xFF5D6DDA, hover = 0xFF7382E6, active = 0xFF4555C9 },
+    hdr_modes   = UIKit.THEME.hdr_gold,
+    hdr_config  = UIKit.THEME.hdr_purple,
+    hdr_help    = UIKit.THEME.hdr_blue,
 }
 
-local function styled_header(label, style)
-    imgui.push_style_color(24, style.base)
-    imgui.push_style_color(25, style.hover)
-    imgui.push_style_color(26, style.active)
-    local is_open = imgui.collapsing_header(label)
-    imgui.pop_style_color(3)
-    return is_open
-end
+local styled_header = UIKit.styled_header
 
 re.on_draw_ui(function()
     -- Publish REFramework menu window rect for overlap detection
@@ -883,9 +864,31 @@ re.on_draw_ui(function()
         end
     end)
 
-    if imgui.tree_node("TRAINING SCRIPT MANAGER") then
+    -- SCRIPT ERRORS PANEL (error registry from SharedHooks)
+    local _errs = _G._mod_errors
+    if _errs and _errs.count > 0 then
+        imgui.text_colored(string.format("[!] %d script error(s)", _errs.count), 0xFF0000FF)
+        imgui.same_line()
+        if imgui.tree_node("details##mod_errors") then
+            for i = #_errs.list, math.max(1, #_errs.list - 14), -1 do
+                local e = _errs.list[i]
+                imgui.text_colored(string.format("[%.0fs] %s", e.t, e.ctx), 0xFF00A5FF)
+                imgui.text("    " .. e.err)
+            end
+            if imgui.button("Clear##mod_errors") then
+                _errs.list = {}; _errs.count = 0; _errs.config_failures = {}
+            end
+            imgui.tree_pop()
+        end
+    end
 
-        -- Si on n'est pas en training, on affiche un message d'attente et on bloque l'UI
+    local _has_errors = _errs and _errs.count > 0
+    if _has_errors then imgui.push_style_color(0, 0xFF0000FF) end
+    local _tsm_open = imgui.tree_node("TRAINING SCRIPT MANAGER" .. (_has_errors and " [!]" or ""))
+    if _has_errors then imgui.pop_style_color(1) end
+    if _tsm_open then
+
+        -- If not in training, show a waiting message and block the UI
         if not is_in_training_mode() then
             imgui.text_colored("[!] INACTIVE: Waiting for Training Mode...", 0xFF00A5FF)
             imgui.tree_pop()

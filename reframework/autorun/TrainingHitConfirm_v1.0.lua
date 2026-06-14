@@ -1,8 +1,10 @@
 local re = re
 local sdk = sdk
 local imgui = imgui
-local draw = draw
 local json = json
+require("func/SharedHooks") -- error registry (_G.safe_load_json)
+local GS = require("func/GameState") -- per-frame snapshot (players, act_st, pause)
+local UIKit = require("func/UIKit")
 local SharedUI = require("func/Training_SharedUI")
 local SessionRecap = require("func/Training_SessionRecap")
 
@@ -122,39 +124,20 @@ local STATE_BLOCK   = 10
 -- =========================================================
 local CONFIG_FILENAME = "TrainingHitConfirm_data/TrainingHitConfirm_Config.json"
 
-local COLORS = {
-    White  = 0xFFDADADA, Green  = 0xFF00FF00, Red    = 0xFF0000FF,
-    Grey   = 0x99FFFFFF, DarkGrey = 0xFF888888, Orange = 0xFF00A5FF, 
-    Cyan   = 0xFFFFFF00, Yellow = 0xFF00FFFF, 
-    Shadow = 0xFF000000, Blue   = 0xFFFFAA00 
-}
-
-COLORS.Easy   = 0xFFFF9933 
-COLORS.Medium = 0xFF00FFFF 
-COLORS.Hard   = 0xFF0000FF
+local COLORS = UIKit.COLORS
 
 local UI_THEME = {
-    hdr_info    = { base = 0xFFDB9834, hover = 0xFFE6A94D, active = 0xFFC78320 },
-    hdr_session = { base = 0xFFB6599B, hover = 0xFFC770AC, active = 0xFFA04885 },
-    hdr_rules   = { base = 0xFF5D6DDA, hover = 0xFF7382E6, active = 0xFF4555C9 },
-    hdr_matrix  = { base = 0xFF9CBC1A, hover = 0xFFAED12B, active = 0xFF8AA814 },
-    
-    btn_neutral = { base = 0xFF444444, hover = 0xFF666666, active = 0xFF222222 },
-    btn_green   = { base = 0xFF00AA00, hover = 0xFF00CC22, active = 0xFF007700 },
-    btn_red     = { base = 0xFF0000CC, hover = 0xFF2222FF, active = 0xFF000099 },
- 
-	btn_easy    = { base = 0xFFFF8800, hover = 0xFFFFAA33, active = 0xFFCC6600 }, 
-    btn_medium  = { base = 0xFF00FFFF, hover = 0xFF66FFFF, active = 0xFF00CCCC }, 
-    btn_hard    = { base = 0xFF0000FF, hover = 0xFF4444FF, active = 0xFF0000AA } 
+    hdr_info    = UIKit.THEME.hdr_gold,
+    hdr_session = UIKit.THEME.hdr_purple,
+    hdr_rules   = UIKit.THEME.hdr_blue,
+    hdr_matrix  = UIKit.THEME.hdr_green,
+    btn_neutral = UIKit.THEME.btn_neutral,
+    btn_green   = UIKit.THEME.btn_green,
+    btn_red     = UIKit.THEME.btn_red,
+    btn_easy    = UIKit.THEME.btn_easy,
+    btn_medium  = UIKit.THEME.btn_medium,
+    btn_hard    = UIKit.THEME.btn_hard,
 }
-
-local IMGUI_FLAGS = {
-    NoTitleBar = 1, NoResize = 2, NoMove = 4, NoScrollbar = 8, 
-    NoMouseInputs = 512, NoNav = 786432, NoBackground = 128,
-    WindowBorderSize = 4, WindowPadding = 2, WindowBg = 2
-}
-
-local last_trainer_mode = 0
 
 local user_config = {
     session_mode = "trials", -- "timer" or "trials"
@@ -229,7 +212,6 @@ local detection = {
 }
 
 -- Hot-path helpers for update_detection (file-scope: no per-frame closures)
-local _td_gB_hc = sdk.find_type_definition("gBattle")
 local function _hc_get_count(list) return list:call("get_Count") end
 local function _hc_check_active(idx, buffer_count)
     if idx < 0 or idx >= buffer_count then return false end
@@ -246,57 +228,8 @@ end
 -- 2. TOOLS & HELPERS
 -- =========================================================
 
-local function tooltip(text) if imgui.is_item_hovered() then imgui.set_tooltip(text) end end
-
-local function styled_button(label, style, text_col)
-    imgui.push_style_color(21, style.base); imgui.push_style_color(22, style.hover); imgui.push_style_color(23, style.active)
-    if text_col then imgui.push_style_color(0, text_col) end
-    local clicked = imgui.button(label)
-    if text_col then imgui.pop_style_color(1) end
-    imgui.pop_style_color(3)
-    return clicked
-end
-
-local function styled_header(label, style)
-    imgui.push_style_color(24, style.base); imgui.push_style_color(25, style.hover); imgui.push_style_color(26, style.active)
-    local is_open = imgui.collapsing_header(label)
-    imgui.pop_style_color(3)
-    return is_open
-end
-
--- local function get_dynamic_screen_size()
-    -- local w, h = 1920, 1080 
-    -- if imgui.get_display_size then
-        -- local result = imgui.get_display_size()
-        -- if type(result) == "userdata" then
-            -- local ok, x = pcall(function() return result.x end); local ok2, y = pcall(function() return result.y end)
-            -- if ok and ok2 then w, h = x, y else w = result.w or w; h = result.h or h end
-        -- elseif type(result) == "number" then local w_val, h_val = imgui.get_display_size(); w, h = w_val, h_val end
-    -- end
-    -- if w <= 0 then w = 1920 end; if h <= 0 then h = 1080 end
-    -- return w, h
--- end
-
--- local function try_load_font()
-    -- if not imgui.load_font then custom_font.status = "Error: API Missing"; return end
-    -- local sw, sh = get_dynamic_screen_size()
-    -- local scale_factor = sh / 1080.0; if scale_factor < 0.1 then scale_factor = 1.0 end
-
-    -- local target_size = math.floor(user_config.hud_base_size * (user_config.hud_auto_scale and scale_factor or 1.0))
-    -- local font = imgui.load_font(custom_font.filename, target_size)
-    -- if font then custom_font.obj = font; custom_font.loaded_size = target_size; custom_font.status = "OK" end
-
-    -- local target_size_timer = math.floor(user_config.timer_font_size * (user_config.hud_auto_scale and scale_factor or 1.0))
-    -- local font_t = imgui.load_font(custom_font_timer.filename, target_size_timer)
-    -- if font_t then custom_font_timer.obj = font_t; custom_font_timer.loaded_size = target_size_timer end
--- end
-
--- local function handle_resolution_change()
-    -- local sw, sh = get_dynamic_screen_size()
-    -- if res_watcher.last_w == 0 then res_watcher.last_w = sw; res_watcher.last_h = sh; try_load_font(); return end
-    -- if sw ~= res_watcher.last_w or sh ~= res_watcher.last_h then res_watcher.cooldown = 30; res_watcher.last_w = sw; res_watcher.last_h = sh; custom_font.status = "Resize detected..." end
-    -- if res_watcher.cooldown > 0 then res_watcher.cooldown = res_watcher.cooldown - 1; if res_watcher.cooldown == 0 then try_load_font() end end
--- end
+local styled_button = UIKit.styled_button
+local styled_header = UIKit.styled_header
 
 local function parse_list(str)
     local t = {}
@@ -321,29 +254,16 @@ end
 
 -- [NEW] READ GAME INPUT DIRECTLY (pl_sw_new)
 local function read_p1_game_input()
-    local gBattle = sdk.find_type_definition("gBattle")
-    if not gBattle then return 0 end
-    local player_mgr = gBattle:get_field("Player"):get_data(nil)
-    if not player_mgr then return 0 end
-    
-    local p1 = player_mgr:call("getPlayer", 0)
+    local p1 = GS.p1
     if not p1 then return 0 end
-    
     local f_sw = p1:get_type_definition():get_field("pl_sw_new")
     if not f_sw then return 0 end
-    
     return f_sw:get_data(p1) or 0
 end
 
 -- [NEW] GET P1 ACTION ID
 local function get_p1_action_id()
-    local gBattle = sdk.find_type_definition("gBattle")
-    if not gBattle then return -1 end
-    local player_mgr = gBattle:get_field("Player"):get_data(nil)
-    if not player_mgr then return -1 end
-    local cPlayer = player_mgr.mcPlayer
-    if not cPlayer then return -1 end
-    local p1 = cPlayer[0] 
+    local p1 = GS.p1
     if not p1 then return -1 end
     local actParam = p1.mpActParam
     if not actParam then return -1 end
@@ -374,9 +294,8 @@ local function get_elements_safe(obj)
 end
 
 local function _hc_check_cancelable_impl()
-    local sP = sdk.find_type_definition("gBattle"):get_field("Player"):get_data(nil)
-    if not sP or not sP.mcPlayer or not sP.mcPlayer[0] then return false end
-    local p1 = sP.mcPlayer[0]
+    local p1 = GS.p1
+    if not p1 then return false end
     local keys_obj = p1.mpActParam.ActionPart._Engine:get_field("mParam"):get_field("action"):get_field("Keys")
     local groups = get_elements_safe(keys_obj)
     if not groups then return false end
@@ -421,7 +340,7 @@ end
 -- local function format_time(s) if not s or s < 0 then s = 0 end return string.format("%02d:%02d", math.floor(s/60), math.floor(s%60)) end
 
 local function load_conf()
-    local data = json.load_file(CONFIG_FILENAME)
+    local data = _G.safe_load_json(CONFIG_FILENAME)
     if data then
         if data.user then 
             for k,v in pairs(data.user) do 
@@ -442,8 +361,7 @@ local function load_conf()
 end
 
 local function save_conf() json.dump_file(CONFIG_FILENAME, { user = user_config }) end
-load_conf(); 
---try_load_font()
+load_conf()
 
 -- =========================================================
 -- LOGIC & EXPORTS
@@ -555,7 +473,6 @@ end
 
 local function update_detection()
     if session.is_paused or session.is_time_up then return end
-    if session.is_paused then return end
     if detection.mem_hit == nil then detection.mem_hit = {} end
     if detection.mem_blk == nil then detection.mem_blk = {} end
     if detection.mem_res == nil then detection.mem_res = {} end
@@ -563,17 +480,14 @@ local function update_detection()
     if detection.mem_hs  == nil then detection.mem_hs  = {} end
     detection.live_dmg = 0; detection.live_hs = 0; detection.live_combo = 0
     
-    local gBattle = _td_gB_hc
-    if gBattle then
-        local p2_obj = gBattle:get_field("Player"):get_data(nil):call("getPlayer", 1)
-        if p2_obj then
-            local dt = p2_obj:get_field("damage_type"); if dt then detection.live_dmg = tonumber(tostring(dt)) or 0 end
-            local hs = p2_obj:get_field("hit_stop"); if hs then detection.live_hs = tonumber(tostring(hs)) or 0 end
-        end
-        local p1_obj = gBattle:get_field("Player"):get_data(nil):call("getPlayer", 0)
-        if p1_obj then
-            local cc = p1_obj:get_field("combo_cnt"); if cc then detection.live_combo = tonumber(tostring(cc)) or 0 end
-        end
+    local p2_obj = GS.p2
+    if p2_obj then
+        local dt = p2_obj:get_field("damage_type"); if dt then detection.live_dmg = tonumber(tostring(dt)) or 0 end
+        local hs = p2_obj:get_field("hit_stop"); if hs then detection.live_hs = tonumber(tostring(hs)) or 0 end
+    end
+    local p1_obj = GS.p1
+    if p1_obj then
+        local cc = p1_obj:get_field("combo_cnt"); if cc then detection.live_combo = tonumber(tostring(cc)) or 0 end
     end
 
     -- Frame meter widget lookup: cached, refreshed when missing or every 300 frames
@@ -757,7 +671,7 @@ local function update_detection()
                         guard_override.active = true
                         guard_override.timer = guard_override.duration
                     end
-                    -- Si un HIT monitor est actif et le combo a droppé → fail avant de passer en BLOCK
+                    -- If a HIT monitor is active and the combo dropped, fail before switching to BLOCK
                     if detection.monitor.active and detection.monitor.type == "HIT" and detection.live_combo == 0 then
                         local did_confirm = (detection.monitor.peak_combo and detection.monitor.peak_combo >= detection.monitor.target_combo) or detection.monitor.saw_new_action or detection.monitor.saw_recovery_to_startup
                         local fail_txt = did_confirm and TEXTS.fail_combo_drop or TEXTS.fail_drop
@@ -868,7 +782,7 @@ local function update_detection()
                     if detection.monitor.peak_combo and (detection.live_combo or 0) > detection.monitor.peak_combo then
                         detection.monitor.peak_combo = detection.live_combo
                     end
-                    -- Tracker RECOVERY→START (= nouveau coup) — même avec des frames neutres entre les deux
+                    -- Track RECOVERY->STARTUP (= new move) -- even with neutral frames in between
                     local cur_ft = p1_data.ft
                     if cur_ft == 8 and not detection.monitor.saw_recovery and not detection._saw_cancelable and not detection.monitor.was_light then
                         detection.monitor.active = false; detection.lockout = true
@@ -880,16 +794,16 @@ local function update_detection()
                     if detection.monitor.saw_recovery and cur_ft == 7 then
                         detection.monitor.saw_recovery_to_startup = true
                     end
-                    -- Multi-hit : même action ID, pas de RECOVERY→START, combo a monté sans nouvelle action
+                    -- Multi-hit: same action ID, no RECOVERY->STARTUP, combo increased without new action
                     if not detection.monitor.is_multihit and not detection.monitor.saw_recovery_to_startup
                        and not detection.monitor.saw_new_action and detection.monitor.start_action_id then
                         local cur_id = get_p1_action_id()
-                        -- Si le combo a atteint ou dépassé target avec le même action ID → multi-hit
+                        -- If combo reached or exceeded target with the same action ID -> multi-hit
                         if cur_id == detection.monitor.start_action_id and detection.live_combo >= detection.monitor.target_combo then
                             detection.monitor.is_multihit = true
                             detection.monitor.target_combo = detection.live_combo + 1
                             detection.monitor.has_reset_hs = false
-                        -- Si un 2e hitstop apparaît avec le même action ID → multi-hit
+                        -- If a 2nd hitstop appears with the same action ID -> multi-hit
                         elseif cur_id == detection.monitor.start_action_id and detection.monitor.has_reset_hs and detection.live_hs > 0 then
                             detection.monitor.is_multihit = true
                             detection.monitor.target_combo = (detection.live_combo or 0) + 1
@@ -897,7 +811,7 @@ local function update_detection()
                         end
                     end
                     detection.monitor.last_ft = cur_ft
-                    -- Détecter si l'action ID a changé (vrai cancel)
+                    -- Detect if the action ID changed (true cancel)
                     if not detection.monitor.saw_new_action and detection.monitor.start_action_id then
                         local cur_id = get_p1_action_id()
                         if cur_id ~= detection.monitor.start_action_id and cur_id ~= -1 and p1_data.ft ~= 0 then
@@ -914,7 +828,7 @@ local function update_detection()
                                 session.score = session.score + 1; session.hit_ok = session.hit_ok + 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
                                 set_feedback(TEXTS.success_hit, COLORS.Green, 1.5)
                             elseif detection.live_combo == 0 then
-                                -- Check si le coup doit être ignoré (pas cancelable ET advantage < 4)
+                                -- Check if the move should be ignored (not cancelable AND advantage < 4)
                                 local frame_adv = 99
                                 local fa_ok, fa_val = pcall(_hc_read_frame_adv)
                                 if fa_ok and fa_val then frame_adv = fa_val end
@@ -928,7 +842,7 @@ local function update_detection()
                         end
                         if detection.monitor.type == "BLOCK" then
 
-                            -- IF (Break List Detected) => ON BLOCK MISCONFIRM (seulement si nouvelle action)
+                            -- IF (Break List Detected) => ON BLOCK MISCONFIRM (only if new action)
                             if is_in(work_tables.break_list, p1_data.ft) and (detection.monitor.saw_new_action or detection.monitor.saw_recovery_to_startup) then
                                 detection.mem_res[active_head_index] = { status = TEXTS.fail_blk_misconfirm, time = detection.abs_clock }; update_history_status(detection.abs_clock, TEXTS.fail_blk_misconfirm)
                                 detection.monitor.active = false; detection.lockout = true; session.last_result_was_success = false
@@ -997,15 +911,7 @@ end
 -- UPDATE LOGIC
 -- =========================================================
 local function update_logic()
-    local is_game_active = true
-local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
-        -- Si ce n'est ni 64 (Jeu normal) ni 2112 (Autre état actif), alors le jeu est en pause/menu
-        if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then 
-            is_game_active = false 
-        end
-    end
+    local is_game_active = not GS.in_pause_menu
     
     if session.score ~= session.last_score then session.score_col = (session.score > session.last_score) and COLORS.Green or COLORS.Red; session.score_timer = 30; session.last_score = session.score end
     if session.score_timer > 0 then session.score_timer = session.score_timer - 1; if session.score_timer <= 0 then session.score_col = COLORS.White end end
@@ -1183,168 +1089,11 @@ local function update_logic_and_input()
     update_logic()
 end
 
--- local function draw_text_overlay(text, x, y, color)
-    -- local safe_text = string.gsub(text, "%%", "%%%%")
-    -- local outline_color = COLORS.Grey; local outline_thick = 0.1; local shadow_depth = 0
-    -- imgui.set_cursor_pos(Vector2f.new(x + shadow_depth, y + shadow_depth)); imgui.text_colored(safe_text, outline_color)
-    -- for dx = -outline_thick, outline_thick do
-        -- for dy = -outline_thick, outline_thick do
-            -- if (dx ~= 0 or dy ~= 0) and (math.abs(dx) + math.abs(dy) <= outline_thick) then
-                -- imgui.set_cursor_pos(Vector2f.new(x + dx, y + dy)); imgui.text_colored(safe_text, outline_color)
-            -- end
-        -- end
-    -- end
-    -- imgui.set_cursor_pos(Vector2f.new(x, y)); imgui.text_colored(safe_text, color)
--- end
 
--- local function draw_timer_outline(text, x, y, color)
-    -- local safe_text = string.gsub(text, "%%", "%%%%")
-    -- local outline_color = 0xFF000000; local thickness = 2
-    -- for dx = -thickness, thickness, thickness do
-        -- for dy = -thickness, thickness, thickness do
-            -- if dx ~= 0 or dy ~= 0 then
-                -- imgui.set_cursor_pos(Vector2f.new(x + dx, y + dy)); imgui.text_colored(safe_text, outline_color)
-            -- end
-        -- end
-    -- end
-    -- imgui.set_cursor_pos(Vector2f.new(x, y)); imgui.text_colored(safe_text, color)
--- end
-
--- Always hide the Infinite Ticker now
-local function manage_ticker_visibility()
-    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
-    if not mgr then return end
-    local dict = mgr:get_field("_ViewUIWigetDict")
-    if not dict then return end
-    local entries = dict:get_field("_entries")
-    if not entries then return end
-    local count = entries:call("get_Count")
-    for i = 0, count - 1 do
-        local entry = entries:call("get_Item", i)
-        if entry then
-            local widget_list = entry:get_field("value")
-            if widget_list then
-                local w_cnt = widget_list:call("get_Count")
-                for j = 0, w_cnt - 1 do
-                    local widget = widget_list:call("get_Item", j)
-                    if widget then
-                        local type = widget:get_type_definition()
-                        if type and string.find(type:get_name(), "UIWidget_TMTicker") then
-                            widget:call("set_Visible", false) -- ALWAYS HIDE
-                            return 
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
 
 -- =========================================================
 -- [FIXED EVENTS]
 -- =========================================================
-
--- Fonction pour dessiner le HUD (Extraite pour clarté, à appeler dans on_frame)
--- local function draw_hud_overlay()
-    -- handle_resolution_change()
-    
-    -- local sw, sh = get_dynamic_screen_size()
-    
-    -- imgui.push_style_var(4, 0.0); imgui.push_style_var(2, Vector2f.new(0, 0)); imgui.push_style_color(2, 0) 
-    -- imgui.set_next_window_pos(Vector2f.new(0, 0)); imgui.set_next_window_size(Vector2f.new(sw, sh))
-    
-    -- -- Utilisation des mêmes flags que DistanceViewer pour la fenêtre transparente
-    -- local win_flags = IMGUI_FLAGS.NoTitleBar | IMGUI_FLAGS.NoResize | IMGUI_FLAGS.NoMove | IMGUI_FLAGS.NoScrollbar | IMGUI_FLAGS.NoMouseInputs | IMGUI_FLAGS.NoNav | IMGUI_FLAGS.NoBackground
-
-    -- if imgui.begin_window("HUD_Overlay", true, win_flags) then
-        -- if custom_font.obj then imgui.push_font(custom_font.obj) end
-        -- local center_x = sw / 2; local center_y = sh / 2; local top_y = center_y + (user_config.hud_n_global_y * sh)
-        
-        -- local spread_score_px = user_config.hud_n_spread_score * sw
-        -- local spread_stats_px = user_config.hud_n_spread_stats * sw
-        -- local spacing_y_px    = user_config.hud_n_spacing_y * sh
-        -- local off_score_px = user_config.hud_n_offset_score * sw
-        -- local off_total_px = user_config.hud_n_offset_total * sw
-        -- local off_timer_px = user_config.hud_n_offset_timer * sw
-        -- local off_hit_px   = user_config.hud_n_offset_hit * sw
-        -- local off_blk_px   = user_config.hud_n_offset_blk * sw
-        
-        -- manage_ticker_visibility()
-        
-        -- -- [A] TIMER (ALWAYS ACTIVE)
-        -- local time_to_show = session.time_rem
-        -- if not session.is_running then time_to_show = user_config.timer_minutes * 60 end
-        -- local t_txt = string.format("%s", format_time(time_to_show))
-        
-        -- if custom_font.obj then imgui.pop_font() end
-        -- if custom_font_timer.obj then imgui.push_font(custom_font_timer.obj) end
-        
-        -- local timer_y = center_y + (user_config.timer_hud_y * sh) 
-        -- local w_t = imgui.calc_text_size(t_txt).x
-        -- local x_t = center_x - (w_t / 2) + (user_config.timer_offset_x * sw)
-        
-        -- local t_col = COLORS.White
-        -- if session.is_paused then t_col = COLORS.Yellow
-        -- elseif session.time_rem < 10 and session.is_running then t_col = COLORS.Red 
-        -- end
-        
-        -- draw_timer_outline(t_txt, x_t, timer_y, t_col)
-        
-        -- if custom_font_timer.obj then imgui.pop_font() end
-        -- if custom_font.obj then imgui.push_font(custom_font.obj) end
-        
-        -- -- [B] SCORE & LABELS
-        -- local s_txt = TEXTS.score_label .. session.score
-        -- local label_txt = TEXTS.mode_label
-        -- local tot_txt = TEXTS.total_label .. session.total
-
-        -- local w_s = imgui.calc_text_size(s_txt).x; local x_s = center_x - spread_score_px - w_s + off_score_px
-        -- draw_text_overlay(s_txt, x_s, top_y, session.score_col)
-
-        -- local w_t_lbl = imgui.calc_text_size(label_txt).x; local x_t_lbl = center_x - (w_t_lbl / 2) + off_timer_px
-        -- local lbl_col = COLORS.White; if session.is_paused then lbl_col = COLORS.Yellow end
-        -- draw_text_overlay(label_txt, x_t_lbl, top_y, lbl_col)
-
-        -- local w_tot = imgui.calc_text_size(tot_txt).x; local x_tot = center_x + spread_score_px + off_total_px
-        -- draw_text_overlay(tot_txt, x_tot, top_y, COLORS.White)
-        
-        -- -- [C] STATS %
-        -- local y2 = top_y + spacing_y_px; local h_txt = ""; local b_txt = ""
-        -- if user_config.show_hit_pct then
-            -- local h = 0; if session.hit_tot > 0 then h = (session.hit_ok/session.hit_tot)*100 end
-            -- h_txt = string.format("%s%.0f%%", TEXTS.hit_pct_label, h)
-        -- end
-        -- if user_config.show_block_pct then
-            -- local b = 0; if session.blk_tot > 0 then b = (session.blk_ok/session.blk_tot)*100 end
-            -- b_txt = string.format("%s%.0f%%", TEXTS.blk_pct_label, b)
-        -- end
-        -- if h_txt ~= "" then local wh = imgui.calc_text_size(h_txt).x; local xh = center_x - spread_stats_px - wh + off_hit_px; draw_text_overlay(h_txt, xh, y2, COLORS.White) end
-        -- if b_txt ~= "" then local wb = imgui.calc_text_size(b_txt).x; local xb = center_x + spread_stats_px + off_blk_px; draw_text_overlay(b_txt, xb, y2, COLORS.White) end
-        
-        -- -- [D] STATUS / PAUSE MESSAGE
-        -- local final_msg = ""
-        -- local final_col = COLORS.White
-        
-        -- if session.is_running and session.is_paused then
-            -- final_msg = TEXTS.pause_overlay
-            -- final_col = COLORS.Yellow
-        -- elseif user_config.show_status_line then
-            -- final_msg = session.feedback.text
-            -- final_col = session.feedback.color
-        -- end
-
-        -- if final_msg ~= "" then
-            -- local status_offset_px = user_config.hud_n_offset_status_y * sh
-            -- local final_y = y2 + spacing_y_px + status_offset_px
-            -- local w_f = imgui.calc_text_size(final_msg).x
-            -- draw_text_overlay(final_msg, center_x - w_f/2, final_y, final_col)
-        -- end
-
-        -- if custom_font.obj then imgui.pop_font() end
-        -- imgui.end_window()
-    -- end
-    -- imgui.pop_style_var(2); imgui.pop_style_color(1)
--- end
 
 local function draw_hud_overlay()
     local is_trials = (user_config.session_mode == "trials")
@@ -1519,43 +1268,32 @@ re.on_frame(function()
     local should_update_logic = true
     local should_draw_hud = true
 
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if pm then
-        local pause_bit = pm:get_field("_CurrentPauseTypeBit")
-        -- Si pause active ou état non standard (différent de 64 et 2112)
-        if pause_bit and (pause_bit ~= 64 and pause_bit ~= 2112) then
-            if session.is_running and not session.is_paused then
-                session.is_paused = true
-                session._auto_paused = true
-            end
-            should_update_logic = false
-            should_draw_hud = false
-        else
-            -- Menu closed: auto-unpause if it was auto-paused
-            if session._auto_paused and session.is_paused then
-                session.is_paused = false
-                session._auto_paused = false
-            end
+    if GS.in_pause_menu then
+        if user_config.session_mode == "timer" and session.is_running and not session.is_paused then
+            session.is_paused = true
+            session._auto_paused = true
+        end
+        should_update_logic = false
+        should_draw_hud = false
+    else
+        if session._auto_paused then
+            session._auto_paused = false
         end
     end
 
     local cur_mode = _G.CurrentTrainerMode or 0
-    last_trainer_mode = cur_mode
 
     if should_update_logic then
         update_logic_and_input()
     end
 
-    -- [NEW] On ne dessine le HUD que si autorisé (donc masqué en pause menu)
+    -- [NEW] Only draw the HUD when allowed (hidden during pause menu)
     if should_draw_hud then
         draw_hud_overlay()
     end
 
     -- FLOATING SESSION WINDOW (hide during pause menu)
-    local _pm = sdk.get_managed_singleton("app.PauseManager")
-    local _pb = _pm and _pm:get_field("_CurrentPauseTypeBit")
-    local _in_menu = _pb and (_pb ~= 64 and _pb ~= 2112)
-    if user_config.show_floating and _G.CurrentTrainerMode == 2 and not _in_menu and not _G._tsm_hide_ui then
+    if user_config.show_floating and _G.CurrentTrainerMode == 2 and not GS.in_pause_menu and not _G._tsm_hide_ui then
         draw_session_floating()
     end
 end)
