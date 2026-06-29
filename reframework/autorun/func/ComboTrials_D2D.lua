@@ -588,6 +588,10 @@ local function d2d_init()
     end
     _img_arrow_down = d2d.Image.new("ui_icons/chevron_down_ios.png")
     _img_arrow_up = d2d.Image.new("ui_icons/chevron_up_ios.png")
+    assets.imgs["done_bar"] = d2d.Image.new("done-bar.png")
+    assets.imgs["active_bar"] = d2d.Image.new("active-bar.png")
+    assets.imgs["fail_bar"] = d2d.Image.new("fail-bar.png")
+    assets.imgs["success_bar"] = d2d.Image.new("success-bar.png")
 end
 
 local function draw_bar_toggle_arrows()
@@ -826,8 +830,17 @@ local function d2d_draw_inner()
         local rect_x = is_aligned_right and (trial_x - cartouche_w + spacing_x * 2) or (trial_x - spacing_x * 2)
         local target_anim_y = nil
         local active_bg_h = spacing_y * (d2d_cfg.cartouche_height or 1.0)
+        local done_bg_h = spacing_y * (d2d_cfg.done_bar_height or 1.0)
+        local overlay_h = spacing_y * (d2d_cfg.overlay_height or 1.0)
+        local d_off_x = (d2d_cfg.done_bar_offset_x or 0) * sw
+        local d_off_y = (d2d_cfg.done_bar_offset_y or 0) * sh
+        local ov_off_y = (d2d_cfg.overlay_offset_y or 0) * sh
+        local dbg = _G._ct_debug or {}
+        local preview = dbg.preview_mode or 1
         local c_off_x = (d2d_cfg.cartouche_offset_x or 0) * sw
         local c_off_y = (d2d_cfg.cartouche_offset_y or 0) * sh
+        local b_off_x = (d2d_cfg.bar_img_offset_x or 0) * sw
+        local b_off_y = (d2d_cfg.bar_img_offset_y or 0) * sh
         local final_rect_x = rect_x + c_off_x
 
         -- Build display lines (follow-up groups)
@@ -869,15 +882,36 @@ local function d2d_draw_inner()
             target_anim_y = trial_y + (n_lines - start_idx) * spacing_y
         end
 
-        -- Completed step backgrounds
-        if mode == "playing" then
+        -- Completed step backgrounds (or preview mode)
+        local preview_imgs = {nil, assets.imgs["active_bar"], assets.imgs["done_bar"], assets.imgs["fail_bar"], assets.imgs["success_bar"], assets.imgs["success_bar"], nil}
+        local preview_heights = {0, active_bg_h, done_bg_h, active_bg_h, active_bg_h, active_bg_h, overlay_h}
+
+        if preview > 1 then
+            for dl_idx = start_idx, math.min(start_idx + visible - 1, n_lines) do
+                local cur_y_pos = trial_y + (dl_idx - start_idx) * spacing_y
+                local sy = cur_y_pos - padding_y + c_off_y
+                local p_img = preview_imgs[preview]
+                local p_h = preview_heights[preview]
+                if preview == 7 then
+                    d2d.fill_rect(final_rect_x, sy + ov_off_y + 3, cartouche_w, p_h - 6, d2d_cfg.colors.bg_overlay or 0x85000000)
+                elseif p_img then
+                    local ox = (preview == 3) and d_off_x or b_off_x
+                    local oy = (preview == 3) and d_off_y or b_off_y
+                    d2d.image(p_img, final_rect_x + ox, sy + oy, cartouche_w, p_h)
+                end
+            end
+        elseif mode == "playing" then
             for dl_idx = start_idx, math.min(start_idx + visible - 1, n_lines) do
                 local cur_y_pos = trial_y + (dl_idx - start_idx) * spacing_y
                 if is_succ or (dl_idx < visual_dl) then
                     local sy = cur_y_pos - padding_y + c_off_y
-                    d2d.fill_rect(final_rect_x, sy, cartouche_w, active_bg_h, d2d_cfg.colors.bg_success)
-                    d2d.fill_rect(final_rect_x, sy, cartouche_w, 1, d2d_cfg.colors.bg_success_line)
-                    d2d.fill_rect(final_rect_x, sy + active_bg_h - 1, cartouche_w, 1, d2d_cfg.colors.bg_success_line)
+                    if assets.imgs["done_bar"] then
+                        d2d.image(assets.imgs["done_bar"], final_rect_x + d_off_x, sy + d_off_y, cartouche_w, done_bg_h)
+                    else
+                        d2d.fill_rect(final_rect_x, sy, cartouche_w, done_bg_h, d2d_cfg.colors.bg_success)
+                        d2d.fill_rect(final_rect_x, sy, cartouche_w, 1, d2d_cfg.colors.bg_success_line)
+                        d2d.fill_rect(final_rect_x, sy + done_bg_h - 1, cartouche_w, 1, d2d_cfg.colors.bg_success_line)
+                    end
                 end
             end
         end
@@ -896,19 +930,41 @@ local function d2d_draw_inner()
             d2d_anim.active_y = d2d_anim.active_y + (target_anim_y - d2d_anim.active_y) * 0.15
 
             local is_fail_state = (trial_state.fail_timer and trial_state.fail_timer > 0)
-            local bg_c, li_c = d2d_cfg.colors.bg_active, d2d_cfg.colors.bg_active_line
+            if dbg.force_fail then is_fail_state = true end
+            if dbg.force_success then is_succ = true end
+            local bar_img = nil
+            local bar_visible = true
             if mode == "recording" then
-                bg_c = 0x90FF0000; li_c = 0xFFFF0000
+                bar_img = assets.imgs["success_bar"]
+                if dbg.show_recording == false then bar_visible = false end
             elseif is_succ then
-                bg_c = 0x80004400; li_c = 0xFF00FF00
+                bar_img = assets.imgs["success_bar"]
+                if dbg.show_success == false then bar_visible = false end
             elseif is_fail_state then
-                bg_c = d2d_cfg.colors.bg_fail; li_c = d2d_cfg.colors.bg_fail_line
+                bar_img = assets.imgs["fail_bar"]
+                if dbg.show_fail == false then bar_visible = false end
+            else
+                bar_img = assets.imgs["active_bar"]
+                if dbg.show_active == false then bar_visible = false end
             end
 
             local sy = d2d_anim.active_y - padding_y + c_off_y
-            d2d.fill_rect(final_rect_x, sy, cartouche_w, active_bg_h, bg_c)
-            d2d.fill_rect(final_rect_x, sy, cartouche_w, 3, li_c)
-            d2d.fill_rect(final_rect_x, sy + active_bg_h - 3, cartouche_w, 3, li_c)
+            if preview > 1 or not bar_visible then
+            elseif bar_img then
+                d2d.image(bar_img, final_rect_x + b_off_x, sy + b_off_y, cartouche_w, active_bg_h)
+            else
+                local bg_c, li_c = d2d_cfg.colors.bg_active, d2d_cfg.colors.bg_active_line
+                if mode == "recording" then
+                    bg_c = 0x90FF0000; li_c = 0xFFFF0000
+                elseif is_succ then
+                    bg_c = 0x80004400; li_c = 0xFF00FF00
+                elseif is_fail_state then
+                    bg_c = d2d_cfg.colors.bg_fail; li_c = d2d_cfg.colors.bg_fail_line
+                end
+                d2d.fill_rect(final_rect_x, sy, cartouche_w, active_bg_h, bg_c)
+                d2d.fill_rect(final_rect_x, sy, cartouche_w, 3, li_c)
+                d2d.fill_rect(final_rect_x, sy + active_bg_h - 3, cartouche_w, 3, li_c)
+            end
         else
             d2d_anim.active_y = nil
         end
@@ -945,29 +1001,24 @@ local function d2d_draw_inner()
                 elseif dl_idx == visual_dl and is_fail_state then
                     draw_overlay = true; overlay_col = d2d_cfg.colors.bg_overlay or 0x85000000
                 end
-                if draw_overlay then
-                    d2d.fill_rect(final_rect_x, y - padding_y + c_off_y + 3, cartouche_w, active_bg_h - 6, overlay_col)
+                if draw_overlay and preview <= 1 then
+                    d2d.fill_rect(final_rect_x, y - padding_y + c_off_y + ov_off_y + 3, cartouche_w, overlay_h - 6, overlay_col)
                 end
             end
         end
 
-        -- Arrow on top
-        if trial_state.is_playing and d2d_anim.active_y then
-            local arrow_tex = "arrow"
-            if trial_state.success_timer > 0 then
-                arrow_tex = "arrow_success"
-            elseif trial_state.fail_timer and trial_state.fail_timer > 0 then
-                arrow_tex = "arrow_fail"
-            end
-
-            if assets.imgs[arrow_tex] then
-                local arr_w = d2d_cfg.arrow_size * sh
-                local arr_x = is_aligned_right and (trial_x - (d2d_cfg.offset_x_arrow * sw)) or
-                    (trial_x + (d2d_cfg.offset_x_arrow * sw))
-                local arr_y = d2d_anim.active_y + (spacing_y - arr_w) / 2 + (d2d_cfg.offset_y_arrow * sh)
-                d2d.image(assets.imgs[arrow_tex], arr_x, arr_y, arr_w, arr_w)
-            end
-        end
+        -- Arrow disabled: bar images have arrows built-in
+        -- if trial_state.is_playing and d2d_anim.active_y then
+        --     local arrow_tex = "arrow"
+        --     if trial_state.success_timer > 0 then arrow_tex = "arrow_success"
+        --     elseif trial_state.fail_timer and trial_state.fail_timer > 0 then arrow_tex = "arrow_fail" end
+        --     if assets.imgs[arrow_tex] then
+        --         local arr_w = d2d_cfg.arrow_size * sh
+        --         local arr_x = is_aligned_right and (trial_x - (d2d_cfg.offset_x_arrow * sw)) or (trial_x + (d2d_cfg.offset_x_arrow * sw))
+        --         local arr_y = d2d_anim.active_y + (spacing_y - arr_w) / 2 + (d2d_cfg.offset_y_arrow * sh)
+        --         d2d.image(assets.imgs[arrow_tex], arr_x, arr_y, arr_w, arr_w)
+        --     end
+        -- end
     end
 
     -- Custom mouse cursor

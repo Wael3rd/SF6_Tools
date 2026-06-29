@@ -8,6 +8,7 @@ local json = json
 require("func/SharedHooks") -- error registry (_G.safe_load_json) + shared hooks
 local GS = require("func/GameState")
 local UIKit = require("func/UIKit")
+local RuntimeSafety = require("func/RuntimeSafety")
 
 -- ==========================================
 -- CUSTOM TICKER SYSTEM
@@ -27,7 +28,9 @@ local function show_custom_ticker(message, time, category)
     if category == nil then category = 6 end
     if time == nil or time <= 0 then time = 3.5 end
     if not _ticker_is_ready() then
-        table.insert(_ticker.queue, {message, time, category})
+        if #_ticker.queue < 20 then
+            table.insert(_ticker.queue, {message, time, category})
+        end
         return
     end
     sdk.find_type_definition("app.TickerUtil"):get_method(".cctor"):call(nil)
@@ -141,14 +144,25 @@ load_config()
 
 -- ==========================================
 -- 0.5. SCENE DETECTION (ABSOLUTE KILLSWITCH)
+-- Reads _G.TrainingModeActive if TRCSS set it, otherwise detects locally
 -- ==========================================
+local _itm_cache = false
+local _itm_refresh = 0
 local function is_in_training_mode()
+    if _G.TrainingModeActive ~= nil then
+        return _G.TrainingModeActive == true
+    end
+    _itm_refresh = _itm_refresh - 1
+    if _itm_refresh > 0 then return _itm_cache end
+    _itm_refresh = 60
     local tm = sdk.get_managed_singleton("app.training.TrainingManager")
     if tm then
         local tData = tm:get_field("_tData")
-        if tData ~= nil then return true end
+        _itm_cache = tData ~= nil
+    else
+        _itm_cache = false
     end
-    return false
+    return _itm_cache
 end
 
 -- ==========================================
@@ -165,22 +179,24 @@ local GUARD_ALL = 3
 local GUARD_RANDOM = 4
 
 -- Safety function to avoid crashes
+local function _tsm_get_guard_func(mgr) return mgr:call("get_GuardFunc") end
+local function _tsm_call_obj(obj, method, ...) return obj:call(method, ...) end
+
 local function call_fresh(target_type, method, ...)
     local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
     if not mgr then return false end
-    
+
     local obj = nil
-    if target_type == "TM" then 
-        obj = mgr 
-    elseif target_type == "Guard" then 
-        local ok, guard = pcall(function() return mgr:call("get_GuardFunc") end)
+    if target_type == "TM" then
+        obj = mgr
+    elseif target_type == "Guard" then
+        local ok, guard = pcall(_tsm_get_guard_func, mgr)
         if ok and guard then obj = guard end
     end
 
     if not obj or sdk.to_int64(obj) == 0 then return false end
-    
-    local args = {...}
-    return pcall(function() return obj:call(method, table.unpack(args)) end)
+
+    return pcall(_tsm_call_obj, obj, method, ...)
 end
 
 -- Apply guard type cleanly
@@ -224,6 +240,10 @@ local function update_guard_logic()
         -- >>> COMBO TRIALS >>> GUARD_AFTER_FIRST_HIT (2)
         set_guard_type(GUARD_AFTER_FIRST_HIT)
 
+    elseif current_mode == 5 then
+        -- >>> EXECUTION >>> NO GUARD (0)
+        set_guard_type(GUARD_NO)
+
 
     elseif current_mode == 0 then
         -- >>> DISABLED / COMBO TRIALS >>> RESTORE
@@ -250,10 +270,10 @@ local TSM_MODE_NAMES = {
     [2] = "HIT CONFIRM",
     [3] = "POST GUARD",
     [4] = "COMBO TRIALS",
+    [5] = "EXECUTION",
 }
 
--- Cycling order: DISABLED → HIT CONFIRM → REACTION DRILLS → POST GUARD → CUSTOM COMBO TRIALS → DISABLED
-local MODE_CYCLE = { 0, 2, 1, 3, 4 }
+local MODE_CYCLE = { 0, 5, 2, 1, 3, 4 }
 local MODE_CYCLE_INDEX = {} -- reverse lookup: mode_id → position in cycle
 for i, m in ipairs(MODE_CYCLE) do MODE_CYCLE_INDEX[m] = i end
 
@@ -443,7 +463,18 @@ local function _tsm_apply_widget_visibility(entries, scripts_active)
     end
 end
 
+local _tsm_ui_vis_last = nil
+local _tsm_ui_vis_wait = 0
+local TSM_UI_VIS_INTERVAL = 60
+
 local function manage_ui_visibility(scripts_active)
+    if _tsm_ui_vis_last == scripts_active and _tsm_ui_vis_wait > 0 then
+        _tsm_ui_vis_wait = _tsm_ui_vis_wait - 1
+        return
+    end
+    _tsm_ui_vis_last = scripts_active
+    _tsm_ui_vis_wait = TSM_UI_VIS_INTERVAL
+
     local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
     if mgr then
         local dict = mgr:get_field("_ViewUIWigetDict")
@@ -474,7 +505,7 @@ re.on_pre_gui_draw_element(function(element, context)
         _G.CurrentHudSuffix = suffix
         
         -- 2. Manage infinite symbol visibility (Never hidden in mode 4)
-        local hide_infinite = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3)
+        local hide_infinite = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3 or _G.CurrentTrainerMode == 5)
         
         local view = element:call("get_View")
         apply_infinite_visibility(view, hide_infinite)
@@ -498,6 +529,7 @@ local top_bar_height = 0.0444
 
 local MODE_BUTTONS = {
     { id = 0, label = "DISABLED" },
+    { id = 5, label = "EXECUTION" },
     { id = 2, label = "HIT CONFIRM" },
     { id = 1, label = "REACTION DRILLS" },
     { id = 3, label = "POST GUARD" },
@@ -631,12 +663,39 @@ local function _tsm_update_hide_rect()
     _G._tsm_hide_rect.h = (sh - lb_off * 2) * hb.h_pct
 end
 
-local _TSM_WEBSTATE_INACTIVE = { sf6_running = true, training_active = false, mode = 0 }
 local function _tsm_dump_webstate_inactive()
-    json.dump_file("SF6_TrainingRemoteControl_data/TSM_WebState.json", _TSM_WEBSTATE_INACTIVE)
 end
 
-local function _tsm_web_bridge_tick()
+local _tsm_last_fingerprint = ""
+
+local function _tsm_build_fingerprint()
+    return tostring(_G.CurrentTrainerMode or 0)
+        .. "|" .. tostring(_G.ComboTrials_CurrentFile or "")
+        .. "|" .. tostring(_G.ComboTrials_CurrentStep or 0)
+        .. "|" .. tostring(_G.ComboTrials_TotalSteps or 0)
+        .. "|" .. tostring(_G.ComboTrials_IsPlaying or false)
+        .. "|" .. tostring(_G.ComboTrials_IsRecording or false)
+        .. "|" .. tostring(_G.ComboTrials_IsDemo or false)
+        .. "|" .. tostring(_G.ComboTrials_FileIdx or 1)
+        .. "|" .. tostring(_G.ComboTrials_PositionIdx or 1)
+        .. "|" .. tostring(_G.TrainingSession_IsRunning or false)
+        .. "|" .. tostring(_G.TrainingSession_IsPaused or false)
+        .. "|" .. tostring(_G.TrainingSession_Timer or 0)
+        .. "|" .. tostring(_G.TrainingSession_Trials or 0)
+        .. "|" .. tostring(_G.TrainingSession_Mode or 2)
+        .. "|" .. tostring(_G.TrainingSession_BlockRate or 50)
+        .. "|" .. tostring(_G._exec_status or "")
+        .. "|" .. tostring(_G._exec_registering or false)
+        .. "|" .. tostring(_G._exec_count or 0)
+        .. "|" .. tostring(_G._exec_side or 1)
+        .. "|" .. tostring(_G._exec_sel_motion or "")
+        .. "|" .. tostring(_G._exec_sel_buttons or "")
+        .. "|" .. tostring(_G._exec_boxes or "0000000000")
+        .. "|" .. tostring(_G._tsm_hide_ui or false)
+        .. "|" .. tostring(_G.TrainingModeActive or false)
+end
+
+local function _tsm_write_state_io()
     json.dump_file("SF6_TrainingRemoteControl_data/TSM_WebState.json", {
         mode = _G.CurrentTrainerMode or 0,
         trial_file = _G.ComboTrials_CurrentFile or "",
@@ -653,33 +712,62 @@ local function _tsm_web_bridge_tick()
         timer = _G.TrainingSession_Timer or 0,
         trials = _G.TrainingSession_Trials or 0,
         session_mode = _G.TrainingSession_Mode or 2,
+        block_rate = _G.TrainingSession_BlockRate or 50,
+        exec_status = _G._exec_status or "",
+        exec_registering = _G._exec_registering or false,
+        exec_count = _G._exec_count or 0,
+        exec_side = _G._exec_side or 1,
+        exec_sel_motion = _G._exec_sel_motion or "",
+        exec_sel_buttons = _G._exec_sel_buttons or "",
+        exec_boxes = _G._exec_boxes or "0000000000",
         hide_ui = _G._tsm_hide_ui or false,
         sf6_running = true,
         training_active = _G.TrainingModeActive or false,
     })
-    local b = json.load_file("SF6_TrainingRemoteControl_data/TSM_WebBridge.json")
-    if b and b._web_timestamp and (not _G._tsm_bridge_ts or b._web_timestamp > _G._tsm_bridge_ts) then
-        _G._tsm_bridge_ts = b._web_timestamp
-        if not _G.TrainingModeActive then
-            b.cmd = nil
-            json.dump_file("SF6_TrainingRemoteControl_data/TSM_WebBridge.json", b)
+end
+
+local function _tsm_read_bridge_io()
+    local f = io.open("SF6_TrainingRemoteControl_data/TSM_WebBridge.json", "r")
+    if not f then return end
+    local raw = f:read("*a")
+    f:close()
+    if not raw or #raw < 5 then return end
+
+    local ts = raw:match('"_web_timestamp":%s*([%d%.]+)')
+    if not ts then return end
+    ts = tonumber(ts)
+    if _G._tsm_bridge_ts and ts <= _G._tsm_bridge_ts then return end
+    _G._tsm_bridge_ts = ts
+
+    if not _G.TrainingModeActive then return end
+
+    local mode_val = raw:match('"mode":%s*(%d+)')
+    if mode_val then _G.CurrentTrainerMode = tonumber(mode_val) end
+
+    local cmd = raw:match('"cmd":%s*"([^"]*)"')
+    if cmd and cmd ~= "" then
+        if cmd == "hide_ui" then
+            _G._tsm_hide_ui = not _G._tsm_hide_ui
+        else
+            _G._tsm_web_cmd = cmd
+            _G._tsm_web_cmd_value = raw:match('"value":%s*"?([^",}]*)"?')
+            _G._tsm_web_cmd_data = { cmd = cmd, value = _G._tsm_web_cmd_value }
         end
-        if _G.TrainingModeActive and b.mode ~= nil then _G.CurrentTrainerMode = b.mode end
-        if _G.TrainingModeActive and b.cmd then
-            if b.cmd == "hide_ui" then
-                _G._tsm_hide_ui = not _G._tsm_hide_ui
-            else
-                _G._tsm_web_cmd = b.cmd
-            end
-            b.cmd = nil
-            json.dump_file("SF6_TrainingRemoteControl_data/TSM_WebBridge.json", b)
-        end
-        if _G.TrainingModeActive and b.teleport and _G._dv_teleport then
-            pcall(_G._dv_teleport, b.teleport.distance)
-            b.teleport = nil
-            json.dump_file("SF6_TrainingRemoteControl_data/TSM_WebBridge.json", b)
-        end
+        local fw = io.open("SF6_TrainingRemoteControl_data/TSM_WebBridge.json", "w")
+        if fw then fw:write('{"_web_timestamp":' .. string.format("%.7f", ts) .. '}'); fw:close() end
     end
+
+    local tp_dist = raw:match('"teleport":%s*{%s*"distance":%s*([%d%.%-eE]+)')
+    if tp_dist and _G._dv_teleport then
+        pcall(_G._dv_teleport, tonumber(tp_dist))
+        local fw = io.open("SF6_TrainingRemoteControl_data/TSM_WebBridge.json", "w")
+        if fw then fw:write('{"_web_timestamp":' .. string.format("%.7f", ts) .. '}'); fw:close() end
+    end
+end
+
+local function _tsm_web_bridge_tick()
+    _tsm_write_state_io()
+    _tsm_read_bridge_io()
 end
 
 re.on_frame(function()
@@ -701,6 +789,7 @@ re.on_frame(function()
     _G.FlowMapID = fid
     _G.IsInBattleHub = (fid == 9)
     local is_replay = (fid == 10) or (_G.IsInReplay == true)
+    RuntimeSafety.begin_frame(fid, is_in_training_mode(), is_replay, _G.IsInBattleHub)
 
     -- HIDE UI BUTTON (works in training + replay)
     if not _G._tsm_hide_flash then _G._tsm_hide_flash = 0 end
@@ -723,9 +812,8 @@ re.on_frame(function()
     -- BattleHub: always disabled
     if _G.IsInBattleHub then
         if _G.CurrentTrainerMode ~= 0 then _G.CurrentTrainerMode = 0 end
-        _G.TrainingModeActive = false
         _G.TrainingGamePaused = true
-        pcall(_tsm_dump_webstate_inactive)
+        RuntimeSafety.disable("battle_hub")
         return
     end
 
@@ -738,7 +826,6 @@ re.on_frame(function()
             if _G.CurrentTrainerMode ~= 0 then _G.CurrentTrainerMode = 0 end
             _G.TrainingFloatingBar = nil
             _G.TrainingFloatingBarTop = nil
-            _G.TrainingModeActive = false
         end
         if _tsm_was_replay == "waiting" then
             _tsm_replay_timer = _tsm_replay_timer + (1.0 / 60.0)
@@ -749,7 +836,6 @@ re.on_frame(function()
         end
         -- In replay: always return, no top bar, no guard logic
         _G.TrainingFloatingBarTop = nil
-        _G.TrainingModeActive = true
         return
     end
 
@@ -758,17 +844,16 @@ re.on_frame(function()
         _tsm_was_replay = false
     end
     -- ABSOLUTE KILLSWITCH: No gamepad reading or logic outside training
-    if not is_in_training_mode() then
+    _G.TrainingModeActive = is_in_training_mode()
+    if _G.TrainingModeActive then RuntimeSafety.allow_training() end
+    if not _G.TrainingModeActive then
         -- AUTO-RESET: Disable all active modes when leaving Training Mode
         if _G.CurrentTrainerMode ~= 0 then
             _G.CurrentTrainerMode = 0
         end
-        _G.TrainingModeActive = false
         _G.TrainingGamePaused = true
-        pcall(_tsm_dump_webstate_inactive)
         return
     end
-    _G.TrainingModeActive = true
 
     handle_input()
 
@@ -825,20 +910,24 @@ re.on_frame(function()
     end
 
 
-    local scripts_active = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3 or (_G.CurrentTrainerMode == 4 and _G.ComboTrials_HideNativeHUD))
+    local scripts_active = (_G.CurrentTrainerMode == 1 or _G.CurrentTrainerMode == 2 or _G.CurrentTrainerMode == 3 or (_G.CurrentTrainerMode == 4 and _G.ComboTrials_HideNativeHUD) or _G.CurrentTrainerMode == 5)
     manage_ui_visibility(scripts_active)
 
-    if not _G._tsm_web_counter then
-        _G._tsm_web_counter = 0
-        pcall(function()
-            local b = json.load_file("SF6_TrainingRemoteControl_data/TSM_WebBridge.json")
-            if b and b._web_timestamp then _G._tsm_bridge_ts = b._web_timestamp end
-        end)
-    end
-    _G._tsm_web_counter = _G._tsm_web_counter + 1
-    if _G._tsm_web_counter >= 30 then
-        _G._tsm_web_counter = 0
-        pcall(_tsm_web_bridge_tick)
+    if _G._remote_control_loaded then
+        if not _G._web_frame then _G._web_frame = 0 end
+        _G._web_frame = _G._web_frame + 1
+        local wf = _G._web_frame
+        local web_interval = (_G.CurrentTrainerMode == 5) and 2 or 60
+        if wf % web_interval == 0 then
+            local fp = _tsm_build_fingerprint()
+            if fp ~= _tsm_last_fingerprint then
+                _tsm_last_fingerprint = fp
+                pcall(_tsm_write_state_io)
+            end
+        end
+        if wf % 60 == 5 then
+            pcall(_tsm_read_bridge_io)
+        end
     end
 end)
 
@@ -856,13 +945,11 @@ local styled_header = UIKit.styled_header
 
 re.on_draw_ui(function()
     -- Publish REFramework menu window rect for overlap detection
-    pcall(function()
-        local wpos = imgui.get_window_pos()
-        local wsz = imgui.get_window_size()
-        if wpos and wsz and _G.FloatingRects then
-            _G._ref_menu_rect = { x = wpos.x, y = wpos.y, w = wsz.x, h = wsz.y }
-        end
-    end)
+    local wpos = imgui.get_window_pos()
+    local wsz = imgui.get_window_size()
+    if wpos and wsz and _G.FloatingRects then
+        _G._ref_menu_rect = { x = wpos.x, y = wpos.y, w = wsz.x, h = wsz.y }
+    end
 
     -- SCRIPT ERRORS PANEL (error registry from SharedHooks)
     local _errs = _G._mod_errors
@@ -901,6 +988,9 @@ re.on_draw_ui(function()
         if styled_header("--- TRAINING MODES ---", UI_THEME.hdr_modes) then
             local c0, v0 = imgui.checkbox("DISABLED", _G.CurrentTrainerMode == 0)
             if c0 and v0 then _G.CurrentTrainerMode = 0 end
+
+            local c5, v5 = imgui.checkbox("EXECUTION", _G.CurrentTrainerMode == 5)
+            if c5 and v5 then _G.CurrentTrainerMode = 5 end
 
             local c2, v2 = imgui.checkbox("HIT CONFIRM", _G.CurrentTrainerMode == 2)
             if c2 and v2 then _G.CurrentTrainerMode = 2 end
@@ -1115,26 +1205,14 @@ re.on_draw_ui(function()
     end
 end)
 
--- Session Recap D2D overlay (draws on top of everything)
-local SessionRecap = require("func/Training_SessionRecap")
+-- SESSION RECAP DISABLED FOR PERF — uncomment to re-enable
+-- local SessionRecap = require("func/Training_SessionRecap")
 
-local function _tsm_draw_hide_flash()
-    local r = _G._tsm_hide_rect
-    if not r or r.w <= 0 then return end
-    local flash = _G._tsm_hide_flash or 0
-    if flash > 0 then
-        _G._tsm_hide_flash = flash - 1
-        local c = _G._tsm_hide_ui and 0x99FF4444 or 0x9944FF88
-        d2d.fill_rect(r.x, r.y, r.w, r.h, c)
-        d2d.outline_rect(r.x, r.y, r.w, r.h, 2, 0xFFFFFFFF)
-    end
-end
-
-if d2d and d2d.register then
-    d2d.register(function() end, function()
-        if SessionRecap and SessionRecap.d2d_draw then
-            SessionRecap.d2d_draw()
-        end
-        pcall(_tsm_draw_hide_flash)
-    end)
-end
+-- D2D DISABLED — hide flash now uses nothing (visual feedback removed)
+-- if d2d and d2d.register then
+--     d2d.register(function() end, function()
+--         if SessionRecap and SessionRecap.d2d_draw then
+--             SessionRecap.d2d_draw()
+--         end
+--     end)
+-- end

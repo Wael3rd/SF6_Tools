@@ -108,19 +108,21 @@ local function call_tm_method(method_name, arg)
     end
 end
 
-local function deactivate_all_slots()
+local function _react_deactivate_slots()
     local p2_id = _G._rsm_p2_id or -1
     if p2_id == -1 then return end
-    pcall(function()
-        local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
-        local rec = mgr:call("get_RecordFunc")
-        local fl = rec:get_field("_tData"):get_field("RecordSetting"):get_field("FighterDataList")
-        local slots = fl:call("get_Item", p2_id):get_field("RecordSlots")
-        for i = 0, 7 do
-            local s = slots:call("get_Item", i)
-            if s then s:set_field("IsActive", false) end
-        end
-    end)
+    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
+    local rec = mgr:call("get_RecordFunc")
+    local fl = rec:get_field("_tData"):get_field("RecordSetting"):get_field("FighterDataList")
+    local slots = fl:call("get_Item", p2_id):get_field("RecordSlots")
+    for i = 0, 7 do
+        local s = slots:call("get_Item", i)
+        if s then s:set_field("IsActive", false) end
+    end
+end
+
+local function deactivate_all_slots()
+    pcall(_react_deactivate_slots)
 end
 
 local function set_playback_mode(enable)
@@ -469,6 +471,68 @@ local function update_slot_stats(is_success)
     end
 end
 
+local function record_success(msg, color)
+    set_feedback(msg, color, 2.0)
+    session.score = session.score + 1
+    session.success = session.success + 1
+    session.total = session.total + 1
+    update_slot_stats(true)
+    session.score_processed = true
+    if user_config.auto_reset_delay > 0 then session.auto_reset_timer = user_config.auto_reset_delay end
+end
+
+local function record_fail(msg, color)
+    set_feedback(msg, color, 2.0)
+    session.score = session.score - 1
+    session.total = session.total + 1
+    update_slot_stats(false)
+    session.score_processed = true
+    if user_config.auto_reset_delay > 0 then session.auto_reset_timer = user_config.auto_reset_delay end
+end
+
+local function end_session(msg, color)
+    session.is_running = false
+    session.is_time_up = true
+    session.time_up_delay = 0
+    playback_loop.active = false
+    call_tm_method("Stop", 0)
+    call_tm_method("ForceApply")
+    export_log_excel()
+    SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
+    set_feedback(msg, color, 0)
+end
+
+local react_ticker
+local function do_start()
+    reset_session_stats()
+    session.time_rem = user_config.timer_minutes * 60
+    session.is_running = true
+    session.is_paused = false
+    set_feedback(TEXTS.started, COLORS.Green, 1.0)
+    set_playback_mode(true)
+    if react_ticker then react_ticker("SESSION STARTED") end
+end
+
+local function do_stop()
+    set_playback_mode(false)
+    reset_session_stats()
+    set_feedback("STOPPED", COLORS.Red, 1.5)
+    if react_ticker then react_ticker("SESSION STOPPED") end
+end
+
+local function do_reset()
+    reset_session_stats()
+    set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
+    if react_ticker then react_ticker("SESSION RESET") end
+end
+
+local function do_pause()
+    session.is_paused = not session.is_paused
+    set_feedback(session.is_paused and TEXTS.paused or TEXTS.resumed, COLORS.Yellow, 1.0)
+    set_playback_mode(not session.is_paused)
+    if react_ticker then react_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+end
+
 -- =========================================================
 -- PLAYBACK MANAGEMENT
 -- =========================================================
@@ -562,27 +626,11 @@ local function update_logic()
             session.time_rem = session.time_rem - dt
             if session.time_rem <= 0 then
                 session.time_rem = 0
-                session.is_running = false
-                session.is_time_up = true
-                session.time_up_delay = 0
-                playback_loop.active = false
-                call_tm_method("Stop", 0)
-                call_tm_method("ForceApply")
-                export_log_excel()
-                SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
-                set_feedback("TIME UP! & EXPORTED", COLORS.Red, 0)
+                end_session("TIME UP! & EXPORTED", COLORS.Red)
             end
         elseif user_config.session_mode == 2 then
             if session.total >= user_config.trial_count then
-                session.is_running = false
-                session.is_time_up = true
-                session.time_up_delay = 0
-                playback_loop.active = false
-                call_tm_method("Stop", 0)
-                call_tm_method("ForceApply")
-                export_log_excel()
-                SessionRecap.show("REACTION DRILLS", LOG_FILENAME, "reactions")
-                set_feedback(session.total .. " TRIALS DONE! & EXPORTED", COLORS.Yellow, 0)
+                end_session(session.total .. " TRIALS DONE! & EXPORTED", COLORS.Yellow)
             end
         end
     end
@@ -639,12 +687,7 @@ local function update_logic()
         if curr_act_id == 739 and session.last_act_id ~= 739 then
              -- ONLY FAIL IF P2 IS NOT HURT AND NOT BLOCK (Whiff)
              if p2 ~= STATE_HURT and p2 ~= STATE_BLOCK then
-                 set_feedback("FAIL: UNSAFE DR CANCEL", COLORS.Red, 2.0)
-                 session.score = session.score - 1
-                 session.total = session.total + 1
-                 update_slot_stats(false)
-                 session.score_processed = true
-                 if user_config.auto_reset_delay > 0 then session.auto_reset_timer = user_config.auto_reset_delay end
+                 record_fail("FAIL: UNSAFE DR CANCEL", COLORS.Red)
              end
         end
     end
@@ -669,35 +712,13 @@ local function update_logic()
 
         if not session.score_processed then
             if session._p2_was_parried then
-                 set_feedback("SUCCESS: PERFECT PARRY!", COLORS.Green, 2.0)
-                 session.score = session.score + 1
-                 session.success = session.success + 1
-                 session.total = session.total + 1
-                 update_slot_stats(true)
-                 session.score_processed = true
-                 if user_config.auto_reset_delay > 0 then session.auto_reset_timer = user_config.auto_reset_delay end
+                 record_success("SUCCESS: PERFECT PARRY!", COLORS.Green)
             elseif p2 == STATE_HURT then
-                 set_feedback(TEXTS.success, COLORS.Green, 2.0)
-                 session.score = session.score + 1
-                 session.success = session.success + 1
-                 session.total = session.total + 1
-                 update_slot_stats(true)
-                 session.score_processed = true
-                 if user_config.auto_reset_delay > 0 then session.auto_reset_timer = user_config.auto_reset_delay end
+                 record_success(TEXTS.success, COLORS.Green)
             elseif p1 == STATE_HURT then
-                set_feedback(TEXTS.fail_hit, COLORS.Red, 2.0)
-                session.score = session.score - 1
-                session.total = session.total + 1
-                update_slot_stats(false)
-                session.score_processed = true
-                if user_config.auto_reset_delay > 0 then session.auto_reset_timer = user_config.auto_reset_delay end
+                record_fail(TEXTS.fail_hit, COLORS.Red)
             elseif p1 == STATE_BLOCK then
-                set_feedback(TEXTS.fail_block, COLORS.Red, 2.0)
-                session.score = session.score - 1
-                session.total = session.total + 1
-                update_slot_stats(false)
-                session.score_processed = true
-                if user_config.auto_reset_delay > 0 then session.auto_reset_timer = user_config.auto_reset_delay end
+                record_fail(TEXTS.fail_block, COLORS.Red)
             elseif p2 == STATE_DI and p1 == STATE_DI then
                 set_feedback("DI COUNTER!", COLORS.Green, 2.0)
                 session.di_counter_success = true
@@ -712,12 +733,7 @@ local function update_logic()
                     if session.di_counter_success then
                         set_feedback("DI COUNTER!", COLORS.Green, 2.0)
                     else
-                        set_feedback(TEXTS.fail_whiff, COLORS.Red, 2.0)
-                        session.score = session.score - 1
-                        session.total = session.total + 1
-                        update_slot_stats(false)
-                        session.score_processed = true
-                        if user_config.auto_reset_delay > 0 then session.auto_reset_timer = user_config.auto_reset_delay end
+                        record_fail(TEXTS.fail_whiff, COLORS.Red)
                     end
                 end
             else
@@ -734,7 +750,7 @@ end
 local last_input_mask = 0
 local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false }
 
-local function react_ticker(msg) if _G.show_custom_ticker then _G.show_custom_ticker(msg, 0.3) end end
+react_ticker = function(msg) if _G.show_custom_ticker then _G.show_custom_ticker(msg, 0.3) end end
 
 local function handle_input()
     local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
@@ -795,44 +811,18 @@ local function handle_input()
 
     -- Position 3 (key 3 / FUNC+LEFT): RESET when idle, STOP when running
     if not session.is_running and not session.is_time_up then
-        if pos3_kb or pos4_pad then
-            reset_session_stats()
-            set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
-            react_ticker("SESSION RESET")
-        end
+        if pos3_kb or pos4_pad then do_reset() end
     elseif session.is_running then
-        if pos3_kb or pos4_pad then
-            set_playback_mode(false)
-            reset_session_stats()
-            set_feedback("STOPPED", COLORS.Red, 1.5)
-            react_ticker("SESSION STOPPED")
-        end
+        if pos3_kb or pos4_pad then do_stop() end
     elseif session.is_time_up then
-        if pos3_kb or pos4_pad then
-            reset_session_stats()
-            set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
-            react_ticker("SESSION RESET")
-        end
+        if pos3_kb or pos4_pad then do_reset() end
     end
 
     -- Position 4 (key 4 / FUNC+RIGHT): START when idle, PAUSE when running
     if not session.is_running and not session.is_time_up then
-        if pos4_kb or pos3_pad then
-            reset_session_stats()
-            session.time_rem = user_config.timer_minutes * 60
-            session.is_running = true
-            session.is_paused = false
-            set_feedback(TEXTS.started, COLORS.Green, 1.0)
-            set_playback_mode(true)
-            react_ticker("SESSION STARTED")
-        end
+        if pos4_kb or pos3_pad then do_start() end
     elseif session.is_running then
-        if pos4_kb or pos3_pad then
-            session.is_paused = not session.is_paused
-            set_feedback(session.is_paused and TEXTS.paused or TEXTS.resumed, COLORS.Yellow, 1.0)
-            set_playback_mode(not session.is_paused)
-            react_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED")
-        end
+        if pos4_kb or pos3_pad then do_pause() end
     end
 
     last_input_mask = active_buttons
@@ -941,28 +931,15 @@ local function draw_session_buttons_docked()
         imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " min")
     end
     imgui.same_line(300)
-    if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_r", SC.c3) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0); react_ticker("SESSION RESET") end
+    if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_r", SC.c3) then do_reset() end
 
     imgui.spacing()
     if not session.is_running then
-        if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_r", SC.c4) then
-            reset_session_stats()
-            if user_config.session_mode ~= 2 then session.time_rem = user_config.timer_minutes * 60 end
-            session.is_running = true; session.is_paused = false
-            set_feedback(TEXTS.started, COLORS.Green, 1.0)
-            set_playback_mode(true)
-            react_ticker("SESSION STARTED")
-        end
+        if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_r", SC.c4) then do_start() end
     else
-        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_r", SC.c3) then
-            set_playback_mode(false); reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0)
-            react_ticker("SESSION STOPPED")
-        end
+        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_r", SC.c3) then do_stop() end
         imgui.same_line()
-        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_r", SC.c4) then
-            session.is_paused = not session.is_paused; set_playback_mode(not session.is_paused)
-            react_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED")
-        end
+        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_r", SC.c4) then do_pause() end
     end
 end
 
@@ -1010,6 +987,12 @@ local function draw_session_floating()
             _rsm_dd_display, _rsm_dd_raw = _G._rsm_api.get_file_list()
             _rsm_dd_idx = 1
         end
+        local loaded = _G._rsm_api.get_loaded_name()
+        if loaded and loaded ~= "" then
+            for ri, rn in ipairs(_rsm_dd_raw) do
+                if rn:gsub("%.json$", "") == loaded then _rsm_dd_idx = ri + 1; break end
+            end
+        end
         imgui.push_style_color(7, 0xFF3D3D3D)
         imgui.push_style_color(8, 0xFF4D4D4D)
         imgui.push_style_color(9, 0xFF5D5D5D)
@@ -1037,27 +1020,15 @@ local function draw_session_floating()
     end
     imgui.same_line(0, sp)
     if not session.is_running then
-        if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_r", SC.c3, actual_w) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0); react_ticker("SESSION RESET") end
+        if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_r", SC.c3, actual_w) then do_reset() end
     else
-        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_r", SC.c3, actual_w) then
-            set_playback_mode(false); reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0)
-            react_ticker("SESSION STOPPED")
-        end
+        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_r", SC.c3, actual_w) then do_stop() end
     end
     imgui.same_line(0, sp)
     if session.is_running then
-        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##fl_r", SC.c4, actual_w) then
-            session.is_paused = not session.is_paused; set_playback_mode(not session.is_paused)
-            react_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED")
-        end
+        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##fl_r", SC.c4, actual_w) then do_pause() end
     else
-        if SharedUI.sf6_button("START (" .. sl("R", "4") .. ")##fl_r", SC.c4, actual_w) then
-            reset_session_stats()
-            if user_config.session_mode ~= 2 then session.time_rem = user_config.timer_minutes * 60 end
-            session.is_running = true; session.is_paused = false
-            set_feedback(TEXTS.started, COLORS.Green, 1.0); set_playback_mode(true)
-            react_ticker("SESSION STARTED")
-        end
+        if SharedUI.sf6_button("START (" .. sl("R", "4") .. ")##fl_r", SC.c4, actual_w) then do_start() end
     end
     imgui.same_line(w_width - cb_size - 10 - pad_x)
     local changed, new_val = imgui.checkbox("##close_react", user_config.show_floating)
@@ -1069,10 +1040,10 @@ re.on_frame(function()
     if _G.CurrentTrainerMode == 1 then
         if _G._tsm_web_cmd then
             local cmd = _G._tsm_web_cmd; _G._tsm_web_cmd = nil
-            if cmd == "start" then reset_session_stats(); session.is_running = true; session.is_paused = false; set_playback_mode(true); set_feedback("HERE WE GO!", COLORS.Green, 1.0); react_ticker("SESSION STARTED") end
-            if cmd == "stop" then set_playback_mode(false); reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0); react_ticker("SESSION STOPPED") end
-            if cmd == "reset" then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0); react_ticker("SESSION RESET") end
-            if cmd == "pause" then session.is_paused = not session.is_paused; react_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+            if cmd == "start" then do_start() end
+            if cmd == "stop" then do_stop() end
+            if cmd == "reset" then do_reset() end
+            if cmd == "pause" then do_pause() end
             if cmd == "timer_up" then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
             if cmd == "timer_down" then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
             if cmd == "trials_up" then user_config.trial_count = math.min(200, user_config.trial_count + 10); reset_session_stats(); save_conf() end
@@ -1095,7 +1066,7 @@ re.on_frame(function()
     last_trainer_mode = cur_mode
 
     if cur_mode ~= 1 then return end
-    if not sdk.get_managed_singleton("app.training.TrainingManager") then return end
+    if not _G.TrainingModeActive then return end
 
     local should_update_logic = true
     local should_draw_hud = true

@@ -105,7 +105,7 @@ local session = {
     p2_air_attack_confirmed = false,
     p2_has_di = false,
     p2_throw_tech_detected = false,  -- Flag: have we seen a throw tech?
-    p2_was_in_parry = false,  -- Flag: P2 was in parry
+    p2_has_parried = false,
     throw_in_progress = false,  -- Flag: a throw is in progress
     _p2_was_di = false,
     
@@ -230,7 +230,7 @@ local function reset_session_stats()
     session.p2_air_attack_confirmed = false
     session.p2_has_di = false
     session.p2_throw_tech_detected = false
-    session.p2_was_in_parry = false
+    session.p2_has_parried = false
     session.throw_in_progress = false
     
     session.real_start_time = os.time()
@@ -245,7 +245,7 @@ local function reset_round()
     session.p2_air_attack_confirmed = false
     session.p2_has_di = false
     session.p2_throw_tech_detected = false
-    session.p2_was_in_parry = false
+    session.p2_has_parried = false
     session.throw_in_progress = false
     session._p2_was_di = false
 end
@@ -506,6 +506,11 @@ local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false }
 
 local function pg_ticker(msg) if _G.show_custom_ticker then _G.show_custom_ticker(msg, 0.3) end end
 
+local function do_start() reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0); pg_ticker("SESSION STARTED") end
+local function do_stop() reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0); pg_ticker("SESSION STOPPED") end
+local function do_reset() reset_session_stats(); pg_ticker("SESSION RESET") end
+local function do_pause() session.is_paused = not session.is_paused; pg_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+
 local function handle_input()
     local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
     local gamepad_type = sdk.find_type_definition("via.hid.GamePad")
@@ -567,25 +572,13 @@ local function handle_input()
 
         -- Position 3 (key 3 / FUNC+LEFT): RESET when idle, STOP when running
         if pos3_kb or pos4_pad then
-            if session.is_running then
-                reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.5)
-                pg_ticker("SESSION STOPPED")
-            else
-                reset_session_stats(); set_feedback("RESET DONE", COLORS.White, 1.0)
-                pg_ticker("SESSION RESET")
-            end
+            if session.is_running then do_stop() else do_reset() end
         end
         -- Position 4 (key 4 / FUNC+RIGHT): START when idle, PAUSE when running
         if not session.is_running then
-            if pos4_kb or pos3_pad then
-                reset_session_stats(); session.is_running = true; set_feedback("SESSION STARTED", COLORS.Green, 1.0)
-                pg_ticker("SESSION STARTED")
-            end
+            if pos4_kb or pos3_pad then do_start() end
         else
-            if pos4_kb or pos3_pad then
-                session.is_paused = not session.is_paused
-                pg_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED")
-            end
+            if pos4_kb or pos3_pad then do_pause() end
         end
     end
 
@@ -702,14 +695,14 @@ local function draw_session_buttons_docked()
         imgui.same_line(); imgui.text(tostring(user_config.timer_minutes) .. " MIN")
     end
     imgui.same_line(300)
-    if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then reset_session_stats(); pg_ticker("SESSION RESET") end
+    if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then do_reset() end
     imgui.spacing()
     if not session.is_running then
-        if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_pg", SC.c4) then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0); pg_ticker("SESSION STARTED") end
+        if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_pg", SC.c4) then do_start() end
     else
-        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0); pg_ticker("SESSION STOPPED") end
+        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_pg", SC.c3) then do_stop() end
         imgui.same_line()
-        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_pg", SC.c4) then session.is_paused = not session.is_paused; pg_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_pg", SC.c4) then do_pause() end
     end
 end
 
@@ -746,15 +739,15 @@ local function draw_session_floating()
     end
     imgui.same_line(0, sp)
     if not session.is_running then
-        if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then reset_session_stats(); pg_ticker("SESSION RESET") end
+        if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then do_reset() end
     else
-        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0); pg_ticker("SESSION STOPPED") end
+        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_pg", SC.c3, actual_w) then do_stop() end
     end
     imgui.same_line(0, sp)
     if session.is_running then
-        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##fl_pg", SC.c4, actual_w) then session.is_paused = not session.is_paused; pg_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##fl_pg", SC.c4, actual_w) then do_pause() end
     else
-        if SharedUI.sf6_button("START (" .. sl("R", "4") .. ")##fl_pg", SC.c4, actual_w) then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0); pg_ticker("SESSION STARTED") end
+        if SharedUI.sf6_button("START (" .. sl("R", "4") .. ")##fl_pg", SC.c4, actual_w) then do_start() end
     end
     imgui.same_line(w_width - cb_size - 10 - pad_x)
     local changed, new_val = imgui.checkbox("##close_pg", user_config.show_floating)
@@ -815,10 +808,10 @@ re.on_frame(function()
     if _G.CurrentTrainerMode == 3 then
         if _G._tsm_web_cmd then
             local cmd = _G._tsm_web_cmd; _G._tsm_web_cmd = nil
-            if cmd == "start" then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", COLORS.Green, 1.0); pg_ticker("SESSION STARTED") end
-            if cmd == "stop" then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0); pg_ticker("SESSION STOPPED") end
-            if cmd == "reset" then reset_session_stats(); pg_ticker("SESSION RESET") end
-            if cmd == "pause" then session.is_paused = not session.is_paused; pg_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+            if cmd == "start" then do_start() end
+            if cmd == "stop" then do_stop() end
+            if cmd == "reset" then do_reset() end
+            if cmd == "pause" then do_pause() end
             if cmd == "timer_up" then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
             if cmd == "timer_down" then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
             if cmd == "trials_up" then user_config.trial_count = math.min(200, user_config.trial_count + 10); reset_session_stats(); save_conf() end
@@ -833,7 +826,7 @@ re.on_frame(function()
     end
     local cur_mode = _G.CurrentTrainerMode or 0
     if DEPENDANT_ON_MANAGER and cur_mode ~= MY_TRAINER_ID then return end
-    if not sdk.get_managed_singleton("app.training.TrainingManager") then return end
+    if not _G.TrainingModeActive then return end
 
     local should_update = true
     local should_draw = true

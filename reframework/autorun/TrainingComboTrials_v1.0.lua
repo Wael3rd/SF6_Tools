@@ -73,6 +73,53 @@ pcall(function()
     if loaded then common_exceptions = loaded end
 end)
 
+local XT_SETTINGS_FILE = "TrainingComboTrials_data/XT_Settings.json"
+local xt_settings = { default_author = "Anonymous" }
+pcall(function()
+    local loaded = _G.safe_load_json and _G.safe_load_json(XT_SETTINGS_FILE)
+    if type(loaded) == "table" and type(loaded.default_author) == "string" and loaded.default_author ~= "" then
+        xt_settings.default_author = loaded.default_author
+    end
+end)
+
+local function build_auto_xt_meta()
+    return {
+        title = "",
+        note = "",
+        author = xt_settings.default_author or "Anonymous",
+        tags = {},
+        created_at = os.date("%Y-%m-%d %H:%M:%S"),
+        schema = 1
+    }
+end
+
+local function trim_string(value)
+    return (tostring(value or ""):match("^%s*(.-)%s*$") or "")
+end
+
+local function sanitize_ascii_filename_part(value, max_chars)
+    local s = trim_string(value)
+    if max_chars then s = s:sub(1, max_chars) end
+    s = s:gsub("[^%w%+%-_%.]", "_")
+    s = s:gsub("_+", "_")
+    s = s:gsub("^_+", ""):gsub("_+$", "")
+    return s
+end
+
+local function get_safe_filename_motion(sequence)
+    local motion = sequence and sequence[1] and sequence[1].motion or ""
+    motion = tostring(motion):match("^%s*(.-)%s*$") or ""
+    if motion == "" then return "UNKNOWN" end
+    motion = motion:gsub("^>%s*", "")
+    motion = motion:gsub("%s+", "")
+    motion = motion:gsub("[<>:\"/\\|%?%*]", "_")
+    motion = motion:gsub("[%c]", "")
+    motion = motion:gsub("_+", "_")
+    motion = motion:gsub("^_+", ""):gsub("_+$", "")
+    if motion == "" then motion = "UNKNOWN" end
+    return motion
+end
+
 local DR_IDS = { [500]=true, [501]=true, [502]=true, [504]=true, [730]=true, [731]=true, [739]=true, [740]=true, [741]=true, [760]=true, [761]=true }
 
 local function is_drive_rush_id(act_id)
@@ -138,8 +185,12 @@ local trial_state = {
     _rec_hit_type = nil,   -- CH/PC detected on first hit
     _saved_vital_p1 = nil,
     _saved_vital_p2 = nil,
+    _saved_gauge_atk = nil,
+    _saved_dummy_action = nil,
     _pending_victim_hp = nil,
     _pending_attacker_hp = nil,
+    _pending_attacker_drive = nil,
+    _pending_attacker_super = nil,
     _rec_pending_snapshot = 0,
     _was_playing = false,   -- Previous state for detecting transitions
     _step1_wrong_pending = false,
@@ -336,13 +387,21 @@ local d2d_cfg = {
     pos_p2 = { x = 0.850, y = 0.350 },
     raw_pos_p1 = { x = 0.050, y = 0.350 },
     raw_pos_p2 = { x = 0.850, y = 0.350 },
-    pos_trial_p1 = { x = 0.050, y = 0.350 },
-    pos_trial_p2 = { x = 0.850, y = 0.350 },
+    pos_trial_p1 = { x = 0.050, y = 0.177 },
+    pos_trial_p2 = { x = 0.850, y = 0.015 },
     pos_trial = { x = 0.400, y = 0.150 },
-    cartouche_width = 0.220,
-    cartouche_height = 0.5,
-    cartouche_offset_x = 0.000,
-    cartouche_offset_y = 0.000,
+    cartouche_width = 0.260,
+    cartouche_height = 1.730,
+    cartouche_offset_x = -0.027,
+    cartouche_offset_y = 0.001,
+    bar_img_offset_x = -0.014,
+    bar_img_offset_y = -0.019,
+    done_bar_height = 1.0,
+    done_bar_offset_x = -0.014,
+    done_bar_offset_y = -0.019,
+    overlay_height = 0.950,
+    overlay_offset_y = -0.002,
+    bar_width_pct = 0.95,
     icon_size = 0.035,
     font_size = 0.028,
     spacing_y = 0.045,
@@ -350,7 +409,7 @@ local d2d_cfg = {
     text_y_offset = 0.000,
     max_history = 10,
     special_icon_scale = 1.0,
-    trial_visible_steps = 7,
+    trial_visible_steps = 13,
     ignore_auto = true,
 
     -- Separate config for IDLE mode (no active record/trial)
@@ -960,6 +1019,19 @@ local function inject_player_vital(player_idx, hp)
     pcall(_ct_do_inject_vital, player_idx, hp)
 end
 
+local function _ct_do_inject_gauges(player_idx, drive, super)
+    local p = (player_idx == 0) and GS.p1 or GS.p2
+    if not p then return end
+    if drive ~= nil then p.focus_new = drive end
+    if super ~= nil then
+        local BT = _td_gBattle:get_field("Team"):get_data(nil)
+        if BT and BT.mcTeam then BT.mcTeam[player_idx].mSuperGauge = super end
+    end
+end
+local function inject_player_gauges(player_idx, drive, super)
+    pcall(_ct_do_inject_gauges, player_idx, drive, super)
+end
+
 -- Apply health (Victim = combo damage, Attacker = HP recorded at step 1)
 local function apply_trial_vital()
     if not trial_state.sequence[1] then return end
@@ -981,6 +1053,11 @@ local function apply_trial_vital()
             end
         end
         trial_state._pending_victim_hp = hp
+    end
+
+    if cs then
+        trial_state._pending_attacker_drive = cs.drive_used or 0
+        trial_state._pending_attacker_super = cs.super_used or 0
     end
 
     pcall(function()
@@ -1029,6 +1106,27 @@ local function apply_trial_vital()
             vd.Is_KO = true
             vd.Is_Point_Lock = true
         end
+
+        if trial_state._pending_attacker_drive ~= nil or trial_state._pending_attacker_super ~= nil then
+            local ad = ps.PlayerDatas[attacker_idx]
+            if not trial_state._saved_gauge_atk then
+                trial_state._saved_gauge_atk = {
+                    DG_Type = ad.DG_Type, DG_Stock = ad.DG_Stock, DG_Point = ad.DG_Point,
+                    Is_DG_Recovery_Timer = ad.Is_DG_Recovery_Timer, Is_DG_Infinity = ad.Is_DG_Infinity,
+                    Is_DG_Point_Lock = ad.Is_DG_Point_Lock, Is_DG_Break = ad.Is_DG_Break,
+                    SA_Type = ad.SA_Type, SA_Stock = ad.SA_Stock, SA_Point = ad.SA_Point,
+                    Is_SA_Recovery_Timer = ad.Is_SA_Recovery_Timer, Is_SA_Infinity = ad.Is_SA_Infinity,
+                    Is_SA_No_Recovery = ad.Is_SA_No_Recovery, Is_SA_Point_Lock = ad.Is_SA_Point_Lock,
+                }
+            end
+            ad.DG_Type = 0
+            ad.Is_DG_Infinity = false
+            ad.Is_DG_Recovery_Timer = false
+            ad.SA_Type = 0
+            ad.Is_SA_Infinity = false
+            ad.Is_SA_Recovery_Timer = false
+            ad.Is_SA_No_Recovery = true
+        end
     end)
 end
 
@@ -1042,12 +1140,17 @@ local function reinject_trial_vital()
     if trial_state._pending_attacker_hp and trial_state._pending_attacker_hp > 0 then
         inject_player_vital(attacker_idx, trial_state._pending_attacker_hp)
     end
+    if trial_state._pending_attacker_drive or trial_state._pending_attacker_super then
+        inject_player_gauges(attacker_idx, trial_state._pending_attacker_drive, trial_state._pending_attacker_super)
+    end
 end
 
 -- Restore vital settings to original values
 local function restore_trial_vital()
     trial_state._pending_victim_hp = nil
     trial_state._pending_attacker_hp = nil
+    trial_state._pending_attacker_drive = nil
+    trial_state._pending_attacker_super = nil
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
@@ -1075,6 +1178,19 @@ local function restore_trial_vital()
             p2d.Is_KO = trial_state._saved_vital_p2.Is_KO
             p2d.Is_Point_Lock = trial_state._saved_vital_p2.Is_Point_Lock
             trial_state._saved_vital_p2 = nil
+        end
+
+        if trial_state._saved_gauge_atk then
+            local atk_idx = trial_state.playing_player or 0
+            local ad = ps.PlayerDatas[atk_idx]
+            local sg = trial_state._saved_gauge_atk
+            ad.DG_Type = sg.DG_Type; ad.DG_Stock = sg.DG_Stock; ad.DG_Point = sg.DG_Point
+            ad.Is_DG_Recovery_Timer = sg.Is_DG_Recovery_Timer; ad.Is_DG_Infinity = sg.Is_DG_Infinity
+            ad.Is_DG_Point_Lock = sg.Is_DG_Point_Lock; ad.Is_DG_Break = sg.Is_DG_Break
+            ad.SA_Type = sg.SA_Type; ad.SA_Stock = sg.SA_Stock; ad.SA_Point = sg.SA_Point
+            ad.Is_SA_Recovery_Timer = sg.Is_SA_Recovery_Timer; ad.Is_SA_Infinity = sg.Is_SA_Infinity
+            ad.Is_SA_No_Recovery = sg.Is_SA_No_Recovery; ad.Is_SA_Point_Lock = sg.Is_SA_Point_Lock
+            trial_state._saved_gauge_atk = nil
         end
     end)
 end
@@ -1221,6 +1337,37 @@ local function restore_dummy_guard_type()
     if trial_state._saved_guard_type ~= nil then
         set_dummy_guard_type(trial_state._saved_guard_type)
         trial_state._saved_guard_type = nil
+    end
+end
+
+local function set_dummy_action_type(val)
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local dd = tm:get_field("_tData"):get_field("DummyStatus"):get_field("DummyData")
+        dd.DummyActionType = val
+    end)
+end
+
+local function read_dummy_action_type()
+    local result = 0
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local dd = tm:get_field("_tData"):get_field("DummyStatus"):get_field("DummyData")
+        result = dd.DummyActionType or 0
+    end)
+    return result
+end
+
+local function save_dummy_action_type()
+    trial_state._saved_dummy_action = read_dummy_action_type()
+end
+
+local function restore_dummy_action_type()
+    if trial_state._saved_dummy_action ~= nil then
+        set_dummy_action_type(trial_state._saved_dummy_action)
+        trial_state._saved_dummy_action = nil
     end
 end
 
@@ -1458,10 +1605,40 @@ local function load_combo_from_file(path)
     return true
 end
 
-local function clear_combo_state()
-    trial_state.sequence = {}
-    trial_state.current_step = 1
+local function reset_visual_state()
+    if ComboTrials_D2D then
+        pcall(ComboTrials_D2D.reset_anim)
+        pcall(ComboTrials_D2D.reset_raw)
+    end
+    for i = 0, 1 do
+        if players[i] then
+            players[i].log = {}
+            players[i].input_history_queue = {}
+        end
+    end
+end
+
+local function reset_trial_flags()
     trial_state.is_playing = false
+    trial_state.is_recording = false
+    trial_state._was_playing = false
+    trial_state.current_step = 1
+    trial_state.ui_visual_step = 1
+    trial_state.floating_info = nil
+    trial_state._step1_wrong_pending = false
+    trial_state._first_hit_landed = false
+    trial_state._reset_grace = 0
+    trial_state.success_timer = 0
+    trial_state.fail_timer = 0
+    trial_state.fail_reason = nil
+    trial_state._rec_gauges = nil
+    trial_state._rec_hit_type = nil
+    if demo_state then demo_state.is_playing = false end
+end
+
+local function clear_combo_state()
+    reset_trial_flags()
+    trial_state.sequence = {}
     trial_state.start_pos_p1 = nil
     trial_state.start_pos_p2 = nil
     trial_state.start_pos_p1_raw = nil
@@ -1470,6 +1647,8 @@ local function clear_combo_state()
     trial_state.live_start_pos_p2 = nil
     trial_state.live_start_pos_p1_raw = nil
     trial_state.live_start_pos_p2_raw = nil
+    reset_visual_state()
+    pcall(collectgarbage, "step", 16)
 end
 
 -- =========================================================
@@ -1505,35 +1684,36 @@ local function start_recording(player_idx)
     trial_state._rec_hit_type = nil
     trial_state._piyo_detected = false
     trial_state._piyo_frame = nil
+    trial_state._di_frame = nil
     trial_state._rec_frame_count = 0
 end
 
 local function start_trial(player_idx)
     restore_trial_vital()
-    trial_state.is_recording = false
-    trial_state._rec_gauges = nil
-    trial_state._rec_hit_type = nil
+    reset_trial_flags()
     trial_state.is_playing = true
     trial_state.playing_player = player_idx
-    trial_state.current_step = 1
-    trial_state._was_playing = false
+    trial_state._reset_grace = 15
 
     trial_state.live_start_pos_p1, trial_state.live_start_pos_p2, trial_state.live_start_pos_p1_raw, trial_state.live_start_pos_p2_raw = capture_current_positions()
 
-    -- Full display reset (Text log + D2D Raw and Animated)
-    players[player_idx].log = {}
-    players[player_idx].input_history_queue = {}
-    if ComboTrials_D2D then
-        pcall(function() ComboTrials_D2D.reset_anim() end)
-        pcall(function() ComboTrials_D2D.reset_raw() end)
-    end
+    reset_visual_state()
 
     save_dummy_counter_type()
     save_dummy_guard_type()
+    save_dummy_action_type()
 
     -- INJECT COUNTER STATE for the first step
     local first_ct = trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].counter_type or 0
     set_dummy_counter_type(first_ct)
+
+    -- INJECT DUMMY STANCE from step 1 (0=Stand, 1=Crouch)
+    local first_pose = trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].victim_pose
+    if first_pose == 1 then
+        set_dummy_action_type(1)
+    else
+        set_dummy_action_type(0)
+    end
 
     -- Guard: After 1st Hit (2) at trial start
     set_dummy_guard_type(2)
@@ -1545,12 +1725,7 @@ local function start_trial(player_idx)
 end
 
 local function cancel_recording()
-    trial_state.is_recording = false
-    trial_state.is_playing = false
-    trial_state.sequence = {}
-    trial_state.current_step = 1
-    -- Flush displayed input history
-    pcall(function() ComboTrials_D2D.reset_raw() end)
+    clear_combo_state()
 end
 
 local function stop_recording_and_save()
@@ -1614,21 +1789,23 @@ end
 
 local function reset_trial_steps()
     trial_state.current_step = 1
-	trial_state.ui_visual_step = 1     --- NEW
-    trial_state.floating_info = nil    --- NEW
+    trial_state.ui_visual_step = 1
+    trial_state.floating_info = nil
     trial_state._step1_wrong_pending = false
     trial_state._first_hit_landed = false
     trial_state._reset_grace = 15
+    trial_state.success_timer = 0
+    trial_state.fail_timer = 0
+    trial_state.fail_reason = nil
     for _, item in ipairs(trial_state.sequence) do
         item.actual_combo = 0
         item.has_hit = false
         item.last_frame_diff = nil
     end
-    -- Restore P2 health to exact combo damage level for the next attempt
     reinject_trial_vital()
-    -- Reset positions if forced pos / mirror is active
     apply_forced_position()
     trial_state._pending_reinject_settings = true
+    pcall(collectgarbage, "step", 16)
 end
 
 local function refresh_combo_list(recent_saved_player)
@@ -1679,17 +1856,18 @@ local function refresh_combo_list(recent_saved_player)
     if target_player == 1 and #file_system.saved_combos_paths_p2 == 0 then target_player = 0 end
     if target_player == 0 and #file_system.saved_combos_paths_p1 == 0 then target_player = 1 end
 
-    local path_to_load = nil
-    if target_player == 0 and #file_system.saved_combos_paths_p1 > 0 then
-        file_system.selected_file_idx_p1 = 1
-        path_to_load = file_system.saved_combos_paths_p1[1]
-    elseif target_player == 1 and #file_system.saved_combos_paths_p2 > 0 then
-        file_system.selected_file_idx_p2 = 1
-        path_to_load = file_system.saved_combos_paths_p2[1]
-    end
-
-    if not load_combo_from_file(path_to_load) then
-        clear_combo_state()
+    if not file_system._pending_select_path then
+        local path_to_load = nil
+        if target_player == 0 and #file_system.saved_combos_paths_p1 > 0 then
+            file_system.selected_file_idx_p1 = 1
+            path_to_load = file_system.saved_combos_paths_p1[1]
+        elseif target_player == 1 and #file_system.saved_combos_paths_p2 > 0 then
+            file_system.selected_file_idx_p2 = 1
+            path_to_load = file_system.saved_combos_paths_p2[1]
+        end
+        if not load_combo_from_file(path_to_load) then
+            clear_combo_state()
+        end
     end
 end
 
@@ -2104,22 +2282,26 @@ local function _ct_update_flip_live()
 end
 
 local function _ct_replay_bridge_poll()
-    local b = json.load_file("SF6_TrainingRemoteControl_data/Replay_WebBridge.json")
-    if b and b._web_timestamp then
-        if not _G._replay_bridge_ts then _G._replay_bridge_ts = 0 end
-        if b._web_timestamp > _G._replay_bridge_ts then
-            _G._replay_bridge_ts = b._web_timestamp
-            if b.cmd == "record_p1" then _G.ComboTrials_ReplaySavePlayer = 0; start_recording(0) end
-            if b.cmd == "record_p2" then _G.ComboTrials_ReplaySavePlayer = 1; start_recording(1) end
-            if b.cmd == "stop_save" then _G.ComboTrials_ReplaySavePlayer = trial_state.recording_player; stop_recording_and_save() end
-            if b.cmd == "cancel" then
-                local cp = trial_state.recording_player
-                cancel_recording()
-                _G.ComboTrials_ReplayCanceled = cp
-            end
-            if b.cmd == "hide_ui" then _G._tsm_hide_ui = not _G._tsm_hide_ui end
-        end
+    local f = io.open("SF6_TrainingRemoteControl_data/Replay_WebBridge.json", "r")
+    if not f then return end
+    local raw = f:read("*a"); f:close()
+    if not raw or #raw < 5 then return end
+    local ts = tonumber(raw:match('"_web_timestamp":(%d+)'))
+    if not ts then return end
+    if not _G._replay_bridge_ts then _G._replay_bridge_ts = 0 end
+    if ts <= _G._replay_bridge_ts then return end
+    _G._replay_bridge_ts = ts
+    local cmd = raw:match('"cmd":"([^"]*)"')
+    if not cmd or cmd == "" then return end
+    if cmd == "record_p1" then _G.ComboTrials_ReplaySavePlayer = 0; start_recording(0) end
+    if cmd == "record_p2" then _G.ComboTrials_ReplaySavePlayer = 1; start_recording(1) end
+    if cmd == "stop_save" then _G.ComboTrials_ReplaySavePlayer = trial_state.recording_player; stop_recording_and_save() end
+    if cmd == "cancel" then
+        local cp = trial_state.recording_player
+        cancel_recording()
+        _G.ComboTrials_ReplayCanceled = cp
     end
+    if cmd == "hide_ui" then _G._tsm_hide_ui = not _G._tsm_hide_ui end
 end
 
 local function _ct_detect_piyo()
@@ -2285,18 +2467,15 @@ end
 
 local function ct_handle_mode_exit()
     if _G.CurrentTrainerMode ~= 4 then
-        -- Clean shutdown if switching scripts during an active Trial/Demo
-        if trial_state.is_playing or (demo_state and demo_state.is_playing) then
-            trial_state.is_playing = false
-            trial_state._was_playing = false
-            if demo_state then demo_state.is_playing = false end
-
+        if trial_state.is_playing or trial_state.is_recording or (demo_state and demo_state.is_playing) then
+            reset_trial_flags()
+            reset_visual_state()
             restore_trial_vital()
             restore_dummy_counter_type()
             restore_dummy_guard_type()
+            restore_dummy_action_type()
             apply_current_position_refresh()
-        elseif trial_state.is_recording then
-            cancel_recording()
+            pcall(collectgarbage, "step", 16)
         end
         trial_state._vital_initialized = false
         return
@@ -2464,6 +2643,9 @@ local function ct_handle_hp_injection()
                 end
                 if trial_state._pending_attacker_hp then
                     inject_player_vital(attacker_idx, trial_state._pending_attacker_hp)
+                end
+                if trial_state._pending_attacker_drive or trial_state._pending_attacker_super then
+                    inject_player_gauges(attacker_idx, trial_state._pending_attacker_drive, trial_state._pending_attacker_super)
                 end
             end
         end
@@ -2669,7 +2851,8 @@ local function ct_player_validation(p_idx, p_state)
 
         if #trial_state.sequence > 0 and trial_state.current_step > #trial_state.sequence then
             local last_step = trial_state.sequence[#trial_state.sequence]
-            if trial_state.success_timer == 0 and not is_hold_pending and not (trial_state.fail_timer and trial_state.fail_timer > 0) and (not last_step.expected_combo or last_step.expected_combo == 0 or (_pf.current_combo or 0) >= last_step.expected_combo) then
+            local observed_combo = math.max(_pf.current_combo or 0, p_state.last_combo_count or 0, last_step.actual_combo or 0)
+            if trial_state.success_timer == 0 and not is_hold_pending and not (trial_state.fail_timer and trial_state.fail_timer > 0) and (not last_step.expected_combo or last_step.expected_combo == 0 or observed_combo >= last_step.expected_combo) then
                 trial_state.success_timer = d2d_cfg.fail_display_frames or 120
             end
         end
@@ -2830,7 +3013,9 @@ local function ct_player_input_buffer(p_state)
     p_state.buffer_hold_frames = p_state.buffer_hold_frames or 0
     if p_state.buffer_is_committed == nil then p_state.buffer_is_committed = true end
 
-    local actions_to_process = {}
+    local actions_to_process = p_state._act_queue
+    if not actions_to_process then actions_to_process = {}; p_state._act_queue = actions_to_process end
+    for i = 1, #actions_to_process do actions_to_process[i] = nil end
     local started_new_action = false
     if _pf.act_id ~= p_state.buffer_act_id or (_pf.act_frame < p_state.buffer_act_frame and _pf.act_frame < 2) then
         started_new_action = true
@@ -3315,6 +3500,12 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                         trial_state.sequence[#trial_state.sequence].damage_at_step = math.max(0, rg.victim_hp - v_hp_now)
                     end
 
+                    local victim_pose = 0
+                    pcall(function()
+                        local v = (trial_state.recording_player == 0) and GS.p2 or GS.p1
+                        if v then victim_pose = tonumber(tostring(v:get_field("pose_st"))) or 0 end
+                    end)
+
                     table.insert(trial_state.sequence, {
                         id = act_id,
                         motion = motion_str,
@@ -3330,8 +3521,9 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                         has_hit = false,
                         delay_from_prev = delay,
                         facing_left = is_facing_left,
-                        counter_type = 0, -- will be updated on hit (CH/PC detected via flags)
-                        next_auto_id = nil -- Will be filled if the next action is automatic
+                        counter_type = 0,
+                        next_auto_id = nil,
+                        victim_pose = victim_pose
                     })
                     trial_step_idx = #trial_state.sequence
                 elseif trial_state.is_playing and p_idx == trial_state.playing_player and #trial_state.sequence > 0 then
@@ -3379,12 +3571,19 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                     local prev_step = trial_state.sequence[trial_state.current_step - 1]
                                     if prev_step and prev_step.expected_combo ~= nil then
                                         local skip_strict_check = (prev_step.is_projectile_hit == true)
-                                        if not skip_strict_check and (_pf.current_combo or 0) ~= prev_step.expected_combo then
-                                            if _pf.opponent_knocked_down and (_pf.current_combo or 0) == 0 and prev_step.expected_combo == 0 then
+                                        local combo_now = _pf.current_combo or 0
+                                        if not skip_strict_check and combo_now ~= prev_step.expected_combo then
+                                            local current_hit_already_counted =
+                                                (expected.expected_combo or 0) > prev_step.expected_combo
+                                                and combo_now > prev_step.expected_combo
+                                                and combo_now <= (expected.expected_combo or 0)
+                                            if current_hit_already_counted then
                                                 combo_ok = true
-                                            elseif prev_step.expected_combo == 0 and (_pf.current_combo or 0) > 0 then
+                                            elseif _pf.opponent_knocked_down and combo_now == 0 and prev_step.expected_combo == 0 then
                                                 combo_ok = true
-                                            elseif (_pf.current_combo or 0) == 0 and prev_step.expected_combo > 0 then
+                                            elseif prev_step.expected_combo == 0 and combo_now > 0 then
+                                                combo_ok = true
+                                            elseif combo_now == 0 and prev_step.expected_combo > 0 then
                                                 -- Oki / cross-up setup: combo dropped naturally (opponent got up)
                                                 combo_ok = true
                                             elseif expected and expected.expected_combo == 0 then
@@ -3416,6 +3615,11 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                     trial_step_idx = trial_state.current_step
                                     trial_state.sequence[trial_step_idx].has_hit = false
                                     trial_state.sequence[trial_step_idx].last_frame_diff = frame_diff
+                                    if demo_state and demo_state.is_playing and demo_state._di_triggered
+                                        and demo_state._di_step_idx and trial_step_idx == demo_state._di_step_idx + 1
+                                        and (_G._demo_post_di_delay_ms or 0) == 0 then
+                                        _G._demo_post_di_delay_ms = math.floor(-frame_diff * 16.67 + 0.5)
+                                    end
                                     trial_state.current_step = trial_state.current_step + 1
 
                                     -- Apply the counter of the next step to execute
@@ -3506,6 +3710,23 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                     trial_state.fail_reason = nil
                                     reset_trial_steps()
                                     trial_step_idx = nil
+                                elseif is_current_dr then
+                                    -- DR arrived early: look ahead for the DRC step and skip to after it
+                                    local found_dr_step = false
+                                    for look = trial_state.current_step, math.min(trial_state.current_step + 2, #trial_state.sequence) do
+                                        local ls = trial_state.sequence[look]
+                                        if ls and (is_drive_rush_id(ls.id) or is_drive_rush_motion(ls.motion)) then
+                                            trial_state._step1_wrong_pending = false
+                                            trial_state.last_played_frame = engine_frame_count
+                                            trial_state.current_step = look + 1
+                                            found_dr_step = true
+                                            break
+                                        end
+                                    end
+                                    if not found_dr_step then
+                                        trial_state.fail_timer = d2d_cfg.fail_display_frames or 120
+                                        trial_state.fail_reason = "WRONG MOVE"
+                                    end
                                 else
                                     if trial_state.current_step == 1 then
                                         trial_state._step1_wrong_pending = true
@@ -3670,25 +3891,22 @@ re.on_frame(function()
         pcall(_ct_update_flip_live)
     end
 
-    -- REPLAY REMOTE STATE (before mode gate so it always publishes)
-    if not _G._replay_web_counter then _G._replay_web_counter = 0 end
-    _G._replay_web_counter = _G._replay_web_counter + 1
-    if _G._replay_web_counter >= 10 then
-        _G._replay_web_counter = 0
-        pcall(function()
-            json.dump_file("SF6_TrainingRemoteControl_data/Replay_WebState.json", {
-                in_replay = _in_replay,
-                is_recording = _in_replay and trial_state.is_recording or false,
-                recording_player = _in_replay and trial_state.recording_player or -1,
-                hide_ui = _G._tsm_hide_ui or false,
-            })
-        end)
-    end
-
-
-    -- REPLAY REMOTE BRIDGE
-    if _in_replay then
-        pcall(_ct_replay_bridge_poll)
+    if _G._remote_control_loaded then
+        local wf = _G._web_frame or 0
+        if wf % 60 == 40 then
+            pcall(function()
+                local f = io.open("SF6_TrainingRemoteControl_data/Replay_WebState.json", "w")
+                if not f then return end
+                f:write('{"in_replay":' .. tostring(_in_replay))
+                f:write(',"is_recording":' .. tostring(_in_replay and trial_state.is_recording or false))
+                f:write(',"recording_player":' .. (_in_replay and trial_state.recording_player or -1))
+                f:write(',"hide_ui":' .. tostring(_G._tsm_hide_ui or false) .. '}')
+                f:close()
+            end)
+        end
+        if _in_replay and wf % 60 == 45 then
+            pcall(_ct_replay_bridge_poll)
+        end
     end
 
 
@@ -3710,6 +3928,9 @@ re.on_frame(function()
         trial_state._rec_frame_count = trial_state._rec_frame_count + 1
         if not trial_state._piyo_detected then
             pcall(_ct_detect_piyo)
+        end
+        if not trial_state._di_frame and GS.p1_act_st == 11 then
+            trial_state._di_frame = trial_state._rec_frame_count
         end
     end
 
@@ -3801,6 +4022,7 @@ function save_trial_sequence()
             if trial_state._piyo_detected then
                 trial_state.sequence[1].has_piyo = true
                 trial_state.sequence[1].piyo_frame = trial_state._piyo_frame
+                trial_state.sequence[1].di_frame = trial_state._di_frame
             end
         end
 
@@ -3821,11 +4043,21 @@ function save_trial_sequence()
             stats.super_used = math.max(0, init.attacker_super - (init.min_atk_super or init.attacker_super))
         end
         trial_state.sequence[1].combo_stats = stats
+        if (trial_state.sequence[1].counter_type == nil or trial_state.sequence[1].counter_type == 0) and stats.hit_type then
+            local ct = 0
+            if stats.hit_type == "PC" then ct = 2 elseif stats.hit_type == "CH" then ct = 1 end
+            if ct ~= 0 then trial_state.sequence[1].counter_type = ct end
+        end
         if logger_state.last_export_name then
             trial_state.sequence[1].raw_input_file = logger_state.last_export_name
         end
         trial_state._rec_gauges = nil
         trial_state._rec_hit_type = nil
+    end
+
+    local meta = build_auto_xt_meta()
+    if type(trial_state.sequence[1]) == "table" then
+        trial_state.sequence[1]._xt_meta = meta
     end
 
     if fs.create_dir then
@@ -3843,30 +4075,63 @@ function save_trial_sequence()
     sa_bars = sa_bars:gsub("%.0$", "")
 
     -- Detect OKI: combo was active (>0), drops to 0, then a later step hits
+    -- Ignore DRC steps (motion contains "DRC"/"DR"/"DRIVE RUSH") which temporarily drop combo count
     local has_oki = false
     local saw_combo = false
     local combo_dropped = false
     for _, step in ipairs(trial_state.sequence) do
-        if (step.expected_combo or 0) > 0 then saw_combo = true end
-        if saw_combo and (step.expected_combo or 0) == 0 then combo_dropped = true end
+        local ec = step.expected_combo or 0
+        if ec > 0 then
+            saw_combo = true
+            combo_dropped = false
+        end
+        if saw_combo and ec == 0 and not is_drive_rush_motion(step.motion) then
+            combo_dropped = true
+        end
         if combo_dropped and step.has_hit then has_oki = true; break end
     end
 
-    local type_tag = has_oki and "_OKI" or "_COMBO"
-    local fname = char_name .. type_tag .. "_" .. dmg .. "_D" .. drive_bars .. "_SA" .. sa_bars .. ".json"
+    local has_stun = trial_state.sequence[1] and trial_state.sequence[1].has_piyo
+    local type_tag = has_stun and "_STUN" or (has_oki and "_OKI" or "_COMBO")
+    local starter_motion = get_safe_filename_motion(trial_state.sequence)
+    local title_suffix = ""
+    local meta_title = type(meta) == "table" and meta.title or nil
+    if trim_string(meta_title) ~= "" then
+        local safe_title = sanitize_ascii_filename_part(meta_title, 32)
+        if safe_title ~= "" then title_suffix = "_" .. safe_title end
+    end
+    local base_name = char_name .. type_tag .. "_" .. starter_motion .. "_" .. dmg .. "_D" .. drive_bars .. "_SA" .. sa_bars .. title_suffix
+    local fname = base_name .. ".json"
     local path = "TrainingComboTrials_data/CustomCombos/" .. char_name .. "/" .. fname
 
     -- Avoid overwriting: append timestamp if file exists
     local existing = json.load_file(path)
     if existing then
         local ts = os.date("%Y%m%d_%H%M%S")
-        fname = char_name .. type_tag .. "_" .. dmg .. "_D" .. drive_bars .. "_SA" .. sa_bars .. "_" .. ts .. ".json"
+        fname = base_name .. "_" .. ts .. ".json"
         path = "TrainingComboTrials_data/CustomCombos/" .. char_name .. "/" .. fname
     end
 
     assign_groups(trial_state.sequence)
     json.dump_file(path, trial_state.sequence)
-    refresh_combo_list(rec_p) -- Inject the ID of the player who just saved
+    file_system._pending_select_path = path
+    refresh_combo_list(rec_p)
+
+    local paths = rec_p == 0 and file_system.saved_combos_paths_p1 or file_system.saved_combos_paths_p2
+    local saved_fname = fname
+    for idx, combo_path in ipairs(paths) do
+        local list_fname = combo_path:match("([^/\\]+)$") or combo_path
+        if list_fname == saved_fname then
+            if rec_p == 0 then
+                file_system.selected_file_idx_p1 = idx
+            else
+                file_system.selected_file_idx_p2 = idx
+            end
+            break
+        end
+    end
+    file_system._pending_select_path = nil
+    load_combo_from_file(path, true)
 
     _G.ComboTrials_LastSavedFilename = fname
     return path
@@ -3885,6 +4150,14 @@ ctx.cancel_recording = cancel_recording
 ctx.refresh_combo_list = refresh_combo_list
 ctx.restore_trial_vital = restore_trial_vital
 ctx.save_d2d_config = save_d2d_config
+ctx.xt_settings = xt_settings
+ctx.save_xt_settings = function(author)
+    if type(author) == "string" and trim_string(author) ~= "" then
+        xt_settings.default_author = trim_string(author)
+    end
+    if fs and fs.create_dir then pcall(fs.create_dir, "TrainingComboTrials_data") end
+    json.dump_file(XT_SETTINGS_FILE, xt_settings)
+end
 ctx.get_exc_filename = get_exc_filename
 ctx.ui_state = ui_state
 ctx.apply_forced_position = apply_forced_position
@@ -3958,8 +4231,7 @@ end
 
 local function start_demo()
     if not trial_state.sequence or #trial_state.sequence == 0 then return end
-    if trial_state.sequence[1] and trial_state.sequence[1].has_piyo and not _G._allow_stun_demo then return end
-    
+    if trial_state.sequence[1] and trial_state.sequence[1].has_piyo then return end
     -- 1. Check for embedded timeline directly in the file (Merged files)
     local timeline = trial_state.sequence[1].timeline
     
@@ -4008,14 +4280,27 @@ local function start_demo()
     demo_state.current_step = 1
     demo_state.p1_mask = 0
     demo_state._total_frames = 0
-    demo_state._piyo_waiting = false
-    demo_state._piyo_triggered = false
+    demo_state._di_delay_remaining = 0
+    demo_state._di_step_idx = nil
+    demo_state._di_triggered = false
+
+    if trial_state.sequence then
+        for si, step in ipairs(trial_state.sequence) do
+            if step.motion then
+                local m = step.motion:upper()
+                if m == "DI" or m:find("HPHK") then
+                    demo_state._di_step_idx = si
+                    break
+                end
+            end
+        end
+    end
 
     print("[ComboTrials] DEMO Started for P1")
 end
 
 ctx.demo_state = demo_state
-ctx.stop_demo = function() demo_state.is_playing = false end
+ctx.stop_demo = function() demo_state.is_playing = false; _G._demo_post_di_delay_ms = 0 end
 ctx.start_demo = start_demo
 
 -- (Keep sf6_menu_state below this as before)
@@ -4093,7 +4378,7 @@ local _load_count   = 0
 -- end)
 
 
-if not _G._allow_stun_demo then _G._allow_stun_demo = false end
+if not _G._demo_post_di_delay_ms then _G._demo_post_di_delay_ms = 0 end
 
 local function _ct_get_field(obj, name)
     return obj:get_field(name)
@@ -4229,6 +4514,10 @@ table.insert(_G._shared_input_pre, function(p_id, args)
                     demo_state.countdown = demo_state.countdown - 1
                     demo_state.p1_mask = 0
                 else
+                    if demo_state._di_delay_remaining and demo_state._di_delay_remaining > 0 then
+                        demo_state._di_delay_remaining = demo_state._di_delay_remaining - 1
+                        demo_state.p1_mask = 0
+                    else
                     local step = demo_state.sequence[demo_state.current_step]
                     if step then
                         demo_state.p1_mask = step.mask
@@ -4237,13 +4526,44 @@ table.insert(_G._shared_input_pre, function(p_id, args)
                             demo_state.current_step = demo_state.current_step + 1
                             demo_state.current_frame = 0
                         end
+                        local _di_victim = (trial_state.playing_player == 0) and GS.p2 or GS.p1
+                        local _di_victim_act = nil
+                        if _di_victim and _di_victim.mpActParam and _di_victim.mpActParam.ActionPart then
+                            local eng = _di_victim.mpActParam.ActionPart._Engine
+                            if eng then _di_victim_act = eng:get_ActionID() end
+                        end
+                        if demo_state._di_step_idx and not demo_state._di_triggered
+                            and trial_state.current_step > demo_state._di_step_idx
+                            and _di_victim_act and (_di_victim_act == 293 or _di_victim_act == 294) then
+                            demo_state._di_triggered = true
+                            local delay_ms = _G._demo_post_di_delay_ms or 0
+                            if delay_ms > 0 then
+                                demo_state._di_delay_remaining = math.floor(delay_ms / 16.67 + 0.5)
+                            elseif delay_ms < 0 then
+                                local skip = math.floor(-delay_ms / 16.67 + 0.5)
+                                local before_step = demo_state.current_step
+                                local before_frame = demo_state.current_frame
+                                for _ = 1, skip do
+                                    local s = demo_state.sequence[demo_state.current_step]
+                                    if not s then break end
+                                    demo_state.current_frame = demo_state.current_frame + 1
+                                    if demo_state.current_frame >= s.frames then
+                                        demo_state.current_step = demo_state.current_step + 1
+                                        demo_state.current_frame = 0
+                                    end
+                                end
+                                _G._di_skip_debug = string.format("SKIPPED %d frames (step %d/%d -> %d/%d)", skip, before_step, before_frame, demo_state.current_step, demo_state.current_frame)
+                            end
+                        end
                     else
                         demo_state.current_step = 1
                         demo_state.current_frame = 0
                         demo_state.countdown = 10
                         demo_state.p1_mask = 0
+                        demo_state._di_triggered = false
                         reset_trial_steps()
                     end
+                    end -- di_delay
                 end
             else
                 demo_state.p1_mask = 0

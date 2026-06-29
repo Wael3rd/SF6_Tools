@@ -647,6 +647,7 @@ _G._rsm_api = {
         local result = apply_data_to_character(current_p2_id, data, filename)
         if result:find("^Loaded:") then
             loaded_file_name = filename:gsub("%.json$", "")
+            custom_file_input = filename
         end
         return result
     end,
@@ -1468,16 +1469,14 @@ local function _rsm_detect_overlays()
 end
 
 re.on_frame(function()
-
-    -- Overlay detection: pause + Recording/Reversal Settings tab
     show_slot_overlay = false
     show_reversal_overlay = false
     show_rev_picker_overlay = false
     reversal_slot_map = {}
-    pcall(_rsm_detect_overlays)
     gui_has_ui11265 = false
     gui_has_picker = false
-
+    if not GS.in_pause_menu then return end
+    pcall(_rsm_detect_overlays)
 end)
 
 local picker_elements = { ui11261=true, ui11262=true, ui11263=true, ui11264=true, ui11265=true, ui11266=true }
@@ -1496,6 +1495,7 @@ local function _rsm_scan_gui_element(element)
 end
 
 re.on_pre_gui_draw_element(function(element, context)
+    if not GS.in_pause_menu then return true end
     if gui_has_ui11265 and gui_has_picker then return true end
     pcall(_rsm_scan_gui_element, element)
     return true
@@ -1592,6 +1592,18 @@ end
 -- =========================================================
 local _rsm_web_counter = 0
 local _rsm_bridge_ts = 0
+local _rsm_last_web_state = ""
+local _rsm_bridge_file_size = -1
+local _seq_bridge_file_size = -1
+
+local function _file_size_changed(path, last_size)
+    local f = io.open(path, "rb")
+    if not f then return false, last_size end
+    local size = f:seek("end")
+    f:close()
+    if size == last_size then return false, last_size end
+    return true, size
+end
 
 pcall(function()
     local b = json.load_file("SF6_TrainingRemoteControl_data/RSM_WebBridge.json")
@@ -1618,6 +1630,11 @@ end
 local function _rsm_write_web_state()
         local char_name = ""
         if current_p2_id ~= -1 then char_name = get_char_name(current_p2_id) end
+
+        local fingerprint = char_name .. "|" .. (custom_file_input or "") .. "|" .. (status_msg or "") .. "|" .. tostring(activate_on_load)
+        for i = 0, 7 do fingerprint = fingerprint .. "|" .. (slot_names[i] or "") end
+        if fingerprint == _rsm_last_web_state then return end
+        _rsm_last_web_state = fingerprint
 
         local slot_list = {}
         pcall(_rsm_collect_slot_list, slot_list)
@@ -1654,6 +1671,10 @@ local function _rsm_read_web_bridge()
             custom_file_input = b.file
             for i, f in ipairs(filtered_file_list or {}) do
                 if f == b.file then dropdown_selected_index = i + 1; break end
+            end
+        elseif b.cmd == "import_activate" then
+            if b.file and b.file ~= "" and _G._rsm_api then
+                status_msg = _G._rsm_api.import_and_activate(b.file)
             end
         elseif b.cmd == "import" then
             if b.file and b.file ~= "" then
@@ -1745,10 +1766,13 @@ local function _rsm_read_web_bridge()
 
 end
 
+local _rsm_read_counter = 0
 re.on_frame(function()
     _rsm_web_counter = _rsm_web_counter + 1
     if _rsm_web_counter < 10 then return end
     _rsm_web_counter = 0
+
+    if not _G.TrainingModeActive then return end
 
     if current_p2_id ~= last_filtered_p2_id then
         refresh_file_list()
@@ -1758,14 +1782,27 @@ re.on_frame(function()
         last_filtered_p2_id = current_p2_id
     end
 
-    pcall(_rsm_write_web_state)
-    pcall(_rsm_read_web_bridge)
+    -- pcall(_rsm_write_web_state)
+end)
+
+local _rsm_read_tick = 0
+re.on_frame(function()
+    _rsm_read_tick = _rsm_read_tick + 1
+    if _rsm_read_tick < 60 then return end
+    _rsm_read_tick = 0
+    if not _G.TrainingModeActive then return end
+    -- pcall(_rsm_read_web_bridge)
 end)
 
 -- =========================================================
 -- INPUT SEQUENCER: WebState + WebBridge (on_frame)
 -- =========================================================
+local _rsm_last_seq_state = ""
 local function _rsm_write_seq_state()
+        local fingerprint = tostring(seq_state.is_playing) .. "|" .. tostring(seq_state.current_idx) .. "|" .. tostring(seq_state.loop) .. "|" .. tostring(seq_state.player_id) .. "|" .. #seq_state.lines
+        if fingerprint == _rsm_last_seq_state then return end
+        _rsm_last_seq_state = fingerprint
+
         local seq_lines_out = {}
         for _, l in ipairs(seq_state.lines) do
             table.insert(seq_lines_out, { input = l.input, frames = l.frames, wait = l.wait or false })
@@ -1837,12 +1874,21 @@ local function _rsm_read_seq_bridge()
 end
 
 local _seq_web_tick = 0
+local _seq_read_counter = 0
 re.on_frame(function()
     _seq_web_tick = _seq_web_tick + 1
     if _seq_web_tick % 10 ~= 0 then return end
+    if not _G.TrainingModeActive then return end
+    -- pcall(_rsm_write_seq_state)
+end)
 
-    pcall(_rsm_write_seq_state)
-    pcall(_rsm_read_seq_bridge)
+local _seq_read_tick = 0
+re.on_frame(function()
+    _seq_read_tick = _seq_read_tick + 1
+    if _seq_read_tick < 60 then return end
+    _seq_read_tick = 0
+    if not _G.TrainingModeActive then return end
+    -- pcall(_rsm_read_seq_bridge)
 end)
 
 -- =========================================================

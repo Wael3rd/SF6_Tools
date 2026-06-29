@@ -334,74 +334,63 @@ end
 -- ==========================================
 -- FLOATING SESSION WINDOW (ComboTrials style)
 -- ==========================================
-local float_ui_font = nil    -- Window font (same as ComboTrials custom_ui_font)
-local float_btn_font = nil   -- Button font (same as ComboTrials sf6_btn_font)
+local float_ui_font = nil
+local float_btn_font = nil
 local float_font_attempted = false
 local float_last_sh = 0
 
-function UI.begin_floating_window(window_name)
-    local sw, sh = UI.get_screen_size()
+local BAR_BG     = 0xFC800024   -- ABGR: dark purple, ~99% opaque
+local BAR_BORDER = 0xFFEF51EF   -- ABGR: neon pink
 
-    -- Load fonts (same as ComboTrials: ui=20, btn=SF6_college 22)
+local function _load_float_fonts(sh)
     if not float_font_attempted or sh ~= float_last_sh then
         float_font_attempted = true
         float_last_sh = sh
-        local font_scale = sh / 1080.0
-        pcall(function() float_ui_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", math.max(10, math.floor(20 * font_scale))) end)
-        pcall(function() float_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * font_scale))) end)
+        local s = sh / 1080.0
+        pcall(function() float_ui_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", math.max(10, math.floor(20 * s))) end)
+        pcall(function() float_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * s))) end)
     end
+end
 
-    -- All transparent — no ghost when script stops running
-    imgui.push_style_color(2,  0x00000000)   -- WindowBg transparent
-    imgui.push_style_color(5,  0x00000000)   -- Border transparent
-    imgui.push_style_color(7,  0x00000000)   -- FrameBg transparent
-    imgui.push_style_color(8,  0x00000000)   -- TitleBg transparent
-    imgui.push_style_var(4, 0.0)             -- WindowBorderSize = 0
-    imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))  -- WindowPadding
-
+local function _push_bar_style(sw, sh)
+    imgui.push_style_color(2, BAR_BG)       -- WindowBg
+    imgui.push_style_color(5, BAR_BORDER)    -- Border
+    imgui.push_style_color(7, 0x00000000)    -- FrameBg
+    imgui.push_style_color(8, 0x00000000)    -- TitleBg
+    imgui.push_style_var(4, 1.0)             -- WindowBorderSize
+    imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))
     if float_ui_font then imgui.push_font(float_ui_font) end
+end
 
-    -- Full width, same height as ComboTrials single-line bar, fixed at bottom
+local function _pop_bar_style()
+    if float_ui_font then imgui.pop_font() end
+    imgui.pop_style_var(2)
+    imgui.pop_style_color(4)
+end
+
+function UI.begin_floating_window(window_name)
+    local sw, sh = UI.get_screen_size()
+    _load_float_fonts(sh)
+    _push_bar_style(sw, sh)
     local target_h = sh * 0.0444
-    imgui.set_next_window_size(Vector2f.new(sw, target_h), 1)      -- Always
-    imgui.set_next_window_pos(Vector2f.new(0, sh - target_h), 1)   -- Always
-    -- 143 = NoTitleBar(1) + NoResize(2) + NoMove(4) + NoScrollbar(8) + NoBackground(128)
-    local visible = imgui.begin_window(window_name, true, 143)
+    imgui.set_next_window_size(Vector2f.new(sw, target_h), 1)
+    imgui.set_next_window_pos(Vector2f.new(0, sh - target_h), 1)
+    local visible = imgui.begin_window(window_name, true, 15)
     if not visible then _G.TrainingFloatingBar = nil end
     return visible, sw, sh
 end
 
 function UI.end_floating_window()
     imgui.end_window()
-    if float_ui_font then imgui.pop_font() end
-    imgui.pop_style_var(2)   -- WindowPadding + WindowBorderSize
-    imgui.pop_style_color(4)
+    _pop_bar_style()
 end
 
--- Top floating window (vertical mirror of the bottom one)
 function UI.begin_floating_window_top(window_name, width_pct, height_pct)
     local sw, sh = UI.get_screen_size()
     width_pct = width_pct or 1.0
     height_pct = height_pct or 0.0444
-
-    -- Load fonts (reuses same font cache as bottom bar)
-    if not float_font_attempted or sh ~= float_last_sh then
-        float_font_attempted = true
-        float_last_sh = sh
-        local font_scale = sh / 1080.0
-        pcall(function() float_ui_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", math.max(10, math.floor(20 * font_scale))) end)
-        pcall(function() float_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * font_scale))) end)
-    end
-
-    imgui.push_style_color(2,  0x00000000)   -- WindowBg transparent
-    imgui.push_style_color(5,  0x00000000)   -- Border transparent
-    imgui.push_style_color(7,  0x00000000)   -- FrameBg transparent
-    imgui.push_style_color(8,  0x00000000)   -- TitleBg transparent
-    imgui.push_style_var(4, 0.0)             -- WindowBorderSize = 0
-    imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))  -- WindowPadding
-
-    if float_ui_font then imgui.push_font(float_ui_font) end
-
+    _load_float_fonts(sh)
+    _push_bar_style(sw, sh)
     local real_w, real_h = sw, sh
     if imgui.get_display_size then
         local result = imgui.get_display_size()
@@ -414,48 +403,19 @@ function UI.begin_floating_window_top(window_name, width_pct, height_pct)
     local target_h = real_h * height_pct
     imgui.set_next_window_size(Vector2f.new(target_w, target_h))
     imgui.set_next_window_pos(Vector2f.new((real_w - target_w) / 2, 0))
-    local visible = imgui.begin_window(window_name, true, 143)  -- NoBackground
+    local visible = imgui.begin_window(window_name, true, 15)
     return visible, sw, sh
 end
 
 function UI.end_floating_window_top()
     imgui.end_window()
-    if float_ui_font then imgui.pop_font() end
-    imgui.pop_style_var(2)
-    imgui.pop_style_color(4)
-end
-
-UI.neon_colors = {
-    bg = 0xFC240080,
-    border = 0xFFEF51EF,
-}
-
-local function argb_to_abgr(c)
-    local a = (c >> 24) & 0xFF
-    local r = (c >> 16) & 0xFF
-    local g = (c >> 8) & 0xFF
-    local b = c & 0xFF
-    return (a << 24) | (b << 16) | (g << 8) | r
-end
-
-local function draw_neon_border_imgui()
-    local draw = imgui.get_window_draw_list()
-    if not draw then return end
-    local pos = imgui.get_window_pos()
-    local sz = imgui.get_window_size()
-    local mx, my, mw, mh = pos.x, pos.y, sz.x, sz.y
-    local c = UI.neon_colors
-    local bg = argb_to_abgr(c.bg)
-    local border = argb_to_abgr(c.border)
-    draw:add_rect_filled(Vector2f.new(mx, my), Vector2f.new(mx + mw, my + mh), bg)
-    draw:add_rect(Vector2f.new(mx, my), Vector2f.new(mx + mw, my + mh), border)
+    _pop_bar_style()
 end
 
 function UI.draw_floating_bg_top()
     local sz = imgui.get_window_size()
     local pos = imgui.get_window_pos()
     UI.publish_rect(pos.x, pos.y, sz.x, sz.y)
-    draw_neon_border_imgui()
     _G.TrainingBarsDrawn = true
 end
 
@@ -463,7 +423,6 @@ function UI.draw_floating_bg()
     local sz = imgui.get_window_size()
     local pos = imgui.get_window_pos()
     UI.publish_rect(pos.x, pos.y, sz.x, sz.y)
-    draw_neon_border_imgui()
     _G.TrainingBarsDrawn = true
 end
 

@@ -1031,35 +1031,22 @@ re.on_frame(function()
             return
         end
 
-        imgui.push_style_color(2, 0x00000000)   -- WindowBg transparent
-        imgui.push_style_color(5, 0x00000000)   -- Border transparent
+        imgui.push_style_color(2, 0xFC800024)   -- WindowBg (dark purple)
+        imgui.push_style_color(5, 0xFFEF51EF)   -- Border (neon pink)
         imgui.push_style_color(7, 0x00000000)   -- FrameBg transparent
         imgui.push_style_color(8, 0x00000000)   -- TitleBg transparent
-        imgui.push_style_var(4, 0.0)            -- WindowBorderSize = 0
-		imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))
+        imgui.push_style_var(4, 1.0)            -- WindowBorderSize
+        imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))
 
-        -- Centered, fixed at bottom
-        imgui.set_next_window_size(Vector2f.new(target_w, target_h), 1)  -- 1 = Always
-        imgui.set_next_window_pos(Vector2f.new(target_x, sh - target_h), 1)  -- 1 = Always
+        imgui.set_next_window_size(Vector2f.new(target_w, target_h), 1)
+        imgui.set_next_window_pos(Vector2f.new(target_x, sh - target_h), 1)
 
         if custom_ui_font then imgui.push_font(custom_ui_font) end
 
-        -- 143 = NoTitleBar(1) + NoResize(2) + NoMove(4) + NoScrollbar(8) + NoBackground(128)
-        local visible = imgui.begin_window("ComboTrialsFloating", true, 143)
+        local visible = imgui.begin_window("ComboTrialsFloating", true, 15)
 
         local pos = imgui.get_window_pos()
         local size = imgui.get_window_size()
-
-        -- Draw neon border via ImGui draw list
-        local draw = imgui.get_window_draw_list()
-        if draw then
-            local SharedUI = require("func/Training_SharedUI")
-            local c = SharedUI.neon_colors
-            local function to_abgr(v) local a=(v>>24)&0xFF; local r=(v>>16)&0xFF; local g=(v>>8)&0xFF; local b=v&0xFF; return (a<<24)|(b<<16)|(g<<8)|r end
-            local mx, my, mw, mh = pos.x, pos.y, size.x, size.y
-            draw:add_rect_filled(Vector2f.new(mx, my), Vector2f.new(mx + mw, my + mh), to_abgr(c.bg))
-            draw:add_rect(Vector2f.new(mx, my), Vector2f.new(mx + mw, my + mh), to_abgr(c.border))
-        end
         _G.TrainingBarsDrawn = true
 
         -- SAVE BLOCKED DURING COOLDOWN (Prevents coordinate corruption)
@@ -1372,6 +1359,14 @@ local function draw_combo_trials_menu_ui()
             c, v = imgui.drag_float("Cartouche Offset Y", d2d_cfg.cartouche_offset_y, 0.001, -0.1, 0.1); if c then
                 d2d_cfg.cartouche_offset_y = v; changed = true
             end
+            if not d2d_cfg.bar_img_offset_x then d2d_cfg.bar_img_offset_x = 0 end
+            c, v = imgui.drag_float("Bar Image Offset X", d2d_cfg.bar_img_offset_x, 0.001, -0.2, 0.2); if c then
+                d2d_cfg.bar_img_offset_x = v; changed = true
+            end
+            if not d2d_cfg.bar_img_offset_y then d2d_cfg.bar_img_offset_y = 0 end
+            c, v = imgui.drag_float("Bar Image Offset Y", d2d_cfg.bar_img_offset_y, 0.001, -0.2, 0.2); if c then
+                d2d_cfg.bar_img_offset_y = v; changed = true
+            end
             c, v = imgui.drag_int("Visible Trial Lines", d2d_cfg.trial_visible_steps, 1, 1, 30); if c then
                 d2d_cfg.trial_visible_steps = v; changed = true
             end
@@ -1379,6 +1374,43 @@ local function draw_combo_trials_menu_ui()
             c, v = imgui.drag_float("Bottom Bar Width", d2d_cfg.bar_width_pct, 0.01, 0.3, 1.0, "%.2f"); if c then
                 d2d_cfg.bar_width_pct = v; changed = true
             end
+
+            imgui.separator()
+            imgui.text_colored("--- Bar Image Debug ---", 0xFF00FFFF)
+
+            if not d2d_cfg.done_bar_height then d2d_cfg.done_bar_height = 1.0 end
+            c, v = imgui.drag_float("Done Bar Height", d2d_cfg.done_bar_height, 0.01, 0.1, 3.0); if c then
+                d2d_cfg.done_bar_height = v; changed = true
+            end
+            if not d2d_cfg.done_bar_offset_x then d2d_cfg.done_bar_offset_x = 0 end
+            c, v = imgui.drag_float("Done Bar Offset X", d2d_cfg.done_bar_offset_x, 0.001, -0.2, 0.2); if c then
+                d2d_cfg.done_bar_offset_x = v; changed = true
+            end
+            if not d2d_cfg.done_bar_offset_y then d2d_cfg.done_bar_offset_y = 0 end
+            c, v = imgui.drag_float("Done Bar Offset Y", d2d_cfg.done_bar_offset_y, 0.001, -0.2, 0.2); if c then
+                d2d_cfg.done_bar_offset_y = v; changed = true
+            end
+            if not d2d_cfg.overlay_height then d2d_cfg.overlay_height = 1.0 end
+            c, v = imgui.drag_float("Overlay Height", d2d_cfg.overlay_height, 0.01, 0.1, 3.0); if c then
+                d2d_cfg.overlay_height = v; changed = true
+            end
+            if not d2d_cfg.overlay_offset_y then d2d_cfg.overlay_offset_y = 0 end
+            c, v = imgui.drag_float("Overlay Offset Y", d2d_cfg.overlay_offset_y, 0.001, -0.1, 0.1); if c then
+                d2d_cfg.overlay_offset_y = v; changed = true
+            end
+
+            imgui.text_colored("--- Preview Bar Type ---", 0xFF00FFFF)
+            if not _G._ct_debug then _G._ct_debug = {} end
+            local modes = {"OFF", "ACTIVE", "DONE", "FAIL", "SUCCESS", "RECORDING", "OVERLAY"}
+            local cur = _G._ct_debug.preview_mode or 1
+            for i, name in ipairs(modes) do
+                if imgui.button(name .. "##bar_preview") then
+                    _G._ct_debug.preview_mode = i
+                end
+                if i < #modes then imgui.same_line() end
+            end
+            imgui.text("Current preview: " .. modes[_G._ct_debug.preview_mode or 1])
+
             imgui.separator()
 
 
@@ -1446,7 +1478,7 @@ local function draw_combo_trials_menu_ui()
 
             imgui.separator()
 
-            if changed then save_d2d_config() end
+            if changed then ui_dirty = true; ui_save_timer = 0 end
             imgui.spacing()
         end
 
@@ -1908,6 +1940,40 @@ local function draw_combo_trials_menu_ui()
         -- TAB 5: DEBUG & SYSTEM INFO
         -- ==========================================
         if styled_header("--- DEBUG & SYSTEM INFO ---", UI_THEME.hdr_rules) then
+            local di_delay = _G._demo_post_di_delay_ms or 0
+            local di_changed, di_val = imgui.input_text("DEMO Post-DI Delay (ms)", tostring(di_delay))
+            if di_changed then local n = tonumber(di_val); if n then _G._demo_post_di_delay_ms = math.floor(n) end end
+            local ds = ctx.demo_state
+            if ds then
+                local idx = ds._di_step_idx
+                imgui.text_colored("DI step_idx: " .. tostring(idx or "nil") .. "  playing: " .. tostring(ds.is_playing) .. "  triggered: " .. tostring(ds._di_triggered), 0xFF00FFFF)
+                if idx and ctx.trial_state.sequence and ctx.trial_state.sequence[idx] then
+                    local step = ctx.trial_state.sequence[idx]
+                    imgui.text_colored("  motion: " .. tostring(step.motion) .. "  has_hit: " .. tostring(step.has_hit) .. "  current_step: " .. tostring(ctx.trial_state.current_step), 0xFF00FFFF)
+                end
+                if ds._di_triggered then
+                    local rem_ms = math.floor((ds._di_delay_remaining or 0) * 16.67)
+                    imgui.text_colored("DI DETECTED! delay_rem=" .. rem_ms .. "ms", 0xFF00FF00)
+                    if _G._di_skip_debug then imgui.text_colored(_G._di_skip_debug, 0xFF00FFFF) end
+                end
+            end
+            if ctx.trial_state.sequence then
+                local di_found = false
+                for si, step in ipairs(ctx.trial_state.sequence) do
+                    if step.motion then
+                        local m = step.motion:upper()
+                        if m == "DI" or m:find("HPHK") then
+                            imgui.text_colored("Sequence has DI at step " .. si .. ": " .. step.motion, 0xFF00FF00)
+                            di_found = true
+                            break
+                        end
+                    end
+                end
+                if not di_found then
+                    imgui.text_colored("No DI step in sequence", 0xFF0000FF)
+                end
+            end
+            imgui.spacing()
             imgui.text_colored("Detected Native Game Resolution:", 0xFF00FFFF)
             local res_w = ctx.cached_sw or last_sw or 0
             local res_h = ctx.cached_sh or last_sh or 0
@@ -1929,6 +1995,26 @@ local function draw_combo_trials_menu_ui()
             imgui.text(string.format("forced_position_idx: %d", d2d_cfg.forced_position_idx))
             imgui.unindent(20)
             imgui.spacing()
+
+            if trial_state.sequence and #trial_state.sequence > 0 then
+                imgui.text_colored("Sequence Steps:", 0xFF00FFFF)
+                imgui.indent(20)
+                local pose_names = { [0] = "Stand", [1] = "Crouch", [2] = "Air", [3] = "Down" }
+                for si, step in ipairs(trial_state.sequence) do
+                    local vp = step.victim_pose
+                    local vp_str = vp and (pose_names[vp] or ("Air(" .. vp .. ")")) or "?"
+                    local ct_str = ""
+                    if step.counter_type == 1 then ct_str = " CH"
+                    elseif step.counter_type == 2 then ct_str = " PC" end
+                    imgui.text(string.format("#%d  %s  (ID:%d)  combo:%d  dmg:%s  victim:%s%s",
+                        si, step.motion or "?", step.id or 0,
+                        step.expected_combo or 0,
+                        tostring(step.damage_at_step or "-"),
+                        vp_str, ct_str))
+                end
+                imgui.unindent(20)
+                imgui.spacing()
+            end
 
             -- FAIL DUMP BUTTON (Only appears if a fail is in memory)
             --[[

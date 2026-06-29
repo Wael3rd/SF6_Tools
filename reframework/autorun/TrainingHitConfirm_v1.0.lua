@@ -45,6 +45,8 @@ local function hc_set_guard(guard_val)
 end
 
 local guard_override = { active = false, timer = 0, duration = 40 }
+local _hc_last_roll_block = true
+local hc_roll_guard
 
 -- =========================================================
 -- 0. GLOBAL TEXT VARIABLES (LOCALIZATION)
@@ -173,8 +175,14 @@ local user_config = {
     p1 = { frame_type = true, status_type = true, frame_number = false, start_frame = false, end_frame = false, main_gauge = false },
     p2 = { frame_type = true, status_type = true, frame_number = false, start_frame = false, end_frame = false, main_gauge = false },
     show_damage = true, show_hitstop = true, show_status_label = true,
-    show_floating = true
+    show_floating = true,
+    block_rate = 50
 }
+
+hc_roll_guard = function()
+    _hc_last_roll_block = (math.random(100) <= user_config.block_rate)
+    hc_set_guard(_hc_last_roll_block and 3 or 0)
+end
 
 local work_tables = { trigger = {}, success = {}, dmg_hit = {}, dmg_block = {}, break_list = {}, light_btns = {} }
 
@@ -386,6 +394,7 @@ local function reset_session_stats()
     session.last_heavy_input_time = 0
     session.detected_type = "NONE"
     detection.dr_monitor = { active = false, type = nil, context = nil, timer = 0, start_combo = 0, gap_grace = 0 }
+    hc_roll_guard()
 end
 
 local function export_session_stats()
@@ -441,35 +450,6 @@ local function update_history_status(clock_time, status_txt)
     local entry = session.history_map[clock_time]; if entry then entry.status = status_txt end
 end
 
-local function _hc_read_frame_adv()
-    local tm = sdk.get_managed_singleton("app.training.TrainingManager")
-    if not tm then return nil end
-    local tc = tm:get_field("_tCommon")
-    if not tc then return nil end
-    local snap = tc:get_field("SnapShotDatas")
-    if not snap then return nil end
-    local s0 = snap[0]
-    if not s0 then return nil end
-    local dd = s0:get_field("_DisplayData")
-    if not dd then return nil end
-    local fm = dd:get_field("FrameMeterSSData")
-    if not fm then return nil end
-    local md = fm:get_field("MeterDatas")
-    if not md then return nil end
-    local m0 = md:call("get_Item", 0)
-    if m0 then
-        local sf = m0:get_field("StunFrame")
-        if sf then
-            local num = tonumber(tostring(sf))
-            if num then return num
-            else
-                local extracted = tostring(sf):match("([%-]?%d+)")
-                if extracted then return tonumber(extracted) or 99 end
-            end
-        end
-    end
-    return nil
-end
 
 local function update_detection()
     if session.is_paused or session.is_time_up then return end
@@ -566,7 +546,7 @@ local function update_detection()
                 if guard_override.active then
                     guard_override.timer = guard_override.timer - 1
                     if guard_override.timer <= 0 then
-                        hc_set_guard(4)
+                        hc_set_guard(_hc_last_roll_block and 3 or 0)
                         guard_override.active = false
                     end
                 end
@@ -575,6 +555,7 @@ local function update_detection()
                     if session.feedback.timer <= 0 then set_feedback(TEXTS.resetting, COLORS.DarkGrey, 0.1) end
                     if not is_in(work_tables.trigger, p1_data.ft) and not is_in(work_tables.break_list, p1_data.ft) then
                         detection.lockout = false; session.last_result_was_success = false; detection._saw_cancelable = false
+                        hc_roll_guard()
                         if session.feedback.timer <= 0 then set_feedback(TEXTS.waiting, COLORS.Grey, 0) end
                     end
                 end
@@ -828,10 +809,6 @@ local function update_detection()
                                 session.score = session.score + 1; session.hit_ok = session.hit_ok + 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
                                 set_feedback(TEXTS.success_hit, COLORS.Green, 1.5)
                             elseif detection.live_combo == 0 then
-                                -- Check if the move should be ignored (not cancelable AND advantage < 4)
-                                local frame_adv = 99
-                                local fa_ok, fa_val = pcall(_hc_read_frame_adv)
-                                if fa_ok and fa_val then frame_adv = fa_val end
                                 local did_confirm = (detection.monitor.peak_combo and detection.monitor.peak_combo >= detection.monitor.target_combo) or detection.monitor.saw_new_action or detection.monitor.saw_recovery_to_startup
                                     local fail_txt = did_confirm and TEXTS.fail_combo_drop or TEXTS.fail_drop
                                     detection.mem_res[active_head_index] = { status = fail_txt, time = detection.abs_clock }; update_history_status(detection.abs_clock, fail_txt)
@@ -979,6 +956,21 @@ local last_kb_state = { [0x31]=false, [0x32]=false, [0x33]=false, [0x34]=false }
 
 local function hc_ticker(msg) if _G.show_custom_ticker then _G.show_custom_ticker(msg, 0.3) end end
 
+local function do_start()
+    reset_session_stats()
+    if user_config.session_mode == "timer" then session.time_rem = user_config.timer_minutes * 60 end
+    session.is_running = true; session.is_paused = false
+    set_feedback(TEXTS.started, COLORS.Green, 1.0)
+    hc_ticker("SESSION STARTED")
+end
+local function do_stop() reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.5); hc_ticker("SESSION STOPPED") end
+local function do_reset() reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0); hc_ticker("SESSION RESET") end
+local function do_pause()
+    session.is_paused = not session.is_paused
+    set_feedback(session.is_paused and TEXTS.paused or TEXTS.resumed, COLORS.Yellow, 1.0)
+    hc_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED")
+end
+
 local function _hc_is_key_down(k) return reframework:is_key_down(k) end
 
 local function apply_difficulty(val)
@@ -1044,40 +1036,18 @@ local function handle_input()
 
     -- Position 3 (key 3 / FUNC+LEFT): RESET when idle, STOP when running
     if not session.is_running and not session.is_time_up then
-        if pos3_kb or pos4_pad then
-            reset_session_stats()
-            set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
-            hc_ticker("SESSION RESET")
-        end
+        if pos3_kb or pos4_pad then do_reset() end
     elseif session.is_running then
-        if pos3_kb or pos4_pad then
-            reset_session_stats()
-            set_feedback("STOPPED", COLORS.Red, 1.5)
-            hc_ticker("SESSION STOPPED")
-        end
+        if pos3_kb or pos4_pad then do_stop() end
     elseif session.is_time_up then
-        if pos3_kb or pos4_pad then
-            reset_session_stats()
-            set_feedback(TEXTS.reset_done, COLORS.White, 1.0)
-            hc_ticker("SESSION RESET")
-        end
+        if pos3_kb or pos4_pad then do_reset() end
     end
 
     -- Position 4 (key 4 / FUNC+RIGHT): START when idle, PAUSE when running
     if not session.is_running and not session.is_time_up then
-        if pos4_kb or pos3_pad then
-            reset_session_stats()
-            if user_config.session_mode == "timer" then session.time_rem = user_config.timer_minutes * 60 end
-            session.is_running = true; session.is_paused = false
-            set_feedback(TEXTS.started, COLORS.Green, 1.0)
-            hc_ticker("SESSION STARTED")
-        end
+        if pos4_kb or pos3_pad then do_start() end
     elseif session.is_running then
-        if pos4_kb or pos3_pad then
-            session.is_paused = not session.is_paused
-            set_feedback(session.is_paused and TEXTS.paused or TEXTS.resumed, COLORS.Yellow, 1.0)
-            hc_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED")
-        end
+        if pos4_kb or pos3_pad then do_pause() end
     end
 
     last_input_mask = active_buttons
@@ -1162,20 +1132,14 @@ local function draw_session_buttons_docked()
         imgui.same_line(); imgui.text(tostring(user_config.trial_count) .. " TRIALS")
     end
     imgui.same_line(300)
-    if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_hc", SC.c3) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0); hc_ticker("SESSION RESET") end
+    if SharedUI.sc_button("RESET (" .. sl("L", "3") .. ")##dk_hc", SC.c3) then do_reset() end
     imgui.spacing()
     if not session.is_running then
-        if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_hc", SC.c4) then
-            reset_session_stats()
-            if user_config.session_mode == "timer" then session.time_rem = user_config.timer_minutes * 60 end
-            session.is_running = true; session.is_paused = false
-            set_feedback(TEXTS.started, COLORS.Green, 1.0)
-            hc_ticker("SESSION STARTED")
-        end
+        if SharedUI.sc_button("START SESSION (" .. sl("R", "4") .. ")##dk_hc", SC.c4) then do_start() end
     else
-        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_hc", SC.c3) then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0); hc_ticker("SESSION STOPPED") end
+        if SharedUI.sc_button("STOP (" .. sl("L", "3") .. ")##dk_hc", SC.c3) then do_stop() end
         imgui.same_line()
-        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_hc", SC.c4) then session.is_paused = not session.is_paused; hc_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+        if SharedUI.sc_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##dk_hc", SC.c4) then do_pause() end
     end
 end
 
@@ -1213,23 +1177,15 @@ local function draw_session_floating()
     end
     imgui.same_line(0, sp)
     if not session.is_running then
-        if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_hc", SC.c3, actual_w) then reset_session_stats(); set_feedback(TEXTS.reset_done, COLORS.White, 1.0); hc_ticker("SESSION RESET") end
+        if SharedUI.sf6_button("RESET (" .. sl("L", "3") .. ")##fl_hc", SC.c3, actual_w) then do_reset() end
     else
-        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_hc", SC.c3, actual_w) then reset_session_stats(); set_feedback("STOPPED", COLORS.Red, 1.0); hc_ticker("SESSION STOPPED") end
+        if SharedUI.sf6_button("STOP (" .. sl("L", "3") .. ")##fl_hc", SC.c3, actual_w) then do_stop() end
     end
     imgui.same_line(0, sp)
     if session.is_running then
-        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##fl_hc", SC.c4, actual_w) then session.is_paused = not session.is_paused; hc_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+        if SharedUI.sf6_button((session.is_paused and "RESUME" or "PAUSE") .. " (" .. sl("R", "4") .. ")##fl_hc", SC.c4, actual_w) then do_pause() end
     else
-        if SharedUI.sf6_button("START (" .. sl("R", "4") .. ")##fl_hc", SC.c4, actual_w) then
-            reset_session_stats()
-            if user_config.session_mode == "timer" then
-                session.time_rem = user_config.timer_minutes * 60
-            end
-            session.is_running = true; session.is_paused = false
-            set_feedback(TEXTS.started, COLORS.Green, 1.0)
-            hc_ticker("SESSION STARTED")
-        end
+        if SharedUI.sf6_button("START (" .. sl("R", "4") .. ")##fl_hc", SC.c4, actual_w) then do_start() end
     end
     imgui.same_line(w_width - cb_size - 10 - pad_x)
     local changed, new_val = imgui.checkbox("##close_hc", user_config.show_floating)
@@ -1238,30 +1194,32 @@ local function draw_session_floating()
 end
 
 re.on_frame(function()
-    -- Web bridge: export state & handle commands
     if _G.CurrentTrainerMode == 2 then
         if _G._tsm_web_cmd then
             local cmd = _G._tsm_web_cmd; _G._tsm_web_cmd = nil
-            if cmd == "start" then reset_session_stats(); session.is_running = true; set_feedback("HERE WE GO!", 0xFF00FF00, 1.0); hc_ticker("SESSION STARTED") end
-            if cmd == "stop" then reset_session_stats(); set_feedback("STOPPED", 0xFF0000FF, 1.0); hc_ticker("SESSION STOPPED") end
-            if cmd == "reset" then reset_session_stats(); set_feedback("RESET", 0xFFFFFFFF, 1.0); hc_ticker("SESSION RESET") end
-            if cmd == "pause" then session.is_paused = not session.is_paused; hc_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
+            if cmd == "start" then do_start() end
+            if cmd == "stop" then do_stop() end
+            if cmd == "reset" then do_reset() end
+            if cmd == "pause" then do_pause() end
             if cmd == "timer_up" then user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1); reset_session_stats(); save_conf() end
             if cmd == "timer_down" then user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1); reset_session_stats(); save_conf() end
             if cmd == "trials_up" then user_config.trial_count = math.min(200, user_config.trial_count + 10); reset_session_stats(); save_conf() end
             if cmd == "switch_mode" then user_config.session_mode = user_config.session_mode == "timer" and "trials" or "timer"; reset_session_stats(); save_conf(); hc_ticker(user_config.session_mode == "timer" and "TIMER MODE" or "TRIALS MODE") end
             if cmd == "trials_down" then user_config.trial_count = math.max(10, user_config.trial_count - 10); reset_session_stats(); save_conf() end
+            if cmd == "block_rate_up" then user_config.block_rate = math.min(100, user_config.block_rate + 10); hc_roll_guard(); save_conf() end
+            if cmd == "block_rate_down" then user_config.block_rate = math.max(0, user_config.block_rate - 10); hc_roll_guard(); save_conf() end
+            if cmd == "block_rate_set" and _G._tsm_web_cmd_value then user_config.block_rate = math.max(0, math.min(100, math.floor(_G._tsm_web_cmd_value))); hc_roll_guard(); save_conf() end
         end
         _G.TrainingSession_IsRunning = session.is_running
         _G.TrainingSession_IsPaused = session.is_paused
         _G.TrainingSession_Timer = user_config.timer_minutes
         _G.TrainingSession_Trials = user_config.trial_count
         _G.TrainingSession_Mode = user_config.session_mode
+        _G.TrainingSession_BlockRate = user_config.block_rate
     end
     -- Hide if not actually in training (e.g. launched ranked from training)
-    local tm = sdk.get_managed_singleton("app.training.TrainingManager")
     if DEPENDANT_ON_MANAGER and (_G.CurrentTrainerMode ~= 2) then return end
-    if not tm then return end
+    if not _G.TrainingModeActive then return end
 
     detection._live_tn = 0
 
@@ -1306,6 +1264,9 @@ re.on_draw_ui(function()
         if styled_header("--- SESSION CONFIGURATION ---", UI_THEME.hdr_session) then
             local c_fl, v_fl = imgui.checkbox("FLOATING WINDOW", user_config.show_floating)
             if c_fl then user_config.show_floating = v_fl; save_conf() end
+
+            local br_changed, br_val = imgui.slider_int("BLOCK RATE %", user_config.block_rate, 0, 100)
+            if br_changed then user_config.block_rate = br_val; hc_roll_guard(); save_conf() end
 
             if user_config.show_floating then
                 imgui.text_colored("Session controls are in the floating window.", COLORS.DarkGrey)

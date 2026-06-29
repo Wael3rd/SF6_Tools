@@ -105,6 +105,7 @@ _G._shared_input_pre = {}
 _G._shared_input_post = {}
 
 local p_id_stack = {}
+local p_id_stack_top = 0
 local _cached_addr = { [0] = nil, [1] = nil }
 local _addr_refresh = 0
 
@@ -138,13 +139,16 @@ if cplayer_type then
                 if hook_addr == _cached_addr[0] then p_id = 0
                 elseif hook_addr == _cached_addr[1] then p_id = 1 end
 
-                table.insert(p_id_stack, p_id)
+                p_id_stack_top = p_id_stack_top + 1
+                p_id_stack[p_id_stack_top] = p_id
                 for _, cb in ipairs(_G._shared_input_pre) do
                     pcall(cb, p_id, args)
                 end
             end,
             function(retval)
-                local p_id = table.remove(p_id_stack) or -1
+                local p_id = p_id_stack[p_id_stack_top] or -1
+                p_id_stack[p_id_stack_top] = nil
+                if p_id_stack_top > 0 then p_id_stack_top = p_id_stack_top - 1 end
                 for _, cb in ipairs(_G._shared_input_post) do
                     pcall(cb, p_id, retval)
                 end
@@ -160,3 +164,17 @@ end
 re.on_application_entry("UpdateBehavior", function()
     collectgarbage("step", 1)
 end)
+
+-- =========================================================
+-- SCRIPT RESET CLEANUP
+-- =========================================================
+if re.on_script_reset then
+    re.on_script_reset(function()
+        _G._shared_input_pre = {}
+        _G._shared_input_post = {}
+        p_id_stack_top = 0
+        _cached_addr[0] = nil
+        _cached_addr[1] = nil
+        _addr_refresh = 0
+    end)
+end

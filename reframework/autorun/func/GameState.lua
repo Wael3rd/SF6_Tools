@@ -78,6 +78,7 @@ end
 
 re.on_frame(function()
     GS.frame = GS.frame + 1
+    if not _f_player then GS.valid = false; return end
     local ok = pcall(_gs_update_players)
     if not ok then
         GS.sP = nil; GS.p1 = nil; GS.p2 = nil

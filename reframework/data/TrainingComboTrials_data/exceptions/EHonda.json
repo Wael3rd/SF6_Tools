@@ -13,6 +13,24 @@
         "is_holdable": false,
         "override_name": "RAW DR"
     },
+    "652": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "j.6+HP"
+    },
+    "653": {
+        "absorb_ids": "",
+        "force": true,
+        "hold_partial_check": true,
+        "ignore": false,
+        "ignore_prev_frames": 5,
+        "is_holdable": false,
+        "override_name": "j.4+HP"
+    },
     "667": {
         "absorb_ids": "",
         "force": false,

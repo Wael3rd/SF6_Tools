@@ -58,17 +58,17 @@ local config = {
     charge_height = 0.04,
     -- Box Colors & Thickness
     box_colors = {
-        hitbox = 0xFFC04000, throwbox = 0xFFFF80D0, clash = 0xFFE69138, proximity = 0xFF5B5B5B,
-        pushbox = 0xFFFFFF00, hurtbox = 0xFF00FF00, hurtbox_invuln = 0xFF8000FF,
+        hitbox = 0xFFFF0000, throwbox = 0xFFFF80D0, clash = 0xFFE69138, proximity = 0xFF5B5B5B,
+        pushbox = 0xFFFFFF00, hurtbox = 0xFF3CBA39, hurtbox_startup = 0xFF00FF00, hurtbox_recovery = 0xFF0000FF, hurtbox_hitstun = 0xFFFFFF00, hurtbox_invuln = 0xFF8000FF,
         uniquebox = 0xFF00FFEE, throwhurtbox = 0xFF0000FF,
     },
     box_fill_alphas = {
-        hitbox = 77, throwbox = 77, clash = 64, proximity = 64, pushbox = 64, 
-        hurtbox = 64, hurtbox_invuln = 64, uniquebox = 77, throwhurtbox = 77
+        hitbox = 77, throwbox = 77, clash = 64, proximity = 64, pushbox = 64,
+        hurtbox = 64, hurtbox_startup = 64, hurtbox_recovery = 64, hurtbox_hitstun = 64, hurtbox_invuln = 64, uniquebox = 77, throwhurtbox = 77
     },
     box_thicknesses = {
-        hitbox = 1, throwbox = 1, clash = 1, proximity = 1, pushbox = 1, 
-        hurtbox = 1, hurtbox_invuln = 1, uniquebox = 1, throwhurtbox = 1
+        hitbox = 1, throwbox = 1, clash = 1, proximity = 1, pushbox = 1,
+        hurtbox = 1, hurtbox_startup = 1, hurtbox_recovery = 1, hurtbox_hitstun = 1, hurtbox_invuln = 1, uniquebox = 1, throwhurtbox = 1
     },
     fill_alpha = 77,
     -- Vital Ruler
@@ -347,6 +347,151 @@ local function get_text_width(t,s)local ts=imgui.calc_text_size(t,false,s or sta
 local function get_real_text_size(t) local ts = imgui.calc_text_size(t); return ts.x, ts.y end
 local function draw_text_safe(text, x, y, color, size) for offset = 1, shadow_layers do draw.text(text, x + offset, y + offset, shadow_color, size) end; draw.text(text, x, y, color, size) end
 
+-- Frame type reader (from training mode frame meter widget)
+local _sb_fm = { p1_list = nil, p2_list = nil, refresh = 0, head = 0, idle = false, idle_i = 0 }
+local _sb_ft = {
+    [0] = { clean = 0, prev_raw = 0, recovery_count = 0, hitstun_count = 0, in_move = false, in_hitstun = false },
+    [1] = { clean = 0, prev_raw = 0, recovery_count = 0, hitstun_count = 0, in_move = false, in_hitstun = false },
+}
+
+local function _sb_clean_ft(raw_ft, raw_mg, st)
+    if raw_ft == 7 then
+        if st.prev_raw == 0 or st.prev_raw == 8 then
+            st.in_move = true; st.recovery_count = 0
+        elseif not st.in_move then
+            st.clean = 0; st.prev_raw = raw_ft; return
+        end
+    elseif raw_ft == 13 or raw_ft == 14 then
+        if st.in_move then
+            st.recovery_count = 0
+        else
+            st.clean = 0; st.prev_raw = raw_ft; return
+        end
+    elseif raw_ft == 8 then
+        if not st.in_move then
+            st.clean = 0; st.prev_raw = raw_ft; return
+        end
+        if raw_mg == 1 then
+            st.recovery_count = st.recovery_count + 1
+        end
+        if st.recovery_count >= 2 then
+            st.clean = 0; st.recovery_count = 0; st.in_move = false; st.prev_raw = raw_ft; return
+        end
+    elseif raw_ft == 9 then
+        if st.prev_raw ~= 9 and not st.in_hitstun then
+            st.in_hitstun = true; st.hitstun_count = 0
+        end
+        if not st.in_hitstun then
+            st.clean = 0; st.prev_raw = raw_ft; return
+        end
+        if raw_mg == 1 then
+            st.hitstun_count = st.hitstun_count + 1
+        end
+        if st.hitstun_count >= 2 then
+            st.clean = 0; st.hitstun_count = 0; st.in_hitstun = false; st.prev_raw = raw_ft; return
+        end
+    else
+        st.in_move = false
+        st.recovery_count = 0
+        st.in_hitstun = false
+        st.hitstun_count = 0
+    end
+    st.prev_raw = raw_ft
+    st.clean = raw_ft
+end
+
+local function _sb_fm_get_lists()
+    local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
+    if not mgr then return end
+    local dict = mgr:get_field("_ViewUIWigetDict")
+    local entries = dict and dict:get_field("_entries")
+    if not entries then return end
+    for i = 0, entries:call("get_Count") - 1 do
+        local entry = entries:call("get_Item", i)
+        if entry:get_field("key") == 5 then
+            local widget = entry:get_field("value"):call("get_Item", 0)
+            local ss = widget:call("get_SSData")
+            local md = ss:get_field("MeterDatas")
+            if md and md:call("get_Count") >= 2 then
+                _sb_fm.p1_list = md:call("get_Item", 0):get_field("FrameNumDatas")
+                _sb_fm.p2_list = md:call("get_Item", 1):get_field("FrameNumDatas")
+            end
+            return
+        end
+    end
+end
+
+local function _sb_fm_check(idx, cnt)
+    if idx < 0 or idx >= cnt then return false end
+    local it1 = _sb_fm.p1_list:call("get_Item", idx)
+    local it2 = _sb_fm.p2_list:call("get_Item", idx)
+    if not it1 or not it2 then return false end
+    return ((tonumber(tostring(it1:get_field("FrameType"))) or 0) ~= 0) or
+           ((tonumber(tostring(it2:get_field("FrameType"))) or 0) ~= 0)
+end
+
+local function _sb_ft_clean(raw_ft, raw_mg, st)
+    st.raw = raw_ft
+    if raw_ft == 8 then
+        if not st.prev_ft or st.prev_ft == 0 or st.prev_ft == 8 then
+            st.clean = 0; return
+        end
+        if raw_mg == 1 then st.mg_count = st.mg_count + 1 end
+        if st.mg_count > 0 and st.mg_count % 2 == 0 then
+            st.clean = 0; st.mg_count = 0; st.prev_ft = 0; return
+        end
+    elseif raw_ft ~= 0 then
+        st.mg_count = 0
+    end
+    st.prev_ft = raw_ft
+    st.clean = raw_ft
+end
+
+local function _sb_update_frame_types()
+    _sb_fm.refresh = _sb_fm.refresh - 1
+    if _sb_fm.refresh <= 0 or not _sb_fm.p1_list or not _sb_fm.p2_list then
+        _sb_fm.refresh = 300
+        pcall(_sb_fm_get_lists)
+    end
+    if not _sb_fm.p1_list or not _sb_fm.p2_list then return end
+    local ok, cnt = pcall(_sb_fm.p1_list.call, _sb_fm.p1_list, "get_Count")
+    if not ok or not cnt or cnt <= 0 then return end
+
+    local head = -1
+    local nxt = (_sb_fm.head + 1) % cnt
+    if _sb_fm_check(nxt, cnt) then head = nxt
+    elseif _sb_fm_check(_sb_fm.head, cnt) then head = _sb_fm.head
+    else
+        if not _sb_fm.idle then _sb_fm.idle = true; _sb_fm.idle_i = cnt - 1 end
+        local i, c = _sb_fm.idle_i, 0
+        while i >= 0 and c < 20 do
+            if _sb_fm_check(i, cnt) then head = i; break end
+            i = i - 1; c = c + 1
+        end
+        if head == -1 then _sb_fm.idle_i = (i >= 0) and i or (cnt - 1) end
+    end
+
+    if head ~= -1 then
+        _sb_fm.idle = false
+        if head ~= _sb_fm.head then
+            _sb_fm.head = head
+            local it1 = _sb_fm.p1_list:call("get_Item", head)
+            local it2 = _sb_fm.p2_list:call("get_Item", head)
+            local ft1 = it1 and (tonumber(tostring(it1:get_field("FrameType"))) or 0) or 0
+            local mg1 = it1 and (tonumber(tostring(it1:get_field("MainGauge"))) or 0) or 0
+            local ft2 = it2 and (tonumber(tostring(it2:get_field("FrameType"))) or 0) or 0
+            local mg2 = it2 and (tonumber(tostring(it2:get_field("MainGauge"))) or 0) or 0
+            _sb_clean_ft(ft1, mg1, _sb_ft[0])
+            _sb_clean_ft(ft2, mg2, _sb_ft[1])
+            if GS.p1_act_st == 0 then _sb_ft[0].clean = 0; _sb_ft[0].in_move = false; _sb_ft[0].in_hitstun = false end
+            if GS.p2_act_st == 0 then _sb_ft[1].clean = 0; _sb_ft[1].in_move = false; _sb_ft[1].in_hitstun = false end
+        end
+    else
+        _sb_ft[0].clean = 0; _sb_ft[0].prev_raw = 0; _sb_ft[0].recovery_count = 0; _sb_ft[0].in_move = false; _sb_ft[0].hitstun_count = 0; _sb_ft[0].in_hitstun = false
+        _sb_ft[1].clean = 0; _sb_ft[1].prev_raw = 0; _sb_ft[1].recovery_count = 0; _sb_ft[1].in_move = false; _sb_ft[1].hitstun_count = 0; _sb_ft[1].in_hitstun = false
+    end
+end
+
 local detected_infos = { [0] = { name = "Waiting...", id = -1 }, [1] = { name = "Waiting...", id = -1 } }
 -- Player info from shared hook (0_SharedHooks.lua)
 re.on_frame(function()
@@ -553,8 +698,10 @@ local draw_boxes = function(w, aP, p1)
                                 draw_thick_outline(fX, fY, fSX, fSY, box_col.hurtbox_invuln, config.box_thicknesses.hurtbox_invuln)
                                 draw.filled_rect(fX, fY, fSX, fSY, box_col.hurtbox_invuln_fill)
                             else
-                                draw_thick_outline(fX, fY, fSX, fSY, box_col.hurtbox, config.box_thicknesses.hurtbox)
-                                draw.filled_rect(fX, fY, fSX, fSY, box_col.hurtbox_fill)
+                                local ft = _sb_ft[p1 and 0 or 1].clean
+                                local hb_key = (ft == 7) and "hurtbox_startup" or (ft == 8) and "hurtbox_recovery" or (ft == 9) and "hurtbox_hitstun" or "hurtbox"
+                                draw_thick_outline(fX, fY, fSX, fSY, box_col[hb_key], config.box_thicknesses[hb_key])
+                                draw.filled_rect(fX, fY, fSX, fSY, box_col[hb_key .. "_fill"])
                             end
                             if dprop then
                                 local hi = ""; if r.TypeFlag == 1 then hi = hi .. "Proj" end; if r.TypeFlag == 2 then hi = hi .. "Strike" end
@@ -616,6 +763,8 @@ re.on_frame(function()
     if GS.in_pause_menu then return end
     if gBattle == nil then gBattle = sdk.find_type_definition("gBattle") end; if gBattle == nil then return end
 
+    pcall(_sb_update_frame_types)
+
     local p1_data = get_player_data(0)
     local p2_data = get_player_data(1)
     local display_size = imgui.get_display_size()
@@ -628,6 +777,7 @@ re.on_frame(function()
     local hud_lay = get_layout()
     local base_y_hud = y_offset + hud_lay.hud_y_pos * display_h
     local col_green = 0xFF00FF00; local col_red = 0xFF0000FF; local col_white = 0xFFFFFFFF
+
 
     if p1_data then
         local p1_x_start = hud_lay.hud_x_padding * display_w
@@ -869,92 +1019,56 @@ re.on_frame(function()
         _G._vr_queue = nil
     end
 
-    -- Web bridge: export state & poll changes
-    if not _G._sb_web_counter then _G._sb_web_counter = 0 end
-    _G._sb_web_counter = _G._sb_web_counter + 1
-    if _G._sb_web_counter >= 60 then
-        _G._sb_web_counter = 0
-        pcall(json.dump_file, "SF6_TrainingRemoteControl_data/SheldonsBoxes_WebState.json", {
-            vr_visible = vr_visible,
-            hud_text_visible = hud_text_visible,
-            boxes_visible = boxes_visible,
-            charge_visible = charge_visible,
-            p1 = {
-                hitboxes = display_p1_hitboxes, hurtboxes = display_p1_hurtboxes,
-                pushboxes = display_p1_pushboxes, throwboxes = display_p1_throwboxes,
-                throwhurtboxes = display_p1_throwhurtboxes, proximityboxes = display_p1_proximityboxes,
-                uniqueboxes = display_p1_uniqueboxes, clashbox = display_p1_clashbox,
-                properties = display_p1_properties, position_dot = display_p1_position_dot,
-                charge_bars = display_p1_charge_bars, hide_all = hide_p1_boxes,
-                hud_pos = display_p1_hud_pos, hud_hp = display_p1_hud_hp,
-                hud_dr = display_p1_hud_dr, hud_sa = display_p1_hud_sa,
-            },
-            p2 = {
-                hitboxes = display_p2_hitboxes, hurtboxes = display_p2_hurtboxes,
-                pushboxes = display_p2_pushboxes, throwboxes = display_p2_throwboxes,
-                throwhurtboxes = display_p2_throwhurtboxes, proximityboxes = display_p2_proximityboxes,
-                uniqueboxes = display_p2_uniqueboxes, clashbox = display_p2_clashbox,
-                properties = display_p2_properties, position_dot = display_p2_position_dot,
-                charge_bars = display_p2_charge_bars, hide_all = hide_p2_boxes,
-                hud_pos = display_p2_hud_pos, hud_hp = display_p2_hud_hp,
-                hud_dr = display_p2_hud_dr, hud_sa = display_p2_hud_sa,
-            },
-        })
-    end
-    -- Poll incoming changes (skip stale bridge data on first load)
-    if not _G._sb_bridge_ts then
-        local ok_init, b_init = pcall(json.load_file, "SF6_TrainingRemoteControl_data/SheldonsBoxes_WebBridge.json")
-        _G._sb_bridge_ts = (ok_init and b_init and b_init._web_timestamp) or 0
-    end
-    if _G._sb_web_counter == 0 then
-        local ok, b = pcall(json.load_file, "SF6_TrainingRemoteControl_data/SheldonsBoxes_WebBridge.json")
-        if ok and b then
-            local ts = b._web_timestamp or 0
-            if ts > _G._sb_bridge_ts then
-                _G._sb_bridge_ts = ts
-                if b.vr_visible ~= nil then vr_visible = b.vr_visible end
-                if b.hud_text_visible ~= nil then hud_text_visible = b.hud_text_visible end
-                if b.boxes_visible ~= nil then boxes_visible = b.boxes_visible end
-                if b.charge_visible ~= nil then charge_visible = b.charge_visible end
-                if b.p1 then
-                    if b.p1.hitboxes ~= nil then display_p1_hitboxes = b.p1.hitboxes end
-                    if b.p1.hurtboxes ~= nil then display_p1_hurtboxes = b.p1.hurtboxes end
-                    if b.p1.pushboxes ~= nil then display_p1_pushboxes = b.p1.pushboxes end
-                    if b.p1.throwboxes ~= nil then display_p1_throwboxes = b.p1.throwboxes end
-                    if b.p1.throwhurtboxes ~= nil then display_p1_throwhurtboxes = b.p1.throwhurtboxes end
-                    if b.p1.proximityboxes ~= nil then display_p1_proximityboxes = b.p1.proximityboxes end
-                    if b.p1.uniqueboxes ~= nil then display_p1_uniqueboxes = b.p1.uniqueboxes end
-                    if b.p1.clashbox ~= nil then display_p1_clashbox = b.p1.clashbox end
-                    if b.p1.properties ~= nil then display_p1_properties = b.p1.properties end
-                    if b.p1.position_dot ~= nil then display_p1_position_dot = b.p1.position_dot end
-                    if b.p1.charge_bars ~= nil then display_p1_charge_bars = b.p1.charge_bars end
-                    if b.p1.hide_all ~= nil then hide_p1_boxes = b.p1.hide_all end
-                    if b.p1.hud_pos ~= nil then display_p1_hud_pos = b.p1.hud_pos end
-                    if b.p1.hud_hp ~= nil then display_p1_hud_hp = b.p1.hud_hp end
-                    if b.p1.hud_dr ~= nil then display_p1_hud_dr = b.p1.hud_dr end
-                    if b.p1.hud_sa ~= nil then display_p1_hud_sa = b.p1.hud_sa end
-                end
-                if b.p2 then
-                    if b.p2.hitboxes ~= nil then display_p2_hitboxes = b.p2.hitboxes end
-                    if b.p2.hurtboxes ~= nil then display_p2_hurtboxes = b.p2.hurtboxes end
-                    if b.p2.pushboxes ~= nil then display_p2_pushboxes = b.p2.pushboxes end
-                    if b.p2.throwboxes ~= nil then display_p2_throwboxes = b.p2.throwboxes end
-                    if b.p2.throwhurtboxes ~= nil then display_p2_throwhurtboxes = b.p2.throwhurtboxes end
-                    if b.p2.proximityboxes ~= nil then display_p2_proximityboxes = b.p2.proximityboxes end
-                    if b.p2.uniqueboxes ~= nil then display_p2_uniqueboxes = b.p2.uniqueboxes end
-                    if b.p2.clashbox ~= nil then display_p2_clashbox = b.p2.clashbox end
-                    if b.p2.properties ~= nil then display_p2_properties = b.p2.properties end
-                    if b.p2.position_dot ~= nil then display_p2_position_dot = b.p2.position_dot end
-                    if b.p2.charge_bars ~= nil then display_p2_charge_bars = b.p2.charge_bars end
-                    if b.p2.hide_all ~= nil then hide_p2_boxes = b.p2.hide_all end
-                    if b.p2.hud_pos ~= nil then display_p2_hud_pos = b.p2.hud_pos end
-                    if b.p2.hud_hp ~= nil then display_p2_hud_hp = b.p2.hud_hp end
-                    if b.p2.hud_dr ~= nil then display_p2_hud_dr = b.p2.hud_dr end
-                    if b.p2.hud_sa ~= nil then display_p2_hud_sa = b.p2.hud_sa end
-                end
-            end
+    if not _G._remote_control_loaded then goto skip_sb_bridge end
+    local wf = _G._web_frame or 0
+    if wf % 60 == 20 then
+        local sb_fp = tostring(vr_visible) .. tostring(boxes_visible) .. tostring(charge_visible) .. tostring(hud_text_visible)
+        if sb_fp ~= _G._sb_last_fp then
+        _G._sb_last_fp = sb_fp
+        pcall(function()
+            local function b(v) return v and "true" or "false" end
+            local f = io.open("SF6_TrainingRemoteControl_data/SheldonsBoxes_WebState.json", "w")
+            if not f then return end
+            f:write('{"vr_visible":' .. b(vr_visible) .. ',"hud_text_visible":' .. b(hud_text_visible))
+            f:write(',"boxes_visible":' .. b(boxes_visible) .. ',"charge_visible":' .. b(charge_visible))
+            f:write(',"p1":{"hitboxes":' .. b(display_p1_hitboxes) .. ',"hurtboxes":' .. b(display_p1_hurtboxes))
+            f:write(',"pushboxes":' .. b(display_p1_pushboxes) .. ',"throwboxes":' .. b(display_p1_throwboxes))
+            f:write(',"throwhurtboxes":' .. b(display_p1_throwhurtboxes) .. ',"proximityboxes":' .. b(display_p1_proximityboxes))
+            f:write(',"uniqueboxes":' .. b(display_p1_uniqueboxes) .. ',"clashbox":' .. b(display_p1_clashbox))
+            f:write(',"properties":' .. b(display_p1_properties) .. ',"position_dot":' .. b(display_p1_position_dot))
+            f:write(',"charge_bars":' .. b(display_p1_charge_bars) .. ',"hide_all":' .. b(hide_p1_boxes))
+            f:write(',"hud_pos":' .. b(display_p1_hud_pos) .. ',"hud_hp":' .. b(display_p1_hud_hp))
+            f:write(',"hud_dr":' .. b(display_p1_hud_dr) .. ',"hud_sa":' .. b(display_p1_hud_sa) .. '}')
+            f:write(',"p2":{"hitboxes":' .. b(display_p2_hitboxes) .. ',"hurtboxes":' .. b(display_p2_hurtboxes))
+            f:write(',"pushboxes":' .. b(display_p2_pushboxes) .. ',"throwboxes":' .. b(display_p2_throwboxes))
+            f:write(',"throwhurtboxes":' .. b(display_p2_throwhurtboxes) .. ',"proximityboxes":' .. b(display_p2_proximityboxes))
+            f:write(',"uniqueboxes":' .. b(display_p2_uniqueboxes) .. ',"clashbox":' .. b(display_p2_clashbox))
+            f:write(',"properties":' .. b(display_p2_properties) .. ',"position_dot":' .. b(display_p2_position_dot))
+            f:write(',"charge_bars":' .. b(display_p2_charge_bars) .. ',"hide_all":' .. b(hide_p2_boxes))
+            f:write(',"hud_pos":' .. b(display_p2_hud_pos) .. ',"hud_hp":' .. b(display_p2_hud_hp))
+            f:write(',"hud_dr":' .. b(display_p2_hud_dr) .. ',"hud_sa":' .. b(display_p2_hud_sa) .. '}}')
+            f:close()
+        end)
         end
     end
+    if not _G._sb_bridge_ts then _G._sb_bridge_ts = 0 end
+    if wf % 60 == 25 then
+        pcall(function()
+            local f = io.open("SF6_TrainingRemoteControl_data/SheldonsBoxes_WebBridge.json", "r")
+            if not f then return end
+            local raw = f:read("*a"); f:close()
+            if not raw or #raw < 5 then return end
+            local ts = tonumber(raw:match('"_web_timestamp":(%d+)')) or 0
+            if ts <= _G._sb_bridge_ts then return end
+            _G._sb_bridge_ts = ts
+            local function rb(key) local v = raw:match('"' .. key .. '":(%a+)'); if v == "true" then return true elseif v == "false" then return false end; return nil end
+            local v = rb("vr_visible"); if v ~= nil then vr_visible = v end
+            v = rb("hud_text_visible"); if v ~= nil then hud_text_visible = v end
+            v = rb("boxes_visible"); if v ~= nil then boxes_visible = v end
+            v = rb("charge_visible"); if v ~= nil then charge_visible = v end
+        end)
+    end
+    ::skip_sb_bridge::
 
 end)
 
@@ -1293,6 +1407,9 @@ re.on_draw_ui(function()
             imgui.separator()
             imgui.text_colored(">> Defense Boxes", COL_YELLOW)
             draw_color_picker("Hurtbox",           "hurtbox")
+            draw_color_picker("Hurtbox (Startup)", "hurtbox_startup")
+            draw_color_picker("Hurtbox (Recovery)","hurtbox_recovery")
+            draw_color_picker("Hurtbox (Hitstun)", "hurtbox_hitstun")
             draw_color_picker("Hurtbox (Invuln)",  "hurtbox_invuln")
             draw_color_picker("Throw Hurtbox",     "throwhurtbox")
 
@@ -1304,8 +1421,9 @@ re.on_draw_ui(function()
             imgui.separator()
             if imgui.button("Reset to Defaults##boxcol") then
                 config.box_colors = {
-                    hitbox = 0xFFC04000, throwbox = 0xFFFF80D0, clash = 0xFFE69138,
-                    proximity = 0xFF5B5B5B, pushbox = 0xFFFFFF00, hurtbox = 0xFF00FF00,
+                    hitbox = 0xFFFF0000, throwbox = 0xFFFF80D0, clash = 0xFFE69138,
+                    proximity = 0xFF5B5B5B, pushbox = 0xFFFFFF00, hurtbox = 0xFF3CBA39,
+                    hurtbox_startup = 0xFF00FF00, hurtbox_recovery = 0xFF0000FF, hurtbox_hitstun = 0xFFFFFF00,
                     hurtbox_invuln = 0xFF8000FF, uniquebox = 0xFF00FFEE, throwhurtbox = 0xFF0000FF,
                 }
                 config.box_fill_alphas = {

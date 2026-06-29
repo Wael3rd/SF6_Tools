@@ -885,7 +885,7 @@ local d2d_initialized = false
 
 local function init_d2d_icons()
     local folder = "buttonsAndArrows/"
-    local keys = {"1","2","3","4","5","6","7","8","9","lp","mp","hp","lk","mk","hk","HOLD","THROW"}
+    local keys = {"1","2","3","4","5","6","7","8","9","lp","mp","hp","lk","mk","hk","HOLD","THROW","dr","di"}
     for _, k in ipairs(keys) do d2d_icons[k] = d2d.Image.new(folder .. k .. ".png") end
     d2d_initialized = true
 end
@@ -927,6 +927,16 @@ local function parse_input_string(input_str, facing_right)
     local parse_target = actual_input
 
     if string.upper(parse_target):find("JUMP") then return {}, parse_target, display_name end
+
+    if parse_target:sub(1, 3) == "DR " then
+        table.insert(icons, "dr")
+        parse_target = parse_target:sub(4)
+    end
+
+    if string.upper(parse_target):find("HPHK") then
+        table.insert(icons, "di")
+        return icons, "", display_name
+    end
 
     if string.upper(parse_target):find("HOLD") or parse_target:find("%[") then
         table.insert(icons, "HOLD")
@@ -2244,6 +2254,9 @@ local function aa_parse_move_input(input_str, move_entry)
     if actual_input == "FORWARD JUMP" then
         return { { frames = 3, mask = 5 }, { frames = 8, mask = 0 } }
     end
+    if actual_input == "NEUTRAL JUMP" then
+        return { { frames = 3, mask = 1 }, { frames = 8, mask = 0 } }
+    end
     if actual_input == "THROW" then
         return { { frames = 3, mask = 144 }, { frames = 8, mask = 0 } }
     end
@@ -2451,7 +2464,7 @@ local function draw_config_ui()
                     -- Display toggle
                     local is_on = config[p_prefix .. "_vertical_mode"] ~= 7
                     local c_disp, v_disp = imgui.checkbox("Display P" .. (pi+1) .. " Distance##disp_" .. p_prefix, is_on)
-                    if c_disp then cycle_player_display(p_prefix) end
+                    if c_disp then cycle_player_display(p_prefix); save_settings() end
 
                     -- Build list of move sets: base + variants
                     local base_name = base_display
@@ -2722,10 +2735,11 @@ local function draw_config_ui()
         collect_moves(p2_base)
         table.sort(all_moves, function(a, b) return (a.ar or 0) > (b.ar or 0) end)
 
-        -- Add FORWARD JUMP at the end (uses crossup distance)
+        -- Add FORWARD JUMP and NEUTRAL JUMP at the end (uses crossup distance)
         local jump_frames = jump_data_store[p2_cache.real_name]
         if jump_frames and jump_frames.cross_up_st then
             all_moves[#all_moves + 1] = { input = "FORWARD JUMP", ar = jump_frames.cross_up_st, is_jump = true }
+            all_moves[#all_moves + 1] = { input = "NEUTRAL JUMP", ar = jump_frames.cross_up_st, is_jump = true }
         end
         _G._dv_aa_moves = all_moves
 
@@ -3380,8 +3394,13 @@ local function _dv_dump_web_state()
     json.dump_file(_web_state_file, st)
 end
 
+local _dv_aa_moves_cache_key = nil
+
 local function _dv_rebuild_aa_moves()
     local p2_rname = p2_cache.adv_name or get_real_name(p2_cache.real_name)
+    local cache_key = tostring(p2_cache.real_name or "") .. "|" .. tostring(p2_rname or "")
+    if _dv_aa_moves_cache_key == cache_key and _G._dv_aa_moves then return end
+
     local am = {}
     local cd = advanced_data[p2_rname]
     if cd and cd.moves then for _, m in ipairs(cd.moves) do am[#am + 1] = m end end
@@ -3398,8 +3417,12 @@ local function _dv_rebuild_aa_moves()
     end
     table.sort(am, function(a, b) return (a.ar or 0) > (b.ar or 0) end)
     local jf = jump_data_store[p2_cache.real_name]
-    if jf and jf.cross_up_st then am[#am + 1] = { input = "FORWARD JUMP", ar = jf.cross_up_st, is_jump = true } end
+    if jf and jf.cross_up_st then
+        am[#am + 1] = { input = "FORWARD JUMP", ar = jf.cross_up_st, is_jump = true }
+        am[#am + 1] = { input = "NEUTRAL JUMP", ar = jf.cross_up_st, is_jump = true }
+    end
     _G._dv_aa_moves = am
+    _dv_aa_moves_cache_key = cache_key
 end
 
 															  
@@ -3446,16 +3469,18 @@ re.on_frame(function()
         end
         _G._dv_last_p2_char = p2_name
     end
-    poll_web_bridge()
+    if _G._remote_control_loaded then poll_web_bridge() end
     if _G._dv_pending_mode_flags then
         local pmf = _G._dv_pending_mode_flags
         _G._dv_pending_mode_flags = nil
         pcall(apply_mode_flags, pmf.p, pmf.v)
     end
-    _web_state_counter = _web_state_counter + 1
-    if _web_state_counter >= 60 then
-        _web_state_counter = 0
-        pcall(_dv_dump_web_state)
+    if _G._remote_control_loaded then
+        _web_state_counter = _web_state_counter + 1
+        if _web_state_counter >= 60 then
+            _web_state_counter = 0
+            pcall(_dv_dump_web_state)
+        end
     end
     -- Build AA moves list for web bridge (always, not just when ImGui header is open)
     if p2_cache and p2_cache.valid then
@@ -3603,10 +3628,10 @@ re.on_frame(function()
         local m = imgui.get_mouse()
         if m and not point_in_any_rect(m.x, m.y) then
             if check_char_click(m.x, m.y, p1_cache) then
-                cycle_player_display("p1")
+                cycle_player_display("p1"); save_settings()
             end
             if check_char_click(m.x, m.y, p2_cache) then
-                cycle_player_display("p2")
+                cycle_player_display("p2"); save_settings()
             end
         end
     end
