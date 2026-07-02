@@ -60,43 +60,65 @@ E.Honda `stock_0_020`, Jamie `timer/stock_0_021`, Mai `stock_0_028`, C.Viper
 
 ## Combo Trials integration (TrainingComboTrials_v1.0.lua)
 
-- **Recording** — `snapshot_gauges()` captures `attacker:get_field("mStyleNo")` at combo
-  start. If > 0 it is saved into `combo_stats.style_stock` (+ `style_char_id`) in the
-  combo JSON.
-- **Trial start** — `apply_trial_vital()` backs up the current `UniqueData` stock into
-  `trial_state._saved_unique_atk`, writes `style_stock` into the menu field, and the
-  trial's existing refresh applies it natively.
-- **Trial end** — `restore_trial_vital()` writes the backed-up value back.
+The implementation uses the `unique_resources` module shared with
+[SF6_TOOLS_CC](https://github.com/cdjay/SF6_TOOLS_CC) so combo files are interchangeable
+between the two projects:
 
-Combos recorded without an active style carry no `style_stock` key and behave exactly
-as before (zero overhead, fully backward compatible).
+- **Registry** — `unique_resources.by_fighter_id`: per-character resource list
+  (`id`, `kind` stock/timer, `min`/`max`, `allow_infinite`/`reject_infinite`, optional
+  ParamFunc `setter` such as Mai's `SetUnique028_stock_0`).
+- **Recording** — `unique_resources.capture_scene_state()` snapshots both sides' unique
+  values at recording start and saves them in the combo JSON as:
+  ```json
+  "scene_state": {
+    "schema": "xt.combo_trial.scene.v1",
+    "capture_mode": "portable",
+    "recorded_by": 0,
+    "players": { "p1": { "fighter_id": 21, "unique": { "stock_0_021": 2 } } }
+  }
+  ```
+  Local extension: for stock resources the capture also reads the live
+  `cPlayer.mStyleNo` and keeps the higher value — so resources gained **in-game**
+  (drinking with 22P) are recorded even though the training menu still says 0.
+- **Trial start** — `unique_resources.apply_recorded()` collects entries from
+  `scene_state` (plus legacy `meta.environment` layouts and a bridge for the
+  transitional `combo_stats.style_stock` format), backs up the current menu values
+  (`save_current()`), writes the recorded values, and requests a training refresh.
+- **Trial end** — `unique_resources.restore()` writes the backed-up menu values back
+  and refreshes.
+
+Combos recorded without an active unique resource carry no `scene_state` key and
+behave exactly as before (zero overhead, fully backward compatible).
 
 ## Current status & testing
 
 | Character | Type | Status |
 |---|---|---|
 | **Jamie** (Drink Level) | stock | ✅ **Tested — works 100%** (record, replay, restore) |
-| Ryu (Denjin Charge) | timer | ❌ **Not working** — timer-type application is not implemented |
 | Kimberly, Manon, Lily, E.Honda, Mai, Ingrid, Blanka/Juri stocks | stock | ⚠ Untested — same code path as Jamie, should work but needs in-game verification |
-| Guile, C.Viper, Blanka/Juri/Jamie timers | timer | ❌ Not implemented |
+| Ryu (Denjin), Guile, C.Viper, Blanka/Juri/Jamie timers | timer | ⚠ Menu value is captured/applied, but a timer activated **in-game** is not detected and the remaining install time is not restored — untested |
 
 ### How to contribute
 
 1. **Verify a stock character**: gain the resource in-game (not via the menu), record a
    combo, then open the JSON in `data/TrainingComboTrials_data/CustomCombos/<char>/` and
-   check `combo_stats.style_stock` matches what you had. Launch the trial and verify the
-   counter/moves/visuals apply; exit the trial and verify the training menu value is
-   restored. If a character's `mStyleNo` does not map 1:1 to its menu stock value, a
-   per-character mapping table is needed in `apply_trial_vital()`.
-2. **The three integration points** in `TrainingComboTrials_v1.0.lua`:
-   - `snapshot_gauges()` — reads `mStyleNo` at recording start
-   - `apply_trial_vital()` — backs up + writes `UniqueData.stock_0_XXX` before the refresh
-   - `restore_trial_vital()` — restores the backed-up menu value
+   check `scene_state.players.<side>.unique.stock_0_XXX` matches what you had. Launch
+   the trial and verify the counter/moves/visuals apply; exit the trial and verify the
+   training menu value is restored. If a character's `mStyleNo` does not map 1:1 to its
+   menu stock value, adjust the live-overlay block in
+   `unique_resources.capture_for_fighter()`.
+2. **The integration points** in `TrainingComboTrials_v1.0.lua` (`unique_resources`
+   module):
+   - `capture_scene_state()` — called at recording start, saved as `scene_state`
+   - `apply_recorded()` — called from `start_trial()`, backs up + writes menu values +
+     refresh
+   - `restore()` — called on trial exit paths, restores the backup + refresh
 3. **Adding timer-type support** (Denjin Charge, Feng Shui Engine, Solid Puncher…):
-   record needs `style_timer` (and whether the install is active), apply needs
-   `timer_0_XXX` (0 = Standard, 1 = Activated/Maximum, 2 = Infinite) plus, for install
-   characters, an initial `style_timer` value written on round start. The refresh path
-   is the same as for stocks.
+   the registry already declares `timer_0_XXX` resources (0 = Standard,
+   1 = Activated/Maximum, 2 = Infinite) and they are captured/applied as menu values —
+   but a timer activated **in-game** is not detected yet (needs a `style_timer`-based
+   live overlay, like the `mStyleNo` one for stocks), and the remaining install time is
+   not restored. The refresh path is the same as for stocks.
 
 ## Verified caveats
 

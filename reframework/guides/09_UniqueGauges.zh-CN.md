@@ -59,14 +59,30 @@ tm:call("set_IsReqRefresh", true)
 
 ## 连招试炼集成（TrainingComboTrials_v1.0.lua）
 
-- **录制** — `snapshot_gauges()` 在连招开始时读取 `attacker:get_field("mStyleNo")`。
-  若 > 0 则存入连招 JSON 的 `combo_stats.style_stock`（+ `style_char_id`）。
-- **试炼开始** — `apply_trial_vital()` 把当前 `UniqueData` 值备份到
-  `trial_state._saved_unique_atk`，将 `style_stock` 写入菜单字段，
-  试炼已有的刷新流程会原生应用它。
-- **试炼结束** — `restore_trial_vital()` 写回备份值。
+实现采用与 [SF6_TOOLS_CC](https://github.com/cdjay/SF6_TOOLS_CC) 共享的
+`unique_resources` 模块，两个项目的连招文件可以互换：
 
-未激活风格时录制的连招不含 `style_stock` 键，行为与之前完全一致
+- **注册表** — `unique_resources.by_fighter_id`：每个角色的资源列表
+  （`id`、`kind` stock/timer、`min`/`max`、`allow_infinite`/`reject_infinite`、
+  可选的 ParamFunc `setter`，如舞的 `SetUnique028_stock_0`）。
+- **录制** — `unique_resources.capture_scene_state()` 在录制开始时快照双方的
+  特有资源值，存入连招 JSON：
+  ```json
+  "scene_state": {
+    "schema": "xt.combo_trial.scene.v1",
+    "capture_mode": "portable",
+    "recorded_by": 0,
+    "players": { "p1": { "fighter_id": 21, "unique": { "stock_0_021": 2 } } }
+  }
+  ```
+  本地扩展：对 stock 型资源，捕获时还会读取实时的 `cPlayer.mStyleNo` 并取较大值 —
+  这样**游戏内**获得的资源（如 22P 喝酒）也能被录制，即使训练菜单仍显示 0。
+- **试炼开始** — `unique_resources.apply_recorded()` 从 `scene_state` 收集条目
+  （兼容旧的 `meta.environment` 布局和过渡期的 `combo_stats.style_stock` 格式），
+  备份当前菜单值（`save_current()`），写入录制值，然后请求训练刷新。
+- **试炼结束** — `unique_resources.restore()` 写回备份的菜单值并刷新。
+
+未激活特有资源时录制的连招不含 `scene_state` 键，行为与之前完全一致
 （零开销，完全向后兼容）。
 
 ## 当前状态与测试情况
@@ -74,25 +90,26 @@ tm:call("set_IsReqRefresh", true)
 | 角色 | 类型 | 状态 |
 |---|---|---|
 | **杰米**（酒等级） | stock | ✅ **已测试 — 100% 可用**（录制、复现、还原） |
-| 隆（电刃练气） | timer | ❌ **不可用** — 时限型的应用尚未实现 |
 | 金伯莉、玛农、莉莉、本田、不知火舞、英格丽德、布兰卡/朱莉的层数 | stock | ⚠ 未测试 — 与杰米走同一代码路径，理论上可用但需要实机验证 |
-| 古烈、维珀、布兰卡/朱莉/杰米的计时器 | timer | ❌ 未实现 |
+| 隆（电刃练气）、古烈、维珀、布兰卡/朱莉/杰米的计时器 | timer | ⚠ 菜单值会被捕获/应用，但**游戏内**激活的强化无法检测，剩余强化时间也不会还原 — 未测试 |
 
 ### 如何参与改进
 
 1. **验证层数型角色**：在游戏内实际获取资源（不要用菜单设置），录制一段连招，
    打开 `data/TrainingComboTrials_data/CustomCombos/<角色>/` 里的 JSON，
-   确认 `combo_stats.style_stock` 与实际层数一致。启动试炼，验证计数器/招式/外观
-   是否正确应用；退出试炼，验证训练菜单的值被还原。如果某个角色的 `mStyleNo`
-   与菜单层数值不是 1:1 对应，需要在 `apply_trial_vital()` 里加一张按角色的映射表。
-2. **三个集成点**（`TrainingComboTrials_v1.0.lua`）：
-   - `snapshot_gauges()` — 录制开始时读取 `mStyleNo`
-   - `apply_trial_vital()` — 刷新前备份并写入 `UniqueData.stock_0_XXX`
-   - `restore_trial_vital()` — 还原备份的菜单值
+   确认 `scene_state.players.<side>.unique.stock_0_XXX` 与实际层数一致。
+   启动试炼，验证计数器/招式/外观是否正确应用；退出试炼，验证训练菜单的值被还原。
+   如果某个角色的 `mStyleNo` 与菜单层数值不是 1:1 对应，请调整
+   `unique_resources.capture_for_fighter()` 里的实时覆盖（live overlay）代码块。
+2. **集成点**（`TrainingComboTrials_v1.0.lua` 的 `unique_resources` 模块）：
+   - `capture_scene_state()` — 录制开始时调用，存为 `scene_state`
+   - `apply_recorded()` — 由 `start_trial()` 调用，备份 + 写入菜单值 + 刷新
+   - `restore()` — 试炼退出路径调用，还原备份 + 刷新
 3. **添加时限型支持**（电刃练气、风水引擎、Sonic 强化等）：
-   录制需要读 `style_timer`（以及强化是否激活），应用需要写 `timer_0_XXX`
-   （0 = 标准，1 = 激活/最大，2 = 无限），对于 install 型角色还需在回合开始时
-   写入初始 `style_timer` 值。刷新路径与层数型完全相同。
+   注册表已声明 `timer_0_XXX` 资源（0 = 标准，1 = 激活/最大，2 = 无限），
+   它们作为菜单值被捕获/应用 — 但**游戏内**激活的强化目前无法检测
+   （需要一个基于 `style_timer` 的实时覆盖，类似 stock 的 `mStyleNo` 方案），
+   且剩余的强化时间不会被还原。刷新路径与层数型完全相同。
 
 ## 已验证的注意事项
 

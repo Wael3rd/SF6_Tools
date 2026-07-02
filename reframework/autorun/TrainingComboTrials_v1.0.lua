@@ -33,6 +33,103 @@ local DIR_MAP = {
 }
 local BTN_MASKS = { [16] = "LP", [32] = "MP", [64] = "HP", [128] = "LK", [256] = "MK", [512] = "HK" }
 
+-- Unique character resources (drinks, stocks, install timers) — registry and
+-- capture/apply/restore system shared with SF6_TOOLS_CC (cdjay) for combo
+-- file compatibility (scene_state schema xt.combo_trial.scene.v1)
+local unique_resources = {
+    by_fighter_id = {
+        [1] = {
+        name = "Ryu",
+        resources = {
+            { id = "timer_0_001", kind = "timer", min = 0, max = 2 }
+        }
+    },
+    [3] = {
+        name = "Kimberly",
+        resources = {
+            { id = "stock_0_003", kind = "stock", min = 0, max = 2, allow_infinite = true }
+        }
+    },
+    [5] = {
+        name = "Manon",
+        resources = {
+            { id = "stock_0_005", kind = "stock", min = 0, max = 4 }
+        }
+    },
+    [12] = {
+        name = "Lily",
+        resources = {
+            { id = "stock_0_012", kind = "stock", min = 0, max = 3, allow_infinite = true }
+        }
+    },
+    [15] = {
+        name = "Blanka",
+        resources = {
+            { id = "timer_0_015", kind = "timer", min = 0, max = 2 },
+            { id = "stock_0_015", kind = "stock", min = 0, max = 3, allow_infinite = true }
+        }
+    },
+    [16] = {
+        name = "Juri",
+        resources = {
+            { id = "timer_0_016", kind = "timer", min = 0, max = 2 },
+            { id = "stock_0_016", kind = "stock", min = 0, max = 3, allow_infinite = true }
+        }
+    },
+    [18] = {
+        name = "Guile",
+        resources = {
+            { id = "timer_0_018", kind = "timer", min = 0, max = 2 }
+        }
+    },
+    [20] = {
+        name = "EHonda",
+        resources = {
+            { id = "stock_0_020", kind = "stock", min = 0, max = 1, allow_infinite = true }
+        }
+    },
+    [21] = {
+        name = "Jamie",
+        resources = {
+            { id = "timer_0_021", kind = "timer", min = 0, max = 2 },
+            { id = "stock_0_021", kind = "stock", min = 0, max = 4 }
+        }
+    },
+    [28] = {
+        name = "Mai",
+        resources = {
+            { id = "stock_0_028", kind = "stock", min = 0, max = 5, reject_infinite = true, setter = "SetUnique028_stock_0" }
+        }
+    },
+    [30] = {
+        name = "CViper",
+        resources = {
+            { id = "timer_0_030", kind = "timer", min = 0, max = 2 }
+        }
+    },
+    [32] = {
+        name = "Ingrid",
+        resources = {
+            { id = "stock_0_032", kind = "stock", min = 0, max = 4, allow_infinite = true }
+        }
+    }
+    },
+    by_id = nil
+}
+
+function unique_resources.resource_by_id(resource_id)
+    if not unique_resources.by_id then
+        local by_id = {}
+        for _, char_data in pairs(unique_resources.by_fighter_id) do
+            for _, resource in ipairs(char_data.resources or {}) do
+                by_id[resource.id] = resource
+            end
+        end
+        unique_resources.by_id = by_id
+    end
+    return unique_resources.by_id[resource_id]
+end
+
 local esf_names_map = {
     ["ESF_001"] = "Ryu",
     ["ESF_002"] = "Luke",
@@ -187,12 +284,12 @@ local trial_state = {
     _saved_vital_p2 = nil,
     _saved_gauge_atk = nil,
     _saved_dummy_action = nil,
-    _saved_unique_atk = nil,
+    _saved_unique_resources = nil,
+    _rec_scene_state = nil,
     _pending_victim_hp = nil,
     _pending_attacker_hp = nil,
     _pending_attacker_drive = nil,
     _pending_attacker_super = nil,
-    _pending_attacker_style = nil,
     _rec_pending_snapshot = 0,
     _was_playing = false,   -- Previous state for detecting transitions
     _step1_wrong_pending = false,
@@ -999,21 +1096,10 @@ local function snapshot_gauges(attacker_idx)
 
         if v_hp == nil or a_dr == nil or a_sa == nil then return end
 
-        -- Unique style level (Jamie drinks etc.): mStyleNo = live current level
-        local a_style, a_char_id = nil, nil
-        pcall(function()
-            local s = attacker:get_field("mStyleNo")
-            if s and s > 0 and s < 100 then a_style = s end
-            local info = _G._shared_player_info
-            if info and info[attacker_idx] then a_char_id = info[attacker_idx].id end
-        end)
-
         result = {
             victim_hp = v_hp,
             attacker_drive = a_dr,
             attacker_super = a_sa,
-            attacker_style = a_style,
-            attacker_char_id = a_char_id,
             -- Min trackers (updated each frame in on_frame)
             min_victim_hp = v_hp,
             min_atk_drive = a_dr,
@@ -1074,7 +1160,6 @@ local function apply_trial_vital()
     if cs then
         trial_state._pending_attacker_drive = cs.drive_used or 0
         trial_state._pending_attacker_super = cs.super_used or 0
-        trial_state._pending_attacker_style = (cs.style_stock and cs.style_stock > 0) and cs.style_stock or nil
     end
 
     pcall(function()
@@ -1145,28 +1230,6 @@ local function apply_trial_vital()
             ad.Is_SA_No_Recovery = true
         end
 
-        -- Unique style (Jamie drinks etc.): set the training menu stock so the
-        -- refresh applies it natively (counter UI, command table, visuals)
-        if trial_state._pending_attacker_style then
-            local ud = ps:get_field("UniqueData")
-            local char_id = nil
-            local cs2 = trial_state.sequence[1] and trial_state.sequence[1].combo_stats
-            if cs2 and cs2.style_char_id then char_id = cs2.style_char_id end
-            if not char_id then
-                local info = _G._shared_player_info
-                if info and info[attacker_idx] then char_id = info[attacker_idx].id end
-            end
-            if ud and char_id then
-                local fname = string.format("stock_0_%03d", char_id)
-                local okv, cur = pcall(function() return ud:get_field(fname) end)
-                if okv and cur ~= nil then
-                    if not trial_state._saved_unique_atk then
-                        trial_state._saved_unique_atk = { field = fname, value = cur }
-                    end
-                    ud:set_field(fname, trial_state._pending_attacker_style)
-                end
-            end
-        end
     end)
 end
 
@@ -1191,7 +1254,6 @@ local function restore_trial_vital()
     trial_state._pending_attacker_hp = nil
     trial_state._pending_attacker_drive = nil
     trial_state._pending_attacker_super = nil
-    trial_state._pending_attacker_style = nil
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
@@ -1234,14 +1296,422 @@ local function restore_trial_vital()
             trial_state._saved_gauge_atk = nil
         end
 
-        if trial_state._saved_unique_atk then
-            local ud = ps:get_field("UniqueData")
-            if ud then
-                pcall(function() ud:set_field(trial_state._saved_unique_atk.field, trial_state._saved_unique_atk.value) end)
-            end
-            trial_state._saved_unique_atk = nil
-        end
     end)
+end
+
+-- =========================================================
+-- UNIQUE RESOURCES capture/apply/restore (SF6_TOOLS_CC-compatible)
+-- Same scene_state schema (xt.combo_trial.scene.v1) as cdjay's fork so
+-- combo files stay interchangeable between the two projects.
+-- =========================================================
+
+function unique_resources.request_training_refresh()
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if tm then tm._IsReqRefresh = true end
+    end)
+end
+
+function unique_resources.trace_restore(event)
+    if type(event) ~= "table" then return end
+    trial_state._unique_restore_debug = event
+end
+
+function unique_resources.get_training_data_objects()
+    local result = {}
+    pcall(function()
+        result.training_manager = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not result.training_manager then return end
+        result.training_data = result.training_manager:get_field("_tData")
+        if not result.training_data then return end
+        result.parameter_setting = result.training_data:get_field("ParameterSetting")
+        result.select_menu = result.training_data:get_field("SelectMenu")
+    end)
+    if result.parameter_setting then
+        pcall(function() result.unique_data = result.parameter_setting:get_field("UniqueData") end)
+        if not result.unique_data then
+            pcall(function() result.unique_data = result.parameter_setting.UniqueData end)
+        end
+        pcall(function() result.param_func = result.parameter_setting:get_field("ParamFunc") end)
+        if not result.param_func then
+            pcall(function() result.param_func = result.parameter_setting.ParamFunc end)
+        end
+    end
+    if not result.param_func and result.training_data then
+        pcall(function() result.param_func = result.training_data:get_field("ParamFunc") end)
+        if not result.param_func then
+            pcall(function() result.param_func = result.training_data.ParamFunc end)
+        end
+    end
+    return result
+end
+
+function unique_resources.read_training_fighter_id(player_idx)
+    local fighter_id = nil
+    pcall(function()
+        local data = unique_resources.get_training_data_objects()
+        local sm = data.select_menu
+        if not sm or not sm.PlayerDatas then return end
+        local player_data = sm.PlayerDatas[player_idx]
+        if not player_data then return end
+        fighter_id = tonumber(player_data.FighterID)
+    end)
+    return fighter_id
+end
+
+function unique_resources.read_value(unique_data, resource_id)
+    if not unique_data or not resource_id then return nil end
+
+    local ok, value = pcall(function() return unique_data[resource_id] end)
+    if ok and value ~= nil then return tonumber(value) end
+
+    ok, value = pcall(function() return unique_data:get_field(resource_id) end)
+    if ok and value ~= nil then return tonumber(value) end
+
+    return nil
+end
+
+function unique_resources.call_setter(data, resource, value)
+    if not data or not resource or not resource.setter then return false, "setter_missing" end
+
+    local param_func = data.param_func
+    if not param_func then return false, "setter_missing" end
+
+    local ok = pcall(function()
+        param_func:call(resource.setter, value)
+    end)
+    if ok then return true, resource.setter end
+
+    ok = pcall(function()
+        param_func[resource.setter](param_func, value)
+    end)
+    if ok then return true, resource.setter end
+
+    ok = pcall(function()
+        param_func[resource.setter](value)
+    end)
+    if ok then return true, resource.setter end
+
+    return false, "setter_missing"
+end
+
+function unique_resources.write_value(unique_data, resource_id, value, data)
+    if not unique_data or not resource_id or value == nil then return false end
+
+    local resource = unique_resources.resource_by_id(resource_id)
+    if resource and resource.setter and data then
+        local setter_ok, setter_method = unique_resources.call_setter(data, resource, value)
+        if setter_ok then return true, setter_method end
+    end
+
+    local ok = pcall(function()
+        unique_data[resource_id] = value
+    end)
+    if ok then return true, "existing_unique_setter" end
+
+    ok = pcall(function()
+        unique_data:set_field(resource_id, value)
+    end)
+    if ok then return true, "existing_unique_setter" end
+
+    return false, resource and resource.setter and "setter_missing" or "write_failed"
+end
+
+function unique_resources.normalize_value(resource, value)
+    if not resource then return nil end
+    local n = tonumber(value)
+    if n == nil then return nil end
+    n = math.floor(n + 0.5)
+
+    if n == 7 then
+        if resource.allow_infinite then
+            return 7
+        end
+        if resource.reject_infinite then
+            return nil, "invalid_value"
+        end
+    end
+
+    local min_value = resource.min or 0
+    local max_value = resource.max or min_value
+    if n < min_value then n = min_value end
+    if n > max_value then n = max_value end
+    return n
+end
+
+function unique_resources.capture_for_fighter(fighter_id, unique_data, side_key)
+    local char_data = unique_resources.by_fighter_id[tonumber(fighter_id)]
+    if not char_data or not unique_data then return nil end
+
+    local unique = {}
+    for _, resource in ipairs(char_data.resources or {}) do
+        local raw_value = unique_resources.read_value(unique_data, resource.id)
+        local value = unique_resources.normalize_value(resource, raw_value)
+        if value ~= nil then
+            unique[resource.id] = value
+        end
+
+        -- LOCAL EXTENSION: resources gained IN-GAME (e.g. Jamie drinking via
+        -- 22P) live in cPlayer.mStyleNo, not in the training menu settings.
+        -- Prefer the live value for stock resources when it is higher.
+        if resource.kind == "stock" then
+            pcall(function()
+                local p = (side_key == "p2") and GS.p2 or GS.p1
+                local live = p and p:get_field("mStyleNo")
+                if live and live > 0 and live < 100 then
+                    local lv = unique_resources.normalize_value(resource, live)
+                    if lv ~= nil and (unique[resource.id] == nil or lv > unique[resource.id]) then
+                        unique[resource.id] = lv
+                    end
+                end
+            end)
+        end
+    end
+
+    if next(unique) == nil then return nil end
+    return unique
+end
+
+function unique_resources.capture_by_side()
+    local data = unique_resources.get_training_data_objects()
+    local unique_data = data.unique_data
+    if not unique_data then return nil end
+
+    local players_state = {}
+    local has_unique = false
+
+    for player_idx = 0, 1 do
+        local fighter_id = unique_resources.read_training_fighter_id(player_idx)
+        local side_key = player_idx == 0 and "p1" or "p2"
+        local side_state = nil
+
+        if fighter_id ~= nil then
+            local unique = unique_resources.capture_for_fighter(fighter_id, unique_data, side_key)
+            if unique then
+                side_state = {
+                    fighter_id = fighter_id,
+                    unique = unique
+                }
+                has_unique = true
+            end
+        end
+
+        if side_state then
+            players_state[side_key] = side_state
+        end
+    end
+
+    if not has_unique then return nil end
+    return players_state
+end
+
+function unique_resources.capture_scene_state(recorded_by)
+    local players_state = unique_resources.capture_by_side()
+    if not players_state then return nil end
+
+    return {
+        schema = "xt.combo_trial.scene.v1",
+        capture_mode = "portable",
+        recorded_by = recorded_by,
+        players = players_state
+    }
+end
+
+function unique_resources.add_recorded_entries(entries, unique_table, side_key, fighter_id, source)
+    if type(unique_table) ~= "table" then return end
+
+    for resource_id, value in pairs(unique_table) do
+        local resource = unique_resources.resource_by_id(resource_id)
+        local normalized = unique_resources.normalize_value(resource, value)
+        if normalized ~= nil then
+            table.insert(entries, {
+                resource_id = resource_id,
+                value = normalized,
+                resource = resource,
+                side_key = side_key,
+                fighter_id = fighter_id,
+                source = source
+            })
+        end
+    end
+end
+
+function unique_resources.collect_recorded_entries()
+    local first = trial_state.sequence and trial_state.sequence[1]
+    if type(first) ~= "table" then return nil end
+
+    local entries = {}
+    local scene_state = type(first.scene_state) == "table" and first.scene_state or nil
+    local meta = type(first._xt_meta) == "table" and first._xt_meta or nil
+
+    if not scene_state and meta and type(meta.scene_state) == "table" then
+        scene_state = meta.scene_state
+    end
+
+    if scene_state and type(scene_state.players) == "table" then
+        local recorded_by = tonumber(first.recorded_by or scene_state.recorded_by or 0) or 0
+        local first_side = recorded_by == 1 and "p2" or "p1"
+        local second_side = recorded_by == 1 and "p1" or "p2"
+
+        local function add_side(side_key)
+            local side = scene_state.players[side_key]
+            if type(side) == "table" then
+                unique_resources.add_recorded_entries(entries, side.unique, side_key, side.fighter_id, "scene_state")
+            end
+        end
+
+        add_side(second_side)
+        add_side(first_side)
+    end
+
+    if meta and type(meta.environment) == "table" then
+        local env = meta.environment
+        if type(env.unique) == "table" then
+            unique_resources.add_recorded_entries(entries, env.unique, nil, nil, "meta.environment.unique")
+            if type(env.unique.p1) == "table" then
+                unique_resources.add_recorded_entries(entries, env.unique.p1.unique, "p1", env.unique.p1.fighter_id, "meta.environment.unique.p1")
+            end
+            if type(env.unique.p2) == "table" then
+                unique_resources.add_recorded_entries(entries, env.unique.p2.unique, "p2", env.unique.p2.fighter_id, "meta.environment.unique.p2")
+            end
+        end
+        if type(env.players) == "table" then
+            if type(env.players.p1) == "table" then
+                unique_resources.add_recorded_entries(entries, env.players.p1.unique, "p1", env.players.p1.fighter_id, "meta.environment.players.p1")
+            end
+            if type(env.players.p2) == "table" then
+                unique_resources.add_recorded_entries(entries, env.players.p2.unique, "p2", env.players.p2.fighter_id, "meta.environment.players.p2")
+            end
+        end
+    end
+
+    -- LOCAL EXTENSION: legacy bridge for combos recorded with the transitional
+    -- combo_stats.style_stock format (v2.9)
+    if #entries == 0 then
+        local cs = type(first.combo_stats) == "table" and first.combo_stats or nil
+        local char_id = cs and tonumber(cs.style_char_id)
+        local stock = cs and tonumber(cs.style_stock)
+        if char_id and stock and stock > 0 then
+            local rid = string.format("stock_0_%03d", char_id)
+            local resource = unique_resources.resource_by_id(rid)
+            local normalized = unique_resources.normalize_value(resource, stock)
+            if normalized ~= nil then
+                table.insert(entries, {
+                    resource_id = rid,
+                    value = normalized,
+                    resource = resource,
+                    side_key = nil,
+                    fighter_id = char_id,
+                    source = "combo_stats.style_stock"
+                })
+            end
+        end
+    end
+
+    if #entries == 0 then return nil end
+    return entries
+end
+
+function unique_resources.side_to_player_idx(side_key)
+    if side_key == "p1" then return 0 end
+    if side_key == "p2" then return 1 end
+    return nil
+end
+
+function unique_resources.any_current_fighter_is(fighter_id)
+    for player_idx = 0, 1 do
+        if tonumber(unique_resources.read_training_fighter_id(player_idx)) == tonumber(fighter_id) then
+            return true
+        end
+    end
+    return false
+end
+
+function unique_resources.should_apply_entry(entry)
+    if type(entry) ~= "table" then return false, "invalid_entry" end
+    if entry.resource_id ~= "stock_0_028" then return true end
+
+    if entry.fighter_id ~= nil and tonumber(entry.fighter_id) ~= 28 then
+        return false, "not_mai"
+    end
+
+    local player_idx = unique_resources.side_to_player_idx(entry.side_key)
+    if player_idx ~= nil then
+        if tonumber(unique_resources.read_training_fighter_id(player_idx)) ~= 28 then
+            return false, "not_mai"
+        end
+        return true
+    end
+
+    if unique_resources.any_current_fighter_is(28) then return true end
+    return false, "not_mai"
+end
+
+function unique_resources.save_current()
+    if trial_state._saved_unique_resources then return end
+
+    local data = unique_resources.get_training_data_objects()
+    local unique_data = data.unique_data
+    if not unique_data then return end
+
+    local saved = {}
+    unique_resources.resource_by_id("")
+    for resource_id, resource in pairs(unique_resources.by_id or {}) do
+        if resource_id ~= "stock_0_028" or unique_resources.any_current_fighter_is(28) then
+            local value = unique_resources.normalize_value(resource, unique_resources.read_value(unique_data, resource_id))
+            if value ~= nil then saved[resource_id] = value end
+        end
+    end
+
+    if next(saved) ~= nil then
+        trial_state._saved_unique_resources = saved
+    end
+end
+
+function unique_resources.restore()
+    local saved = trial_state._saved_unique_resources
+    if type(saved) ~= "table" then return end
+
+    local data = unique_resources.get_training_data_objects()
+    local unique_data = data.unique_data
+    if unique_data then
+        local changed = false
+        for resource_id, value in pairs(saved) do
+            if resource_id ~= "stock_0_028" or unique_resources.any_current_fighter_is(28) then
+                if unique_resources.write_value(unique_data, resource_id, value, data) then
+                    changed = true
+                end
+            end
+        end
+        if changed then unique_resources.request_training_refresh() end
+    end
+
+    trial_state._saved_unique_resources = nil
+end
+
+function unique_resources.apply_recorded()
+    local entries = unique_resources.collect_recorded_entries()
+    if type(entries) ~= "table" then return false end
+
+    local data = unique_resources.get_training_data_objects()
+    local unique_data = data.unique_data
+    if not unique_data then return false end
+
+    unique_resources.save_current()
+
+    local changed = false
+    for _, entry in ipairs(entries) do
+        local should_apply = unique_resources.should_apply_entry(entry)
+        if should_apply then
+            local ok = unique_resources.write_value(unique_data, entry.resource_id, entry.value, data)
+            if ok then
+                changed = true
+            end
+        end
+    end
+
+    if changed then unique_resources.request_training_refresh() end
+    return changed
 end
 
 -- Sets the Dummy Counter state (0=Normal, 1=Counter, 2=Punish Counter)
@@ -1681,6 +2151,7 @@ local function reset_trial_flags()
     trial_state.fail_timer = 0
     trial_state.fail_reason = nil
     trial_state._rec_gauges = nil
+    trial_state._rec_scene_state = nil
     trial_state._rec_hit_type = nil
     trial_state._raw_rec_active = false
     if demo_state then demo_state.is_playing = false end
@@ -1742,6 +2213,7 @@ end
 
 local function start_trial(player_idx)
     restore_trial_vital()
+    unique_resources.restore()
     reset_trial_flags()
     trial_state.is_playing = true
     trial_state.playing_player = player_idx
@@ -1766,6 +2238,9 @@ local function start_trial(player_idx)
     else
         set_dummy_action_type(0)
     end
+
+    -- APPLY UNIQUE RESOURCES recorded with the combo (Jamie drinks etc.)
+    unique_resources.apply_recorded()
 
     -- Guard: After 1st Hit (2) at trial start
     set_dummy_guard_type(2)
@@ -2527,6 +3002,7 @@ local function ct_handle_mode_exit()
             reset_trial_flags()
             reset_visual_state()
             restore_trial_vital()
+            unique_resources.restore()
             restore_dummy_counter_type()
             restore_dummy_guard_type()
             restore_dummy_action_type()
@@ -2625,6 +3101,7 @@ local function ct_handle_playing_transition()
     elseif not now_playing and trial_state._was_playing then
         -- Transition ON -> OFF: Restore P2 health and reset positions to default
         restore_trial_vital()
+        unique_resources.restore()
         trial_state._pending_reinject_settings = false
         set_dummy_counter_type(0)
         set_dummy_guard_type(0)
@@ -2806,6 +3283,7 @@ local function ct_player_tracking(p_idx, p_state)
     trial_state._rec_pending_snapshot = trial_state._rec_pending_snapshot - 1
     if trial_state._rec_pending_snapshot == 0 then
     trial_state._rec_gauges = snapshot_gauges(p_idx)
+    trial_state._rec_scene_state = unique_resources.capture_scene_state(p_idx)
     -- At this point vital_new = character's real max_hp, so damage is calculated from 100%
     end
     end
@@ -4098,11 +4576,6 @@ function save_trial_sequence()
             stats.damage     = math.max(0, init.victim_hp - (init.min_victim_hp or init.victim_hp))
             stats.drive_used = math.max(0, init.attacker_drive - (init.min_atk_drive or init.attacker_drive))
             stats.super_used = math.max(0, init.attacker_super - (init.min_atk_super or init.attacker_super))
-            -- Unique style (Jamie drinks etc.) active when the combo started
-            if init.attacker_style and init.attacker_style > 0 then
-                stats.style_stock = init.attacker_style
-                stats.style_char_id = init.attacker_char_id
-            end
         end
         trial_state.sequence[1].combo_stats = stats
         if (trial_state.sequence[1].counter_type == nil or trial_state.sequence[1].counter_type == 0) and stats.hit_type then
@@ -4123,6 +4596,12 @@ function save_trial_sequence()
         if trial_state._raw_rec_buffer and #trial_state._raw_rec_buffer > 0 then
             trial_state.sequence[1].raw_inputs = trial_state._raw_rec_buffer
         end
+        -- Unique resources snapshot (SF6_TOOLS_CC-compatible scene_state)
+        local scene_state = trial_state._rec_scene_state
+        if scene_state then
+            trial_state.sequence[1].scene_state = scene_state
+        end
+        trial_state._rec_scene_state = nil
     end
     trial_state._raw_rec_active = false
     trial_state._raw_rec_buffer = {}
