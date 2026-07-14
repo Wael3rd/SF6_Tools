@@ -78,10 +78,11 @@ file-level payloads:
   breaking change (field renamed/retyped/removed).
 - `versions.*`: structured `{ id, version }` objects. `game` covers act-id
   drift between patches; `recorder` identifies the producing tool
-  (`wtt`, `sf6cc`, `sf6cm`); `json` is the format id.
-  *Open question: neutral format id (`xt.combo_trial`) vs platform-branded
-  (`SF6CM`) — proposal: neutral id, since the format is co-owned; platforms
-  can add their own `distribution` entry if needed.*
+  (`wtt`, `sf6cc`, `sf6cm`); `json` is the format version.
+  **RESOLVED (review pass 1):** format id is the neutral `xt.combo_trial`;
+  the `id` field MAY be omitted on the `json` entry (the format is already
+  identified by `schema` + this spec) — `"json": { "version": "2.0.0" }`
+  is valid. Platforms add their own `distribution` entry if needed.
 - `step_notes` (string[]): per-step community annotations, **index-aligned
   with the step array** (empty string = no note). Kept in `_xt_meta` so the
   step objects stay engine-only.
@@ -188,7 +189,6 @@ able to declare equivalences explicitly:
 
 | Topic | Status |
 |---|---|
-| Format id: neutral (`xt.combo_trial`) vs platform-branded (`SF6CM`) | Proposal: neutral (§3) — needs agreement |
 | Unique-resource capture: menu vs live overlay (`mStyleNo`) | WTT captures live-gained resources too; recommended behavior, same format |
 | Dummy behavior: `environment` (configured) + `victim_pose` (live fallback) | Both kept; precedence = configured first |
 | Localization of display strings | Files store neutral notation; localization stays in the UI layer |
