@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>WTT × SF6CC — Convergence Roadmap</title>
+<style>
+  :root{
+    --bg:#0d1017; --bg2:#151a24; --card:#1b2230; --line:#2a3547;
+    --txt:#e8edf6; --dim:#8a97ad; --accent:#ff5a3c; --accent2:#4aa3ff;
+    --done:#3ecf8e; --prog:#ffb020; --todo:#7b8aa5; --wait:#b06bff;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:radial-gradient(1200px 700px at 80% -10%,#1a2333 0%,var(--bg) 55%);
+    color:var(--txt); min-height:100vh; line-height:1.55;
+  }
+  /* ---------- password gate ---------- */
+  #gate{
+    position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(900px 600px at 50% 30%,#1a2333,#080a0f);
+  }
+  #gate .box{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:38px 34px; width:min(92vw,380px); text-align:center;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);
+  }
+  #gate h1{font-size:20px; letter-spacing:.5px; margin-bottom:6px}
+  #gate p{color:var(--dim); font-size:13px; margin-bottom:22px}
+  #gate input{
+    width:100%; padding:13px 15px; border-radius:10px; border:1px solid var(--line);
+    background:#0e131c; color:var(--txt); font-size:15px; outline:none; margin-bottom:14px;
+  }
+  #gate input:focus{border-color:var(--accent2)}
+  #gate button{
+    width:100%; padding:13px; border:none; border-radius:10px; cursor:pointer;
+    background:linear-gradient(120deg,var(--accent),#ff7a52); color:#fff; font-size:15px; font-weight:600;
+    letter-spacing:.3px; transition:transform .08s;
+  }
+  #gate button:active{transform:scale(.98)}
+  #gate .err{color:var(--accent); font-size:13px; height:16px; margin-top:10px}
+  .locked{filter:blur(9px); pointer-events:none; user-select:none}
+  /* ---------- header ---------- */
+  header{
+    max-width:1200px; margin:0 auto; padding:42px 24px 10px;
+    display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:16px;
+  }
+  header .title h1{font-size:27px; letter-spacing:.4px}
+  header .title h1 .x{color:var(--accent); font-weight:400; margin:0 6px}
+  header .title p{color:var(--dim); font-size:14px; margin-top:5px}
+  .lang{display:flex; gap:6px; background:var(--bg2); border:1px solid var(--line); border-radius:11px; padding:5px}
+  .lang button{
+    border:none; background:transparent; color:var(--dim); cursor:pointer;
+    padding:8px 16px; border-radius:8px; font-size:14px; font-weight:600; transition:.15s;
+  }
+  .lang button.on{background:var(--accent); color:#fff}
+  /* ---------- progress bar ---------- */
+  .meter{max-width:1200px; margin:20px auto 0; padding:0 24px}
+  .meter .track{height:9px; background:var(--bg2); border-radius:20px; overflow:hidden; border:1px solid var(--line)}
+  .meter .fill{height:100%; width:0; background:linear-gradient(90deg,var(--done),#2bd4a0); transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+  .meter .lbl{color:var(--dim); font-size:13px; margin-top:8px; display:flex; justify-content:space-between}
+  .meter .lbl b{color:var(--done)}
+  /* ---------- columns ---------- */
+  main{max-width:1200px; margin:0 auto; padding:26px 24px 60px;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:20px; align-items:start}
+  .col{background:linear-gradient(180deg,var(--bg2),#111621); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
+  .col > h2{
+    font-size:14px; letter-spacing:.6px; text-transform:uppercase; padding:16px 18px;
+    display:flex; align-items:center; gap:9px; border-bottom:1px solid var(--line);
+  }
+  .col > h2 .dot{width:9px; height:9px; border-radius:50%}
+  .col > h2 .n{margin-left:auto; color:var(--dim); font-weight:600; font-size:13px;
+    background:#0e131c; border:1px solid var(--line); border-radius:20px; padding:2px 9px}
+  .d-done .dot{background:var(--done)} .d-prog .dot{background:var(--prog)}
+  .d-todo .dot{background:var(--todo)} .d-wait .dot{background:var(--wait)}
+  .cards{padding:12px; display:flex; flex-direction:column; gap:10px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:11px; padding:13px 14px; transition:.15s}
+  .card:hover{border-color:#3a4560; transform:translateY(-1px)}
+  .card .top{display:flex; align-items:center; gap:8px; margin-bottom:5px}
+  .card .tag{font-size:10.5px; font-weight:700; letter-spacing:.4px; padding:2px 7px; border-radius:5px; color:#0d1017}
+  .card h3{font-size:14.5px; font-weight:600}
+  .card p{color:var(--dim); font-size:12.8px; margin-top:5px}
+  .card .id{margin-left:auto; color:var(--dim); font-size:11px; font-family:monospace}
+  footer{max-width:1200px; margin:0 auto; padding:0 24px 50px; color:var(--dim); font-size:12px; text-align:center}
+  footer a{color:var(--accent2); text-decoration:none}
+  @media (max-width:560px){ header{padding-top:30px} header .title h1{font-size:22px} }
+</style>
+</head>
+<body>
+
+<!-- ===== PASSWORD GATE ===== -->
+<div id="gate">
+  <div class="box">
+    <h1>🔒 WTT × SF6CC</h1>
+    <p data-i18n="gatehint">Convergence roadmap — enter password</p>
+    <input id="pw" type="password" autocomplete="off" placeholder="password" />
+    <button onclick="tryUnlock()" data-i18n="enter">Enter</button>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<div id="app" class="locked">
+  <header>
+    <div class="title">
+      <h1>WTT <span class="x">×</span> SF6CC</h1>
+      <p data-i18n="subtitle">Convergence roadmap — shared core, per-language UI</p>
+    </div>
+    <div class="lang">
+      <button id="l-en" class="on" onclick="setLang('en')">EN</button>
+      <button id="l-zh" onclick="setLang('zh')">中文</button>
+    </div>
+  </header>
+
+  <div class="meter">
+    <div class="track"><div class="fill" id="fill"></div></div>
+    <div class="lbl"><span data-i18n="progress">Overall progress</span><b id="pct">0%</b></div>
+  </div>
+
+  <main id="board"></main>
+
+  <footer>
+    <p data-i18n="foot">Static roadmap · client-side gate · updated manually</p>
+    <p style="margin-top:6px"><a href="https://github.com/Wael3rd/SF6_Tools">Wael3rd/SF6_Tools</a> · <a href="https://github.com/cdjay/SF6_TOOLS_CC">cdjay/SF6_TOOLS_CC</a></p>
+  </footer>
+</div>
+
+<script>
+const PW = "cdjayANDwael";
+
+const UI = {
+  en:{ gatehint:"Convergence roadmap — enter password", enter:"Enter", wrong:"Wrong password",
+       subtitle:"Convergence roadmap — shared core, per-language UI", progress:"Overall progress",
+       foot:"Static roadmap · client-side gate · updated manually",
+       done:"Done", prog:"In progress / next", todo:"Backlog", wait:"Waiting on cdjay" },
+  zh:{ gatehint:"融合路线图 — 请输入密码", enter:"进入", wrong:"密码错误",
+       subtitle:"融合路线图 — 共享核心，按语言分离的 UI", progress:"总体进度",
+       foot:"静态路线图 · 前端密码门 · 手动更新",
+       done:"已完成", prog:"进行中 / 下一步", todo:"待办", wait:"等待 cdjay" }
+};
+
+const COLS = [
+  { key:"done", cls:"d-done", tagColor:"#3ecf8e", items:[
+    { t:{en:"JSON Contract v2",zh:"JSON 契约 v2"}, d:{en:"Joint versioned combo file spec — reviewed by cdjay and merged (PR #59).",zh:"联合版本化连段文件规范 — 经 cdjay 审阅并合并（PR #59）。"} },
+    { t:{en:"Schema 2 writer / reader",zh:"Schema 2 读写器"}, d:{en:"_xt_meta v2 + scene_state v2 (resources/status) — validated in-game.",zh:"_xt_meta v2 + scene_state v2（资源/状态）— 已实机验证。"} },
+    { t:{en:"Validator architecture",zh:"验证器架构"}, d:{en:"5 shared modules verbatim from CC: Validator, ActionMatcher, CharacterRules, PendingAbsorb, DebugTrace.",zh:"从 CC 原样共享的 5 个模块：Validator、ActionMatcher、CharacterRules、PendingAbsorb、DebugTrace。"} },
+    { t:{en:"Delayed-absorb validation",zh:"延迟吸收验证"}, d:{en:"PendingAbsorb wired — no false WRONG MOVE on absorbed hits (Honda).",zh:"接入 PendingAbsorb — 吸收命中不再误判 WRONG MOVE（本田）。"} },
+    { t:{en:"Sumo Spirit exceptions",zh:"相扑之魂例外"}, d:{en:"Install id-shift fix + raw input display for unknown actions.",zh:"install 型 ID 偏移修复 + 未知动作原始输入显示。"} },
+    { t:{en:"unique_resources system",zh:"特有资源系统"}, d:{en:"CC-compatible capture/apply/restore + owner-character gate + live mStyleNo overlay.",zh:"兼容 CC 的捕获/应用/还原 + 角色归属校验 + 实时 mStyleNo 覆盖。"} },
+    { t:{en:"Module extraction",zh:"模块提取"}, d:{en:"ComboTrials_Files & ComboTrials_Hotkeys split out — same boundaries as CC.",zh:"拆分 ComboTrials_Files 与 ComboTrials_Hotkeys — 与 CC 相同边界。"} },
+    { t:{en:"Trial progression",zh:"试炼进度"}, d:{en:"Completion tracking, auto-advance, optional auto-retry, * markers.",zh:"完成追踪、自动推进、可选自动重试、* 标记。"} },
+    { t:{en:"External file detection",zh:"外部文件检测"}, d:{en:"Signature-based combo list refresh for mobile imports + refresh_combos bridge cmd.",zh:"基于签名的连段列表刷新（移动端导入）+ refresh_combos 桥接命令。"} },
+    { t:{en:"RSM import safety",zh:"RSM 导入安全"}, d:{en:"Slot validation + automatic pre-import backup — verified in-game.",zh:"槽位校验 + 导入前自动备份 — 已实机验证。"} },
+    { t:{en:"Exception data exchange",zh:"例外数据交换"}, d:{en:"Two-way sync: our Sumo/ChunLi ⇄ CC's Guile/Ingrid/AKI/Sagat.",zh:"双向同步：我们的相扑/春丽 ⇄ CC 的古烈/英格丽德/AKI/沙盖特。"} },
+  ]},
+  { key:"prog", cls:"d-prog", tagColor:"#ffb020", items:[
+    { id:"#3", t:{en:"Configurable HID hotkeys",zh:"可配置 HID 快捷键"}, d:{en:"Adopt CC's shared keyboard/pad binding framework (replaces hard-coded FUNC+D-PAD).",zh:"采用 CC 的键盘/手柄共享绑定框架（替代硬编码 FUNC+方向键）。"} },
+  ]},
+  { key:"todo", cls:"d-todo", tagColor:"#7b8aa5", items:[
+    { id:"#4", t:{en:"Modern controls support",zh:"现代操作支持"}, d:{en:"Official per-character mappings + Classic/Modern filter (data-driven, from CC).",zh:"官方逐角色映射 + 经典/现代过滤（数据驱动，来自 CC）。"} },
+    { id:"#6", t:{en:"Core / UI split per language",zh:"核心/UI 按语言分离"}, d:{en:"Shared engine core, separate EN and ZH UI shells — the end goal.",zh:"共享引擎核心，分离的 EN 与 ZH UI 外壳 — 最终目标。"} },
+    { t:{en:"Install id-shift characters",zh:"install 型 ID 偏移角色"}, d:{en:"Verify Juri (Feng Shui), Blanka (Lightning Beast), Jamie (drinks) for id shifts.",zh:"验证朱莉（风水引擎）、布兰卡（雷兽）、杰米（酒）的 ID 偏移。"} },
+    { t:{en:"Unique gauge timers",zh:"特有量表计时器"}, d:{en:"Live style_timer overlay so install timers (Denjin, etc.) are captured too.",zh:"实时 style_timer 覆盖，使 install 计时器（电刃等）也被捕获。"} },
+    { t:{en:"Common record-slot spec",zh:"通用录制槽规范"}, d:{en:"Extend the versioned format to dummy record slots (setups, oki drills).",zh:"将版本化格式扩展到假人录制槽（设置、起攻练习）。"} },
+  ]},
+  { key:"wait", cls:"d-wait", tagColor:"#b06bff", items:[
+    { t:{en:"raw_inputs adoption in CC",zh:"CC 采用 raw_inputs"}, d:{en:"cdjay evaluating our frame-perfect raw uint16 DEMO playback for his fork.",zh:"cdjay 正在评估将我们帧级精确的 raw uint16 DEMO 回放用于他的分支。"} },
+    { t:{en:"SF6CM database access",zh:"SF6CM 数据库访问"}, d:{en:"Read access / JSON export so both communities can share combos.",zh:"只读访问 / JSON 导出，让两个社区共享连段。"} },
+  ]},
+];
+
+let lang = "en";
+
+function render(){
+  const t = UI[lang];
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k = el.getAttribute("data-i18n"); if(t[k]) el.textContent = t[k];
+  });
+  document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+  const board = document.getElementById("board"); board.innerHTML = "";
+  let total=0, done=0;
+  COLS.forEach(col=>{
+    total += col.items.length;
+    if(col.key==="done") done += col.items.length;
+    const sec = document.createElement("section"); sec.className = "col";
+    sec.innerHTML = `<h2 class="${col.cls}"><span class="dot"></span>${t[col.key]}<span class="n">${col.items.length}</span></h2>`;
+    const wrap = document.createElement("div"); wrap.className = "cards";
+    col.items.forEach(it=>{
+      const c = document.createElement("div"); c.className="card";
+      const idHtml = it.id ? `<span class="id">${it.id}</span>` : "";
+      c.innerHTML = `<div class="top"><h3>${it.t[lang]}</h3>${idHtml}</div><p>${it.d[lang]}</p>`;
+      wrap.appendChild(c);
+    });
+    sec.appendChild(wrap); board.appendChild(sec);
+  });
+  const pct = Math.round(done/total*100);
+  document.getElementById("fill").style.width = pct + "%";
+  document.getElementById("pct").textContent = pct + "%";
+}
+
+function setLang(l){
+  lang = l;
+  document.getElementById("l-en").classList.toggle("on", l==="en");
+  document.getElementById("l-zh").classList.toggle("on", l==="zh");
+  render();
+}
+
+function unlock(){
+  document.getElementById("gate").style.display="none";
+  document.getElementById("app").classList.remove("locked");
+  render();
+}
+function tryUnlock(){
+  const v = document.getElementById("pw").value;
+  if(v === PW){ sessionStorage.setItem("wtt_ok","1"); unlock(); }
+  else { document.getElementById("err").textContent = UI[lang].wrong; }
+}
+document.getElementById("pw").addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlock(); });
+
+if(sessionStorage.getItem("wtt_ok")==="1") unlock();
+render();
+</script>
+</body>
+</html>
