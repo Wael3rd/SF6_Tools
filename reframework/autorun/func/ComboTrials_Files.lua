@@ -6,6 +6,7 @@
 
 local json = json
 local fs = fs
+local sdk = sdk
 
 local M = {}
 
@@ -45,9 +46,47 @@ function M.clear_combo_state()
     pcall(collectgarbage, "step", 16)
 end
 
+-- Combo control-mode filter (SF6_TOOLS_CC parity). "all" = no I/O (default);
+-- "classic"/"modern" = only matching combos; "auto" = match current P1 mode.
+-- Reads _xt_meta.control_mode lazily, cached per path.
+local _control_mode_cache = {}
+local function combo_control_mode(path)
+    if _control_mode_cache[path] ~= nil then return _control_mode_cache[path] end
+    local mode = "classic"
+    pcall(function()
+        local d = json.load_file(path)
+        local m = d and d[1] and d[1]._xt_meta
+        if m and (m.control_mode == "modern" or m.control_mode == "classic") then
+            mode = m.control_mode
+        end
+    end)
+    _control_mode_cache[path] = mode
+    return mode
+end
+
+local function current_p1_control_mode()
+    local mode = "classic"
+    pcall(function()
+        local tm = sdk and sdk.get_managed_singleton and sdk.get_managed_singleton("app.training.TrainingManager")
+        local sm = tm and tm:get_field("_tData") and tm:get_field("_tData"):get_field("SelectMenu")
+        local pd = sm and sm.PlayerDatas and sm.PlayerDatas[0]
+        if pd and tonumber(pd.InputType) == 1 then mode = "modern" end
+    end)
+    return mode
+end
+
+function M.effective_control_filter()
+    local f = file_system.combo_control_filter or "all"
+    if f == "auto" then return current_p1_control_mode() end
+    return f
+end
+
+function M.invalidate_control_cache() _control_mode_cache = {} end
+
 function M.refresh_combo_list(recent_saved_player)
     file_system.saved_combos_display_p1, file_system.saved_combos_paths_p1 = {}, {}
     file_system.saved_combos_display_p2, file_system.saved_combos_paths_p2 = {}, {}
+    local _ctrl_filter = M.effective_control_filter()
 
     local function load_files(player_idx, display_list, path_list)
         if not players[player_idx] then return end
@@ -80,8 +119,11 @@ function M.refresh_combo_list(recent_saved_player)
                 return a < b
             end)
             for _, filepath in ipairs(files) do
-                table.insert(path_list, filepath)
-                table.insert(display_list, filepath:match("([^/\\]+)$") or filepath)
+                -- control-mode filter (only pays the I/O when a filter is active)
+                if _ctrl_filter == "all" or combo_control_mode(filepath) == _ctrl_filter then
+                    table.insert(path_list, filepath)
+                    table.insert(display_list, filepath:match("([^/\\]+)$") or filepath)
+                end
             end
         end
     end

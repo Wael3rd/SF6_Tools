@@ -54,6 +54,8 @@ i18n.register("combo_trials_ui", {
         exc_hold = "HOLD BUTTON (Charge tracking)",
         exc_validate_partial = "Validate Partial during Trial",
         exc_apply_common = "Apply to all characters (Common)",
+        ctrl_filter_label = "Control filter",
+        cf_all = "All", cf_classic = "Classic", cf_modern = "Modern", cf_auto = "Auto (current)",
     },
     zh = {
         hdr_files = "--- 连段训练（文件与回放）---",
@@ -97,6 +99,8 @@ i18n.register("combo_trials_ui", {
         exc_hold = "蓄力按钮（蓄力追踪）",
         exc_validate_partial = "试炼中验证部分蓄力",
         exc_apply_common = "应用到所有角色（通用）",
+        ctrl_filter_label = "操作过滤",
+        cf_all = "全部", cf_classic = "经典", cf_modern = "现代", cf_auto = "自动（当前）",
     },
 })
 local T = i18n.scope("combo_trials_ui")
@@ -1294,6 +1298,25 @@ local function draw_combo_trials_menu_ui()
         -- TAB 1: GLOBAL COMBO TRIAL (Shared P1/P2)
         -- ==========================================
         if styled_header(T("hdr_files"), UI_THEME.hdr_info) then
+            -- Combo control-mode filter (Classic/Modern/Auto)
+            do
+                local FILTER_VALUES = { "all", "classic", "modern", "auto" }
+                local FILTER_KEYS = { "cf_all", "cf_classic", "cf_modern", "cf_auto" }
+                local cur = file_system.combo_control_filter or "all"
+                local cur_idx = 1
+                for i, v in ipairs(FILTER_VALUES) do if v == cur then cur_idx = i break end end
+                local labels = {}
+                for i, k in ipairs(FILTER_KEYS) do labels[i] = T(k) end
+                imgui.text(T("ctrl_filter_label") .. ":")
+                imgui.same_line()
+                imgui.push_item_width(160)
+                local fch, fnew = imgui.combo("##ctrl_filter", cur_idx, labels)
+                imgui.pop_item_width()
+                if fch and FILTER_VALUES[fnew] ~= cur then
+                    file_system.combo_control_filter = FILTER_VALUES[fnew]
+                    if refresh_combo_list then refresh_combo_list() end
+                end
+            end
             local changed, new_val = imgui.checkbox("Detacher en fenetre flottante", show_trial_overlay)
             if changed then show_trial_overlay = new_val end
 
