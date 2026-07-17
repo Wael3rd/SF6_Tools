@@ -48,6 +48,12 @@ i18n.register("combo_trials_ui", {
         btn_stop_trial_p1 = "STOP TRIAL P1",
         btn_start_trial_p2 = "START TRIAL P2", btn_stop_trial_p2 = "STOP TRIAL P2",
         pos_any = "ANY POSITION", pos_exact = "EXACT POSITION", pos_mirror = "MIRROR POSITION", pos_none = "NO RESET",
+        exc_show_hud = "Show HUD Overlay",
+        exc_ignore = "IGNORE (Hide from log)",
+        exc_force = "FORCE DISPLAY",
+        exc_hold = "HOLD BUTTON (Charge tracking)",
+        exc_validate_partial = "Validate Partial during Trial",
+        exc_apply_common = "Apply to all characters (Common)",
     },
     zh = {
         hdr_files = "--- 连段训练（文件与回放）---",
@@ -85,6 +91,12 @@ i18n.register("combo_trials_ui", {
         btn_stop_trial_p1 = "停止训练 P1",
         btn_start_trial_p2 = "开始训练 P2", btn_stop_trial_p2 = "停止训练 P2",
         pos_any = "任意位置", pos_exact = "精确位置", pos_mirror = "镜像位置", pos_none = "不重置",
+        exc_show_hud = "显示 HUD 叠加层",
+        exc_ignore = "忽略（从日志隐藏）",
+        exc_force = "强制显示",
+        exc_hold = "蓄力按钮（蓄力追踪）",
+        exc_validate_partial = "试炼中验证部分蓄力",
+        exc_apply_common = "应用到所有角色（通用）",
     },
 })
 local T = i18n.scope("combo_trials_ui")
@@ -1544,7 +1556,7 @@ local function draw_combo_trials_menu_ui()
             imgui.separator()
 
             imgui.text_colored("HUD Overlay (Native Lines)", 0xFFFFAA00)
-            c, v = imgui.checkbox("Show HUD Overlay", d2d_cfg.hud_show); if c then
+            c, v = imgui.checkbox(T("exc_show_hud"), d2d_cfg.hud_show); if c then
                 d2d_cfg.hud_show = v; changed = true
             end
             c, v = imgui.drag_float("HUD Global Y", d2d_cfg.hud_global_y, 0.001, -0.5, 0.0); if c then
@@ -1607,25 +1619,25 @@ local function draw_combo_trials_menu_ui()
                 imgui.text_colored("(Settings apply immediately in-game for testing)", COLORS.DarkGrey)
                 imgui.spacing()
 
-                local c1, n1 = imgui.checkbox("IGNORE (Hide from log)", p_state.edit_ignore)
+                local c1, n1 = imgui.checkbox(T("exc_ignore"), p_state.edit_ignore)
                 if c1 then
                     p_state.edit_ignore = n1; if n1 then p_state.edit_force = false end
                 end
 
                 imgui.same_line()
-                local c2, n2 = imgui.checkbox("FORCE DISPLAY", p_state.edit_force)
+                local c2, n2 = imgui.checkbox(T("exc_force"), p_state.edit_force)
                 if c2 then
                     p_state.edit_force = n2; if n2 then p_state.edit_ignore = false end
                 end
 
-                local ch, nh = imgui.checkbox("HOLD BUTTON (Charge tracking)", p_state.edit_holdable)
+                local ch, nh = imgui.checkbox(T("exc_hold"), p_state.edit_holdable)
                 if ch then p_state.edit_holdable = nh end
 
                 if p_state.edit_holdable then
                     imgui.indent(20)
 
                     if p_state.edit_hold_partial_check == nil then p_state.edit_hold_partial_check = true end
-                    local chpc, nhpc = imgui.checkbox("Validate Partial during Trial", p_state.edit_hold_partial_check)
+                    local chpc, nhpc = imgui.checkbox(T("exc_validate_partial"), p_state.edit_hold_partial_check)
                     if chpc then p_state.edit_hold_partial_check = nhpc end
                     if imgui.is_item_hovered() then
                         imgui.set_tooltip("If unchecked, Instant vs Partial mismatches are tolerated.\nMaxed / PERFECT / FAKE / LATE are ALWAYS enforced.")
@@ -1677,7 +1689,7 @@ local function draw_combo_trials_menu_ui()
                 if ct then p_state.edit_text = nt end
 
                 imgui.spacing()
-                local cc, nc = imgui.checkbox("Apply to all characters (Common)", p_state.edit_is_common)
+                local cc, nc = imgui.checkbox(T("exc_apply_common"), p_state.edit_is_common)
                 if cc then p_state.edit_is_common = nc end
 
                 imgui.text_colored("--- SPECIAL CONDITIONS ---", COLORS.Blue)
