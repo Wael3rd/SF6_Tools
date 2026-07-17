@@ -8,6 +8,7 @@ local sdk = sdk
 local imgui = imgui
 
 local M = {}
+local ModernDisplay = require("func/ModernDisplay")
 
 -- Shared context (set by init)
 local ctx -- { d2d_cfg, trial_state, players, sf6_menu_state }
@@ -140,8 +141,19 @@ local function merge_group_log_item(steps)
     end
 
     local first_holdable_done = false
+    local _md_char = nil
+    if ctx and ctx.d2d_cfg and ctx.d2d_cfg.show_modern_notation then
+        pcall(function() _md_char = ModernDisplay.char_from_path(_G.ComboTrials_CurrentPath) end)
+    end
     for _, s in ipairs(steps) do
         local m = s.motion or ""
+        -- Modern-control notation (opt-in): replace with Modern display when
+        -- a mapping exists for this step; falls back to the classic motion.
+        if _md_char then
+            local mm = nil
+            pcall(function() mm = ModernDisplay.get_motion(_md_char, s) end)
+            if mm then m = mm end
+        end
         -- For follow-ups: ensure > is BEFORE [AIR]/J. (not reversed)
         m = m:gsub("^(%[AIR%])%s*(>)", "%2%1")
         m = m:gsub("^(J%.)%s*(>)", "%2%1")

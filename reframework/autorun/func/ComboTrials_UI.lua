@@ -20,6 +20,7 @@ i18n.register("combo_trials_ui", {
         enable_d2d = "Enable D2D Overlay",
         ignore_auto = "Ignore Automatic Actions (Gray)",
         show_combo_counter = "Show Combo Counter",
+        show_modern = "Show Modern Notation (Modern controls)",
         progression = "--- Trial Progression ---",
         auto_next = "Auto Next Combo On Success",
         auto_next_tip = "After a manual success: automatically load and start the next combo in the list.\nCompleted combos get a * marker in the dropdown. DEMO finishes never count.",
@@ -65,6 +66,7 @@ i18n.register("combo_trials_ui", {
         enable_d2d = "启用 D2D 叠加层",
         ignore_auto = "忽略自动动作（灰色）",
         show_combo_counter = "显示连段计数",
+        show_modern = "显示现代记法（现代操作）",
         progression = "--- 试炼进度 ---",
         auto_next = "成功后自动进入下一连段",
         auto_next_tip = "手动成功后：自动加载并开始列表中的下一个连段。\n已完成的连段在下拉列表中显示 * 标记。演示完成不计入。",
@@ -1360,6 +1362,9 @@ local function draw_combo_trials_menu_ui()
 
             c, v = imgui.checkbox(T("show_combo_counter"), d2d_cfg.show_combo_count); if c then
                 d2d_cfg.show_combo_count = v; changed = true
+            end
+            c, v = imgui.checkbox(T("show_modern"), d2d_cfg.show_modern_notation or false); if c then
+                d2d_cfg.show_modern_notation = v; changed = true
             end
             imgui.spacing()
 
