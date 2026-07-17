@@ -21,6 +21,8 @@ i18n.register("scriptmanager", {
         hotkeys_hint1 = "Bind training actions to keyboard, pad or in-game inputs.",
         hotkeys_hint2 = "Scopes are OFF by default: enable a scope, then Bind each action.",
         waiting = "[!] INACTIVE: Waiting for Training Mode...",
+        m_disabled = "DISABLED", m_execution = "EXECUTION", m_hitconfirm = "HIT CONFIRM",
+        m_reaction = "REACTION DRILLS", m_postguard = "POST GUARD", m_combo = "CUSTOM COMBO TRIALS",
     },
     zh = {
         lang_label = "语言",
@@ -31,6 +33,8 @@ i18n.register("scriptmanager", {
         hotkeys_hint1 = "将训练动作绑定到键盘、手柄或游戏内输入。",
         hotkeys_hint2 = "作用域默认关闭：先启用作用域，再为每个动作绑定。",
         waiting = "[!] 未激活：等待进入训练模式……",
+        m_disabled = "禁用", m_execution = "执行训练", m_hitconfirm = "确认训练",
+        m_reaction = "反应训练", m_postguard = "防御后训练", m_combo = "自定义连段训练",
     },
 })
 local T_sm = i18n.scope("scriptmanager")
@@ -1027,22 +1031,22 @@ re.on_draw_ui(function()
         -- SECTION 1: MODE SELECTION
         -- ==========================================
         if styled_header(T_sm("modes"), UI_THEME.hdr_modes) then
-            local c0, v0 = imgui.checkbox("DISABLED", _G.CurrentTrainerMode == 0)
+            local c0, v0 = imgui.checkbox(T_sm("m_disabled"), _G.CurrentTrainerMode == 0)
             if c0 and v0 then _G.CurrentTrainerMode = 0 end
 
-            local c5, v5 = imgui.checkbox("EXECUTION", _G.CurrentTrainerMode == 5)
+            local c5, v5 = imgui.checkbox(T_sm("m_execution"), _G.CurrentTrainerMode == 5)
             if c5 and v5 then _G.CurrentTrainerMode = 5 end
 
-            local c2, v2 = imgui.checkbox("HIT CONFIRM", _G.CurrentTrainerMode == 2)
+            local c2, v2 = imgui.checkbox(T_sm("m_hitconfirm"), _G.CurrentTrainerMode == 2)
             if c2 and v2 then _G.CurrentTrainerMode = 2 end
 
-            local c1, v1 = imgui.checkbox("REACTION DRILLS", _G.CurrentTrainerMode == 1)
+            local c1, v1 = imgui.checkbox(T_sm("m_reaction"), _G.CurrentTrainerMode == 1)
             if c1 and v1 then _G.CurrentTrainerMode = 1 end
 
-            local c3, v3 = imgui.checkbox("POST GUARD", _G.CurrentTrainerMode == 3)
+            local c3, v3 = imgui.checkbox(T_sm("m_postguard"), _G.CurrentTrainerMode == 3)
             if c3 and v3 then _G.CurrentTrainerMode = 3 end
 
-            local c4, v4 = imgui.checkbox("CUSTOM COMBO TRIALS", _G.CurrentTrainerMode == 4)
+            local c4, v4 = imgui.checkbox(T_sm("m_combo"), _G.CurrentTrainerMode == 4)
             if c4 and v4 then _G.CurrentTrainerMode = 4 end
         end
 

@@ -2403,7 +2403,7 @@ local function draw_config_ui()
     -- ==========================================
     -- 0. HELP & INFO
     -- ==========================================
-    if styled_header("--- HELP & INFO ---", UI_THEME.hdr_info) then
+    if styled_header(require("func/i18n").t("distance_viewer_ui","help"), UI_THEME.hdr_info) then
         imgui.text("SHORTCUTS (Keyboard / Gamepad):")
 
         if not config.expert_mode_enabled then
@@ -2558,7 +2558,7 @@ local function draw_config_ui()
         -- ==========================================
         -- 1. GLOBAL SETTINGS (Font, Thickness, Attack Lock)
         -- ==========================================
-        if styled_header("--- GLOBAL SETTINGS ---", UI_THEME.hdr_rules) then
+        if styled_header(require("func/i18n").t("distance_viewer_ui","global_settings"), UI_THEME.hdr_rules) then
         local c_fs, v_fs = safe_input_int("Master Font Quality (Px)", config.stats_font_size)
         if c_fs then config.stats_font_size = v_fs; save_settings(); try_load_font() end
 
@@ -2675,7 +2675,7 @@ local function draw_config_ui()
     -- ==========================================
     -- 5. DEBUG VALUES (Live)
     -- ==========================================
-    if styled_header("--- DEBUG VALUES (Live) ---", UI_THEME.hdr_debug) then
+    if styled_header(require("func/i18n").t("distance_viewer_ui","debug_values"), UI_THEME.hdr_debug) then
         -- Capture left mouse click (0) and update coordinates
         if imgui.is_mouse_clicked(0) then
             local mouse_pos = imgui.get_mouse()
@@ -2721,7 +2721,7 @@ local function draw_config_ui()
     -- AUTO ACTIVATE MOVE (P2 dummy)
     -- ==========================================
     local aa_hdr_style = { base = 0xFF2864DC, hover = 0xFF3C78F0, active = 0xFF1450C8 }
-    if styled_header("--- AUTO ACTIVATE MOVE ---", aa_hdr_style) then
+    if styled_header(require("func/i18n").t("distance_viewer_ui","auto_activate"), aa_hdr_style) then
         local p2_rname = p2_cache.valid and p2_cache.adv_name or get_real_name(detected_infos[1] and detected_infos[1].name or "?")
         local p2_base = p2_cache.valid and (esf_names_map[p2_cache.real_name] or p2_cache.real_name) or p2_rname
 
@@ -4193,6 +4193,23 @@ end
 do
     local ok, DistanceViewerHotkeys = pcall(require, "func/DistanceViewer_Hotkeys")
     local ok2, TrainingHotkeys = pcall(require, "func/Training_Hotkeys")
+    local ok3, i18n_dv = pcall(require, "func/i18n")
+    if ok3 and i18n_dv then
+        i18n_dv.register("distance_viewer_ui", {
+            en = {
+                help = "--- HELP & INFO ---",
+                global_settings = "--- GLOBAL SETTINGS ---",
+                debug_values = "--- DEBUG VALUES (Live) ---",
+                auto_activate = "--- AUTO ACTIVATE MOVE ---",
+            },
+            zh = {
+                help = "--- 帮助与信息 ---",
+                global_settings = "--- 全局设置 ---",
+                debug_values = "--- 调试数值（实时）---",
+                auto_activate = "--- 自动激活招式 ---",
+            },
+        })
+    end
     if ok and ok2 and DistanceViewerHotkeys and TrainingHotkeys then
         DistanceViewerHotkeys.init({
             cycle_p1 = function() cycle_player_display("p1"); save_settings() end,

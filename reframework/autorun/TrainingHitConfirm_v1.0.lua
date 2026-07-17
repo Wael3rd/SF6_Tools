@@ -1261,7 +1261,7 @@ re.on_draw_ui(function()
 
     if imgui.tree_node("Hit Confirm Trainer (V7.3 Heavy DR Fail)") then
 
-        if styled_header("--- SESSION CONFIGURATION ---", UI_THEME.hdr_session) then
+        if styled_header(require("func/i18n").t("hit_confirm_ui","session"), UI_THEME.hdr_session) then
             local c_fl, v_fl = imgui.checkbox("FLOATING WINDOW", user_config.show_floating)
             if c_fl then user_config.show_floating = v_fl; save_conf() end
 
@@ -1277,7 +1277,7 @@ re.on_draw_ui(function()
         end
 
         imgui.separator()
-        if styled_header("--- DETECTION RULES ---", UI_THEME.hdr_rules) then
+        if styled_header(require("func/i18n").t("hit_confirm_ui","detection"), UI_THEME.hdr_rules) then
             local chg1, v1 = imgui.input_text("Trigger Moves (ID)", user_config.str_trigger_list); if chg1 then user_config.str_trigger_list = v1; refresh_tables(); save_conf() end
             local chg2, v2 = imgui.input_text("Confirm Moves (ID)", user_config.str_success_list); if chg2 then user_config.str_success_list = v2; refresh_tables(); save_conf() end
             local chgBrk, vBrk = imgui.input_text("Break List (Reset)", user_config.str_break_list); if chgBrk then user_config.str_break_list = vBrk; refresh_tables(); save_conf() end
@@ -1292,7 +1292,7 @@ re.on_draw_ui(function()
         end
         
         imgui.separator()
-        if styled_header("--- MATRIX COLUMNS CONFIG ---", UI_THEME.hdr_matrix) then
+        if styled_header(require("func/i18n").t("hit_confirm_ui","matrix"), UI_THEME.hdr_matrix) then
             if styled_button(session.is_logging and "STOP & EXPORT HISTORY (V3)" or "START LOGGING (MATRIX)", UI_THEME.btn_neutral) then
                 if session.is_logging then export_detailed_history(); session.is_logging = false else session.is_logging = true; session.history_list = {}; session.history_map = {} end
             end
@@ -1384,6 +1384,21 @@ end
 do
     local ok, HitConfirmHotkeys = pcall(require, "func/HitConfirm_Hotkeys")
     local ok2, TrainingHotkeys = pcall(require, "func/Training_Hotkeys")
+    local ok3, i18n_hc = pcall(require, "func/i18n")
+    if ok3 and i18n_hc then
+        i18n_hc.register("hit_confirm_ui", {
+            en = {
+                session = "--- SESSION CONFIGURATION ---",
+                detection = "--- DETECTION RULES ---",
+                matrix = "--- MATRIX COLUMNS CONFIG ---",
+            },
+            zh = {
+                session = "--- 会话配置 ---",
+                detection = "--- 检测规则 ---",
+                matrix = "--- 矩阵列配置 ---",
+            },
+        })
+    end
     if ok and ok2 and HitConfirmHotkeys and TrainingHotkeys then
         local function adjust_amount(delta)
             if user_config.session_mode == "timer" then

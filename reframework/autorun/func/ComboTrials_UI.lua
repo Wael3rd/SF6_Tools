@@ -10,6 +10,84 @@ local imgui = imgui
 local re = re
 local json = json
 local UIKit = require("func/UIKit")
+local i18n = require("func/i18n")
+i18n.register("combo_trials_ui", {
+    en = {
+        hdr_files = "--- COMBO TRIALS (Files & Playback) ---",
+        hdr_d2d = "--- D2D VISUALIZER SETTINGS (Overlay) ---",
+        hdr_exceptions = "--- EXCEPTION MANAGEMENT ---",
+        hdr_debug = "--- DEBUG & SYSTEM INFO ---",
+        enable_d2d = "Enable D2D Overlay",
+        ignore_auto = "Ignore Automatic Actions (Gray)",
+        show_combo_counter = "Show Combo Counter",
+        progression = "--- Trial Progression ---",
+        auto_next = "Auto Next Combo On Success",
+        auto_next_tip = "After a manual success: automatically load and start the next combo in the list.\nCompleted combos get a * marker in the dropdown. DEMO finishes never count.",
+        auto_retry = "Auto Retry On Fail",
+        auto_retry_tip = "After the fail banner: automatically reset the trial.\nDisabled: the trial stops, restart it manually.",
+        clear_markers = "CLEAR COMPLETED MARKERS",
+        live_log = "--- Live Log (During Record / Trial) ---",
+        show_p1 = "Show Player 1",
+        show_p2 = "Show Player 2",
+        raw_input = "Raw Input",
+        mirror = "Mirror",
+        live_log_player = "--- LIVE LOG : PLAYER %d ---",
+        btn_stop_save = "STOP & SAVE",
+        btn_cancel = "CANCEL",
+        btn_record_p1 = "RECORD P1",
+        btn_record_p2 = "RECORD P2",
+        btn_restart_demo = "RESTART DEMO",
+        btn_quit_demo = "QUIT DEMO",
+        btn_reset = "RESET",
+        btn_record = "RECORD",
+        btn_stop_trial = "STOP TRIAL",
+        btn_demo = "DEMO",
+        btn_demo_stun = "DEMO (STUN)",
+        btn_start_trial = "START TRIAL",
+        btn_start_trial_p1 = "START TRIAL P1",
+        btn_stop_trial_p1 = "STOP TRIAL P1",
+        btn_start_trial_p2 = "START TRIAL P2", btn_stop_trial_p2 = "STOP TRIAL P2",
+        pos_any = "ANY POSITION", pos_exact = "EXACT POSITION", pos_mirror = "MIRROR POSITION", pos_none = "NO RESET",
+    },
+    zh = {
+        hdr_files = "--- 连段训练（文件与回放）---",
+        hdr_d2d = "--- D2D 可视化设置（叠加层）---",
+        hdr_exceptions = "--- 例外管理 ---",
+        hdr_debug = "--- 调试与系统信息 ---",
+        enable_d2d = "启用 D2D 叠加层",
+        ignore_auto = "忽略自动动作（灰色）",
+        show_combo_counter = "显示连段计数",
+        progression = "--- 试炼进度 ---",
+        auto_next = "成功后自动进入下一连段",
+        auto_next_tip = "手动成功后：自动加载并开始列表中的下一个连段。\n已完成的连段在下拉列表中显示 * 标记。演示完成不计入。",
+        auto_retry = "失败后自动重试",
+        auto_retry_tip = "失败横幅后：自动重置连段。\n关闭时：连段停止，需手动重新开始。",
+        clear_markers = "清除完成标记",
+        live_log = "--- 实时日志（录制/试炼期间）---",
+        show_p1 = "显示玩家 1",
+        show_p2 = "显示玩家 2",
+        raw_input = "原始输入",
+        mirror = "镜像",
+        live_log_player = "--- 实时日志：玩家 %d ---",
+        btn_stop_save = "停止并保存",
+        btn_cancel = "取消",
+        btn_record_p1 = "录制 P1",
+        btn_record_p2 = "录制 P2",
+        btn_restart_demo = "重播演示",
+        btn_quit_demo = "退出演示",
+        btn_reset = "重置",
+        btn_record = "录制",
+        btn_stop_trial = "停止训练",
+        btn_demo = "演示",
+        btn_demo_stun = "演示（晕眩）",
+        btn_start_trial = "开始训练",
+        btn_start_trial_p1 = "开始训练 P1",
+        btn_stop_trial_p1 = "停止训练 P1",
+        btn_start_trial_p2 = "开始训练 P2", btn_stop_trial_p2 = "停止训练 P2",
+        pos_any = "任意位置", pos_exact = "精确位置", pos_mirror = "镜像位置", pos_none = "不重置",
+    },
+})
+local T = i18n.scope("combo_trials_ui")
 
 local M = {}
 local ctx
@@ -297,10 +375,12 @@ end
 -- =========================================================
 -- SWITCH POS LABEL (shows current state → next state)
 -- =========================================================
-local POS_LABELS = { "ANY POSITION", "EXACT POSITION", "MIRROR POSITION" }
+local POS_LABELS = { function() return T("pos_any") end, function() return T("pos_exact") end, function() return T("pos_mirror") end }
 local function switch_pos_label()
     local cur = d2d_cfg.forced_position_idx or 1
-    return POS_LABELS[cur] or "NO RESET"
+    local v = POS_LABELS[cur]
+    if type(v) == "function" then return v() end
+    return v or T("pos_none")
 end
 
 -- =========================================================
@@ -315,8 +395,8 @@ local function draw_single_line_content()
     local pad_y = sh * 0.01
 
     -- Widths excluding P2 buttons
-    local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("R") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("R") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("R") .. ")" }, true)
-    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("D") .. ")" }, true)
+    local rec_btn_w_base = get_max_text_width({ T("btn_stop_save"), T("btn_cancel"), T("btn_record_p1"), T("btn_record_p2"), T("btn_reset"), T("btn_demo") }, true)
+    local play_btn_w_base = get_max_text_width({ T("btn_start_trial_p1"), T("btn_stop_trial_p1"), T("pos_mirror") }, true)
 
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
 
@@ -471,18 +551,18 @@ local function draw_single_line_content()
         replay_status_label(0, replay_dd_w)
         imgui.same_line(0, sp)
         if trial_state.is_recording then
-            if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, replay_btn_w, true, false, TRIAL_COLORS) then _replay_save_player = trial_state.recording_player; stop_recording_and_save() end
+            if styled_sf6_button(T("btn_stop_save"), true, replay_btn_w, true, false, TRIAL_COLORS) then _replay_save_player = trial_state.recording_player; stop_recording_and_save() end
             imgui.same_line(0, sp)
-            if styled_sf6_button("CANCEL (" .. sc("R", "2") .. ")", false, replay_btn_w, true, false, P1_COLORS) then
+            if styled_sf6_button(T("btn_cancel"), false, replay_btn_w, true, false, P1_COLORS) then
                 local cp = trial_state.recording_player
                 cancel_recording()
                 if cp == 0 then _replay_status_p1 = "canceled" else _replay_status_p2 = "canceled" end
                 _replay_saved_clock = os.clock()
             end
         else
-            if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, replay_btn_w, true, false, P1_COLORS) then _replay_save_player = 0; start_recording(0) end
+            if styled_sf6_button(T("btn_record_p1"), false, replay_btn_w, true, false, P1_COLORS) then _replay_save_player = 0; start_recording(0) end
             imgui.same_line(0, sp)
-            if styled_sf6_button("RECORD P2 (" .. sc("R", "2") .. ")", false, replay_btn_w, true, false, P2_COLORS) then _replay_save_player = 1; start_recording(1) end
+            if styled_sf6_button(T("btn_record_p2"), false, replay_btn_w, true, false, P2_COLORS) then _replay_save_player = 1; start_recording(1) end
         end
         imgui.same_line(0, sp)
         replay_status_label(1, replay_dd_w)
@@ -496,9 +576,9 @@ local function draw_single_line_content()
         replay_status_label(0, dd_w)
         imgui.same_line(0, sp)
         if trial_state.is_recording then
-            if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, dynamic_rec_w, true, false, TRIAL_COLORS) then _replay_save_player = trial_state.recording_player; stop_recording_and_save() end
+            if styled_sf6_button(T("btn_stop_save"), true, dynamic_rec_w, true, false, TRIAL_COLORS) then _replay_save_player = trial_state.recording_player; stop_recording_and_save() end
             imgui.same_line(0, sp)
-            if styled_sf6_button("CANCEL (" .. sc("R", "2") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then
+            if styled_sf6_button(T("btn_cancel"), false, dynamic_rec_w, true, false, P1_COLORS) then
                 local cp = trial_state.recording_player
                 cancel_recording()
                 if cp == 0 then _replay_status_p1 = "canceled" else _replay_status_p2 = "canceled" end
@@ -520,11 +600,11 @@ local function draw_single_line_content()
             end
         end
         imgui.same_line(0, sp)
-        if styled_sf6_button("RESTART DEMO (" .. sc("L") .. ")", false, dynamic_rec_w, true, false, TRIAL_COLORS) then
+        if styled_sf6_button(T("btn_restart_demo"), false, dynamic_rec_w, true, false, TRIAL_COLORS) then
             if ctx.start_demo then ctx.start_demo() end
         end
         imgui.same_line(0, sp)
-        if styled_sf6_button("QUIT DEMO (" .. sc("R", "2") .. ")", false, dynamic_rec_w, true, false, P1_COLORS) then
+        if styled_sf6_button(T("btn_quit_demo"), false, dynamic_rec_w, true, false, P1_COLORS) then
             if ctx.stop_demo then ctx.stop_demo() end
         end
     else
@@ -544,22 +624,22 @@ local function draw_single_line_content()
         imgui.same_line(0, sp)
         local btn_w = trial_state.is_playing and actual_btn_w or training_btn_w
         if trial_state.is_playing then
-            if styled_sf6_button("RESET (" .. sc("L") .. ")", false, btn_w, true, false, P1_COLORS) then
+            if styled_sf6_button(T("btn_reset"), false, btn_w, true, false, P1_COLORS) then
                 ctx.reset_trial_steps_and_load(trial_state.playing_player)
                 ctx.apply_forced_position()
             end
         else
-            if styled_sf6_button("RECORD (" .. sc("L") .. ")", false, btn_w, true, false, P1_COLORS) then start_recording(0) end
+            if styled_sf6_button(T("btn_record"), false, btn_w, true, false, P1_COLORS) then start_recording(0) end
         end
 
         imgui.same_line(0, sp)
         if trial_state.is_playing then
-            if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, btn_w, true, false, TRIAL_COLORS) then
+            if styled_sf6_button(T("btn_stop_trial"), true, btn_w, true, false, TRIAL_COLORS) then
                 trial_state.is_playing = false
             end
         elseif not trial_state.is_recording then
             local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-            if styled_sf6_button(is_p1_active and "STOP TRIAL (" .. sc("U") .. ")" or "START TRIAL (" .. sc("U") .. ")", is_p1_active, btn_w, true, false, TRIAL_COLORS) then
+            if styled_sf6_button(is_p1_active and T("btn_stop_trial") or T("btn_start_trial"), is_p1_active, btn_w, true, false, TRIAL_COLORS) then
                 if is_p1_active then trial_state.is_playing = false
                 else load_and_start_trial(0) end
             end
@@ -567,7 +647,7 @@ local function draw_single_line_content()
 
         imgui.same_line(0, sp)
         if trial_state.is_playing then
-            if styled_sf6_button(switch_pos_label() .. " (" .. sc("R") .. ")", false, btn_w, true, false, SWITCH_COLORS) then
+            if styled_sf6_button(switch_pos_label(), false, btn_w, true, false, SWITCH_COLORS) then
                 d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
                 if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
                 ctx.save_d2d_config()
@@ -582,15 +662,15 @@ local function draw_single_line_content()
                 imgui.push_style_color(21, 0xFF444444)
                 imgui.push_style_color(22, 0xFF444444)
                 imgui.push_style_color(23, 0xFF444444)
-                styled_sf6_button("DEMO (STUN)", false, btn_w, true, false, { base = 0x78444444, hover = 0x78444444, active = 0x78444444, text = 0xFF888888, border = 0xFF666666 })
+                styled_sf6_button(T("btn_demo_stun"), false, btn_w, true, false, { base = 0x78444444, hover = 0x78444444, active = 0x78444444, text = 0xFF888888, border = 0xFF666666 })
                 imgui.pop_style_color(3)
             else
-                if styled_sf6_button("DEMO (" .. sc("D") .. ")", false, btn_w, true, false, P2_COLORS) then
+                if styled_sf6_button(T("btn_demo"), false, btn_w, true, false, P2_COLORS) then
                     if ctx.start_demo then ctx.start_demo() end
                 end
             end
         else
-            if styled_sf6_button(switch_pos_label() .. " (" .. sc("R") .. ")", false, btn_w, true, false, SWITCH_COLORS) then
+            if styled_sf6_button(switch_pos_label(), false, btn_w, true, false, SWITCH_COLORS) then
                 d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
                 if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
                 ctx.save_d2d_config()
@@ -605,8 +685,8 @@ local function draw_combo_trials_content(is_floating)
     local size = imgui.get_window_size()
     local w_width = (size.x > 50) and size.x or (sw * 0.44)
 
-    local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("R") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("R") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("R") .. ")" }, is_floating)
-    local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("D") .. ")" }, is_floating)
+    local rec_btn_w_base = get_max_text_width({ T("btn_stop_save"), T("btn_cancel"), T("btn_record_p1"), T("btn_record_p2"), T("btn_reset"), T("btn_demo") }, is_floating)
+    local play_btn_w_base = get_max_text_width({ T("btn_start_trial_p1"), T("btn_stop_trial_p1"), T("pos_mirror") }, is_floating)
 
     local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
     local spacing_cols = 20 * (sh / 1080.0)
@@ -683,7 +763,7 @@ local function draw_combo_trials_content(is_floating)
     
     local is_demo_active = (ctx.demo_state and ctx.demo_state.is_playing)
     if trial_state.is_playing or is_demo_active then
-        if styled_sf6_button("RESET (" .. sc("L") .. ")", false, rec_btn_w, is_floating) then
+        if styled_sf6_button(T("btn_reset"), false, rec_btn_w, is_floating) then
             if is_demo_active then
                 if ctx.start_demo then ctx.start_demo() end
             else
@@ -698,9 +778,9 @@ local function draw_combo_trials_content(is_floating)
             imgui.push_style_color(21, 0xFF444444)
             imgui.push_style_color(22, 0xFF444444)
             imgui.push_style_color(23, 0xFF444444)
-            styled_sf6_button("DEMO (STUN)", false, rec_btn_w, is_floating, false, { base = 0x78444444, hover = 0x78444444, active = 0x78444444, text = 0xFF888888, border = 0xFF666666 })
+            styled_sf6_button(T("btn_demo_stun"), false, rec_btn_w, is_floating, false, { base = 0x78444444, hover = 0x78444444, active = 0x78444444, text = 0xFF888888, border = 0xFF666666 })
             imgui.pop_style_color(3)
-        elseif styled_sf6_button("DEMO (" .. sc("R") .. ")", is_demo_active, rec_btn_w, is_floating, false, P2_COLORS) then
+        elseif styled_sf6_button(T("btn_demo"), is_demo_active, rec_btn_w, is_floating, false, P2_COLORS) then
             if is_demo_active then
                 if ctx.stop_demo then ctx.stop_demo() end
             else
@@ -708,22 +788,22 @@ local function draw_combo_trials_content(is_floating)
             end
         end
     elseif trial_state.is_recording then
-        if styled_sf6_button("STOP & SAVE (" .. sc("L") .. ")", true, rec_btn_w, is_floating, false, TRIAL_COLORS) then
+        if styled_sf6_button(T("btn_stop_save"), true, rec_btn_w, is_floating, false, TRIAL_COLORS) then
             stop_recording_and_save()
         end
 
         -- Always force stacking with spacing in windowed mode
         imgui.spacing()
 
-        if styled_sf6_button("CANCEL (" .. sc("R", "2") .. ")", false, rec_btn_w, is_floating, false, P1_COLORS) then
+        if styled_sf6_button(T("btn_cancel"), false, rec_btn_w, is_floating, false, P1_COLORS) then
             cancel_recording()
         end
     else
-        if styled_sf6_button("RECORD P1 (" .. sc("L") .. ")", false, rec_btn_w, is_floating, false, P1_COLORS) then
+        if styled_sf6_button(T("btn_record_p1"), false, rec_btn_w, is_floating, false, P1_COLORS) then
             start_recording(0)
         end
         if mode_all_stacked then imgui.spacing() end
-        if styled_sf6_button("RECORD P2 (" .. sc("R") .. ")", false, rec_btn_w, is_floating, false, P2_COLORS) then
+        if styled_sf6_button(T("btn_record_p2"), false, rec_btn_w, is_floating, false, P2_COLORS) then
             start_recording(1)
         end
     end
@@ -740,13 +820,13 @@ local function draw_combo_trials_content(is_floating)
     if not is_floating then imgui.text_colored("3. PLAYBACK (TRIAL)", COLORS.White) end
 
     if trial_state.is_playing or is_demo_active then
-        if styled_sf6_button("STOP TRIAL (" .. sc("U") .. ")", true, play_btn_w, is_floating, false, TRIAL_COLORS) then
+        if styled_sf6_button(T("btn_stop_trial"), true, play_btn_w, is_floating, false, TRIAL_COLORS) then
             trial_state.is_playing = false
             if ctx.stop_demo then ctx.stop_demo() end
         end
     elseif not trial_state.is_recording then
         local is_p1_active = (trial_state.is_playing and trial_state.playing_player == 0)
-        if styled_sf6_button(is_p1_active and "STOP TRIAL P1 (" .. sc("U") .. ")" or "START TRIAL P1 (" .. sc("U") .. ")", is_p1_active, play_btn_w, is_floating, false, TRIAL_COLORS) then
+        if styled_sf6_button(is_p1_active and T("btn_stop_trial_p1") or T("btn_start_trial_p1"), is_p1_active, play_btn_w, is_floating, false, TRIAL_COLORS) then
             if is_p1_active then trial_state.is_playing = false
             else load_and_start_trial(0) end
         end
@@ -756,7 +836,7 @@ local function draw_combo_trials_content(is_floating)
     
     -- SWITCH POS (Hidden during recording)
     if not trial_state.is_recording then
-        if styled_sf6_button(switch_pos_label() .. " (" .. sc("D") .. ")", false, play_btn_w, is_floating, false, SWITCH_COLORS) then
+        if styled_sf6_button(switch_pos_label(), false, play_btn_w, is_floating, false, SWITCH_COLORS) then
             d2d_cfg.forced_position_idx = d2d_cfg.forced_position_idx + 1
             if d2d_cfg.forced_position_idx > 3 then d2d_cfg.forced_position_idx = 1 end
             ctx.save_d2d_config()
@@ -1092,8 +1172,8 @@ re.on_frame(function()
             local w_width = size.x
 
             -- Calculate single-line threshold
-            local rec_btn_w_check = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("R") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("R") .. ")" }, true)
-            local play_btn_w_check = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "START TRIAL P2 (" .. sc_max("U") .. ")", "STOP TRIAL P2 (" .. sc_max("U") .. ")" }, true)
+            local rec_btn_w_check = get_max_text_width({ T("btn_stop_save"), T("btn_cancel"), T("btn_record_p1"), T("btn_record_p2") }, true)
+            local play_btn_w_check = get_max_text_width({ T("btn_start_trial_p1"), T("btn_stop_trial_p1"), T("btn_start_trial_p2"), T("btn_stop_trial_p2") }, true)
             local min_single_line_w = 200 + (rec_btn_w_check + play_btn_w_check) * 2 + 150 * (sh / 1080.0)
 
             if w_width >= min_single_line_w then
@@ -1102,8 +1182,8 @@ re.on_frame(function()
             else
                 -- NORMAL MODE: Header + standard content
                 -- Calculate exact actual width to synchronize header transition with UI layout
-                local rec_btn_w_base = get_max_text_width({ "STOP & SAVE (" .. sc_max("L") .. ")", "CANCEL (" .. sc_max("R") .. ")", "RECORD P1 (" .. sc_max("L") .. ")", "RECORD P2 (" .. sc_max("R") .. ")", "RESET (" .. sc_max("L") .. ")", "DEMO (" .. sc_max("R") .. ")" }, true)
-                local play_btn_w_base = get_max_text_width({ "START TRIAL P1 (" .. sc_max("U") .. ")", "STOP TRIAL P1 (" .. sc_max("U") .. ")", "MIRROR POSITION (" .. sc_max("D") .. ")" }, true)
+                local rec_btn_w_base = get_max_text_width({ T("btn_stop_save"), T("btn_cancel"), T("btn_record_p1"), T("btn_record_p2"), T("btn_reset"), T("btn_demo") }, true)
+                local play_btn_w_base = get_max_text_width({ T("btn_start_trial_p1"), T("btn_stop_trial_p1"), T("pos_mirror") }, true)
                 local absolute_btn_w = math.max(rec_btn_w_base, play_btn_w_base)
                 local spacing_cols = 20 * (sh / 1080.0)
 
@@ -1201,7 +1281,7 @@ local function draw_combo_trials_menu_ui()
         -- ==========================================
         -- TAB 1: GLOBAL COMBO TRIAL (Shared P1/P2)
         -- ==========================================
-        if styled_header("--- COMBO TRIALS (Files & Playback) ---", UI_THEME.hdr_info) then
+        if styled_header(T("hdr_files"), UI_THEME.hdr_info) then
             local changed, new_val = imgui.checkbox("Detacher en fenetre flottante", show_trial_overlay)
             if changed then show_trial_overlay = new_val end
 
@@ -1222,14 +1302,14 @@ local function draw_combo_trials_menu_ui()
         -- ==========================================
         -- TAB 2: D2D VISUALIZER
         -- ==========================================
-        if styled_header("--- D2D VISUALIZER SETTINGS (Overlay) ---", UI_THEME.hdr_matrix) then
+        if styled_header(T("hdr_d2d"), UI_THEME.hdr_matrix) then
             local changed = false
             local c, v
 
-            c, v = imgui.checkbox("Enable D2D Overlay", d2d_cfg.enabled); if c then
+            c, v = imgui.checkbox(T("enable_d2d"), d2d_cfg.enabled); if c then
                 d2d_cfg.enabled = v; changed = true
             end
-            c, v = imgui.checkbox("Ignore Automatic Actions (Gray)", d2d_cfg.ignore_auto); if c then
+            c, v = imgui.checkbox(T("ignore_auto"), d2d_cfg.ignore_auto); if c then
                 d2d_cfg.ignore_auto = v; changed = true
             end
 
@@ -1243,36 +1323,36 @@ local function draw_combo_trials_menu_ui()
             end
 
 
-            c, v = imgui.checkbox("Show Combo Counter", d2d_cfg.show_combo_count); if c then
+            c, v = imgui.checkbox(T("show_combo_counter"), d2d_cfg.show_combo_count); if c then
                 d2d_cfg.show_combo_count = v; changed = true
             end
             imgui.spacing()
 
-            imgui.text_colored("--- Trial Progression ---", COLORS.Cyan)
-            c, v = imgui.checkbox("Auto Next Combo On Success", d2d_cfg.auto_next_trial ~= false); if c then
+            imgui.text_colored(T("progression"), COLORS.Cyan)
+            c, v = imgui.checkbox(T("auto_next"), d2d_cfg.auto_next_trial ~= false); if c then
                 d2d_cfg.auto_next_trial = v; changed = true
             end
             if imgui.is_item_hovered() then
-                imgui.set_tooltip("After a manual success: automatically load and start the next combo in the list.\nCompleted combos get a * marker in the dropdown. DEMO finishes never count.")
+                imgui.set_tooltip(T("auto_next_tip"))
             end
-            c, v = imgui.checkbox("Auto Retry On Fail", d2d_cfg.auto_retry_on_fail ~= false); if c then
+            c, v = imgui.checkbox(T("auto_retry"), d2d_cfg.auto_retry_on_fail ~= false); if c then
                 d2d_cfg.auto_retry_on_fail = v; changed = true
             end
             if imgui.is_item_hovered() then
-                imgui.set_tooltip("After the fail banner: automatically reset the trial.\nDisabled: the trial stops, restart it manually.")
+                imgui.set_tooltip(T("auto_retry_tip"))
             end
-            if file_system.clear_completed_trials and styled_button("CLEAR COMPLETED MARKERS", UI_THEME.btn_neutral) then
+            if file_system.clear_completed_trials and styled_button(T("clear_markers"), UI_THEME.btn_neutral) then
                 file_system.clear_completed_trials()
             end
             imgui.spacing()
 
-            imgui.text_colored("--- Live Log (During Record / Trial) ---", COLORS.Cyan)
+            imgui.text_colored(T("live_log"), COLORS.Cyan)
 
-            c, v = imgui.checkbox("Show Player 1##trial", d2d_cfg.show_p1); if c then d2d_cfg.show_p1 = v; changed = true end
+            c, v = imgui.checkbox(T("show_p1") .. "##trial", d2d_cfg.show_p1); if c then d2d_cfg.show_p1 = v; changed = true end
             imgui.same_line()
-            c, v = imgui.checkbox("Raw Input##trial_p1", d2d_cfg.raw_p1 or false); if c then d2d_cfg.raw_p1 = v; changed = true end
+            c, v = imgui.checkbox(T("raw_input") .. "##trial_p1", d2d_cfg.raw_p1 or false); if c then d2d_cfg.raw_p1 = v; changed = true end
             imgui.same_line()
-            c, v = imgui.checkbox("Mirror##trial_p1", d2d_cfg.mirror_p1 or false); if c then d2d_cfg.mirror_p1 = v; changed = true end
+            c, v = imgui.checkbox(T("mirror") .. "##trial_p1", d2d_cfg.mirror_p1 or false); if c then d2d_cfg.mirror_p1 = v; changed = true end
             if not d2d_cfg.raw_pos_p1 then d2d_cfg.raw_pos_p1 = { x = 0.050, y = 0.350 } end
             local tp1 = d2d_cfg.raw_p1 and d2d_cfg.raw_pos_p1 or d2d_cfg.pos_p1
             local tp1_lbl = d2d_cfg.raw_p1 and "Raw " or ""
@@ -1280,11 +1360,11 @@ local function draw_combo_trials_menu_ui()
             c, v = imgui.drag_float(tp1_lbl .. "P1 Y##trial", tp1.y, 0.005, 0.0, 1.0); if c then tp1.y = v; changed = true end
             if d2d_cfg.mirror_p1 then imgui.text_colored("  (Mirrored: X=" .. string.format("%.3f", 1.0 - tp1.x) .. ")", 0xFFAAAAAA) end
 
-            c, v = imgui.checkbox("Show Player 2##trial", d2d_cfg.show_p2); if c then d2d_cfg.show_p2 = v; changed = true end
+            c, v = imgui.checkbox(T("show_p2") .. "##trial", d2d_cfg.show_p2); if c then d2d_cfg.show_p2 = v; changed = true end
             imgui.same_line()
-            c, v = imgui.checkbox("Raw Input##trial_p2", d2d_cfg.raw_p2 or false); if c then d2d_cfg.raw_p2 = v; changed = true end
+            c, v = imgui.checkbox(T("raw_input") .. "##trial_p2", d2d_cfg.raw_p2 or false); if c then d2d_cfg.raw_p2 = v; changed = true end
             imgui.same_line()
-            c, v = imgui.checkbox("Mirror##trial_p2", d2d_cfg.mirror_p2 or false); if c then d2d_cfg.mirror_p2 = v; changed = true end
+            c, v = imgui.checkbox(T("mirror") .. "##trial_p2", d2d_cfg.mirror_p2 or false); if c then d2d_cfg.mirror_p2 = v; changed = true end
             if not d2d_cfg.raw_pos_p2 then d2d_cfg.raw_pos_p2 = { x = 0.850, y = 0.350 } end
             local tp2 = d2d_cfg.raw_p2 and d2d_cfg.raw_pos_p2 or d2d_cfg.pos_p2
             local tp2_lbl = d2d_cfg.raw_p2 and "Raw " or ""
@@ -1520,7 +1600,7 @@ local function draw_combo_trials_menu_ui()
         -- ==========================================
         -- TAB 3: EXCEPTION EDITOR MENU
         -- ==========================================
-        if styled_header("--- EXCEPTION MANAGEMENT ---", UI_THEME.hdr_session) then
+        if styled_header(T("hdr_exceptions"), UI_THEME.hdr_session) then
             -- THE EDITOR ONLY APPEARS WHEN "MANAGE" IS CLICKED
             if p_state.editing_id ~= -1 then
                 imgui.text_colored("=== EXCEPTION SETTINGS : ID " .. p_state.editing_id .. " ===", COLORS.Cyan)
@@ -1829,7 +1909,7 @@ local function draw_combo_trials_menu_ui()
         -- ==========================================
         -- TAB 4: LIVE LOG
         -- ==========================================
-        if styled_header("--- LIVE LOG : PLAYER " .. tostring(ui_state.viewed_player + 1) .. " ---", UI_THEME.hdr_rules) then
+        if styled_header(T("live_log_player", ui_state.viewed_player + 1), UI_THEME.hdr_rules) then
             -- PLAYER SELECTOR (Forces refresh on change)
             if styled_button(ui_state.viewed_player == 0 and "LOGGING P1 (" .. players[0].profile_name .. ")" or "WATCH LOG P1 (" .. players[0].profile_name .. ")", ui_state.viewed_player == 0 and UI_THEME.btn_green or UI_THEME.btn_neutral) then
                 if ui_state.viewed_player ~= 0 then
@@ -1977,7 +2057,7 @@ local function draw_combo_trials_menu_ui()
         -- ==========================================
         -- TAB 5: DEBUG & SYSTEM INFO
         -- ==========================================
-        if styled_header("--- DEBUG & SYSTEM INFO ---", UI_THEME.hdr_rules) then
+        if styled_header(T("hdr_debug"), UI_THEME.hdr_rules) then
             local di_delay = _G._demo_post_di_delay_ms or 0
             local di_changed, di_val = imgui.input_text("DEMO Post-DI Delay (ms)", tostring(di_delay))
             if di_changed then local n = tonumber(di_val); if n then _G._demo_post_di_delay_ms = math.floor(n) end end
