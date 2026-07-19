@@ -10,11 +10,13 @@ local ComboTrialsModules = {
     ActionMatcher = require("func/ComboTrials/ActionMatcher"),
     CharacterRules = require("func/ComboTrials/CharacterRules"),
     Validator = require("func/ComboTrials/Validator"),
-    PendingAbsorb = require("func/ComboTrials/PendingAbsorb")
+    PendingAbsorb = require("func/ComboTrials/PendingAbsorb"),
+    BcmCatalog = require("func/ComboTrials/BcmCatalog")
 }
 local CharacterRules = ComboTrialsModules.CharacterRules
 local Validator = ComboTrialsModules.Validator
 local ActionMatcher = ComboTrialsModules.ActionMatcher
+local BcmCatalog = ComboTrialsModules.BcmCatalog
 
 pcall(function()
     if fs and fs.create_dir then fs.create_dir("TrainingComboTrials_data/exceptions") end
@@ -528,6 +530,7 @@ local D2D_CONFIG_FILE = "TrainingComboTrials_data/CommandLogger_Visualizer.json"
 local d2d_cfg = {
     enabled = true,
     auto_load = true,
+    use_bcm_catalog = false,   -- opt-in: use cdjay's BCM catalog instead of manual exception files
     auto_next_trial = true,    -- after a manual success: auto-load the next combo in the list
     auto_retry_on_fail = true, -- after the fail banner ends: auto-reset the trial
     forced_position_idx = 1,
@@ -640,10 +643,12 @@ local function load_d2d_config()
             end
         end
     end
+    _G.ComboTrials_UseBcmCatalog = (d2d_cfg.use_bcm_catalog == true)
 end
 
 local function save_d2d_config()
     json.dump_file(D2D_CONFIG_FILE, d2d_cfg)
+    _G.ComboTrials_UseBcmCatalog = (d2d_cfg.use_bcm_catalog == true)
 end
 load_d2d_config()
 
@@ -3690,6 +3695,15 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
         -- 1. EARLY EXCEPTION RESOLUTION (For Hold Link)
         local exc, exc_char, exc_com = CharacterRules.get_exception(p_state.exceptions, common_exceptions, act_id)
 
+        -- BCM Catalog (opt-in toggle): when enabled, cdjay's compiled catalog
+        -- handles AC install aliases + classic display in place of the manual
+        -- exception files. Cached per character; data exists for a few chars only
+        -- (falls back to exceptions when there is no catalog for this character).
+        local bcm_catalog = nil
+        if _G.ComboTrials_UseBcmCatalog then
+            bcm_catalog = BcmCatalog.load_for_character(p_state.profile_name)
+        end
+
         if p_state.editing_id == act_id then
             exc = ActionMatcher.build_edit_exception(p_state)
         end
@@ -3708,7 +3722,11 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                 parent_exc = { absorb_ids = p_state.edit_absorb_ids }
             end
 
-            is_continuation = ActionMatcher.matches_absorb_id(parent_exc, act_id)
+            if bcm_catalog then
+                is_continuation = BcmCatalog.is_alias_for(bcm_catalog, act_id, parent_id)
+            else
+                is_continuation = ActionMatcher.matches_absorb_id(parent_exc, act_id)
+            end
         end
 
         -- 2. CLOSING THE PREVIOUS ACTION
@@ -3928,7 +3946,13 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                     motion_str = "7"; real_input_str = "7"; frame_diff_str = "Mouvement"
                 end
 
-                motion_str = ActionMatcher.apply_override_name(motion_str, exc)
+                if bcm_catalog then
+                    local cat_disp = BcmCatalog.get_classic_display(bcm_catalog, act_id)
+                    if cat_disp then motion_str = cat_disp
+                    else motion_str = ActionMatcher.apply_override_name(motion_str, exc) end
+                else
+                    motion_str = ActionMatcher.apply_override_name(motion_str, exc)
+                end
 
                 -- 3. COMBO TRIAL HANDLING (Now that motion_str is finalized!)
                 if trial_state.is_recording and p_idx == trial_state.recording_player then
