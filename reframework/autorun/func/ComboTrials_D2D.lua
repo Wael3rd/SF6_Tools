@@ -138,6 +138,32 @@ local function build_display_lines(sequence)
     return lines
 end
 
+-- Modern-control notation active? Manual toggle, or auto for a Modern-recorded
+-- combo. Shared by the combo display, the single-step path, and the input log.
+local function modern_display_active()
+    return (ctx and ctx.d2d_cfg and (ctx.d2d_cfg.show_modern_notation or _G.ComboTrials_CurrentIsModern)) and true or false
+end
+
+-- Character of the current combo file when Modern display is active, else nil.
+local function combo_modern_char()
+    if not modern_display_active() then return nil end
+    local ok, r = pcall(ModernDisplay.char_from_path, _G.ComboTrials_CurrentPath)
+    return ok and r or nil
+end
+
+-- Return a display item for `step` with its Modern notation resolved for
+-- `char`, or the step unchanged when Modern is off / no char / no mapping.
+-- Never mutates the original step (shallow-copies only when it changes).
+local function with_modern_motion(step, char)
+    if not step or not char or not modern_display_active() then return step end
+    local ok, mm = pcall(ModernDisplay.get_motion, char, step)
+    if not ok or not mm or mm == (step.motion or "") then return step end
+    local copy = {}
+    for k, v in pairs(step) do copy[k] = v end
+    copy.motion = mm
+    return copy
+end
+
 local function merge_group_log_item(steps)
     local motions = {}
 
@@ -699,10 +725,11 @@ local function d2d_draw_inner()
 
     local function draw_player_icons(p_idx, base_x, base_y, align_right, max_count, reverse_layout)
         local logs_to_draw = get_d2d_logs(players[p_idx].log, max_count)
+        local _log_char = players[p_idx] and players[p_idx].profile_name or nil
         for i, log in ipairs(logs_to_draw) do
             local y = base_y + (i - 1) * spacing_y
             local should_flip = log.facing_left or false
-            local tokens = parse_motion_to_icons(log, "log", should_flip, reverse_layout)
+            local tokens = parse_motion_to_icons(with_modern_motion(log, _log_char), "log", should_flip, reverse_layout)
             draw_parsed_line(tokens, base_x, y, icon_w, icon_h, spacing_x, final_text_y_offset, align_right, nil)
         end
     end
@@ -1005,7 +1032,10 @@ local function d2d_draw_inner()
         -- Draw text and icons for each visible display line
         for dl_idx = start_idx, math.min(start_idx + visible - 1, n_lines) do
             local dl = display_lines[dl_idx]
-            local log_item = (#dl.steps > 1) and merge_group_log_item(dl.steps) or dl.steps[1]
+            -- Single-step groups bypass merge_group_log_item, so resolve their
+            -- Modern notation here too (merge already handles multi-step groups).
+            local log_item = (#dl.steps > 1) and merge_group_log_item(dl.steps)
+                or with_modern_motion(dl.steps[1], combo_modern_char())
 
             -- Number of validated follow-ups in this group (to swap followup -> validfollowup)
             if mode == "playing" and #dl.steps > 1 then
