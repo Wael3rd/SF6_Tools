@@ -22,8 +22,11 @@ i18n.register("hk_distance_viewer", {
 local function T(k) return i18n.t("hk_distance_viewer", k) end
 
 local function can_use_distance_viewer()
+    -- Distance Viewer is a standalone overlay: its hotkeys work regardless of
+    -- the selected trainer sub-mode (including "Disabled"), subject only to the
+    -- runtime-safety gate.
     if RuntimeSafety and RuntimeSafety.is_training_allowed and not RuntimeSafety.is_training_allowed() then return false end
-    return _G.CurrentTrainerMode ~= nil and _G.CurrentTrainerMode ~= 0
+    return true
 end
 
 function M.init(commands, Hotkeys)

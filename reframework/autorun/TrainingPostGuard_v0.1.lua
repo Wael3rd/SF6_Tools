@@ -511,80 +511,35 @@ local function do_stop() reset_session_stats(); set_feedback("STOPPED", COLORS.R
 local function do_reset() reset_session_stats(); pg_ticker("SESSION RESET") end
 local function do_pause() session.is_paused = not session.is_paused; pg_ticker(session.is_paused and "SESSION PAUSED" or "SESSION RESUMED") end
 
-local function handle_input()
-    local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
-    local gamepad_type = sdk.find_type_definition("via.hid.GamePad")
-    if not gamepad_manager then return end
-    local devices = sdk.call_native_func(gamepad_manager, gamepad_type, "get_ConnectingDevices")
-    if not devices then return end
-    local count = devices:call("get_Count") or 0; local active_buttons = 0
-    for i = 0, count - 1 do
-        local pad = devices:call("get_Item", i)
-        if pad then local b = pad:call("get_Button") or 0; if b > 0 then active_buttons = b; break end end
+-- Shared hotkey framework: register into the common "session" scope
+-- (disabled/unbound by default). session_mode: "trials" or "timer".
+do
+    local ok, SessionHotkeys = pcall(require, "func/SessionHotkeys")
+    local ok2, TH = pcall(require, "func/Training_Hotkeys")
+    if ok and ok2 and SessionHotkeys and TH then
+        local function adjust_amount(dir)
+            if user_config.session_mode == "trials" then
+                user_config.trial_count = math.max(10, math.min(200, user_config.trial_count + dir * 10))
+                set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
+            else
+                user_config.timer_minutes = math.max(1, math.min(60, user_config.timer_minutes + dir))
+                session.time_rem = user_config.timer_minutes * 60
+                set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0)
+            end
+            reset_session_stats(); save_conf()
+        end
+        -- Post Guard = training mode 3.
+        SessionHotkeys.register_module(3, {
+            decrease_amount = function() adjust_amount(-1) end,
+            increase_amount = function() adjust_amount(1) end,
+            reset_or_stop   = function() if session.is_running then do_stop() else do_reset() end end,
+            start_or_pause  = function() if session.is_running then do_pause() else do_start() end end,
+        }, TH)
     end
-
-    local func_btn = _G.TrainingFuncButton or 16384
-    local is_func_held = ((active_buttons & func_btn) == func_btn)
-
-    local kb_state = {}
-    for _, k in ipairs({0x31, 0x32, 0x33, 0x34}) do
-        local ok, down = pcall(reframework.is_key_down, reframework, k)
-        kb_state[k] = ok and down
-    end
-    local function kb_pressed(k) return kb_state[k] and not last_kb_state[k] end
-    local function pad_pressed(btn) return ((active_buttons & btn) == btn) and not ((last_input_mask & btn) == btn) end
-    local function is_action(btn, kb) return (is_func_held and pad_pressed(btn)) or kb_pressed(kb) end
-
-    if session.is_time_up then
-         if is_action(BTN_LEFT, 0x34) or kb_pressed(0x33) then
-            reset_session_stats()
-            set_feedback("RESET DONE", COLORS.White, 1.0)
-            pg_ticker("SESSION RESET")
-        end
-    else
-        if not session.is_running then
-             if is_action(BTN_UP, 0x32) then
-                if user_config.session_mode == "trials" then
-                    user_config.trial_count = math.min(200, user_config.trial_count + 10)
-                    set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
-                else
-                    user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
-                    session.time_rem = user_config.timer_minutes * 60; set_feedback("TIMER: "..user_config.timer_minutes.." MIN", COLORS.White, 1.0)
-                end
-                save_conf()
-             end
-             if is_action(BTN_DOWN, 0x31) then
-                if user_config.session_mode == "trials" then
-                    user_config.trial_count = math.max(10, user_config.trial_count - 10)
-                    set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
-                else
-                    user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
-                    session.time_rem = user_config.timer_minutes * 60; set_feedback("TIMER: "..user_config.timer_minutes.." MIN", COLORS.White, 1.0)
-                end
-                save_conf()
-             end
-        end
-        -- POSITION 3 (key 3): START when not running, STOP when running
-        local pos3_kb = kb_pressed(0x33)
-        local pos3_pad = is_func_held and pad_pressed(BTN_RIGHT)
-        local pos4_kb = kb_pressed(0x34)
-        local pos4_pad = is_func_held and pad_pressed(BTN_LEFT)
-
-        -- Position 3 (key 3 / FUNC+LEFT): RESET when idle, STOP when running
-        if pos3_kb or pos4_pad then
-            if session.is_running then do_stop() else do_reset() end
-        end
-        -- Position 4 (key 4 / FUNC+RIGHT): START when idle, PAUSE when running
-        if not session.is_running then
-            if pos4_kb or pos3_pad then do_start() end
-        else
-            if pos4_kb or pos3_pad then do_pause() end
-        end
-    end
-
-    last_input_mask = active_buttons
-    last_kb_state = kb_state
 end
+
+-- Legacy 1-4 / FUNC+dir shortcuts removed; input is handled by the shared
+-- hotkey framework ("session" scope, HIT CONFIRM|REACTION|POST GUARD).
 
 -- =========================================================
 -- VISIBILITY & UI CLEANUP
@@ -845,7 +800,6 @@ re.on_frame(function()
     end
 
     if should_update then
-        handle_input()
         update_logic()
         manage_ticker_visibility()
     end

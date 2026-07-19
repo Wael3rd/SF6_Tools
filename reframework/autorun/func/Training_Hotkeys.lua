@@ -17,13 +17,27 @@ local M = {}
 -- Localizable chrome strings routed through the shared i18n registry so the
 -- hotkey menu follows the global EN/中文 toggle. `L.key` resolves live.
 local i18n = require("func/i18n")
+local UIKit = require("func/UIKit")
 i18n.register("hotkeys", {
     en = {
+        menu_title = "Training Hotkeys",
+        menu_hint  = "Bind keyboard and/or controller shortcuts. Disabled and unbound by default.",
         unbound   = "Unbound",
         bind      = "Bind",
         clear     = "Clear",
         bound     = "Bound: ",
         capturing = "Press a key or device button; ESC to cancel.",
+        capturing_kb  = "Press a keyboard key; ESC to cancel.",
+        capturing_pad = "Press a controller button; ESC to cancel.",
+        kb_prefix  = "Keyboard",
+        pad_prefix = "Controller",
+        pad_mod_label = "Controller modifier (hold)",
+        pad_mod_none  = "None (bare buttons)",
+        pad_mod_note  = "Hold this button for any controller shortcut to fire.",
+        enabled_toggle = "Enabled",
+        disabled_note  = "(disabled)",
+        debug_probe    = "Device probe (debug)",
+        bindings_defined = "BINDINGS DEFINED",
         conflict  = "Conflict: ",
         enable    = "Enable ",
         enable_suffix = " hotkeys",
@@ -31,11 +45,24 @@ i18n.register("hotkeys", {
         no_scopes = "No modules registered hotkey actions.",
     },
     zh = {
+        menu_title = "训练快捷键",
+        menu_hint  = "绑定键盘和/或手柄快捷键。默认关闭且未绑定。",
         unbound   = "未绑定",
         bind      = "绑定",
         clear     = "清除",
         bound     = "当前绑定: ",
         capturing = "请按键或设备按钮；ESC 取消。",
+        capturing_kb  = "请按键盘按键；ESC 取消。",
+        capturing_pad = "请按手柄按钮；ESC 取消。",
+        kb_prefix  = "键盘",
+        pad_prefix = "手柄",
+        pad_mod_label = "手柄修饰键（按住）",
+        pad_mod_none  = "无（直接按键）",
+        pad_mod_note  = "按住此键，手柄快捷键才会触发。",
+        enabled_toggle = "启用",
+        disabled_note  = "（已禁用）",
+        debug_probe    = "设备检测（调试）",
+        bindings_defined = "个绑定",
         conflict  = "冲突: ",
         enable    = "启用 ",
         enable_suffix = " 快捷键",
@@ -111,9 +138,14 @@ local GAME_INPUT_NAMES = {
     [576] = "GAME_DI",
 }
 
+-- Controller modifier: a pad button that must be HELD alongside any gamepad
+-- binding for it to fire (mirrors the legacy FUNC-hold). Default = PAD_FUNC.
+-- Set to 0 (Clear in the menu) to allow bare controller buttons.
+local DEFAULT_PAD_MOD = 16384
+
 local registry = {}
 local scope_order = {}
-local config = { scopes = {} }
+local config = { scopes = {}, controller_mod = DEFAULT_PAD_MOD }
 local loaded = false
 local capture = nil
 local capture_release_wait = false
@@ -141,6 +173,7 @@ local function load_config()
     local data = safe_load_json(CONFIG_FILE)
     if type(data) == "table" then
         if type(data.scopes) == "table" then config.scopes = data.scopes end
+        if type(data.controller_mod) == "number" then config.controller_mod = data.controller_mod end
     end
 end
 
@@ -251,7 +284,12 @@ function M.combo_name(binding)
     if type(binding) ~= "table" then return L.unbound end
     local device = binding_device(binding)
     if device == "gamepad" then
-        return M.pad_button_name(binding.button)
+        local mod = tonumber(config.controller_mod) or 0
+        local btn = tonumber(binding.button) or 0
+        if mod > 0 and (btn & mod) ~= mod then
+            return M.pad_button_name(mod) .. " + " .. M.pad_button_name(btn)
+        end
+        return M.pad_button_name(btn)
     end
     if device == "game_input" then
         return M.game_input_name(binding.input)
@@ -281,13 +319,30 @@ local function binding_key(binding)
     return "keyboard|" .. table.concat(mods, "+") .. "|" .. tostring(binding.vk)
 end
 
+-- A binding container holds up to two bindings for one action:
+--   { keyboard = <binding|nil>, controller = <binding|nil> }
+-- Legacy configs stored a single flat binding; normalize converts those to
+-- the container shape (read-only; migration is persisted on the next bind/clear).
+local function normalize_container(b)
+    if type(b) ~= "table" then return {} end
+    if b.keyboard ~= nil or b.controller ~= nil then return b end
+    local dev = binding_device(b)
+    if dev == "keyboard" then return { keyboard = b }
+    elseif dev == "gamepad" or dev == "game_input" then return { controller = b } end
+    return {}
+end
+
 local function binding_down(binding, pad_mask, game_mask)
     if type(binding) ~= "table" then return false end
     local device = binding_device(binding)
     if device == "gamepad" then
         local button = tonumber(binding.button) or 0
         if button <= 0 then return false end
-        return ((pad_mask or 0) & button) == button
+        -- Require the global controller modifier (FUNC by default) to be held,
+        -- so bare gameplay directions never trigger shortcuts.
+        local mod = tonumber(config.controller_mod) or 0
+        local required = button | mod
+        return ((pad_mask or 0) & required) == required
     end
     if device == "game_input" then
         local input = tonumber(binding.input) or 0
@@ -307,31 +362,38 @@ local function binding_down(binding, pad_mask, game_mask)
     return true
 end
 
-local function scan_binding(pad_mask, game_mask)
+-- slot: "keyboard" scans only the keyboard; "controller" scans only pad /
+-- game_input. This lets one action carry a keyboard AND a controller binding.
+local function scan_binding(pad_mask, game_mask, slot)
     if read_key(0x1B) then return "cancel" end
+    slot = slot or "keyboard"
 
-    pad_mask = pad_mask or 0
-    local pad_baseline = (capture and capture.pad_baseline) or 0
-    if capture and pad_mask == 0 and pad_baseline ~= 0 then
-        capture.pad_baseline = 0
-        pad_baseline = 0
-    end
-    local new_pad_mask = pad_mask & ~pad_baseline
-    if new_pad_mask > 0 then
-        return { device = "gamepad", button = new_pad_mask }
+    if slot == "controller" then
+        pad_mask = pad_mask or 0
+        local pad_baseline = (capture and capture.pad_baseline) or 0
+        if capture and pad_mask == 0 and pad_baseline ~= 0 then
+            capture.pad_baseline = 0
+            pad_baseline = 0
+        end
+        local new_pad_mask = pad_mask & ~pad_baseline
+        if new_pad_mask > 0 then
+            return { device = "gamepad", button = new_pad_mask }
+        end
+
+        game_mask = game_mask or 0
+        local game_baseline = (capture and capture.game_baseline) or 0
+        if capture and game_mask == 0 and game_baseline ~= 0 then
+            capture.game_baseline = 0
+            game_baseline = 0
+        end
+        local new_game_mask = game_mask & ~game_baseline
+        if new_game_mask > 0 then
+            return { device = "game_input", input = new_game_mask }
+        end
+        return nil
     end
 
-    game_mask = game_mask or 0
-    local game_baseline = (capture and capture.game_baseline) or 0
-    if capture and game_mask == 0 and game_baseline ~= 0 then
-        capture.game_baseline = 0
-        game_baseline = 0
-    end
-    local new_game_mask = game_mask & ~game_baseline
-    if new_game_mask > 0 then
-        return { device = "game_input", input = new_game_mask }
-    end
-
+    -- keyboard slot
     local mods = {}
     for _, mk in ipairs(MODIFIER_VKS) do
         if read_key(mk) then mods[#mods + 1] = mk end
@@ -395,28 +457,49 @@ function M.is_scope_enabled(scope_id)
     return type(scope_cfg) == "table" and scope_cfg.enabled == true
 end
 
-function M.get_binding(scope_id, action_id)
+function M.get_binding(scope_id, action_id, slot)
     local scope_cfg = config.scopes[scope_id]
     if type(scope_cfg) ~= "table" or type(scope_cfg.bindings) ~= "table" then return nil end
-    return scope_cfg.bindings[action_id]
+    local container = normalize_container(scope_cfg.bindings[action_id])
+    return container[slot or "keyboard"]
 end
 
-function M.get_label(scope_id, action_id)
-    return M.combo_name(M.get_binding(scope_id, action_id))
+function M.get_label(scope_id, action_id, slot)
+    return M.combo_name(M.get_binding(scope_id, action_id, slot))
 end
 
+local SLOTS = { "keyboard", "controller" }
+
+-- Reports actions whose keyboard OR controller binding collides with either of
+-- this action's bindings. A keyboard bind and a controller bind never collide
+-- with each other (different device namespaces in binding_key).
 local function find_conflicts(scope_id, action_id)
-    local target = binding_key(M.get_binding(scope_id, action_id))
-    if not target then return nil end
+    local scope_cfg = config.scopes[scope_id]
+    if type(scope_cfg) ~= "table" then return nil end
+    local mine = normalize_container(scope_cfg.bindings and scope_cfg.bindings[action_id])
+    local targets = {}
+    for _, sl in ipairs(SLOTS) do
+        local k = binding_key(mine[sl])
+        if k then targets[k] = true end
+    end
+    if not next(targets) then return nil end
     local hits = {}
     for _, sid in ipairs(scope_order) do
         local scope = registry[sid]
-        local scope_cfg = config.scopes[sid]
-        if scope and scope_cfg and type(scope_cfg.bindings) == "table" then
+        local other_cfg = config.scopes[sid]
+        if scope and other_cfg and type(other_cfg.bindings) == "table" then
             for _, aid in ipairs(scope.action_order) do
-                if not (sid == scope_id and aid == action_id) and binding_key(scope_cfg.bindings[aid]) == target then
-                    local action = scope.actions[aid]
-                    hits[#hits + 1] = (resolve_text(scope.title) or sid) .. " / " .. (resolve_text(action and action.label) or aid)
+                if not (sid == scope_id and aid == action_id) then
+                    local other = normalize_container(other_cfg.bindings[aid])
+                    local clash = false
+                    for _, sl in ipairs(SLOTS) do
+                        local k = binding_key(other[sl])
+                        if k and targets[k] then clash = true break end
+                    end
+                    if clash then
+                        local action = scope.actions[aid]
+                        hits[#hits + 1] = (resolve_text(scope.title) or sid) .. " / " .. (resolve_text(action and action.label) or aid)
+                    end
                 end
             end
         end
@@ -424,39 +507,64 @@ local function find_conflicts(scope_id, action_id)
     return #hits > 0 and table.concat(hits, ", ") or nil
 end
 
-local function draw_action_row(label, binding_label, draw_controls, force_stacked)
-    local cursor = imgui.get_cursor_pos()
-    local window_w = imgui.get_window_size().x
-    local label_w = imgui.calc_text_size(label).x
-    local binding_w = imgui.calc_text_size(binding_label).x
-    local controls_w = imgui.calc_text_size(L.bind).x + imgui.calc_text_size(L.clear).x + 44
-    local right_aligned_x = window_w - controls_w - 12
-    local controls_x = math.max(cursor.x + label_w + binding_w + 24, right_aligned_x)
-    local binding_x = math.max(cursor.x + label_w + 12, controls_x - binding_w - 12)
-    local inline_fits = controls_x + controls_w <= window_w - 12
+-- Layout columns (pixels from the row start), tuned for the REFramework menu.
+local COL_BINDING = 96   -- where the binding value starts
+local COL_BUTTONS = 260  -- minimum x for the Bind/Clear buttons
 
-    if not force_stacked and inline_fits and binding_x >= cursor.x + label_w + 12 then
-        imgui.text(label)
-        imgui.set_cursor_pos(Vector2f.new(binding_x, cursor.y))
-        imgui.text_colored(binding_label, 0xFF00FFFF)
-        imgui.set_cursor_pos(Vector2f.new(controls_x, cursor.y))
-        draw_controls()
+-- One aligned sub-row for a single device slot:
+--   "  <prefix>      <binding>                    [Bind] [Clear]"
+-- Bound = cyan, unbound = grey, capturing = orange. Buttons right-aligned.
+local function draw_bind_line(scope, scope_cfg, action_id, slot, prefix)
+    local container = normalize_container(scope_cfg.bindings[action_id])
+    local binding = container[slot]
+    local cap = capture and capture.scope_id == scope.id
+        and capture.action_id == action_id and capture.slot == slot
+    local start = imgui.get_cursor_pos()
+    local win_w = imgui.get_window_size().x
+
+    -- device prefix
+    imgui.text_colored("  " .. prefix, 0xFFB0B0B0)
+
+    -- binding value at a fixed column
+    imgui.set_cursor_pos(Vector2f.new(start.x + COL_BINDING, start.y))
+    if cap then
+        imgui.text_colored(slot == "controller" and L.capturing_pad or L.capturing_kb, 0xFF00A5FF)
         return
     end
+    local bound = binding ~= nil
+    imgui.text_colored(bound and M.combo_name(binding) or L.unbound, bound and 0xFF00FFFF or 0xFF808080)
 
-    -- Narrow REFramework menus cannot fit the label, binding and controls on one line.
-    -- Keep every control in the visible content region by stacking the row instead.
-    imgui.text(label)
-    local binding_text = L.bound .. binding_label
-    local compact_w = imgui.calc_text_size(binding_text).x + controls_w + 8
-    if not force_stacked and cursor.x + compact_w <= window_w - 12 then
-        imgui.text_colored(binding_text, 0xFF00FFFF)
-        imgui.same_line(0, 8)
-        draw_controls()
-    else
-        imgui.text_colored(binding_text, 0xFF00FFFF)
-        draw_controls()
+    -- right-aligned Bind / Clear
+    local bw = imgui.calc_text_size(L.bind).x + 16
+    local cw = imgui.calc_text_size(L.clear).x + 16
+    local bx = math.max(start.x + COL_BUTTONS, win_w - bw - cw - 28)
+    imgui.set_cursor_pos(Vector2f.new(bx, start.y))
+    if imgui.button(L.bind .. "##hk_bind_" .. scope.id .. "_" .. action_id .. "_" .. slot) then
+        capture = {
+            scope_id = scope.id,
+            action_id = action_id,
+            slot = slot,
+            pad_baseline = read_pad_mask(),
+            game_baseline = read_game_input_mask(),
+        }
     end
+    imgui.same_line(0, 4)
+    if imgui.button(L.clear .. "##hk_clear_" .. scope.id .. "_" .. action_id .. "_" .. slot) then
+        container[slot] = nil
+        scope_cfg.bindings[action_id] = container
+        save_config()
+    end
+end
+
+-- Number of actions in a scope that have at least one binding.
+local function count_bound(scope, scope_cfg)
+    if not scope_cfg or type(scope_cfg.bindings) ~= "table" then return 0 end
+    local n = 0
+    for _, aid in ipairs(scope.action_order) do
+        local c = normalize_container(scope_cfg.bindings[aid])
+        if c.keyboard or c.controller then n = n + 1 end
+    end
+    return n
 end
 
 function M.is_input_blocked()
@@ -466,11 +574,26 @@ end
 function M.update(suspended)
     load_config()
 
-    if suspended then return end
+    if suspended then
+        _G.TrainingFuncHeld = false
+        _G.TrainingPadMask = 0
+        _G.TrainingGameInputMask = 0
+        return
+    end
     local pad_mask = read_pad_mask()
     local game_mask = read_game_input_mask()
     debug_state.pad_mask = pad_mask
     debug_state.game_mask = game_mask
+
+    -- Publish input state for consumers. _G.TrainingFuncHeld = modifier held
+    -- (ComboTrials suppresses P1 inputs with it during a trial). PadMask is the
+    -- raw HID button mask (incl. D-pad / arcade stick); GameInputMask is the
+    -- processed game input. Dropdowns use these for controller navigation.
+    local _mod = tonumber(config.controller_mod) or 0
+    _G.TrainingFuncButton = (_mod > 0) and _mod or nil
+    _G.TrainingFuncHeld = (_mod > 0) and ((pad_mask & _mod) == _mod) or false
+    _G.TrainingPadMask = pad_mask
+    _G.TrainingGameInputMask = game_mask
 
     if capture_release_wait then
         if not any_binding_key_down(pad_mask, game_mask) then capture_release_wait = false end
@@ -478,7 +601,23 @@ function M.update(suspended)
     end
 
     if capture then
-        local binding = scan_binding(pad_mask, game_mask)
+        -- Capturing the global controller modifier (a single pad button).
+        if capture.kind == "pad_mod" then
+            local binding = scan_binding(pad_mask, game_mask, "controller")
+            if binding == "cancel" then
+                capture = nil
+                capture_release_wait = true
+                return
+            elseif type(binding) == "table" and binding.device == "gamepad" then
+                config.controller_mod = tonumber(binding.button) or 0
+                save_config()
+                capture = nil
+                capture_release_wait = true
+                return
+            end
+            return
+        end
+        local binding = scan_binding(pad_mask, game_mask, capture.slot)
         if binding == "cancel" then
             capture = nil
             capture_release_wait = true
@@ -486,7 +625,9 @@ function M.update(suspended)
         elseif type(binding) == "table" then
             debug_state.last_source = binding.device or "unknown"
             local scope_cfg = ensure_scope_config(capture.scope_id, false)
-            scope_cfg.bindings[capture.action_id] = binding
+            local container = normalize_container(scope_cfg.bindings[capture.action_id])
+            container[capture.slot or "keyboard"] = binding
+            scope_cfg.bindings[capture.action_id] = container
             save_config()
             capture = nil
             capture_release_wait = true
@@ -501,18 +642,23 @@ function M.update(suspended)
         if scope and scope_cfg and scope_cfg.enabled == true then
             for _, action_id in ipairs(scope.action_order) do
                 local action = scope.actions[action_id]
-                local binding = scope_cfg.bindings and scope_cfg.bindings[action_id]
-                local key = scope_id .. "." .. action_id
-                local is_down = binding_down(binding, pad_mask, game_mask)
-                if is_down and not last_down[key] then
-                    local allowed = true
-                    if type(action.enabled) == "function" then
-                        local ok, result = pcall(action.enabled)
-                        allowed = ok and result ~= false
+                local container = normalize_container(scope_cfg.bindings and scope_cfg.bindings[action_id])
+                -- Fire on either device; per-slot edge tracking so keyboard and
+                -- controller each trigger once on their own press.
+                for _, sl in ipairs(SLOTS) do
+                    local binding = container[sl]
+                    local key = scope_id .. "." .. action_id .. "." .. sl
+                    local is_down = binding_down(binding, pad_mask, game_mask)
+                    if is_down and not last_down[key] then
+                        local allowed = true
+                        if type(action.enabled) == "function" then
+                            local ok, result = pcall(action.enabled)
+                            allowed = ok and result ~= false
+                        end
+                        if allowed and type(action.run) == "function" then pcall(action.run) end
                     end
-                    if allowed and type(action.run) == "function" then pcall(action.run) end
+                    last_down[key] = is_down
                 end
-                last_down[key] = is_down
             end
         end
     end
@@ -520,64 +666,136 @@ end
 
 local function draw_scope(scope)
     local scope_cfg = ensure_scope_config(scope.id, scope.enabled_default)
-    local changed, enabled = imgui.checkbox(L.enable .. resolve_text(scope.title) .. L.enable_suffix .. "##hk_enabled_" .. scope.id, scope_cfg.enabled == true)
+
+    local changed, enabled = imgui.checkbox(L.enabled_toggle .. "##hk_enabled_" .. scope.id, scope_cfg.enabled == true)
     if changed then
         scope_cfg.enabled = enabled == true
         save_config()
     end
+    if not scope_cfg.enabled then
+        imgui.same_line(0, 10)
+        imgui.text_colored(L.disabled_note, 0xFF808080)
+    end
+    imgui.spacing()
 
     for _, action_id in ipairs(scope.action_order) do
         local action = scope.actions[action_id]
         if action then
-            imgui.separator()
-            local cap = capture and capture.scope_id == scope.id and capture.action_id == action_id
-            draw_action_row(resolve_text(action.label) or action_id, M.combo_name(scope_cfg.bindings[action_id]), function()
-                if cap then
-                    imgui.text_colored(L.capturing, 0xFF00A5FF)
-                    return
-                end
-                if imgui.button(L.bind .. "##hk_bind_" .. scope.id .. "_" .. action_id) then
-                    capture = {
-                        scope_id = scope.id,
-                        action_id = action_id,
-                        pad_baseline = read_pad_mask(),
-                        game_baseline = read_game_input_mask(),
-                    }
-                end
-                imgui.same_line()
-                if imgui.button(L.clear .. "##hk_clear_" .. scope.id .. "_" .. action_id) then
-                    scope_cfg.bindings[action_id] = nil
-                    save_config()
-                end
-            end, cap == true)
+            imgui.text_colored(resolve_text(action.label) or action_id, 0xFFFFFFFF)
+            draw_bind_line(scope, scope_cfg, action_id, "keyboard", L.kb_prefix)
+            draw_bind_line(scope, scope_cfg, action_id, "controller", L.pad_prefix)
 
             local conflict = find_conflicts(scope.id, action_id)
             if conflict then
-                imgui.text_colored(L.conflict .. conflict, 0xFF0000FF)
+                imgui.text_colored("  ! " .. L.conflict .. conflict, 0xFF0000FF)
             end
+            imgui.spacing()
         end
     end
 end
 
+-- Header color per scope (matches the styled sub-headers used across scripts).
+local SCOPE_HDR_STYLE = {
+    script_manager  = UIKit.THEME.hdr_gold,
+    session         = UIKit.THEME.hdr_skyblue,
+    combo_trials    = UIKit.THEME.hdr_purple,
+    distance_viewer = UIKit.THEME.hdr_green,
+}
+
 function M.draw_menu()
     load_config()
-    imgui.text_colored(string.format(
-        L.probe,
-        debug_state.pad_mask or 0,
-        debug_state.game_mask or 0,
-        debug_state.last_source or "none"
-    ), 0xFF888888)
     if #scope_order == 0 then
         imgui.text_colored(L.no_scopes, 0xFF888888)
         return
     end
-    for _, scope_id in ipairs(scope_order) do
-        local scope = registry[scope_id]
-        if scope and imgui.tree_node(resolve_text(scope.title) .. "##hotkeys_" .. scope_id) then
-            draw_scope(scope)
-            imgui.tree_pop()
+
+    -- Global controller modifier (hold) — must be held for any pad binding to fire.
+    -- Label on its own line; value + buttons on the next line (no overlap).
+    imgui.text_colored(L.pad_mod_label, 0xFFFFFFFF)
+    do
+        local start = imgui.get_cursor_pos()
+        local win_w = imgui.get_window_size().x
+        local mod = tonumber(config.controller_mod) or 0
+        imgui.text_colored("  " .. (mod > 0 and M.pad_button_name(mod) or L.pad_mod_none), mod > 0 and 0xFF00FFFF or 0xFF808080)
+        if capture and capture.kind == "pad_mod" then
+            imgui.set_cursor_pos(Vector2f.new(start.x + COL_BUTTONS, start.y))
+            imgui.text_colored(L.capturing_pad, 0xFF00A5FF)
+        else
+            local bw = imgui.calc_text_size(L.bind).x + 16
+            local cw = imgui.calc_text_size(L.clear).x + 16
+            imgui.set_cursor_pos(Vector2f.new(math.max(start.x + COL_BUTTONS, win_w - bw - cw - 28), start.y))
+            if imgui.button(L.bind .. "##hk_padmod_bind") then
+                capture = { kind = "pad_mod", pad_baseline = read_pad_mask(), game_baseline = read_game_input_mask() }
+            end
+            imgui.same_line(0, 4)
+            if imgui.button(L.clear .. "##hk_padmod_clear") then
+                config.controller_mod = 0
+                save_config()
+            end
         end
     end
+    imgui.text_colored(L.pad_mod_note, 0xFF808080)
+    imgui.spacing()
+    imgui.separator()
+    imgui.spacing()
+
+    for _, scope_id in ipairs(scope_order) do
+        local scope = registry[scope_id]
+        if scope then
+            local bound = count_bound(scope, config.scopes[scope_id])
+            local total = #scope.action_order
+            local title = resolve_text(scope.title) or scope_id
+            local style = SCOPE_HDR_STYLE[scope_id] or UIKit.THEME.hdr_blue
+
+            -- Header label is STABLE (title only): including the changing count
+            -- would alter the header id and collapse it on every bind. The count
+            -- is drawn separately, right-aligned on the header row.
+            local start = imgui.get_cursor_pos()
+            local open = UIKit.styled_header(title .. "##hk_scope_" .. scope_id, style)
+            local after = imgui.get_cursor_pos()
+
+            local count_str = string.format("%d/%d %s", bound, total, L.bindings_defined)
+            local win_w = imgui.get_window_size().x
+            local cwid = imgui.calc_text_size(count_str).x
+            imgui.set_cursor_pos(Vector2f.new(math.max(start.x + 12, win_w - cwid - 40), start.y + 3))
+            imgui.text_colored(count_str, 0xFFCFCFCF)
+            imgui.set_cursor_pos(after)
+
+            if open then
+                imgui.spacing()
+                draw_scope(scope)
+                imgui.spacing()
+            end
+        end
+    end
+
+    -- Device probe (debug) — collapsed at the bottom.
+    imgui.spacing()
+    imgui.separator()
+    if imgui.tree_node(L.debug_probe .. "##hk_debug") then
+        imgui.text_colored(string.format(
+            L.probe,
+            debug_state.pad_mask or 0,
+            debug_state.game_mask or 0,
+            debug_state.last_source or "none"
+        ), 0xFF888888)
+        imgui.tree_pop()
+    end
+end
+
+-- Independent top-level menu in the REFramework "Script Generated UI", so the
+-- hotkey config is not buried inside the Script Manager submenu. Input reading
+-- (M.update) is still driven by Script Manager, where the training-context
+-- killswitch and replay handling live.
+if re and re.on_draw_ui then
+    re.on_draw_ui(function()
+        if imgui.tree_node("TRAINING HOTKEYS") then
+            imgui.text_colored(L.menu_hint, 0xFF888888)
+            imgui.separator()
+            M.draw_menu()
+            imgui.tree_pop()
+        end
+    end)
 end
 
 return M

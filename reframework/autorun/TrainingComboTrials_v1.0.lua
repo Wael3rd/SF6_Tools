@@ -4908,6 +4908,10 @@ ctx.commands = {
     end,
 }
 
+-- Expose live combo/trial state to the hotkey layer. All hotkey slot dispatch
+-- lives in ComboTrials_Hotkeys.lua; this module only exposes state + commands.
+ctx.trial_state = trial_state
+
 ComboTrials_Hotkeys.init(ctx, TrainingHotkeys)
 
 local ComboTrials_UI = require("func/ComboTrials_UI")

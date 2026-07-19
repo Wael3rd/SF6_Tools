@@ -163,6 +163,29 @@ local UI_THEME = {
 local _dropdown_highlight_idx = nil
 local _dropdown_scroll_needed = false
 
+-- Native navigation for the dropdown (keyboard arrows + Enter, and controller
+-- D-pad/left-stick with FUNC held), so the list can be browsed without binding
+-- any hotkey. All edge-detected via a shared state table.
+local _dropdown_kb_state = {}
+local function _dropdown_bool_edge(down, key)
+    down = down == true
+    local prev = _dropdown_kb_state[key]
+    _dropdown_kb_state[key] = down
+    return down and not prev
+end
+local function _dropdown_kb_edge(vk, key)
+    local ok, down = pcall(reframework.is_key_down, reframework, vk)
+    return _dropdown_bool_edge(ok and down == true, key)
+end
+
+-- Up/down from the controller: HID button mask (D-pad / arcade stick) OR the
+-- processed game input. Both published by the framework each frame.
+-- bit 0x1 = up, bit 0x2 = down.
+local function _dropdown_pad_updown()
+    local m = (_G.TrainingPadMask or 0) | (_G.TrainingGameInputMask or 0)
+    return (m & 1) ~= 0, (m & 2) ~= 0
+end
+
 local function combo_openable(label, current_idx, items, force_open, btn_width, completion_paths)
     local popup_id = label .. "_popup"
     local preview = (items and items[current_idx]) or "---"
@@ -201,6 +224,23 @@ local function combo_openable(label, current_idx, items, force_open, btn_width, 
         _dropdown_highlight_idx = current_idx
         _dropdown_scroll_needed = true
         if force_open then _G.ComboTrials_OpenDropdown = false end
+    end
+
+    -- Native navigation while the list is open (independent of hotkey binds).
+    if _G.ComboTrials_DropdownOpen then
+        -- Keyboard: arrows + Enter.
+        if _dropdown_kb_edge(0x26, "up")    then _G.ComboTrials_DropdownNavUp = true end
+        if _dropdown_kb_edge(0x28, "down")  then _G.ComboTrials_DropdownNavDown = true end
+        if _dropdown_kb_edge(0x0D, "enter") then _G.ComboTrials_DropdownSelect = true end
+        -- Controller: FUNC + D-pad/left-stick up/down.
+        if _G.TrainingFuncHeld then
+            local up, down = _dropdown_pad_updown()
+            if _dropdown_bool_edge(up, "pad_up")     then _G.ComboTrials_DropdownNavUp = true end
+            if _dropdown_bool_edge(down, "pad_down") then _G.ComboTrials_DropdownNavDown = true end
+        else
+            _dropdown_kb_state.pad_up = false
+            _dropdown_kb_state.pad_down = false
+        end
     end
 
     -- Shortcut navigation (flags set by the input handler)

@@ -985,77 +985,10 @@ local function apply_difficulty(val)
     save_conf()
 end
 
-local function handle_input()
-    -- Use Hardware Input for MENU NAVIGATION Only
-    local active_buttons = get_hardware_pad_mask()
-
-    local func_btn = _G.TrainingFuncButton or 16384
-    local is_func_held = ((active_buttons & func_btn) == func_btn)
-
-    local kb_state = {}
-    for _, k in ipairs({0x31, 0x32, 0x33, 0x34}) do
-        local ok, down = pcall(_hc_is_key_down, k)
-        kb_state[k] = ok and down
-    end
-    local function kb_pressed(k) return kb_state[k] and not last_kb_state[k] end
-    local function pad_pressed(btn) return ((active_buttons & btn) == btn) and not ((last_input_mask & btn) == btn) end
-    local function is_action(btn, kb) return (is_func_held and pad_pressed(btn)) or kb_pressed(kb) end
-
-    -- 1. TIMER/TRIALS SETTINGS (UP/DOWN = 2/3)
-    if not session.is_running and not session.is_time_up then
-        if is_action(BTN_UP, 0x32) then
-            if user_config.session_mode == "timer" then
-                user_config.timer_minutes = math.min(60, user_config.timer_minutes + 1)
-                session.time_rem = user_config.timer_minutes * 60
-                set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0)
-            else
-                user_config.trial_count = math.min(200, user_config.trial_count + 10)
-                set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
-            end
-            save_conf()
-        end
-        if is_action(BTN_DOWN, 0x31) then
-            if user_config.session_mode == "timer" then
-                user_config.timer_minutes = math.max(1, user_config.timer_minutes - 1)
-                session.time_rem = user_config.timer_minutes * 60
-                set_feedback("TIMER: " .. user_config.timer_minutes .. " MIN", COLORS.White, 1.0)
-            else
-                user_config.trial_count = math.max(10, user_config.trial_count - 10)
-                set_feedback(tostring(user_config.trial_count), COLORS.White, 1.0)
-            end
-            save_conf()
-        end
-    end
-
-    -- POSITION 3 (key 3): START when not running, STOP when running
-    -- Pad: BTN_RIGHT=start/pause, BTN_LEFT=stop/reset (unchanged)
-    local pos3_kb = kb_pressed(0x33)
-    local pos3_pad = is_func_held and pad_pressed(BTN_RIGHT)
-    local pos4_kb = kb_pressed(0x34)
-    local pos4_pad = is_func_held and pad_pressed(BTN_LEFT)
-
-    -- Position 3 (key 3 / FUNC+LEFT): RESET when idle, STOP when running
-    if not session.is_running and not session.is_time_up then
-        if pos3_kb or pos4_pad then do_reset() end
-    elseif session.is_running then
-        if pos3_kb or pos4_pad then do_stop() end
-    elseif session.is_time_up then
-        if pos3_kb or pos4_pad then do_reset() end
-    end
-
-    -- Position 4 (key 4 / FUNC+RIGHT): START when idle, PAUSE when running
-    if not session.is_running and not session.is_time_up then
-        if pos4_kb or pos3_pad then do_start() end
-    elseif session.is_running then
-        if pos4_kb or pos3_pad then do_pause() end
-    end
-
-    last_input_mask = active_buttons
-    last_kb_state = kb_state
-end
+-- Legacy 1-4 / FUNC+dir shortcuts removed; input is handled by the shared
+-- hotkey framework ("session" scope, HIT CONFIRM|REACTION|POST GUARD).
 
 local function update_logic_and_input()
-    handle_input()
     update_logic()
 end
 
@@ -1379,10 +1312,10 @@ local apply_force_invisible; apply_force_invisible = function(control, path, dep
 end
 
 
--- Shared hotkey framework: register the hit-confirm scope (additive,
--- disabled by default; existing behavior unchanged)
+-- Shared hotkey framework: register into the common "session" scope shared by
+-- Hit Confirm / Reactions / Post Guard (disabled/unbound by default).
 do
-    local ok, HitConfirmHotkeys = pcall(require, "func/HitConfirm_Hotkeys")
+    local ok, SessionHotkeys = pcall(require, "func/SessionHotkeys")
     local ok2, TrainingHotkeys = pcall(require, "func/Training_Hotkeys")
     local ok3, i18n_hc = pcall(require, "func/i18n")
     if ok3 and i18n_hc then
@@ -1399,17 +1332,21 @@ do
             },
         })
     end
-    if ok and ok2 and HitConfirmHotkeys and TrainingHotkeys then
-        local function adjust_amount(delta)
+    if ok and ok2 and SessionHotkeys and TrainingHotkeys then
+        -- dir is +1 / -1. Match the on-screen buttons: timer ±1 (1..60),
+        -- trials ±10 (10..200), and reset session stats + persist like they do.
+        local function adjust_amount(dir)
             if user_config.session_mode == "timer" then
-                user_config.timer_minutes = math.max(1, (user_config.timer_minutes or 5) + delta)
+                user_config.timer_minutes = math.max(1, math.min(60, (user_config.timer_minutes or 5) + dir))
                 hc_ticker("TIMER: " .. user_config.timer_minutes .. " min")
             else
-                user_config.trial_count = math.max(1, (user_config.trial_count or 20) + delta)
+                user_config.trial_count = math.max(10, math.min(200, (user_config.trial_count or 20) + dir * 10))
                 hc_ticker("TRIALS: " .. user_config.trial_count)
             end
+            reset_session_stats(); save_conf()
         end
-        HitConfirmHotkeys.init({
+        -- Hit Confirm = training mode 2.
+        SessionHotkeys.register_module(2, {
             decrease_amount = function() adjust_amount(-1) end,
             increase_amount = function() adjust_amount(1) end,
             reset_or_stop = function()

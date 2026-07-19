@@ -2404,41 +2404,9 @@ local function draw_config_ui()
     -- 0. HELP & INFO
     -- ==========================================
     if styled_header(require("func/i18n").t("distance_viewer_ui","help"), UI_THEME.hdr_info) then
-        imgui.text("SHORTCUTS (Keyboard / Gamepad):")
-
-        if not config.expert_mode_enabled then
-            imgui.text("- [5] or (Func) + LB/L1 : Toggle P1 (Normal / OFF)")
-            imgui.text("- [6] or (Func) + RB/R1 : Toggle P2 (Normal / OFF)")
-        else
-            imgui.text("- [5] or (Func) + LB/L1 : Toggle P1 (ON / OFF)")
-            imgui.text("- [6] or (Func) + RB/R1 : Toggle P2 (ON / OFF)")
-        end
-
-        imgui.text("- [7] or (Func) + Triangle/Y : Toggle UI Window")
-
-        if _G.TrainingFuncButton ~= nil then
-            imgui.text_colored("* (Func) button is defined in Training Script Manager (Default: Select)", COL_GREY)
-        else
-            imgui.separator()
-            if is_binding_mode then
-                imgui.text_colored("-- PRESS ANY GAMEPAD BUTTON TO BIND FUNC --", 0xFF00FFFF)
-            else
-                local btn_name = "NOT SET"
-                if config.func_button then
-                    btn_name = "ID: " .. tostring(config.func_button)
-                    if config.func_button == 16384 then btn_name = "SELECT / BACK" end
-                    if config.func_button == 8192 then btn_name = "R3 / RS" end
-                    if config.func_button == 4096 then btn_name = "L3 / LS" end
-                end
-
-                imgui.text("Current Func Button: " .. btn_name)
-                imgui.same_line()
-                if imgui.button("CHANGE FUNC BUTTON") then
-                    is_binding_mode = true
-                    last_input_mask = 0
-                end
-            end
-        end
+        imgui.text("SHORTCUTS:")
+        imgui.text_colored("Bind Cycle P1 / Cycle P2 / Toggle Overlay in", COL_GREY)
+        imgui.text_colored("Script Manager > HOTKEY BINDINGS > Distance Viewer.", COL_GREY)
         imgui.spacing()
         imgui.separator()
         imgui.text_colored("AUTO ACTIVATE", 0xFF00FFFF)
@@ -2982,48 +2950,9 @@ local function is_kb_down(vk)
     return ok and result
 end
 
-local function handle_viewer_shortcuts()
-    local active_buttons = get_hardware_pad_mask()
-    local kb_now = { [KB_5] = is_kb_down(KB_5), [KB_6] = is_kb_down(KB_6), [KB_7] = is_kb_down(KB_7) }
-    local function kb_pressed(vk) return kb_now[vk] and not last_kb_state[vk] end
-
-    if is_binding_mode then
-        if active_buttons ~= 0 and last_input_mask == 0 then
-            config.func_button = active_buttons
-            save_settings()
-            is_binding_mode = false
-        end
-        last_input_mask = active_buttons
-        last_kb_state = kb_now
-        return
-    end
-
-    local func_btn = _G.TrainingFuncButton or config.func_button
-    local is_func_held = false
-    if func_btn and func_btn > 0 then
-        is_func_held = ((active_buttons & func_btn) == func_btn)
-    end
-
-    local function is_pressed(target_mask)
-        if not is_func_held then return false end
-        return ((active_buttons & target_mask) == target_mask) and not ((last_input_mask & target_mask) == target_mask)
-    end
-
-    local changed = false
-
-    -- Cycle P1 Modes
-    if is_pressed(PAD_LB) or kb_pressed(KB_5) then
-        cycle_player_display("p1"); changed = true
-    end
-
-    -- Cycle P2 Modes
-    if is_pressed(PAD_RB) or kb_pressed(KB_6) then
-        cycle_player_display("p2"); changed = true
-    end
-
-    if changed then save_settings() end
-    last_input_mask = active_buttons; last_kb_state = kb_now
-end
+-- Distance Viewer input is handled entirely by the shared hotkey framework
+-- (Script Manager > HOTKEY BINDINGS > Distance Viewer). The legacy hardcoded
+-- 5/6/7 + FUNC shortcuts were removed.
 
 -- =========================================================
 -- [AUTO ACTIVATE MOVE] — Tick & Hook
@@ -3511,7 +3440,6 @@ re.on_frame(function()
             end
         end
     end
-    handle_viewer_shortcuts()
 
     -- Build local rect list from all sources (independent of frame ordering)
     local all_rects = {}

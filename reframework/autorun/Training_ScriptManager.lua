@@ -104,9 +104,8 @@ end)
 local CONFIG_FILE = "Training_ScriptManager_data/TrainingManager_Config.json"
 
 local config = {
-    func_button = nil, -- No default: must be set by user via CHANGE FUNCTION BUTTON
-    switch_key = 0x30, -- Keyboard key for mode switch (default: '0' = VK 0x30)
-    switch_modifiers = {}, -- Required modifiers (e.g. {0x11} for Ctrl)
+    -- Controller modifier and mode-switch shortcut are now owned by the shared
+    -- hotkey framework (Training Hotkeys menu), not this file.
     btn_colors = { c1 = 0xFFFF0000, c2 = 0xFF019D00, c3 = 0xFF0000FF, c4 = 0xFFDC00FF },
     btn_alphas = { c1 = 200, c2 = 200, c3 = 200, c4 = 200 },
     -- Top bar colors (ARGB)
@@ -144,8 +143,6 @@ end
 local function load_config()
     local data = _G.safe_load_json(CONFIG_FILE)
     if data then
-        if data.func_button then config.func_button = data.func_button end
-        if data.switch_key then config.switch_key = data.switch_key end
         if data.btn_colors and type(data.btn_colors) == "table" then
             for k, v in pairs(data.btn_colors) do config.btn_colors[k] = v end
         end
@@ -159,13 +156,11 @@ local function load_config()
             for k, v in pairs(data.top_alphas) do config.top_alphas[k] = v end
         end
     end
-    _G.TrainingFuncButton = config.func_button
     publish_button_colors()
 end
 
 local function save_config()
     json.dump_file(CONFIG_FILE, config)
-    _G.TrainingFuncButton = config.func_button
     publish_button_colors()
 end
 
@@ -314,115 +309,18 @@ local function cycle_next_mode()
     _G.CurrentTrainerMode = MODE_CYCLE[idx]
 end
 
--- Input Management (Gamepad & Keyboard)
-local last_input_mask = 0
-local is_binding_mode = false
-local is_kb_binding_mode = false
-local last_kb_0_state = false
+-- Register the mode-switch action into the shared hotkey framework
+-- (disabled/unbound by default). The legacy switch shortcut below stands
+-- down when this scope is enabled.
+pcall(function()
+    local SMHotkeys = require("func/ScriptManager_Hotkeys")
+    SMHotkeys.init({ cycle_training_mode = cycle_next_mode }, TrainingHotkeys)
+end)
 
--- CORRECTED: 64 = X (Xbox) / Square (PS)
-local BTN_SQUARE = 64
-
--- Hoisted to file scope to avoid per-frame closure/table allocations (hot path)
-local _TSM_MODIFIER_VKS = {0x10, 0x11, 0x12, 0x5B, 0x5C}
-local _TSM_MOD_SET = {}
-for _, mk in ipairs(_TSM_MODIFIER_VKS) do _TSM_MOD_SET[mk] = true end
-
-local function _tsm_scan_kb_binding()
-    local mods_held = {}
-    for _, mk in ipairs(_TSM_MODIFIER_VKS) do
-        if reframework:is_key_down(mk) then mods_held[#mods_held + 1] = mk end
-    end
-
-    for vk = 0x08, 0x7F do
-        if not _TSM_MOD_SET[vk] and reframework:is_key_down(vk) then
-            config.switch_key = vk
-            config.switch_modifiers = mods_held
-            save_config()
-            is_kb_binding_mode = false
-            break
-        end
-    end
-end
-
-local function _tsm_vk_in_list(list, vk)
-    for _, m in ipairs(list) do
-        if m == vk then return true end
-    end
-    return false
-end
-
-local function _tsm_check_kb_switch(switch_vk, switch_mods)
-    if not reframework:is_key_down(switch_vk) then return false end
-    for _, m in ipairs(switch_mods) do
-        if not reframework:is_key_down(m) then return false end
-    end
-    for _, m in ipairs(_TSM_MODIFIER_VKS) do
-        if not _tsm_vk_in_list(switch_mods, m) and reframework:is_key_down(m) then return false end
-    end
-    return true
-end
-
-local function handle_input()
-    local gamepad_manager = sdk.get_native_singleton("via.hid.GamePad")
-    local gamepad_type = sdk.find_type_definition("via.hid.GamePad")
-    if not gamepad_manager then return end
-
-    local devices = sdk.call_native_func(gamepad_manager, gamepad_type, "get_ConnectingDevices")
-    if not devices then return end
-
-    local count = devices:call("get_Count") or 0
-    local active_buttons = 0
-    
-    for i = 0, count - 1 do
-        local pad = devices:call("get_Item", i)
-        if pad then
-            local b = pad:call("get_Button") or 0
-            if b > 0 then active_buttons = b; break end
-        end
-    end
-
-    -- BINDING LOGIC (If clicked in UI)
-    if is_binding_mode then
-        if active_buttons ~= 0 and last_input_mask == 0 then
-            config.func_button = active_buttons
-            save_config()
-            is_binding_mode = false
-        end
-        last_input_mask = active_buttons
-        return
-    end
-
-    -- KEYBOARD BINDING LOGIC (scan all keys, capture modifiers)
-    if is_kb_binding_mode then
-        pcall(_tsm_scan_kb_binding)
-        if is_kb_binding_mode then return end -- still waiting for a key
-    end
-
-    -- SCRIPT SWITCH LOGIC (FUNCTION + SQUARE on Pad)
-    local func_btn = _G.TrainingFuncButton
-    local is_func_held = false
-    if func_btn and func_btn > 0 then
-        is_func_held = (active_buttons & func_btn) == func_btn
-    end
-    _G.TrainingFuncHeld = is_func_held
-    local is_switch_pressed = (active_buttons & BTN_SQUARE) == BTN_SQUARE and (last_input_mask & BTN_SQUARE) ~= BTN_SQUARE
-
-    -- SCRIPT SWITCH LOGIC (configurable keyboard key + modifiers)
-    local switch_vk = config.switch_key or 0x30
-    local switch_mods = config.switch_modifiers or {}
-    local ok_kb, kb_down = pcall(_tsm_check_kb_switch, switch_vk, switch_mods)
-    local is_kb_0_down = ok_kb and kb_down == true
-    local is_kb_0_pressed = is_kb_0_down and not last_kb_0_state
-
-    -- Trigger switch if either Pad combo or Keyboard key is pressed
-    if (is_func_held and is_switch_pressed) or is_kb_0_pressed then
-        cycle_next_mode()
-    end
-
-    last_input_mask = active_buttons
-    last_kb_0_state = is_kb_0_down
-end
+-- Input Management is fully owned by the shared hotkey framework
+-- (Training Hotkeys menu). The mode-switch action is registered above; the
+-- controller-modifier state (_G.TrainingFuncHeld/_G.TrainingFuncButton) is
+-- published by Training_Hotkeys.update. No legacy gamepad/keyboard reading here.
 
 -- ==========================================
 -- 2. UI RESTORATION & HUD TRACKING LOGIC
@@ -584,15 +482,6 @@ local function vk_name(vk)
     return VK_NAMES[vk] or string.format("0x%02X", vk)
 end
 
-local function combo_name(vk, mods)
-    local parts = {}
-    if mods then
-        for _, m in ipairs(mods) do parts[#parts + 1] = vk_name(m) end
-    end
-    parts[#parts + 1] = vk_name(vk)
-    return table.concat(parts, " + ")
-end
-
 local function draw_top_floating_bar()
     local visible, sw, sh = SharedUI.begin_floating_window_top("TrainingModeSwitch##top", top_bar_width, top_bar_height)
     if not visible then
@@ -603,15 +492,8 @@ local function draw_top_floating_bar()
     local sp = 4 * (sh / 1080.0)
     local content_w = imgui.get_window_size().x - sw * 0.02  -- subtract WindowPadding (left+right)
 
-    -- Build switch label with dynamic shortcut (keyboard vs controller)
-    local switch_label
-    local fn = SharedUI.get_func_name()
-    local key_label = combo_name(config.switch_key or 0x30, config.switch_modifiers)
-    if SharedUI.is_keyboard_mode() or not fn then
-        switch_label = "SWITCH (" .. key_label .. ")"
-    else
-        switch_label = "SWITCH (" .. fn .. " + SQUARE/X)"
-    end
+    -- Mode-switch shortcut is user-configurable in the Training Hotkeys menu.
+    local switch_label = "SWITCH"
 
     -- Calculate button widths: all 6 buttons equal width
     local total_buttons = 1 + #MODE_BUTTONS
@@ -889,8 +771,6 @@ re.on_frame(function()
         return
     end
 
-    handle_input()
-
     -- Clear D2D floating bar when no training mode is active
     if _G.CurrentTrainerMode == 0 then
         _G.TrainingFloatingBar = nil
@@ -929,8 +809,6 @@ re.on_frame(function()
         end)
     end
     _G._tsm_last_mode = _G.CurrentTrainerMode
-
-    if is_binding_mode then return end
 
     -- CHECK AUTOMATIC GUARD SWITCHING
     update_guard_logic()
@@ -1050,123 +928,12 @@ re.on_draw_ui(function()
             if c4 and v4 then _G.CurrentTrainerMode = 4 end
         end
 
-        -- ==========================================
-        -- SECTION 2b: HOTKEY BINDINGS (shared multi-device framework)
-        -- ==========================================
-        if styled_header(T_sm("hotkeys"), UI_THEME.hdr_config) then
-            imgui.text_colored(T_sm("hotkeys_hint1"), 0xFF888888)
-            imgui.text_colored(T_sm("hotkeys_hint2"), 0xFF888888)
-            pcall(TrainingHotkeys.draw_menu)
-        end
+        -- HOTKEY BINDINGS now live in their own top-level REFramework menu
+        -- ("Training Hotkeys"), registered by func/Training_Hotkeys.lua.
 
-        -- SECTION 2: CONTROLLER CONFIG
-        -- ==========================================
-        if styled_header(T_sm("controller"), UI_THEME.hdr_config) then
-            if is_binding_mode then
-                imgui.spacing()
-                imgui.push_style_color(5, 0xFF00FFFF)
-                imgui.push_style_color(21, 0xFF005555)
-                imgui.push_style_color(22, 0xFF007777)
-                imgui.push_style_color(23, 0xFF009999)
-                imgui.push_style_color(0, 0xFF00FFFF)
-                imgui.button(">>> PRESS ANY BUTTON ON YOUR CONTROLLER... <<<", Vector2f.new(-1, 40))
-                imgui.pop_style_color(5)
-                imgui.spacing()
-            else
-                local btn_name = "NOT SET"
-                if config.func_button then
-                    btn_name = "ID: " .. tostring(config.func_button)
-                    if config.func_button == 16384 then btn_name = "SELECT / BACK" end
-                    if config.func_button == 8192 then btn_name = "R3 / RS" end
-                    if config.func_button == 4096 then btn_name = "L3 / LS" end
-                end
-
-                imgui.spacing()
-                imgui.push_style_color(5, 0xFFFFFFFF)
-                imgui.push_style_color(21, 0xFFCC6600)
-                imgui.push_style_color(22, 0xFFFF8800)
-                imgui.push_style_color(23, 0xFFFFAA33)
-                imgui.push_style_color(0, 0xFFFFCC66)
-                if config.func_button then
-                    -- Two buttons side by side: CHANGE + RESET
-                    local avail = imgui.get_window_size().x - 40
-                    local reset_w = 80
-                    if imgui.button("CHANGE FUNCTION BUTTON  [" .. btn_name .. "]", Vector2f.new(avail - reset_w - 8, 35)) then
-                        is_binding_mode = true
-                        last_input_mask = 0
-                    end
-                    imgui.pop_style_color(5)
-                    imgui.same_line(0, 8)
-                    imgui.push_style_color(5, 0xFFFFFFFF)
-                    imgui.push_style_color(21, 0xFF0000AA)
-                    imgui.push_style_color(22, 0xFF0000DD)
-                    imgui.push_style_color(23, 0xFF0000FF)
-                    imgui.push_style_color(0, 0xFFAAAAFF)
-                    if imgui.button("RESET##func_reset", Vector2f.new(reset_w, 35)) then
-                        config.func_button = nil
-                        save_config()
-                    end
-                    imgui.pop_style_color(5)
-                else
-                    if imgui.button("CHANGE FUNCTION BUTTON  [" .. btn_name .. "]", Vector2f.new(-1, 35)) then
-                        is_binding_mode = true
-                        last_input_mask = 0
-                    end
-                    imgui.pop_style_color(5)
-                end
-                imgui.spacing()
-
-                if config.func_button then
-                    imgui.text_colored("The FUNCTION button is used for all controller shortcuts.", 0xFF888888)
-                    imgui.text_colored("Inputs are blocked while FUNCTION is held.", 0xFF888888)
-                else
-                    imgui.text_colored("No function button set. Set one to use controller shortcuts.", 0xFFFF8800)
-                    imgui.text_colored("(FUNC + SQUARE = switch mode, FUNC + arrows = adjust timers)", 0xFF888888)
-                end
-
-                imgui.spacing()
-                imgui.separator()
-                imgui.spacing()
-
-                -- Keyboard switch key binding
-                if is_kb_binding_mode then
-                    imgui.push_style_color(5, 0xFF00FFFF)
-                    imgui.push_style_color(21, 0xFF005555)
-                    imgui.push_style_color(22, 0xFF007777)
-                    imgui.push_style_color(23, 0xFF009999)
-                    imgui.push_style_color(0, 0xFF00FFFF)
-                    imgui.button(">>> PRESS ANY KEY... <<<", Vector2f.new(-1, 35))
-                    imgui.pop_style_color(5)
-                else
-                    local cur_key = combo_name(config.switch_key or 0x30, config.switch_modifiers)
-                    imgui.push_style_color(5, 0xFFFFFFFF)
-                    imgui.push_style_color(21, 0xFF006644)
-                    imgui.push_style_color(22, 0xFF008866)
-                    imgui.push_style_color(23, 0xFF00AA88)
-                    imgui.push_style_color(0, 0xFF66FFCC)
-                    local avail = imgui.get_window_size().x - 40
-                    local reset_w = 80
-                    if imgui.button("CHANGE SWITCH KEY  [" .. cur_key .. "]", Vector2f.new(avail - reset_w - 8, 35)) then
-                        is_kb_binding_mode = true
-                    end
-                    imgui.pop_style_color(5)
-                    imgui.same_line(0, 8)
-                    imgui.push_style_color(5, 0xFFFFFFFF)
-                    imgui.push_style_color(21, 0xFF0000AA)
-                    imgui.push_style_color(22, 0xFF0000DD)
-                    imgui.push_style_color(23, 0xFF0000FF)
-                    imgui.push_style_color(0, 0xFFAAAAFF)
-                    if imgui.button("RESET##kb_reset", Vector2f.new(reset_w, 35)) then
-                        config.switch_key = 0x30
-                        config.switch_modifiers = {}
-                        save_config()
-                    end
-                    imgui.pop_style_color(5)
-                end
-                imgui.spacing()
-                imgui.text_colored("The SWITCH KEY cycles through training modes.", 0xFF888888)
-            end
-        end
+        -- Controller/keyboard shortcut configuration moved to the independent
+        -- "TRAINING HOTKEYS" menu (func/Training_Hotkeys.lua). The legacy
+        -- CONTROLLER CONFIG panel was removed.
 
         -- ==========================================
         -- SECTION 2.5: HIDE UI BUTTON
