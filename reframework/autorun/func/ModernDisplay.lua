@@ -68,7 +68,14 @@ function M.get_motion(char_name, step)
     local map = M.load(char_name)
     if not map then return nil end
     local md = map[tostring(step.id or "")]  -- slim map: act_id -> display string
-    if type(md) == "string" and md ~= "" then return translate_modern(md) end
+    if type(md) == "string" and md ~= "" then
+        md = translate_modern(md)
+        -- v9 strings list alternative input methods as "SP/236 + H" (the SP
+        -- shortcut OR the classic motion). Keep only the first (shortcut) form
+        -- so the display shows how a Modern player actually did it, not both.
+        md = md:gsub("%s*/.*$", "")
+        return md
+    end
     return nil
 end
 
