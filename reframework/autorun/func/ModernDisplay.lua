@@ -35,6 +35,20 @@ function M.char_from_path(path)
 end
 
 -- Returns the Modern-control notation for a step, or nil if none/absent.
+-- cdjay's v9 modern_display strings use Chinese button-strength tokens; map them
+-- to universal FGC notation (L/M/H) so the Western UI reads cleanly. Chinese
+-- byte sequences contain no Lua-pattern magic chars, so literal gsub is safe.
+local MODERN_TOKENS = {
+    ["任意键"] = "any",   -- any button
+    ["弱"] = "L",         -- light
+    ["中"] = "M",         -- medium
+    ["强"] = "H",         -- heavy
+}
+local function translate_modern(s)
+    for zh, en in pairs(MODERN_TOKENS) do s = s:gsub(zh, en) end
+    return s
+end
+
 function M.get_motion(char_name, step)
     if type(step) ~= "table" then return nil end
     local map = M.load(char_name)
@@ -42,7 +56,7 @@ function M.get_motion(char_name, step)
     local entry = map[tostring(step.id or "")]
     if type(entry) ~= "table" then return nil end
     local md = entry.modern_display
-    if type(md) == "string" and md ~= "" then return md end
+    if type(md) == "string" and md ~= "" then return translate_modern(md) end
     return nil
 end
 
