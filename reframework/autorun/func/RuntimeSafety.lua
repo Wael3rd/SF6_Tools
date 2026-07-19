@@ -8,6 +8,33 @@ local _replay_allowed = false
 local _frame = 0
 local _disable_reason = nil
 
+-- Online-battle hard gate (adopted from SF6_TOOLS_CC). REFramework stops normal
+-- on_frame callbacks during online matches, so the cached _training_allowed flag
+-- freezes exactly when it matters. is_training_allowed / can_inject_input read
+-- the network battle GameMode FRESH each call and gate off in any online mode,
+-- so training features and input injection never run online. Closure-free reads.
+local ONLINE_GAME_MODES = {
+    [14] = true, -- Ranked Match
+    [15] = true, -- Player Match
+    [16] = true, -- Cabinet Match
+    [17] = true, -- Custom Room Match
+    [18] = true, -- Online Training
+}
+local function _rs_read_online_mode()
+    local network = sdk.get_managed_singleton("app.network.NetworkManager")
+    local session = network and network:get_field("<Session>k__BackingField")
+    local fg      = session and session:get_field("<FGBattle>k__BackingField")
+    local rule    = fg and fg:get_field("<BattleRule>k__BackingField")
+    local mode    = rule and rule:get_field("GameMode")
+    return mode and tonumber(tostring(mode)) or nil
+end
+local function is_online_battle()
+    local ok, mode = pcall(_rs_read_online_mode)
+    if not ok then return false end
+    return mode ~= nil and ONLINE_GAME_MODES[mode] == true
+end
+M.is_online_battle = is_online_battle
+
 -- Native training-context validation (adopted from SF6_TOOLS_CC): catches the
 -- matchmaking-transition case where _tData still exists but the training UI
 -- widgets are gone. FAIL-OPEN: if the check errors or the native fields differ
@@ -115,8 +142,16 @@ function M.allow_replay()
 end
 
 function M.is_allowed() return _allowed end
-function M.can_inject_input() return _can_inject end
-function M.is_training_allowed() return _training_allowed end
+-- Online checked FRESH (not the cached flag) so the gate holds even when
+-- on_frame is frozen during the training -> online-match transition.
+function M.can_inject_input()
+    if is_online_battle() then return false end
+    return _can_inject
+end
+function M.is_training_allowed()
+    if is_online_battle() then return false end
+    return _training_allowed
+end
 function M.is_replay_allowed() return _replay_allowed end
 
 function M.clear_runtime_flags()
