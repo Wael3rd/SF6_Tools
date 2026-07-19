@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>SF6 Tools — Checklist de test</title>
+<style>
+  :root{
+    --bg:#0d1017; --bg2:#151a24; --card:#1b2230; --line:#2a3547;
+    --txt:#e8edf6; --dim:#8a97ad; --accent:#ff5a3c; --accent2:#4aa3ff;
+    --ok:#3ecf8e; --ko:#ff5a3c; --todo:#7b8aa5; --prio:#ffb020;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:radial-gradient(1200px 700px at 80% -10%,#1a2333 0%,var(--bg) 55%);
+    color:var(--txt); min-height:100vh; line-height:1.55; padding-bottom:60px;
+  }
+  /* ---- password gate ---- */
+  #gate{position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(900px 600px at 50% 30%,#1a2333,#080a0f);}
+  #gate .box{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:38px 34px; width:min(92vw,380px); text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.5);}
+  #gate h1{font-size:20px; letter-spacing:.5px; margin-bottom:6px}
+  #gate p{color:var(--dim); font-size:13px; margin-bottom:22px}
+  #gate input{width:100%; padding:13px 15px; border-radius:10px; border:1px solid var(--line);
+    background:#0e131c; color:var(--txt); font-size:15px; outline:none; margin-bottom:14px;}
+  #gate input:focus{border-color:var(--accent2)}
+  #gate button{width:100%; padding:13px; border:none; border-radius:10px; cursor:pointer;
+    background:linear-gradient(120deg,var(--accent),#ff7a52); color:#fff; font-size:15px; font-weight:600;}
+  #gate .err{color:var(--accent); font-size:13px; height:16px; margin-top:10px}
+  .locked{filter:blur(9px); pointer-events:none; user-select:none}
+  /* ---- layout ---- */
+  header{max-width:1000px; margin:0 auto; padding:40px 20px 8px;}
+  header h1{font-size:26px; letter-spacing:.4px}
+  header h1 .x{color:var(--accent); font-weight:400; margin:0 6px}
+  header p{color:var(--dim); font-size:14px; margin-top:5px}
+  .wrap{max-width:1000px; margin:0 auto; padding:0 20px}
+  /* ---- summary bar ---- */
+  .summary{position:sticky; top:0; z-index:20; background:rgba(13,16,23,.92);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
+    padding:14px 20px; margin:16px 0 6px; display:flex; flex-wrap:wrap; align-items:center; gap:14px;}
+  .summary .bar{flex:1; min-width:160px; height:10px; background:var(--bg2); border-radius:6px; overflow:hidden; border:1px solid var(--line)}
+  .summary .bar span{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--ok),#63e3a6); transition:width .3s}
+  .summary .stat{font-size:13px; color:var(--dim); white-space:nowrap}
+  .summary .stat b{color:var(--txt)}
+  .btn{border:1px solid var(--line); background:var(--bg2); color:var(--txt); cursor:pointer;
+    padding:9px 15px; border-radius:9px; font-size:13px; font-weight:600; transition:.12s; white-space:nowrap}
+  .btn:hover{border-color:var(--accent2)}
+  .btn.primary{background:linear-gradient(120deg,var(--accent),#ff7a52); border:none; color:#fff}
+  /* ---- section ---- */
+  .section-title{font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim);
+    margin:26px 0 10px; padding-left:2px}
+  /* ---- test card ---- */
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 20px; margin-bottom:14px; transition:border-color .15s}
+  .card[data-status="ok"]{border-color:rgba(62,207,142,.55)}
+  .card[data-status="ko"]{border-color:rgba(255,90,60,.6)}
+  .card .top{display:flex; align-items:center; flex-wrap:wrap; gap:10px}
+  .card .num{font-weight:700; font-size:15px}
+  .card .ttl{font-size:15px; flex:1; min-width:120px}
+  .badge{font-size:10.5px; font-weight:700; letter-spacing:.5px; padding:3px 8px; border-radius:20px; text-transform:uppercase}
+  .badge.prio{background:rgba(255,176,32,.15); color:var(--prio); border:1px solid rgba(255,176,32,.4)}
+  .pill{font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; border:1px solid var(--line); color:var(--todo)}
+  .pill[data-s="ok"]{background:rgba(62,207,142,.15); color:var(--ok); border-color:rgba(62,207,142,.4)}
+  .pill[data-s="ko"]{background:rgba(255,90,60,.15); color:var(--ko); border-color:rgba(255,90,60,.4)}
+  .body{margin-top:12px; font-size:13.5px; color:var(--dim); display:grid; gap:7px}
+  .body .row b{color:var(--txt); font-weight:600}
+  .body .ok-line{color:#9be9c4}
+  .body .ko-line{color:#ffb0a2}
+  .controls{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; align-items:center}
+  .sbtn{border:1px solid var(--line); background:var(--bg2); color:var(--dim); cursor:pointer;
+    padding:8px 14px; border-radius:9px; font-size:13px; font-weight:600; transition:.12s}
+  .sbtn:hover{color:var(--txt)}
+  .sbtn.ok.on{background:rgba(62,207,142,.18); color:var(--ok); border-color:var(--ok)}
+  .sbtn.ko.on{background:rgba(255,90,60,.18); color:var(--ko); border-color:var(--ko)}
+  .sbtn.todo.on{background:rgba(123,138,165,.18); color:var(--txt); border-color:var(--todo)}
+  textarea{width:100%; margin-top:10px; background:#0e131c; border:1px solid var(--line); border-radius:9px;
+    color:var(--txt); padding:10px 12px; font-size:13px; font-family:inherit; resize:vertical; min-height:38px; outline:none}
+  textarea:focus{border-color:var(--accent2)}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--ok); color:#08150e; padding:12px 22px; border-radius:10px; font-weight:600; font-size:14px;
+    opacity:0; pointer-events:none; transition:.25s; z-index:60}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  footer{max-width:1000px; margin:30px auto 0; padding:0 20px; color:var(--dim); font-size:12px; text-align:center}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h1>SF6 Tools — Tests</h1>
+    <p>Accès protégé</p>
+    <input id="pw" type="password" placeholder="Mot de passe" autofocus>
+    <button onclick="tryGate()">Entrer</button>
+    <div class="err" id="gerr"></div>
+  </div>
+</div>
+
+<div id="app" class="locked">
+  <header>
+    <h1>SF6 Tools <span class="x">—</span> Checklist de test</h1>
+    <p>Coche le statut de chaque test et note ton retour. Puis « Copier le rapport » et colle-le à Claude.</p>
+  </header>
+
+  <div class="summary">
+    <div class="bar"><span id="progfill"></span></div>
+    <div class="stat"><b id="s_ok">0</b> OK · <b id="s_ko">0</b> KO · <b id="s_todo">0</b> à faire / <b id="s_total">0</b></div>
+    <button class="btn primary" onclick="copyReport()">📋 Copier le rapport</button>
+    <button class="btn" onclick="resetAll()">↺ Reset</button>
+  </div>
+
+  <div class="wrap" id="list"></div>
+
+  <footer>Statuts sauvegardés dans ce navigateur (localStorage). Le rapport copié est à coller dans la conversation.</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- password gate ----------
+const PW = "cdjayANDwael";
+function tryGate(){
+  const v = document.getElementById('pw').value.trim();
+  if(v === PW){
+    sessionStorage.setItem('sf6t_ok','1');
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').classList.remove('locked');
+  } else {
+    document.getElementById('gerr').textContent = "Mot de passe incorrect";
+  }
+}
+document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') tryGate(); });
+if(sessionStorage.getItem('sf6t_ok')==='1'){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').classList.remove('locked');
+}
+
+// ---------- tests data ----------
+const SECTIONS = [
+  { title: "Priorité", tests: [
+    { id:"t0", num:"TEST 0", title:"Chargement propre", prio:true,
+      how:"Après Reset Scripts, ouvre le menu REF → TRAINING SCRIPT MANAGER.",
+      ok:"Le menu s'ouvre, aucune erreur rouge, bouton Language [EN]/中文 en haut, section HOTKEY BINDINGS présente.",
+      ko:"Erreur Lua rouge / menu vide → copie le message (ça bloque tout le reste)." },
+    { id:"t1", num:"TEST 1", title:"Framework hotkeys (clavier + manette + game-input)", prio:true,
+      how:"HOTKEY BINDINGS → Combo Trials → Enable. Bind une action sur clavier (F1), teste. Refais sur bouton manette, puis sur un bouton du jeu (LP, 2…). Bind 2 actions sur la même touche.",
+      ok:"Le bind s'enregistre, l'action se déclenche sur les 3 devices, un message rouge Conflict apparaît sur la collision.",
+      ko:"Le bind ne prend pas / ne déclenche pas → précise lequel des 3 (clavier/manette/game-input)." },
+    { id:"t7", num:"TEST 7", title:"Gate matchmaking (RuntimeSafety)", prio:true,
+      how:"Lance un matchmaking (ranked/casual) depuis le training, regarde la barre/UI combo.",
+      ok:"La barre/UI combo disparaît proprement pendant le matchmaking.",
+      ko:"CRITIQUE : si en training NORMAL l'UI combo disparaît alors qu'elle ne devrait pas → dis-le tout de suite (fail-open censé éviter ça)." },
+  ]},
+  { title: "Features additives", tests: [
+    { id:"t2", num:"TEST 2", title:"Toggle langue EN ⇄ 中文",
+      how:"En haut du menu, clique 中文, puis reclique EN.",
+      ok:"Headers de section, noms de modes, settings, boutons de lecture et menu hotkey passent en chinois, puis reviennent.",
+      ko:"Caractères en carrés □ (tofu) → note-le (police CJK). Textes profonds restant en anglais = normal." },
+    { id:"t3", num:"TEST 3", title:"Boutons sans les vieux hints",
+      how:"Regarde les boutons de lecture (Record P1, Start Trial…).",
+      ok:"Plus de '(FUNC+LEFT)' collé au nom, juste le label propre. Les boutons marchent au clic.",
+      ko:"Bouton cassé / mal dimensionné → précise lequel." },
+    { id:"t4", num:"TEST 4", title:"Filtre Classic/Modern de la liste combo",
+      how:"Section fichiers combo → sélecteur 'Control filter' → choisis Modern (All = tout, défaut).",
+      ok:"La liste ne montre que les combos du mode choisi. All affiche tout.",
+      ko:"La liste se vide à tort, ou lag au changement → note-le." },
+    { id:"t5", num:"TEST 5", title:"Notation Modern (opt-in)",
+      how:"D2D settings → coche 'Show Modern Notation'. Charge un combo, lance-le.",
+      ok:"Les steps s'affichent en Modern (ex: 'DP' au lieu de '623+P') si un mapping existe, sinon classique. Décoché = classique.",
+      ko:"Notations vides/bizarres → décoche, ça retombe en classique (pas de crash)." },
+    { id:"t6", num:"TEST 6", title:"Capture Denjin / install (overlay timers)",
+      how:"Avec Ryu, fais un Denjin Charge, enregistre un combo, ouvre le JSON dans CustomCombos\\Ryu\\.",
+      ok:"scene_state.players.p1.unique.timer_0_001 présent (install capturé) et réappliqué au relancement.",
+      ko:"Timer absent du JSON → note le perso/action." },
+  ]},
+  { title: "Non-régression", tests: [
+    { id:"r1", num:"RÉG 1", title:"Combo normal : enregistrer → trial → jouer",
+      how:"Enregistre un combo, lance le trial, joue-le.", ok:"SUCCESS s'affiche.", ko:"Échec inattendu → note-le." },
+    { id:"r2", num:"RÉG 2", title:"DEMO d'un combo",
+      how:"Lance le DEMO d'un combo.", ok:"Le DEMO joue correctement.", ko:"DEMO faux/absent → note-le." },
+    { id:"r3", num:"RÉG 3", title:"Auto-advance + marqueur *",
+      how:"Réussis un combo dans une liste.", ok:"Passe au suivant automatiquement, marqueur * sur le combo réussi.", ko:"Pas d'avance / pas de marqueur → note-le." },
+    { id:"r4", num:"RÉG 4", title:"Honda Sumo — pas de WRONG MOVE fantôme",
+      how:"Combo Honda avec install Sumo Spirit.", ok:"Aucun WRONG MOVE fantôme sur les normaux améliorés.", ko:"WRONG MOVE injustifié → note l'action." },
+  ]},
+];
+
+const KEY = "sf6_test_status_v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ state = {}; }
+function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const ALL = SECTIONS.flatMap(s=>s.tests);
+
+function render(){
+  const list = document.getElementById('list');
+  list.innerHTML = "";
+  for(const sec of SECTIONS){
+    const h = document.createElement('div'); h.className='section-title'; h.textContent = sec.title; list.appendChild(h);
+    for(const t of sec.tests){
+      const st = state[t.id] || {status:"todo", notes:""};
+      const card = document.createElement('div'); card.className='card'; card.dataset.status = st.status;
+      card.innerHTML = `
+        <div class="top">
+          <span class="num">${t.num}</span>
+          <span class="ttl">${t.title}</span>
+          ${t.prio?'<span class="badge prio">Priorité</span>':''}
+          <span class="pill" data-s="${st.status}">${pillTxt(st.status)}</span>
+        </div>
+        <div class="body">
+          <div class="row"><b>Comment :</b> ${esc(t.how)}</div>
+          <div class="row ok-line"><b>✅ Attendu :</b> ${esc(t.ok)}</div>
+          <div class="row ko-line"><b>❌ Échec :</b> ${esc(t.ko)}</div>
+        </div>
+        <div class="controls">
+          <button class="sbtn ok ${st.status==='ok'?'on':''}"   onclick="setStatus('${t.id}','ok')">✅ OK</button>
+          <button class="sbtn ko ${st.status==='ko'?'on':''}"   onclick="setStatus('${t.id}','ko')">❌ KO</button>
+          <button class="sbtn todo ${st.status==='todo'?'on':''}" onclick="setStatus('${t.id}','todo')">⏳ À faire</button>
+        </div>
+        <textarea placeholder="Ton retour sur ce test…" oninput="setNotes('${t.id}',this.value)">${esc(st.notes)}</textarea>
+      `;
+      list.appendChild(card);
+    }
+  }
+  updateSummary();
+}
+function pillTxt(s){ return s==='ok'?'OK':(s==='ko'?'KO':'À FAIRE'); }
+function esc(s){ return (s||"").replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function setStatus(id, s){
+  state[id] = state[id] || {status:"todo", notes:""};
+  state[id].status = s; save(); render();
+}
+function setNotes(id, v){
+  state[id] = state[id] || {status:"todo", notes:""};
+  state[id].notes = v; save(); updateSummary();
+}
+function updateSummary(){
+  let ok=0,ko=0,todo=0;
+  for(const t of ALL){ const s=(state[t.id]||{}).status||'todo'; if(s==='ok')ok++; else if(s==='ko')ko++; else todo++; }
+  document.getElementById('s_ok').textContent=ok;
+  document.getElementById('s_ko').textContent=ko;
+  document.getElementById('s_todo').textContent=todo;
+  document.getElementById('s_total').textContent=ALL.length;
+  const done=ok+ko;
+  document.getElementById('progfill').style.width=(done/ALL.length*100)+'%';
+}
+function resetAll(){
+  if(!confirm("Remettre tous les tests à 'à faire' et effacer les notes ?")) return;
+  state={}; save(); render();
+}
+function copyReport(){
+  const d = new Date();
+  const stamp = d.toLocaleString('fr-FR');
+  let out = "# Rapport de test SF6 — "+stamp+"\n\n";
+  for(const sec of SECTIONS){
+    out += "## "+sec.title+"\n";
+    for(const t of sec.tests){
+      const s = state[t.id] || {status:"todo", notes:""};
+      const mark = s.status==='ok'?'✅ OK':(s.status==='ko'?'❌ KO':'⏳ à faire');
+      out += "- **"+t.num+" — "+t.title+"** : "+mark;
+      if(s.notes && s.notes.trim()) out += "\n    > "+s.notes.trim().replace(/\n/g,"\n    > ");
+      out += "\n";
+    }
+    out += "\n";
+  }
+  navigator.clipboard.writeText(out).then(()=>toast("Rapport copié — colle-le à Claude"))
+    .catch(()=>{ // fallback
+      const ta=document.createElement('textarea'); ta.value=out; document.body.appendChild(ta); ta.select();
+      try{document.execCommand('copy'); toast("Rapport copié");}catch(e){toast("Copie impossible — sélectionne manuellement");}
+      document.body.removeChild(ta);
+    });
+}
+function toast(msg){
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2200);
+}
+render();
+</script>
+</body>
+</html>
