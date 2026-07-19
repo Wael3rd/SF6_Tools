@@ -3695,21 +3695,26 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
         -- 1. EARLY EXCEPTION RESOLUTION (For Hold Link)
         local exc, exc_char, exc_com = CharacterRules.get_exception(p_state.exceptions, common_exceptions, act_id)
 
-        -- BCM Catalog (opt-in toggle): when enabled, cdjay's compiled catalog
-        -- handles AC install aliases + classic display in place of the manual
-        -- exception files. Cached per character; data exists for a few chars only
-        -- (falls back to exceptions when there is no catalog for this character).
+        -- BCM Catalog (opt-in toggle): when enabled AND a catalog exists for this
+        -- character, cdjay's compiled catalog OWNS aliases + classic display, and
+        -- the manual/runtime exceptions are ignored ENTIRELY (strict test: gaps in
+        -- the catalog show the raw action, revealing exactly what it covers).
+        -- Characters without a catalog keep their exceptions (nothing to test).
         local bcm_catalog = nil
         if _G.ComboTrials_UseBcmCatalog then
             bcm_catalog = BcmCatalog.load_for_character(p_state.profile_name)
         end
+        if bcm_catalog then exc, exc_char, exc_com = nil, nil, nil end
 
         if p_state.editing_id == act_id then
             exc = ActionMatcher.build_edit_exception(p_state)
         end
 
-        -- Character-specific runtime overrides (Cammy TC followups etc.)
-        exc = CharacterRules.apply_runtime_overrides(p_state.profile_name, act_id, exc, p_state.log)
+        -- Character-specific runtime overrides (Cammy TC followups etc.) — skipped
+        -- in BCM catalog mode so the test stays pure.
+        if not bcm_catalog then
+            exc = CharacterRules.apply_runtime_overrides(p_state.profile_name, act_id, exc, p_state.log)
+        end
 
         -- ABSORPTION CHECK (Does the active parent action want to absorb this new ID?)
         local is_continuation = false
@@ -3947,9 +3952,10 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                 end
 
                 if bcm_catalog then
+                    -- Catalog owns the display. No exception fallback: an act_id the
+                    -- catalog does not cover keeps its raw value (shows the gap).
                     local cat_disp = BcmCatalog.get_classic_display(bcm_catalog, act_id)
-                    if cat_disp then motion_str = cat_disp
-                    else motion_str = ActionMatcher.apply_override_name(motion_str, exc) end
+                    if cat_disp then motion_str = cat_disp end
                 else
                     motion_str = ActionMatcher.apply_override_name(motion_str, exc)
                 end
