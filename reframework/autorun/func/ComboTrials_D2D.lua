@@ -79,8 +79,25 @@ local function raw_get_numpad(dir_val)
     return "5"
 end
 
-local function raw_get_buttons(val)
+-- Modern-control button layout (probed in-game): the physical Modern buttons
+-- set DISTINCT bits in pl_sw_new, but on Classic bit positions, so the classic
+-- reader mislabels them. Remap by bit. Assist has no icon -> text "AS".
+local MODERN_BTN_ORDER = {
+    { 0x10,  "modern_l"  },  -- Light  (classic LP bit)
+    { 0x80,  "modern_m"  },  -- Medium (classic LK bit)
+    { 0x100, "modern_h"  },  -- Heavy  (classic MK bit)
+    { 0x20,  "modern_sp" },  -- Special(classic MP bit)
+    { 0x200, "modern_as" },  -- Assist (classic HK bit) -- no icon, text fallback
+}
+
+local function raw_get_buttons(val, is_modern)
     local list = {}
+    if is_modern then
+        for _, pair in ipairs(MODERN_BTN_ORDER) do
+            if (val & pair[1]) ~= 0 then table.insert(list, pair[2]) end
+        end
+        return list
+    end
     if (val & 16) ~= 0  then table.insert(list, "lp") end
     if (val & 32) ~= 0  then table.insert(list, "mp") end
     if (val & 64) ~= 0  then table.insert(list, "hp") end
@@ -88,6 +105,24 @@ local function raw_get_buttons(val)
     if (val & 256) ~= 0 then table.insert(list, "mk") end
     if (val & 512) ~= 0 then table.insert(list, "hk") end
     return list
+end
+
+-- Per-player Modern control detection (InputType==1), cached ~1x/sec since the
+-- control type is fixed for a session (matches the combo-display auto-detect).
+local _raw_pmode, _raw_pmode_tick = {}, 0
+local function player_is_modern(idx)
+    _raw_pmode_tick = _raw_pmode_tick + 1
+    if _raw_pmode[idx] == nil or (_raw_pmode_tick % 120) == 0 then
+        local modern = false
+        pcall(function()
+            local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+            local sm = tm and tm:get_field("_tData") and tm:get_field("_tData"):get_field("SelectMenu")
+            local pd = sm and sm.PlayerDatas and sm.PlayerDatas[idx]
+            if pd and tonumber(pd.InputType) == 1 then modern = true end
+        end)
+        _raw_pmode[idx] = modern
+    end
+    return _raw_pmode[idx]
 end
 
 local function raw_update_history(history, d, b, max_size)
@@ -751,12 +786,13 @@ local function d2d_draw_inner()
     end
 
     -- RAW INPUT DRAW (InputVisualiser-style, uses d2d_cfg.raw.* settings)
-    local function draw_raw_player(history, base_x, base_y, is_right_side, max_count)
+    local function draw_raw_player(history, base_x, base_y, is_right_side, max_count, player_idx)
         local rc = d2d_cfg.raw or {}
         local r_icon = (rc.icon_size or 0.030) * sh
         local r_spacing_y = (rc.spacing_y or 0.040) * sh
         local r_text_y = (rc.text_y_offset or 0.002) * sh
         local mirror = is_right_side and -1.0 or 1.0
+        local raw_modern = player_is_modern(player_idx or 0)
 
         local r_font = assets.font
         local ref_w = 0
@@ -793,14 +829,20 @@ local function d2d_draw_inner()
                 end
 
                 if entry.btn >= 16 then
-                    local files = raw_get_buttons(entry.btn)
+                    local files = raw_get_buttons(entry.btn, raw_modern)
                     for idx, fname in ipairs(files) do
-                        local img_btn = assets.imgs[fname]
-                        if img_btn and slots[idx + 2] then
+                        if slots[idx + 2] then
                             local off_x = slots[idx + 2] * sh * mirror
                             local fx = base_x + off_x
                             if is_right_side then fx = fx - r_icon end
-                            d2d.image(img_btn, fx, y, r_icon, r_icon)
+                            local img_btn = assets.imgs[fname]
+                            if img_btn then
+                                d2d.image(img_btn, fx, y, r_icon, r_icon)
+                            elseif fname == "modern_as" and r_font then
+                                -- Assist has no icon; draw "AS" text in the slot.
+                                d2d.text(r_font, "AS", fx + 2, y + r_text_y + 2, 0xFF000000)
+                                d2d.text(r_font, "AS", fx, y + r_text_y, 0xFFFFFFFF)
+                            end
                         end
                     end
                 end
@@ -870,7 +912,7 @@ local function d2d_draw_inner()
     -- DRAW P1
     if live_show_p1 then
         if live_raw_p1 then
-            draw_raw_player(raw_state.history_p1, raw_pos_p1.x * sw, raw_pos_p1.y * sh, raw_flip_p1, live_raw_max)
+            draw_raw_player(raw_state.history_p1, raw_pos_p1.x * sw, raw_pos_p1.y * sh, raw_flip_p1, live_raw_max, 0)
         else
             draw_player_icons(0, nr_pos_p1.x * sw, nr_pos_p1.y * sh, nr_align_p1, live_max, in_trial)
         end
@@ -878,7 +920,7 @@ local function d2d_draw_inner()
     -- DRAW P2
     if live_show_p2 then
         if live_raw_p2 then
-            draw_raw_player(raw_state.history_p2, raw_pos_p2.x * sw, raw_pos_p2.y * sh, raw_flip_p2, live_raw_max)
+            draw_raw_player(raw_state.history_p2, raw_pos_p2.x * sw, raw_pos_p2.y * sh, raw_flip_p2, live_raw_max, 1)
         else
             draw_player_icons(1, nr_pos_p2.x * sw, nr_pos_p2.y * sh, nr_align_p2, live_max, true)
         end
