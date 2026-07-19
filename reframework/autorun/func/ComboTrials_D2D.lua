@@ -143,16 +143,16 @@ local function merge_group_log_item(steps)
     local first_holdable_done = false
     local _md_char = nil
     if ctx and ctx.d2d_cfg and ctx.d2d_cfg.show_modern_notation then
-        pcall(function() _md_char = ModernDisplay.char_from_path(_G.ComboTrials_CurrentPath) end)
+        local ok, r = pcall(ModernDisplay.char_from_path, _G.ComboTrials_CurrentPath)
+        _md_char = ok and r or nil
     end
     for _, s in ipairs(steps) do
         local m = s.motion or ""
         -- Modern-control notation (opt-in): replace with Modern display when
         -- a mapping exists for this step; falls back to the classic motion.
         if _md_char then
-            local mm = nil
-            pcall(function() mm = ModernDisplay.get_motion(_md_char, s) end)
-            if mm then m = mm end
+            local ok, mm = pcall(ModernDisplay.get_motion, _md_char, s)
+            if ok and mm then m = mm end
         end
         -- For follow-ups: ensure > is BEFORE [AIR]/J. (not reversed)
         m = m:gsub("^(%[AIR%])%s*(>)", "%2%1")

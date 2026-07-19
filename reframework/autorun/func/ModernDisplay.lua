@@ -10,18 +10,31 @@ local json = json
 
 local M = {}
 local DIR = "TrainingComboTrials_data/modern_display/"
-local cache = {}  -- char_name -> map table | false (not found)
+local cache = {}  -- char_name -> slim map (act_id string -> display string) | false
 
--- Loads and caches the mapping for a character. Returns the map or nil.
+local function _md_load_file(path)
+    return json.load_file(path)
+end
+
+-- Loads a character's mapping and caches a SLIM version: act_id -> display
+-- string only. The v9 files carry ~490KB of route/audit metadata per character;
+-- caching the full parsed table left tens of thousands of entries live and
+-- caused periodic multi-hundred-ms GC pauses. We keep only what we render.
 function M.load(char_name)
     if not char_name or char_name == "" or char_name == "Unknown" then return nil end
     local hit = cache[char_name]
     if hit ~= nil then return hit ~= false and hit or nil end
-    local loaded = nil
-    pcall(function() loaded = json.load_file(DIR .. char_name .. ".json") end)
-    if type(loaded) == "table" then
-        cache[char_name] = loaded
-        return loaded
+    local ok, loaded = pcall(_md_load_file, DIR .. char_name .. ".json")
+    if ok and type(loaded) == "table" then
+        local slim = {}
+        for k, v in pairs(loaded) do
+            if type(v) == "table" and type(v.modern_display) == "string" and v.modern_display ~= "" then
+                slim[tostring(k)] = v.modern_display
+            end
+        end
+        loaded = nil  -- drop the big parsed table so the GC reclaims it
+        cache[char_name] = slim
+        return slim
     end
     cache[char_name] = false
     return nil
@@ -53,9 +66,7 @@ function M.get_motion(char_name, step)
     if type(step) ~= "table" then return nil end
     local map = M.load(char_name)
     if not map then return nil end
-    local entry = map[tostring(step.id or "")]
-    if type(entry) ~= "table" then return nil end
-    local md = entry.modern_display
+    local md = map[tostring(step.id or "")]  -- slim map: act_id -> display string
     if type(md) == "string" and md ~= "" then return translate_modern(md) end
     return nil
 end
