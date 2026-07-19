@@ -653,9 +653,10 @@ local function d2d_draw_inner()
 
     local sw, sh = d2d.surface_size()
 
-    -- Use TrainingBarsDrawn from SharedUI D2D + mode check
-    -- ALL content gated by this condition — NO early returns
-    if should_draw and _G.TrainingBarsDrawn and _G.CurrentTrainerMode == 4 then
+    -- Gated on ComboTrialsD2DEnabled (active training battle: _CurrentPauseTypeBit
+    -- 64/2112) so the combo list AND raw input history hide on the VS / match
+    -- screen when a match is found from training. NO early returns below.
+    if should_draw and _G.ComboTrialsD2DEnabled and _G.TrainingBarsDrawn and _G.CurrentTrainerMode == 4 then
 
     ctx.cached_sw, ctx.cached_sh = sw, sh
 
