@@ -4440,9 +4440,14 @@ re.on_frame(function()
     -- External combo file detection (mobile imports) is NO LONGER polled on a
     -- timer: check_external_changes() does a full fs.glob (REFramework walks the
     -- whole ~2200-file data tree => ~260ms) which caused a periodic idle hitch.
-    -- The list already refreshes on deliberate actions (character switch, control
-    -- filter, player selector) and via the explicit "Refresh list" menu button,
-    -- so imported combos appear with zero background stall.
+    -- Instead we refresh ONCE when the combo dropdown opens (cdjay-style
+    -- "open list = update"), plus the explicit "Refresh list" button and the
+    -- existing deliberate triggers (character switch, filter, player selector).
+    -- No background stall; the scan only runs on a deliberate open/refresh.
+    if _G.ComboTrials_DropdownOpen and not _G._ct_dd_was_open then
+        pcall(ComboTrials_Files.refresh_combo_list_preserve_selection)
+    end
+    _G._ct_dd_was_open = (_G.ComboTrials_DropdownOpen == true)
 
     -- Export globals for web bridge
     local _p_idx = trial_state.playing_player or 0
