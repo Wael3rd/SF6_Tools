@@ -64,15 +64,22 @@ local function combo_control_mode(path)
     return mode
 end
 
-local function current_p1_control_mode()
+-- Live control type (Classic/Modern) chosen at character select for a player.
+-- InputType == 1 means Modern. Reads the training SelectMenu each call.
+local function player_control_mode(player_idx)
     local mode = "classic"
     pcall(function()
         local tm = sdk and sdk.get_managed_singleton and sdk.get_managed_singleton("app.training.TrainingManager")
         local sm = tm and tm:get_field("_tData") and tm:get_field("_tData"):get_field("SelectMenu")
-        local pd = sm and sm.PlayerDatas and sm.PlayerDatas[0]
+        local pd = sm and sm.PlayerDatas and sm.PlayerDatas[player_idx or 0]
         if pd and tonumber(pd.InputType) == 1 then mode = "modern" end
     end)
     return mode
+end
+M.player_control_mode = player_control_mode  -- idx -> "modern"/"classic" (live)
+
+local function current_p1_control_mode()
+    return player_control_mode(0)
 end
 
 function M.effective_control_filter()

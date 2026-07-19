@@ -4469,9 +4469,18 @@ re.on_frame(function()
     local _fname = _paths and _paths[_fidx] or ""
     _G.ComboTrials_CurrentFile = _fname:match("([^/\\]+)$") or _fname
     _G.ComboTrials_CurrentPath = _fname
-    -- Auto-detect: a combo recorded in Modern shows Modern notation without the
-    -- manual toggle (control_mode is cached per path, so this is cheap).
-    _G.ComboTrials_CurrentIsModern = (_fname ~= "" and ComboTrials_Files.combo_control_mode(_fname) == "modern") or false
+    -- Auto-detect display notation from the PLAYER's live control type (Modern/
+    -- Classic chosen at character select) — no checkbox needed. Cached ~1x/sec
+    -- since the control type is fixed for the session. A Modern-recorded combo
+    -- also forces Modern (control_mode is cached per path, so that stays cheap).
+    _G._ct_pmode_tick = (_G._ct_pmode_tick or 0) + 1
+    if _G._ct_pmode_cache == nil or (_G._ct_pmode_tick % 60) == 0 then
+        _G._ct_pmode_cache = ComboTrials_Files.player_control_mode
+            and ComboTrials_Files.player_control_mode(_p_idx) or "classic"
+    end
+    _G.ComboTrials_CurrentIsModern = (_G._ct_pmode_cache == "modern")
+        or (_fname ~= "" and ComboTrials_Files.combo_control_mode(_fname) == "modern")
+        or false
     _G.ComboTrials_CurrentStep = trial_state.current_step or 0
     _G.ComboTrials_TotalSteps = trial_state.sequence and #trial_state.sequence or 0
     _G.ComboTrials_IsPlaying = trial_state.is_playing or false
