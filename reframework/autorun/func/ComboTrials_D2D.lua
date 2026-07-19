@@ -387,8 +387,9 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
     end)
 
     -- Modern-control button icons (opt-in). Convert bare strength tokens to
-    -- icon markers; frontier patterns keep classic LP/MP/HP/DP untouched.
+    -- icon markers; frontier patterns keep classic LP/MP/HP untouched.
     if is_modern then
+        s = s:gsub("DP", "{parry}")   -- DP = Drive Parry in Modern shorthand
         s = s:gsub("AUTO", "{modern_auto}")
         s = s:gsub("%f[%a]SP%f[%A]", "{modern_sp}")
         s = s:gsub("%f[%a]L%f[%A]", "{modern_l}")
