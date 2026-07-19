@@ -79,21 +79,30 @@ local function raw_get_numpad(dir_val)
     return "5"
 end
 
--- Modern-control button layout (probed in-game): the physical Modern buttons
--- set DISTINCT bits in pl_sw_new, but on Classic bit positions, so the classic
--- reader mislabels them. Remap by bit. Assist has no icon -> text "AS".
-local MODERN_BTN_ORDER = {
-    { 0x10,  "modern_l"  },  -- Light  (classic LP bit)
-    { 0x80,  "modern_m"  },  -- Medium (classic LK bit)
-    { 0x100, "modern_h"  },  -- Heavy  (classic MK bit)
-    { 0x20,  "modern_sp" },  -- Special(classic MP bit)
-    { 0x200, "modern_as" },  -- Assist (classic HK bit) -- no icon, text fallback
+-- Modern-control layout (probed in-game). Physical Modern buttons set DISTINCT
+-- bits in pl_sw_new, on Classic bit positions, so the classic reader mislabels
+-- them. Modern combo ACTIONS (Throw/DI/Drive Parry/Drive Rush) have their own
+-- dedicated bits and render as a single fused icon. Assist has no icon -> "AS".
+local MODERN_ATTACK = {
+    { 0x10,  "modern_l"  },  -- Light   (classic LP bit)
+    { 0x80,  "modern_m"  },  -- Medium  (classic LK bit)
+    { 0x100, "modern_h"  },  -- Heavy   (classic MK bit)
+    { 0x20,  "modern_sp" },  -- Special (classic MP bit)
+    { 0x200, "modern_as" },  -- Assist  (classic HK bit) -- no icon, text fallback
 }
 
 local function raw_get_buttons(val, is_modern)
     local list = {}
     if is_modern then
-        for _, pair in ipairs(MODERN_BTN_ORDER) do
+        -- Combo actions first (dedicated bits) -> one fused icon each.
+        if (val & 0x2000) ~= 0 then table.insert(list, "throw") end   -- Throw
+        if (val & 0x1000) ~= 0 then table.insert(list, "di") end      -- Drive Impact
+        if (val & 0x40) ~= 0 then
+            -- 0x40 = Drive Parry; 0x40|0x04 = Drive Rush (parry cancelled forward).
+            if (val & 0x04) ~= 0 then table.insert(list, "dr")
+            else table.insert(list, "parry") end
+        end
+        for _, pair in ipairs(MODERN_ATTACK) do
             if (val & pair[1]) ~= 0 then table.insert(list, pair[2]) end
         end
         return list
