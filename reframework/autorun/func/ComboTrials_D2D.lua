@@ -144,11 +144,27 @@ local function modern_display_active()
     return (ctx and ctx.d2d_cfg and (ctx.d2d_cfg.show_modern_notation or _G.ComboTrials_CurrentIsModern)) and true or false
 end
 
--- Character of the current combo file when Modern display is active, else nil.
+-- Character to resolve Modern notation for the combo display.
 local function combo_modern_char()
     if not modern_display_active() then return nil end
+    local ts = ctx and ctx.trial_state
+    local players = ctx and ctx.players
+    local function player_char(idx)
+        local p = players and players[idx or 0]
+        if p and p.profile_name and p.profile_name ~= "Unknown" then return p.profile_name end
+        return nil
+    end
+    -- During recording the combo file doesn't exist yet (CurrentPath may be a
+    -- stale previous selection), so use the active player's character directly.
+    if ts and ts.is_recording then
+        local c = player_char(ts.recording_player or 0)
+        if c then return c end
+    end
+    -- Playback: the saved combo file's character.
     local ok, r = pcall(ModernDisplay.char_from_path, _G.ComboTrials_CurrentPath)
-    return ok and r or nil
+    if ok and r then return r end
+    -- General fallback to the playing character.
+    return ts and player_char(ts.playing_player or 0) or nil
 end
 
 -- Return a display item for `step` with its Modern notation resolved for
