@@ -4437,21 +4437,12 @@ re.on_frame(function()
     pcall(_ct_track_live_combo)
     ct_handle_web_commands()
 
-    -- External combo file detection (mobile imports): signature check every
-    -- 1800 frames (~30s). The check does a full fs.glob, which REFramework walks
-    -- over the whole data tree (~2200 files here => ~260ms), so it must stay rare
-    -- and idle-only. Gated: remote loaded, mode 4, and no trial/recording/demo
-    -- active (never stalls during actual combo execution).
-    if _G._remote_control_loaded and _G.CurrentTrainerMode == 4
-        and engine_frame_count % 1800 == 87
-        and not trial_state.is_playing and not trial_state.is_recording
-        and not (demo_state and demo_state.is_playing) then
-        pcall(function()
-            if ComboTrials_Files.check_external_changes() then
-                ct_ticker("COMBO LIST UPDATED (EXTERNAL)")
-            end
-        end)
-    end
+    -- External combo file detection (mobile imports) is NO LONGER polled on a
+    -- timer: check_external_changes() does a full fs.glob (REFramework walks the
+    -- whole ~2200-file data tree => ~260ms) which caused a periodic idle hitch.
+    -- The list already refreshes on deliberate actions (character switch, control
+    -- filter, player selector) and via the explicit "Refresh list" menu button,
+    -- so imported combos appear with zero background stall.
 
     -- Export globals for web bridge
     local _p_idx = trial_state.playing_player or 0

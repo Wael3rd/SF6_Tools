@@ -58,6 +58,7 @@ i18n.register("combo_trials_ui", {
         exc_apply_common = "Apply to all characters (Common)",
         ctrl_filter_label = "Control filter",
         cf_all = "All", cf_classic = "Classic", cf_modern = "Modern", cf_auto = "Auto (current)",
+        refresh_list = "Refresh list (detect mobile imports)",
     },
     zh = {
         hdr_files = "--- 连段训练（文件与回放）---",
@@ -105,6 +106,7 @@ i18n.register("combo_trials_ui", {
         exc_apply_common = "应用到所有角色（通用）",
         ctrl_filter_label = "操作过滤",
         cf_all = "全部", cf_classic = "经典", cf_modern = "现代", cf_auto = "自动（当前）",
+        refresh_list = "刷新列表（检测手机导入）",
     },
 })
 local T = i18n.scope("combo_trials_ui")
@@ -1365,6 +1367,12 @@ local function draw_combo_trials_menu_ui()
                     file_system.combo_control_filter = FILTER_VALUES[fnew]
                     if refresh_combo_list then refresh_combo_list() end
                 end
+            end
+            -- Explicit refresh: re-scans the folder on demand (mobile imports).
+            -- The scan does a full fs.glob, so it runs only on this deliberate
+            -- click instead of on a background timer (no idle hitch).
+            if imgui.button(T("refresh_list")) and refresh_combo_list then
+                refresh_combo_list()
             end
             local changed, new_val = imgui.checkbox("Detacher en fenetre flottante", show_trial_overlay)
             if changed then show_trial_overlay = new_val end
