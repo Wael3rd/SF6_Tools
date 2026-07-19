@@ -1226,6 +1226,23 @@ local function apply_trial_vital()
         end
     end
 
+    -- Victim (dummy) recorded drive / super / burnout (spec v2 scene_state) so a
+    -- combo recorded against a burnt-out opponent replays with that state.
+    do
+        local s1 = trial_state.sequence[1]
+        local sc = s1 and s1.scene_state
+        local atk_side = (s1 and s1.recorded_by == 1) and "p2" or "p1"
+        local vic_side = (atk_side == "p1") and "p2" or "p1"
+        local vp = sc and sc.players and sc.players[vic_side]
+        if vp then
+            if vp.resources then
+                trial_state._pending_victim_drive = vp.resources.drive
+                trial_state._pending_victim_super = vp.resources.super
+            end
+            trial_state._pending_victim_burnout = (vp.status and vp.status.burnout == true) or false
+        end
+    end
+
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
@@ -1294,6 +1311,21 @@ local function apply_trial_vital()
             ad.Is_SA_No_Recovery = true
         end
 
+        -- Victim (dummy) drive gauge / burnout state
+        if trial_state._pending_victim_burnout ~= nil or trial_state._pending_victim_drive ~= nil then
+            local vd = ps.PlayerDatas[victim_idx]
+            if not trial_state._saved_gauge_vic then
+                trial_state._saved_gauge_vic = {
+                    DG_Type = vd.DG_Type, Is_DG_Recovery_Timer = vd.Is_DG_Recovery_Timer,
+                    Is_DG_Infinity = vd.Is_DG_Infinity, Is_DG_Break = vd.Is_DG_Break,
+                }
+            end
+            vd.DG_Type = 0
+            vd.Is_DG_Infinity = false
+            vd.Is_DG_Recovery_Timer = false
+            vd.Is_DG_Break = (trial_state._pending_victim_burnout == true)
+        end
+
     end)
 end
 
@@ -1310,6 +1342,10 @@ local function reinject_trial_vital()
     if trial_state._pending_attacker_drive or trial_state._pending_attacker_super then
         inject_player_gauges(attacker_idx, trial_state._pending_attacker_drive, trial_state._pending_attacker_super)
     end
+    if trial_state._pending_victim_drive ~= nil or trial_state._pending_victim_burnout then
+        local vdrive = trial_state._pending_victim_burnout and 0 or trial_state._pending_victim_drive
+        inject_player_gauges(victim_idx, vdrive, trial_state._pending_victim_super)
+    end
 end
 
 -- Restore vital settings to original values
@@ -1318,6 +1354,9 @@ local function restore_trial_vital()
     trial_state._pending_attacker_hp = nil
     trial_state._pending_attacker_drive = nil
     trial_state._pending_attacker_super = nil
+    trial_state._pending_victim_drive = nil
+    trial_state._pending_victim_super = nil
+    trial_state._pending_victim_burnout = nil
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
@@ -1358,6 +1397,15 @@ local function restore_trial_vital()
             ad.Is_SA_Recovery_Timer = sg.Is_SA_Recovery_Timer; ad.Is_SA_Infinity = sg.Is_SA_Infinity
             ad.Is_SA_No_Recovery = sg.Is_SA_No_Recovery; ad.Is_SA_Point_Lock = sg.Is_SA_Point_Lock
             trial_state._saved_gauge_atk = nil
+        end
+
+        if trial_state._saved_gauge_vic then
+            local vic_idx = 1 - (trial_state.playing_player or 0)
+            local vd = ps.PlayerDatas[vic_idx]
+            local sv = trial_state._saved_gauge_vic
+            vd.DG_Type = sv.DG_Type; vd.Is_DG_Recovery_Timer = sv.Is_DG_Recovery_Timer
+            vd.Is_DG_Infinity = sv.Is_DG_Infinity; vd.Is_DG_Break = sv.Is_DG_Break
+            trial_state._saved_gauge_vic = nil
         end
 
     end)
@@ -3118,6 +3166,10 @@ local function ct_handle_hp_injection()
                 end
                 if trial_state._pending_attacker_drive or trial_state._pending_attacker_super then
                     inject_player_gauges(attacker_idx, trial_state._pending_attacker_drive, trial_state._pending_attacker_super)
+                end
+                if trial_state._pending_victim_drive ~= nil or trial_state._pending_victim_burnout then
+                    local vdrive = trial_state._pending_victim_burnout and 0 or trial_state._pending_victim_drive
+                    inject_player_gauges(victim_idx, vdrive, trial_state._pending_victim_super)
                 end
             end
         end
