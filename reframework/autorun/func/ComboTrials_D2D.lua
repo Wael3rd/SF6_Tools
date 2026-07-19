@@ -634,7 +634,11 @@ end
 -- =========================================================
 local function draw_parsed_line(tokens, base_x, y, icon_w, icon_h, spacing_x, final_text_y_offset, align_right,
                                 color_override)
-    local special_icons = { dr = true, drc = true, parry = true, rev = true, di = true }
+    -- Wide badge icons scaled up for readability. modern_sp/modern_auto are the
+    -- same wide-badge shape as parry/di, so they get the same scale (the square
+    -- modern_l/m/h already fill the box at 1.0).
+    local special_icons = { dr = true, drc = true, parry = true, rev = true, di = true,
+        modern_sp = true, modern_auto = true }
     local line_elements = {}
     local total_w = 0
 
