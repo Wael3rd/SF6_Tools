@@ -644,22 +644,6 @@ local function draw_bar_toggle_arrows()
     end
 end
 
--- Read the battle-active state FRESH inside the d2d callback. The d2d render
--- keeps running during a match-load transition even when the script's on_frame
--- is paused, so relying on an on_frame-set flag (_G.ComboTrialsD2DEnabled) left
--- the overlay frozen on the VS screen. _CurrentPauseTypeBit 64/2112 = in an
--- active training battle. pcall failure -> false (hide), the safe direction.
-local function _ctd_read_pausebit()
-    local pm = sdk.get_managed_singleton("app.PauseManager")
-    if not pm then return -1 end
-    return pm:get_field("_CurrentPauseTypeBit") or -1
-end
-local function d2d_battle_active()
-    local ok, b = pcall(_ctd_read_pausebit)
-    if not ok then return false end
-    return b == 64 or b == 2112
-end
-
 local function d2d_draw_inner()
     local d2d_cfg = ctx and ctx.d2d_cfg
     local trial_state = ctx and ctx.trial_state
@@ -669,10 +653,10 @@ local function d2d_draw_inner()
 
     local sw, sh = d2d.surface_size()
 
-    -- Gated on a FRESH battle-active read (not the on_frame flag) so the combo
-    -- list AND raw input history hide on the VS/match screen even while the
-    -- script's on_frame is paused during the transition. NO early returns below.
-    if should_draw and d2d_battle_active() and _G.TrainingBarsDrawn and _G.CurrentTrainerMode == 4 then
+    -- The d2d_draw wrapper only calls this when on_frame set the per-frame beat
+    -- (same self-clearing pattern as Distance Viewer's queue), so a paused
+    -- on_frame on the VS/match screen means no draw. NO early returns below.
+    if should_draw and _G.TrainingBarsDrawn and _G.CurrentTrainerMode == 4 then
 
     ctx.cached_sw, ctx.cached_sh = sw, sh
 
@@ -1065,6 +1049,12 @@ end
 -- Public API
 -- =========================================================
 local function d2d_draw()
+    -- Self-clearing beat (same pattern as Distance Viewer's queue): on_frame sets
+    -- it each frame it wants the overlay; this callback consumes it. If on_frame
+    -- pauses (VS / match-load transition), the beat stays false and nothing draws
+    -- — so the overlay can't freeze on the VS screen.
+    if not _G.ComboTrials_D2D_Beat then return end
+    _G.ComboTrials_D2D_Beat = false
     pcall(d2d_draw_inner)
 end
 

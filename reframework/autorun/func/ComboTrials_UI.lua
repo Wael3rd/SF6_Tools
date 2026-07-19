@@ -974,6 +974,7 @@ re.on_frame(function()
         sf6_menu_state.active = false
         _G.ComboTrials_HideNativeHUD = false
         _G.ComboTrialsD2DEnabled = false
+        _G.ComboTrials_D2D_Beat = false
         return
     end
 
@@ -984,6 +985,10 @@ re.on_frame(function()
         if b == 64 or b == 2112 then is_game_active = true end
     end
     _G.ComboTrialsD2DEnabled = is_game_active
+    -- Per-frame beat consumed by the D2D callback (Distance-Viewer-style
+    -- self-clearing). No beat set (on_frame paused/gated) => D2D draws nothing.
+    -- Also set in replay so the collapse arrows keep drawing there.
+    _G.ComboTrials_D2D_Beat = (is_game_active == true) or (in_replay_ctx == true)
 
     -- Use exact ImGui API for window positioning
     local sw, sh = get_imgui_screen_size()
