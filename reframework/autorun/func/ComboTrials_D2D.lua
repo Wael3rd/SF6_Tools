@@ -142,7 +142,8 @@ local function merge_group_log_item(steps)
 
     local first_holdable_done = false
     local _md_char = nil
-    if ctx and ctx.d2d_cfg and ctx.d2d_cfg.show_modern_notation then
+    -- Modern notation: manual toggle OR the combo was recorded in Modern (auto).
+    if ctx and ctx.d2d_cfg and (ctx.d2d_cfg.show_modern_notation or _G.ComboTrials_CurrentIsModern) then
         local ok, r = pcall(ModernDisplay.char_from_path, _G.ComboTrials_CurrentPath)
         _md_char = ok and r or nil
     end

@@ -81,6 +81,7 @@ function M.effective_control_filter()
     return f
 end
 
+M.combo_control_mode = combo_control_mode  -- act_id file -> "modern"/"classic" (cached)
 function M.invalidate_control_cache() _control_mode_cache = {} end
 
 function M.refresh_combo_list(recent_saved_player)

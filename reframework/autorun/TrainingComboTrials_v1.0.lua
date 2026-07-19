@@ -4457,6 +4457,9 @@ re.on_frame(function()
     local _fname = _paths and _paths[_fidx] or ""
     _G.ComboTrials_CurrentFile = _fname:match("([^/\\]+)$") or _fname
     _G.ComboTrials_CurrentPath = _fname
+    -- Auto-detect: a combo recorded in Modern shows Modern notation without the
+    -- manual toggle (control_mode is cached per path, so this is cheap).
+    _G.ComboTrials_CurrentIsModern = (_fname ~= "" and ComboTrials_Files.combo_control_mode(_fname) == "modern") or false
     _G.ComboTrials_CurrentStep = trial_state.current_step or 0
     _G.ComboTrials_TotalSteps = trial_state.sequence and #trial_state.sequence or 0
     _G.ComboTrials_IsPlaying = trial_state.is_playing or false
