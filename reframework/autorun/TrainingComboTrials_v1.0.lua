@@ -4235,8 +4235,14 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                         local actx = build_absorb_ctx(p_idx, p_state)
                                         local frames_since_prev = engine_frame_count - (trial_state.last_played_frame or engine_frame_count)
                                         local abs_frame_diff = Validator.calculate_frame_diff(frames_since_prev, expected.delay_from_prev or 0)
+                                        -- BCM strict: install/absorb confirmed by catalog aliases only
+                                        -- (exceptions ignored); otherwise the exception absorb_ids path (unchanged).
+                                        local _use_bcm = _G.ComboTrials_UseBcmCatalog == true
+                                        local _abs_cat = _use_bcm and BcmCatalog.load_for_character(p_state.profile_name) or nil
+                                        local _abs_exc = (not _use_bcm) and p_state.exceptions or nil
+                                        local _abs_com = (not _use_bcm) and common_exceptions or nil
                                         local recent = CharacterRules.find_recent_absorb_confirmation(
-                                            p_state.exceptions, common_exceptions, expected, p_state.log, p_state.profile_name)
+                                            _abs_exc, _abs_com, expected, p_state.log, p_state.profile_name, _abs_cat)
                                         if recent.matched then
                                             absorb_handled = ComboTrialsModules.PendingAbsorb.apply_matched_step(actx, {
                                                 expected = expected,
@@ -4251,7 +4257,7 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                             }) and true or false
                                         else
                                             local current_absorb = CharacterRules.match_current_absorb_confirmation(
-                                                p_state.exceptions, common_exceptions, expected, act_id, _pf.current_combo or 0, p_state.profile_name)
+                                                _abs_exc, _abs_com, expected, act_id, _pf.current_combo or 0, p_state.profile_name, _abs_cat)
                                             if current_absorb.matched then
                                                 absorb_handled = ComboTrialsModules.PendingAbsorb.apply_matched_step(actx, {
                                                     expected = expected,

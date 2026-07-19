@@ -53,7 +53,14 @@ local image_files = {
     ["dr"] = "dr.png",
     ["drc"] = "drc.png",
     ["rev"] = "rev.png",
-    ["di"] = "DI.png"
+    ["di"] = "DI.png",
+    -- Modern-control button icons (SF6_TOOLS_CC). Assist "any"/neutral has no
+    -- asset (modern_n.png absent upstream) so it stays as text.
+    ["modern_l"] = "modern_l.png",
+    ["modern_m"] = "modern_m.png",
+    ["modern_h"] = "modern_h.png",
+    ["modern_sp"] = "modern_sp.png",
+    ["modern_auto"] = "modern_auto.png"
 }
 
 -- =========================================================
@@ -203,6 +210,7 @@ end
 -- =========================================================
 local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse_layout)
     local d2d_cfg = ctx.d2d_cfg
+    local is_modern = (ctx and ctx.d2d_cfg and (ctx.d2d_cfg.show_modern_notation or _G.ComboTrials_CurrentIsModern)) and true or false
     local motion_tokens = {}
     local s = log_entry.motion or ""
 
@@ -301,6 +309,16 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
         return string.format("{txt_%d}", text_idx)
     end)
 
+    -- Modern-control button icons (opt-in). Convert bare strength tokens to
+    -- icon markers; frontier patterns keep classic LP/MP/HP/DP untouched.
+    if is_modern then
+        s = s:gsub("AUTO", "{modern_auto}")
+        s = s:gsub("%f[%a]SP%f[%A]", "{modern_sp}")
+        s = s:gsub("%f[%a]L%f[%A]", "{modern_l}")
+        s = s:gsub("%f[%a]M%f[%A]", "{modern_m}")
+        s = s:gsub("%f[%a]H%f[%A]", "{modern_h}")
+    end
+
     s = s:gsub("%f[%a]PPP%f[%A]", "{p}{p}{p}")
     s = s:gsub("%f[%a]PP%f[%A]", "{p}{p}")
     s = s:gsub("%f[%a]KKK%f[%A]", "{k}{k}{k}")
@@ -357,7 +375,8 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
     flush_text()
 
     -- NEW: Auto-insert PLUS icon between directions and attack buttons
-    local is_btn = { p = true, k = true, lp = true, mp = true, hp = true, lk = true, mk = true, hk = true, throw = true }
+    local is_btn = { p = true, k = true, lp = true, mp = true, hp = true, lk = true, mk = true, hk = true, throw = true,
+        modern_l = true, modern_m = true, modern_h = true, modern_sp = true, modern_auto = true }
     local processed_tokens = {}
     for _, tok in ipairs(motion_tokens) do
         if #processed_tokens > 0 then

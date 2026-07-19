@@ -8,6 +8,13 @@ end
 
 function ActionMatcher.normalize_motion_token(value)
     local s = tostring(value or ""):upper():gsub("%s+", "")
+    -- Legacy exception tables used several equivalent spellings. Normalize
+    -- them here so existing combo JSON keeps its motion fallback when newly
+    -- generated AC+BCM tables adopt one canonical display form (SF6_TOOLS_CC).
+    s = s:gsub("DRIVERUSH", "RAWDR")
+    s = s:gsub("LP%+LK", "THROW")
+    s = s:gsub("%(THROW%)", "THROW")
+    s = s:gsub("%+", "")
     s = s:gsub("^>%s*", "")
     s = s:gsub("%(空挥%)", "")
     s = s:gsub("%(绌烘尌%)", "")

@@ -52,6 +52,7 @@ end
 -- to universal FGC notation (L/M/H) so the Western UI reads cleanly. Chinese
 -- byte sequences contain no Lua-pattern magic chars, so literal gsub is safe.
 local MODERN_TOKENS = {
+    ["空中"] = "j.",      -- aerial (parse_motion_to_icons turns J. into [AIR])
     ["任意键"] = "any",   -- any button
     ["弱"] = "L",         -- light
     ["中"] = "M",         -- medium
