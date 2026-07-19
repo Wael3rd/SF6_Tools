@@ -4438,9 +4438,12 @@ re.on_frame(function()
     ct_handle_web_commands()
 
     -- External combo file detection (mobile imports): signature check every
-    -- 300 frames, only with the remote loaded and no trial/recording active
+    -- 1800 frames (~30s). The check does a full fs.glob, which REFramework walks
+    -- over the whole data tree (~2200 files here => ~260ms), so it must stay rare
+    -- and idle-only. Gated: remote loaded, mode 4, and no trial/recording/demo
+    -- active (never stalls during actual combo execution).
     if _G._remote_control_loaded and _G.CurrentTrainerMode == 4
-        and engine_frame_count % 300 == 87
+        and engine_frame_count % 1800 == 87
         and not trial_state.is_playing and not trial_state.is_recording
         and not (demo_state and demo_state.is_playing) then
         pcall(function()
