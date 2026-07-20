@@ -112,6 +112,13 @@ local config = {
     top_colors = { switch = 0xFF0066FF, active = 0xFF019D00, inactive = 0xFF666666 },
     top_alphas = { switch = 170, active = 170, inactive = 120 },
     hide_btn = { x_pct = 0.4625, y_pct = 0.05, w_pct = 0.075, h_pct = 0.075 },
+    -- Feature toggles driven by the Chinese top bar (SF6_TOOLS_CC parity).
+    -- Defaults chosen to preserve today's behaviour exactly, per script:
+    --   Distance Viewer is currently always active  -> true
+    --   SheldonsBoxes reads _G.SheldonsBoxes_Enabled, which nothing ever set,
+    --   so it has been dormant -> false (turning it on stays a user action)
+    distance_viewer_enabled = true,
+    sheldons_boxes_enabled = false,
 }
 
 -- ARGB -> ABGR conversion
@@ -128,6 +135,17 @@ local function build_sc_color(argb, fill_alpha)
         active = (0xFF << 24) | rgb,
         border = 0xFFFFFFFF,
     }
+end
+
+-- Publish the feature toggles as globals (same contract as SF6_TOOLS_CC):
+-- the overlay scripts read them and stay dormant when false.
+local function publish_feature_flags()
+    _G.SF6_DistanceViewer_Enabled = config.distance_viewer_enabled ~= false
+    -- SheldonsBoxes already gates itself on _G.SheldonsBoxes_Enabled and nothing
+    -- owned that flag, so drive the real one rather than a parallel copy.
+    -- SF6_SheldonsBoxes_Enabled is kept as CC's contract name.
+    _G.SheldonsBoxes_Enabled = config.sheldons_boxes_enabled == true
+    _G.SF6_SheldonsBoxes_Enabled = _G.SheldonsBoxes_Enabled
 end
 
 local function publish_button_colors()
@@ -155,13 +173,17 @@ local function load_config()
         if data.top_alphas and type(data.top_alphas) == "table" then
             for k, v in pairs(data.top_alphas) do config.top_alphas[k] = v end
         end
+        if data.distance_viewer_enabled ~= nil then config.distance_viewer_enabled = data.distance_viewer_enabled == true end
+        if data.sheldons_boxes_enabled ~= nil then config.sheldons_boxes_enabled = data.sheldons_boxes_enabled == true end
     end
     publish_button_colors()
+    publish_feature_flags()
 end
 
 local function save_config()
     json.dump_file(CONFIG_FILE, config)
     publish_button_colors()
+    publish_feature_flags()
 end
 
 load_config()
@@ -326,12 +348,22 @@ local MODE_CYCLE = { 0, 5, 2, 1, 3, 4 }
 local MODE_CYCLE_INDEX = {} -- reverse lookup: mode_id → position in cycle
 for i, m in ipairs(MODE_CYCLE) do MODE_CYCLE_INDEX[m] = i end
 
+-- In 中文 the top bar is a faithful copy of SF6_TOOLS_CC's and only shows his
+-- three modes, so the switch cycles those three -- otherwise SWITCH could land
+-- on a mode with no button on screen. English cycles all six as before.
+local MODE_CYCLE_ZH = { 0, 2, 4 }
+local MODE_CYCLE_ZH_INDEX = {}
+for i, m in ipairs(MODE_CYCLE_ZH) do MODE_CYCLE_ZH_INDEX[m] = i end
+
 local function cycle_next_mode()
+    local zh = (i18n.get_lang() == "zh")
+    local cycle = zh and MODE_CYCLE_ZH or MODE_CYCLE
+    local index = zh and MODE_CYCLE_ZH_INDEX or MODE_CYCLE_INDEX
     local cur = _G.CurrentTrainerMode or 0
-    local idx = MODE_CYCLE_INDEX[cur] or 1
+    local idx = index[cur] or 1
     idx = idx + 1
-    if idx > #MODE_CYCLE then idx = 1 end
-    _G.CurrentTrainerMode = MODE_CYCLE[idx]
+    if idx > #cycle then idx = 1 end
+    _G.CurrentTrainerMode = cycle[idx]
 end
 
 -- Register the mode-switch action into the shared hotkey framework
@@ -488,6 +520,16 @@ local MODE_BUTTONS = {
     { id = 4, label = "CUSTOM COMBO TRIALS" },
 }
 
+-- Chinese top bar is a faithful copy of SF6_TOOLS_CC's, which only exposes the
+-- three modes that exist in his fork. Deliberate: Chinese users get the layout
+-- they already know. EXECUTION / REACTION DRILLS / POST GUARD are reachable in
+-- 中文 through the REFramework menu and the hotkey framework, not this bar.
+local MODE_BUTTONS_ZH = {
+    { id = 0, label = "关闭训练" },
+    { id = 2, label = "确认训练" },
+    { id = 4, label = "连段训练" },
+}
+
 local VK_NAMES = {
     [0x08]="BACKSPACE",[0x09]="TAB",[0x0D]="ENTER",[0x10]="SHIFT",[0x11]="CTRL",[0x12]="ALT",
     [0x14]="CAPS",[0x1B]="ESC",[0x20]="SPACE",
@@ -507,12 +549,77 @@ local function vk_name(vk)
     return VK_NAMES[vk] or string.format("0x%02X", vk)
 end
 
+-- Chinese layout: a faithful reproduction of SF6_TOOLS_CC's top bar --
+-- his positions, his widths, his three modes and his two feature toggles.
+-- The English bar below is untouched.
+local function draw_top_floating_bar_zh(sw, sh)
+    local scale = sh / 1080.0
+    local sp = 4 * scale
+
+    local train_count = 1 + #MODE_BUTTONS_ZH
+    local train_x = sw * 0.125
+    local train_group_w = sw * 0.345
+    local btn_w = (train_group_w - sp * (train_count - 1)) / train_count
+    if btn_w < 145 * scale then btn_w = 145 * scale end
+
+    local passive_w = math.max(112 * scale, sw * 0.06)
+    local feature_start_x = sw * 0.665
+    local top_y = sh * 0.01
+
+    imgui.set_cursor_pos(Vector2f.new(train_x, top_y))
+    if SharedUI.sf6_button("切换训练模式##sw_top", SWITCH_COLOR, btn_w) then
+        cycle_next_mode()
+    end
+
+    for _, btn in ipairs(MODE_BUTTONS_ZH) do
+        imgui.same_line(0, sp)
+        local is_active = (_G.CurrentTrainerMode == btn.id)
+        local colors = is_active and MODE_ACTIVE or MODE_INACTIVE
+        if SharedUI.sf6_button(btn.label .. "##top_" .. btn.id, colors, btn_w) then
+            _G.CurrentTrainerMode = btn.id
+        end
+    end
+
+    imgui.set_cursor_pos(Vector2f.new(feature_start_x, top_y))
+    local dv_on = (config.distance_viewer_enabled ~= false)
+    local dv_colors = dv_on and MODE_ACTIVE or MODE_INACTIVE
+    if SharedUI.sf6_button("距离显示##top_distance_viewer", dv_colors, passive_w) then
+        config.distance_viewer_enabled = not dv_on
+        save_config()
+        if _G.show_custom_ticker then
+            _G.show_custom_ticker(config.distance_viewer_enabled and "距离显示已开启" or "距离显示已关闭", 0.3)
+        end
+    end
+
+    imgui.same_line(0, sp)
+    local sb_on = (config.sheldons_boxes_enabled == true)
+    local sb_colors = sb_on and MODE_ACTIVE or MODE_INACTIVE
+    if SharedUI.sf6_button("碰撞显示##top_sheldons_boxes", sb_colors, passive_w) then
+        config.sheldons_boxes_enabled = not sb_on
+        save_config()
+        if _G.show_custom_ticker then
+            _G.show_custom_ticker(config.sheldons_boxes_enabled and "碰撞显示已开启" or "碰撞显示已关闭", 0.3)
+        end
+    end
+end
+
 local function draw_top_floating_bar()
-    local visible, sw, sh = SharedUI.begin_floating_window_top("TrainingModeSwitch##top", top_bar_width, top_bar_height)
+    -- CC's bar spans the full screen width (his top_bar_width = 1.0) and his
+    -- cursor positions are screen-relative, so the window must match or the
+    -- whole layout shifts. English keeps our 0.74 bar.
+    local is_zh = (i18n.get_lang() == "zh")
+    local bar_width = is_zh and 1.0 or top_bar_width
+    local visible, sw, sh = SharedUI.begin_floating_window_top("TrainingModeSwitch##top", bar_width, top_bar_height)
     if not visible then
         SharedUI.end_floating_window_top(); return
     end
     SharedUI.draw_floating_bg_top()
+
+    if is_zh then
+        draw_top_floating_bar_zh(sw, sh)
+        SharedUI.end_floating_window_top()
+        return
+    end
 
     local sp = 4 * (sh / 1080.0)
     local content_w = imgui.get_window_size().x - sw * 0.02  -- subtract WindowPadding (left+right)

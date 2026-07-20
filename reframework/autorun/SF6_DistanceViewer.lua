@@ -903,7 +903,15 @@ local function init_d2d_icons()
     d2d_initialized = true
 end
 
+-- Feature gate published by Training_ScriptManager's Chinese top bar
+-- (距离显示). nil means "no owner", so absence keeps the viewer enabled and the
+-- English layout, which has no such button, behaves exactly as before.
+local function dv_feature_enabled()
+    return _G.SF6_DistanceViewer_Enabled ~= false
+end
+
 local function draw_d2d_icons()
+    if not dv_feature_enabled() then d2d_queue = {}; return end
     if not d2d_initialized then init_d2d_icons() end
     for _, item in ipairs(d2d_queue) do
         local img = d2d_icons[item.key]
@@ -3412,6 +3420,7 @@ end
    
 
 re.on_frame(function()
+    if not dv_feature_enabled() then return end
     if p2_cache and p2_cache.valid and p2_cache.real_name then
         local p2_name = p2_cache.real_name
         if _G._dv_last_p2_char and _G._dv_last_p2_char ~= p2_name then
@@ -4098,6 +4107,7 @@ re.on_frame(function()
 end)
 
 local function draw_distance_viewer_menu_ui()
+    if not dv_feature_enabled() then return end
     if imgui.tree_node("SF6 DISTANCE VIEWER") then
         local changed_ov, new_ov = imgui.checkbox(DVT("floating_window_2"), config.show_debug_window)
         if changed_ov then
