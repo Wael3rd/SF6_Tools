@@ -167,6 +167,145 @@ local function apply_mirror(pos, flip)
 end
 
 -- =========================================================
+-- UTF-8 text measurement helpers (port from SF6_TOOLS_CC)
+-- =========================================================
+local function trim_string(value)
+    local s = tostring(value or "")
+    return s:match("^%s*(.-)%s*$") or ""
+end
+
+local function measure_text(text)
+    if assets.font then
+        local w, h = assets.font:measure(tostring(text or ""))
+        return w or 0, h or (assets.text_h or 0)
+    end
+    return 0, assets.text_h or 0
+end
+
+local function next_utf8_char(s, index)
+    local b = s:byte(index)
+    if not b then return nil, index + 1 end
+
+    local len = 1
+    if b >= 240 and b <= 244 then
+        len = 4
+    elseif b >= 224 and b <= 239 then
+        len = 3
+    elseif b >= 194 and b <= 223 then
+        len = 2
+    end
+
+    if index + len - 1 > #s then len = 1 end
+    return s:sub(index, index + len - 1), index + len
+end
+
+local function append_wrapped_text(lines, text, max_w)
+    local source = tostring(text or "")
+    for raw_line in (source .. "\n"):gmatch("(.-)\n") do
+        local line = trim_string(raw_line)
+        if line == "" then
+            table.insert(lines, "")
+        else
+            local cur = ""
+            local i = 1
+            while i <= #line do
+                local ch
+                ch, i = next_utf8_char(line, i)
+                local next_line = cur .. (ch or "")
+                local w = measure_text(next_line)
+                if cur ~= "" and max_w > 0 and w > max_w then
+                    table.insert(lines, cur)
+                    cur = ch or ""
+                else
+                    cur = next_line
+                end
+            end
+            if cur ~= "" then table.insert(lines, cur) end
+        end
+    end
+end
+
+-- =========================================================
+-- Trial meta-note helpers (port from SF6_TOOLS_CC)
+-- =========================================================
+local function get_meta_table(first)
+    if type(first) ~= "table" then return nil end
+    if type(first._xt_meta) == "table" then return first._xt_meta end
+    if type(first._wtt_cn_meta) == "table" then return first._wtt_cn_meta end
+    return nil
+end
+
+local function get_trial_meta()
+    local state = ctx and ctx.trial_state
+    local seq = state and state.sequence
+    local first = seq and seq[1]
+    return get_meta_table(first) or {}
+end
+
+local function clean_meta_text(value)
+    if value == nil then return "" end
+    return trim_string(value)
+end
+
+local function get_upload_date(meta)
+    if type(meta) ~= "table" then return "" end
+
+    local raw = meta.uploaded_at or meta.uploadDate or meta.uploadedAt or meta.upload_date or
+        meta.created_at or meta.createdAt or meta.updated_at or meta.updatedAt
+    local value = clean_meta_text(raw)
+    if value == "" then return "" end
+
+    local ymd = value:match("^(%d%d%d%d%-%d%d%-%d%d)")
+    return ymd or value
+end
+
+local function get_step_notes_table(meta)
+    if type(meta) ~= "table" or type(meta.step_notes) ~= "table" then return nil end
+    return meta.step_notes
+end
+
+local function get_display_line_note(meta, first_idx, last_idx)
+    local step_notes = get_step_notes_table(meta)
+    if not step_notes then return "" end
+
+    local parts = {}
+    for idx = first_idx or 1, last_idx or first_idx or 1 do
+        local note = clean_meta_text(step_notes[idx])
+        if note == "" then note = clean_meta_text(step_notes[tostring(idx)]) end
+        if note ~= "" then table.insert(parts, note) end
+    end
+    return table.concat(parts, " / ")
+end
+
+local function has_nonempty_step_note(meta)
+    local step_notes = get_step_notes_table(meta)
+    if not step_notes then return false end
+    for _, value in pairs(step_notes) do
+        if clean_meta_text(value) ~= "" then return true end
+    end
+    return false
+end
+
+local function has_trial_note_content(meta)
+    if type(meta) ~= "table" then return false end
+    return clean_meta_text(meta.author) ~= "" or clean_meta_text(meta.note) ~= "" or
+        get_upload_date(meta) ~= "" or has_nonempty_step_note(meta)
+end
+
+local function build_author_upload_line(meta)
+    if not has_trial_note_content(meta) then return "" end
+
+    local author = clean_meta_text(meta.author)
+    if author == "" then author = "Unknown" end
+
+    local upload = get_upload_date(meta)
+    local line = "Combo by " .. author .. " uploaded"
+    if upload == "" then upload = "Unknown" end
+    line = line .. " " .. upload
+    return line
+end
+
+-- =========================================================
 -- Follow-up group helpers
 -- =========================================================
 local function build_display_lines(sequence)
@@ -723,6 +862,60 @@ local function draw_parsed_line(tokens, base_x, y, icon_w, icon_h, spacing_x, fi
 end
 
 -- =========================================================
+-- Trial meta-note drawing (port from SF6_TOOLS_CC)
+-- =========================================================
+local function draw_text_with_shadow(font, text, x, y, color)
+    d2d.text(font, text, x + 2, y + 2, 0xFF000000)
+    d2d.text(font, text, x, y, color)
+end
+
+local function draw_step_note(note, x, y, final_text_y_offset)
+    if not assets.font or note == "" then return end
+    local text = "# " .. tostring(note)
+    draw_text_with_shadow(assets.font, text, x, y + final_text_y_offset, 0xFFFFA000)
+end
+
+local function draw_trial_meta_note(sw, sh, spacing_y)
+    local d2d_cfg = ctx and ctx.d2d_cfg
+    if not d2d_cfg or d2d_cfg.show_trial_notes ~= true then return end
+    if not assets.font then return end
+
+    local meta = get_trial_meta()
+    if not has_trial_note_content(meta) then return end
+
+    local author_line = build_author_upload_line(meta)
+    if author_line ~= "" then
+        local _, author_h = measure_text(author_line)
+        local author_x = sw * 0.796875
+        local author_y = (sh * 0.972222) - ((author_h or 0) * 0.5)
+        draw_text_with_shadow(assets.font, author_line, author_x, author_y, 0xFFE0E0E0)
+    end
+
+    local note = clean_meta_text(meta.note)
+    if note == "" then return end
+
+    local x = sw * 0.332031
+    if x < 0 or x > sw then x = sw * 0.25 end
+    local max_w = math.min(sw * 0.50, sw - x - (sw * 0.08))
+    local lines = {}
+    append_wrapped_text(lines, note, max_w)
+    if #lines == 0 then return end
+
+    local max_lines = 5
+    if #lines > max_lines then
+        while #lines > max_lines do table.remove(lines) end
+        lines[#lines] = lines[#lines] .. "..."
+    end
+
+    local line_h = math.max((assets.text_h or 0), spacing_y * 0.60)
+    local y = (sh * 0.256944) - (line_h * 0.5)
+    local color = 0xFFE0E0E0
+    for i, line in ipairs(lines) do
+        draw_text_with_shadow(assets.font, line, x, y + (i - 1) * line_h, color)
+    end
+end
+
+-- =========================================================
 -- d2d_init & d2d_draw
 -- =========================================================
 local _img_arrow_down = nil
@@ -1125,6 +1318,12 @@ local function d2d_draw_inner()
             d2d_anim.active_y = nil
         end
 
+        -- Trial meta note overlay (author, upload date, combo note)
+        draw_trial_meta_note(sw, sh, spacing_y)
+
+        -- Grab trial meta for per-step notes
+        local trial_meta = get_trial_meta()
+
         -- Draw text and icons for each visible display line
         for dl_idx = start_idx, math.min(start_idx + visible - 1, n_lines) do
             local dl = display_lines[dl_idx]
@@ -1149,7 +1348,15 @@ local function d2d_draw_inner()
             end
 
             local tokens = parse_motion_to_icons(log_item, mode, current_should_flip, true)
-            draw_parsed_line(tokens, trial_x, y, icon_w, icon_h, spacing_x, final_text_y_offset, is_aligned_right, nil)
+            local line_w = draw_parsed_line(tokens, trial_x, y, icon_w, icon_h, spacing_x, final_text_y_offset, is_aligned_right, nil)
+
+            -- Per-step notes (shown inline after the command icons)
+            if d2d_cfg.show_trial_notes == true then
+                local step_note = get_display_line_note(trial_meta, dl.first, dl.last)
+                if step_note ~= "" then
+                    draw_step_note(step_note, trial_x + line_w + spacing_x * 3, y, final_text_y_offset)
+                end
+            end
 
             -- Smart overlay (pink for success, dark for fail)
             if trial_state.is_playing and not is_succ then

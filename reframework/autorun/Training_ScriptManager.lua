@@ -167,6 +167,31 @@ end
 load_config()
 
 -- ==========================================
+-- 0.4. HIDE REFRAMEWORK MENU ON BOOT (port from SF6_TOOLS_CC)
+-- Prevents the brief REFramework menu flash on load by suppressing
+-- the native menu for the first 90 frames.
+-- ==========================================
+local _tsm_hide_ref_menu_frames = 90
+
+local function _tsm_force_hide_reframework_menu_inner()
+    if reframework and reframework.set_draw_ui then
+        reframework:set_draw_ui(false)
+    end
+    if reframework and reframework.draw_ui then
+        reframework:draw_ui(false)
+    end
+    if reframework and reframework.set_menu_open then
+        reframework:set_menu_open(false)
+    end
+end
+
+local function _tsm_force_hide_reframework_menu()
+    if _tsm_hide_ref_menu_frames <= 0 then return end
+    _tsm_hide_ref_menu_frames = _tsm_hide_ref_menu_frames - 1
+    pcall(_tsm_force_hide_reframework_menu_inner)
+end
+
+-- ==========================================
 -- 0.5. SCENE DETECTION (ABSOLUTE KILLSWITCH)
 -- Reads _G.TrainingModeActive if TRCSS set it, otherwise detects locally
 -- ==========================================
@@ -682,6 +707,8 @@ local function _tsm_web_bridge_tick()
 end
 
 re.on_frame(function()
+    _tsm_force_hide_reframework_menu()
+
     SharedUI.clear_rects()
     _G.TrainingBarsDrawn = false
 
