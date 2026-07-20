@@ -13,7 +13,8 @@ local UIKit = require("func/UIKit")
 -- Bound i18n getter for this script (strings are registered at the bottom of
 -- the file; registration happens at load, every lookup happens at draw time).
 -- Declared here because on-screen zone labels resolve it early in the file.
-local DVT = require("func/i18n").scope("distance_viewer_ui")
+local _dv_i18n = require("func/i18n")
+local DVT = _dv_i18n.scope("distance_viewer_ui")
 
 -- Numpad to Unicode arrow conversion
 local _numpad_arrows = { ["1"]="↙", ["2"]="↓", ["3"]="↘", ["4"]="←", ["6"]="→", ["7"]="↖", ["8"]="↑", ["9"]="↗" }
@@ -856,7 +857,7 @@ local function try_load_font()
     -- 中文 the file is swapped for Microsoft YaHei — the same face SF6_TOOLS_CC
     -- uses for all three Distance Viewer fonts. font_gen joins the reload
     -- condition so a language flip rebuilds them immediately.
-    local _i18n = require("func/i18n")
+    local _i18n = _dv_i18n
     local gen = _i18n.font_gen()
 
     local target_size = math.floor(config.stats_font_size * scale_factor)
@@ -3523,9 +3524,18 @@ re.on_frame(function()
     if sw ~= res_watcher.last_w or sh ~= res_watcher.last_h then 
         res_watcher.cooldown = 30; res_watcher.last_w = sw; res_watcher.last_h = sh 
     end
-    if res_watcher.cooldown > 0 then 
+    if res_watcher.cooldown > 0 then
         res_watcher.cooldown = res_watcher.cooldown - 1
-        if res_watcher.cooldown == 0 then try_load_font() end 
+        if res_watcher.cooldown == 0 then try_load_font() end
+    end
+
+    -- Language flips swap the font file (CJK <-> SF6_college), but try_load_font
+    -- is otherwise only driven by resolution changes, so drive it here too --
+    -- without this the panel keeps the Chinese face after switching back to EN.
+    local _lang_gen = _dv_i18n.font_gen()
+    if res_watcher.last_font_gen ~= _lang_gen then
+        res_watcher.last_font_gen = _lang_gen
+        try_load_font()
     end
 
     if should_update then

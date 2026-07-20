@@ -23,6 +23,7 @@ UI.COLORS = {
 local fonts = { main = nil, timer = nil, main_size = 0, timer_size = 0, timer_font_name = "" }
 local res = { w = 0, h = 0, cooldown = 0 }
 local last_hud_suffix = "Default"
+local last_font_gen = -1   -- i18n.font_gen() the HUD fonts were built for
 
 -- ==========================================
 -- HUD DICTIONARY (Font, Size, Y Pos, X Pos)
@@ -110,11 +111,20 @@ function UI.handle_resolution(cfg)
         force_update = true
     end
 
-    if res.cooldown > 0 then 
+    if res.cooldown > 0 then
         res.cooldown = res.cooldown - 1
-        if res.cooldown == 0 then force_update = true end 
+        if res.cooldown == 0 then force_update = true end
     end
-    
+
+    -- A language flip swaps the font file, and update_fonts is otherwise only
+    -- driven by resolution / HUD changes -- without this the fonts keep the
+    -- previous language's face until the resolution happens to change.
+    local lang_gen = i18n.font_gen()
+    if last_font_gen ~= lang_gen then
+        last_font_gen = lang_gen
+        force_update = true
+    end
+
     if force_update then UI.update_fonts(cfg) end
 end
 
