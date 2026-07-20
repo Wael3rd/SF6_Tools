@@ -135,7 +135,7 @@
 </div>
 
 <script>
-const UPDATED = "20/07/2026 · #1 #2 intégrés";
+const UPDATED = "20/07/2026 · #1 #2 #3 intégrés";
 
 const UI = {
   fr:{ title_a:"Portage cdjay", title_b:"branche Wael",
@@ -178,11 +178,12 @@ const ITEMS = [
     note:{fr:"Câblé fail-open : apply dans start_trial, restore dans reset_trial_flags (no-op sans backup). À tester : mets le dummy en Drive Parry auto, lance un trial → il ne doit plus parer ; à la fin tes réglages Defense reviennent.",
           zh:"以失败即放行接入：start_trial 中 apply，reset_trial_flags 中 restore（无备份时空操作）。测试：把假人设为自动 Drive Parry，开始 trial → 它不应再招架；结束后你的 Defense 设置恢复。"} },
 
-  { ord:3, title:"Dummy crouch inference", status:"todo", risk:"med",
-    files:"TrainingComboTrials_v1.0.lua", fn:"8 fn", commit:"",
-    desc:{fr:"Déduit que le dummy doit être accroupi depuis l'environnement enregistré (dummy action state, texte du combo). Complète notre capture d'environnement partielle.",
-          zh:"从记录的环境（假人动作状态、连段文本）推断假人应处于蹲姿。补全我们不完整的环境捕获。"},
-    note:{fr:"", zh:""} },
+  { ord:3, title:"Dummy crouch + guard inference", status:"test", risk:"med",
+    files:"TrainingComboTrials_v1.0.lua", fn:"8 fn", commit:"4ec37e6",
+    desc:{fr:"Déduit si le dummy doit être accroupi (et son type de guard) depuis l'environnement / le statut de scène / le texte du combo — plus riche qu'un simple flag de pose. On garde notre gestion du jump.",
+          zh:"从环境 / 场景状态 / 连段文本推断假人是否应蹲姿（及其防御类型）—— 比单一姿态标志更完整。保留我们的跳跃处理。"},
+    note:{fr:"Lit uniquement des données qu'on capture déjà (scene status.stance = crouching). À tester : un combo enregistré contre un dummy accroupi doit relancer le dummy accroupi ; vérifier aussi le guard.",
+          zh:"仅读取我们已捕获的数据（scene status.stance = crouching）。测试：对蹲姿假人录制的连段，重放时假人应蹲下；同时检查防御类型。"} },
 
   { ord:4, title:"Same-action continuation", status:"todo", risk:"high",
     files:"TrainingComboTrials_v1.0.lua", fn:"5 fn", commit:"",
