@@ -199,12 +199,12 @@ const ITEMS = [
     note:{fr:"Faible risque : additif, purement diagnostic. Ne remplace PAS D2D — couche de résolution par-dessus.",
           zh:"低风险：附加式，纯诊断。不替换 D2D —— 是其上的解析层。"} },
 
-  { ord:6, title:"CTStunDemoRuntime", status:"todo", risk:"high",
-    files:"TrainingComboTrials_v1.0.lua", fn:"~15 fn", commit:"",
-    desc:{fr:"Rejeu DEMO post-stun/DI : save/restore d'état avant DEMO, avance timeline frame par frame. On couvre déjà ce besoin par notre raw DEMO frame-perfect (uint16 par frame).",
-          zh:"晕眩 / DI 后的 DEMO 回放：DEMO 前保存/还原状态，逐帧推进时间轴。我们已用帧级精确的 raw DEMO（每帧 uint16）覆盖此需求。"},
-    note:{fr:"À trancher avec toi : porter pour la parité stricte, OU garder notre raw DEMO (supérieur) et marquer « couvert autrement ».",
-          zh:"需与你决定：为严格对齐而移植，或保留我们（更优）的 raw DEMO 并标为『以其他方式覆盖』。"} },
+  { ord:6, title:"CTStunDemoRuntime", status:"done", risk:"high",
+    files:"TrainingComboTrials_v1.0.lua", fn:"6 fn", commit:"60de4a2",
+    desc:{fr:"DÉJÀ chez nous (les 6 fonctions), + notre raw DEMO en primaire. Comparé : notre raw DEMO est SUPÉRIEUR pour le stun — on rejoue le bitmask d'input littéral sur le même hook moteur qu'à l'enregistrement, donc zéro dérive possible (stun/DI/DRC figent record & replay en lockstep). Son système reconstruit le timing depuis des durées de step et doit rattraper la dérive.",
+          zh:"6 个函数已在我们代码中，+ 我们的 raw DEMO 为主。对比结论：处理晕眩时我们的 raw DEMO 更优 —— 在与录制相同的引擎 hook 上回放原始 input 位掩码，因此不可能漂移（晕眩/DI/DRC 使录制与回放锁步暂停恢复）。他的系统从 step 时长重建时序，需追赶漂移。"},
+    note:{fr:"Rien à porter. Design optimal : raw DEMO pour les combos récents (précision), son CTStunDemoRuntime gardé en fallback pour les vieux combos sans raw_inputs.",
+          zh:"无需移植。最优设计：新连段用 raw DEMO（精确），旧的无 raw_inputs 连段回退到他的 CTStunDemoRuntime。"} },
 
   { ord:7, title:"Combo list / files — reliquat", status:"todo", risk:"low",
     files:"func/ComboTrials_Files.lua", fn:"~5 fn", commit:"",
