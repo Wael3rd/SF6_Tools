@@ -3722,13 +3722,10 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                 parent_exc = { absorb_ids = p_state.edit_absorb_ids }
             end
 
-            -- Catalog alias takes priority; exception absorb_ids as fallback.
-            if bcm_catalog then
-                is_continuation = BcmCatalog.is_alias_for(bcm_catalog, act_id, parent_id)
-            end
-            if not is_continuation then
-                is_continuation = ActionMatcher.matches_absorb_id(parent_exc, act_id)
-            end
+            -- Exception absorb_ids determine continuation (absorb means "this move
+            -- absorbs hits, keep parent active"). Catalog aliases are NOT used here:
+            -- an alias means "same display notation", not "absorbed by parent".
+            is_continuation = ActionMatcher.matches_absorb_id(parent_exc, act_id)
         end
 
         -- 2. CLOSING THE PREVIOUS ACTION
