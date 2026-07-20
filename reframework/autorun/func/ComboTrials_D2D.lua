@@ -9,6 +9,7 @@ local imgui = imgui
 
 local M = {}
 local ModernDisplay = require("func/ModernDisplay")
+local BcmCatalog = require("func/ComboTrials/BcmCatalog")
 
 -- Shared context (set by init)
 local ctx -- { d2d_cfg, trial_state, players, sf6_menu_state }
@@ -185,7 +186,7 @@ end
 -- Modern-control notation active? Manual toggle, or auto for a Modern-recorded
 -- combo. Shared by the combo display, the single-step path, and the input log.
 local function modern_display_active()
-    return (ctx and ctx.d2d_cfg and (ctx.d2d_cfg.show_modern_notation or _G.ComboTrials_CurrentIsModern)) and true or false
+    return (_G.ComboTrials_CurrentIsModern == true)
 end
 
 -- Character to resolve Modern notation for the combo display.
@@ -211,16 +212,39 @@ local function combo_modern_char()
     return ts and player_char(ts.playing_player or 0) or nil
 end
 
--- Return a display item for `step` with its Modern notation resolved for
--- `char`, or the step unchanged when Modern is off / no char / no mapping.
+-- Return a display item for `step` with its best notation resolved:
+-- 1. Modern notation when Modern display is active
+-- 2. BCM catalog classic display when BCM is on (resolves aliases like 971→970→"22+K")
+-- 3. Original step motion unchanged
 -- Never mutates the original step (shallow-copies only when it changes).
-local function with_modern_motion(step, char)
-    if not step or not char or not modern_display_active() then return step end
-    local ok, mm = pcall(ModernDisplay.get_motion, char, step)
-    if not ok or not mm or mm == (step.motion or "") then return step end
+local function with_best_motion(step, char)
+    if not step then return step end
+    local new_motion = nil
+    if char and modern_display_active() then
+        local ok, mm = pcall(ModernDisplay.get_motion, char, step)
+        if ok and mm then new_motion = mm end
+    end
+    if not new_motion and _G.ComboTrials_UseBcmCatalog and step.id then
+        local cat_char = char
+        if not cat_char then
+            local ts = ctx and ctx.trial_state
+            local players = ctx and ctx.players
+            local idx = ts and ((ts.is_recording and ts.recording_player) or ts.playing_player or 0) or 0
+            local p = players and players[idx]
+            if p and p.profile_name and p.profile_name ~= "Unknown" then cat_char = p.profile_name end
+        end
+        if cat_char then
+            local catalog = BcmCatalog.load_for_character(cat_char)
+            if catalog then
+                local disp = BcmCatalog.get_classic_display(catalog, step.id)
+                if disp then new_motion = disp end
+            end
+        end
+    end
+    if not new_motion or new_motion == (step.motion or "") then return step end
     local copy = {}
     for k, v in pairs(step) do copy[k] = v end
-    copy.motion = mm
+    copy.motion = new_motion
     return copy
 end
 
@@ -236,7 +260,7 @@ local function merge_group_log_item(steps)
     local first_holdable_done = false
     local _md_char = nil
     -- Modern notation: manual toggle OR the combo was recorded in Modern (auto).
-    if ctx and ctx.d2d_cfg and (ctx.d2d_cfg.show_modern_notation or _G.ComboTrials_CurrentIsModern) then
+    if _G.ComboTrials_CurrentIsModern then
         local ok, r = pcall(ModernDisplay.char_from_path, _G.ComboTrials_CurrentPath)
         _md_char = ok and r or nil
     end
@@ -296,7 +320,7 @@ end
 -- =========================================================
 local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse_layout)
     local d2d_cfg = ctx.d2d_cfg
-    local is_modern = (ctx and ctx.d2d_cfg and (ctx.d2d_cfg.show_modern_notation or _G.ComboTrials_CurrentIsModern)) and true or false
+    local is_modern = (_G.ComboTrials_CurrentIsModern == true)
     local motion_tokens = {}
     local s = log_entry.motion or ""
 
@@ -794,7 +818,7 @@ local function d2d_draw_inner()
         for i, log in ipairs(logs_to_draw) do
             local y = base_y + (i - 1) * spacing_y
             local should_flip = log.facing_left or false
-            local tokens = parse_motion_to_icons(with_modern_motion(log, _log_char), "log", should_flip, reverse_layout)
+            local tokens = parse_motion_to_icons(with_best_motion(log, _log_char), "log", should_flip, reverse_layout)
             draw_parsed_line(tokens, base_x, y, icon_w, icon_h, spacing_x, final_text_y_offset, align_right, nil)
         end
     end
@@ -1107,7 +1131,7 @@ local function d2d_draw_inner()
             -- Single-step groups bypass merge_group_log_item, so resolve their
             -- Modern notation here too (merge already handles multi-step groups).
             local log_item = (#dl.steps > 1) and merge_group_log_item(dl.steps)
-                or with_modern_motion(dl.steps[1], combo_modern_char())
+                or with_best_motion(dl.steps[1], combo_modern_char())
 
             -- Number of validated follow-ups in this group (to swap followup -> validfollowup)
             if mode == "playing" and #dl.steps > 1 then

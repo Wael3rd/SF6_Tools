@@ -20,9 +20,10 @@ i18n.register("combo_trials_ui", {
         enable_d2d = "Enable D2D Overlay",
         ignore_auto = "Ignore Automatic Actions (Gray)",
         show_combo_counter = "Show Combo Counter",
-        show_modern = "Force Modern Notation (auto-detected from control type)",
         modern_mode = "Modern Display",
-        modern_mode_items = "Shortcut\0Motion Input\0Both\0",
+        modern_shortcut = "Shortcut",
+        modern_motion = "Motion Input",
+        modern_both = "Both",
         use_bcm = "Use BCM Catalog (aliases + display; exceptions as fallback)",
         progression = "--- Trial Progression ---",
         auto_next = "Auto Next Combo On Success",
@@ -70,9 +71,10 @@ i18n.register("combo_trials_ui", {
         enable_d2d = "启用 D2D 叠加层",
         ignore_auto = "忽略自动动作（灰色）",
         show_combo_counter = "显示连段计数",
-        show_modern = "强制现代记法（默认按操作类型自动检测）",
         modern_mode = "现代显示模式",
-        modern_mode_items = "简化\0搓招\0全部\0",
+        modern_shortcut = "简化",
+        modern_motion = "搓招",
+        modern_both = "全部",
         use_bcm = "使用 BCM 目录（别名+显示优先，例外表兜底）",
         progression = "--- 试炼进度 ---",
         auto_next = "成功后自动进入下一连段",
@@ -1422,13 +1424,11 @@ local function draw_combo_trials_menu_ui()
             c, v = imgui.checkbox(T("show_combo_counter"), d2d_cfg.show_combo_count); if c then
                 d2d_cfg.show_combo_count = v; changed = true
             end
-            c, v = imgui.checkbox(T("show_modern"), d2d_cfg.show_modern_notation or false); if c then
-                d2d_cfg.show_modern_notation = v; changed = true
-            end
             if _G.ComboTrials_CurrentIsModern then
                 local md_mode = d2d_cfg.modern_display_mode or 1
-                c, v = imgui.combo(T("modern_mode"), md_mode - 1, T("modern_mode_items"))
-                if c then d2d_cfg.modern_display_mode = v + 1; changed = true end
+                local md_labels = { T("modern_shortcut"), T("modern_motion"), T("modern_both") }
+                c, v = imgui.combo(T("modern_mode"), md_mode, md_labels)
+                if c then d2d_cfg.modern_display_mode = v; changed = true end
             end
             c, v = imgui.checkbox(T("use_bcm"), d2d_cfg.use_bcm_catalog or false); if c then
                 d2d_cfg.use_bcm_catalog = v; _G.ComboTrials_UseBcmCatalog = v; changed = true
