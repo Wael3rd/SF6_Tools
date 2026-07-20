@@ -450,6 +450,35 @@ local function update_history_status(clock_time, status_txt)
     local entry = session.history_map[clock_time]; if entry then entry.status = status_txt end
 end
 
+local function _hc_read_frame_adv()
+    local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+    if not tm then return nil end
+    local tc = tm:get_field("_tCommon")
+    if not tc then return nil end
+    local snap = tc:get_field("SnapShotDatas")
+    if not snap then return nil end
+    local s0 = snap[0]
+    if not s0 then return nil end
+    local dd = s0:get_field("_DisplayData")
+    if not dd then return nil end
+    local fm = dd:get_field("FrameMeterSSData")
+    if not fm then return nil end
+    local md = fm:get_field("MeterDatas")
+    if not md then return nil end
+    local m0 = md:call("get_Item", 0)
+    if m0 then
+        local sf = m0:get_field("StunFrame")
+        if sf then
+            local num = tonumber(tostring(sf))
+            if num then return num
+            else
+                local extracted = tostring(sf):match("([%-]?%d+)")
+                if extracted then return tonumber(extracted) or 99 end
+            end
+        end
+    end
+    return nil
+end
 
 local function update_detection()
     if session.is_paused or session.is_time_up then return end
@@ -809,6 +838,10 @@ local function update_detection()
                                 session.score = session.score + 1; session.hit_ok = session.hit_ok + 1; session.hit_tot = session.hit_tot + 1; session.total = session.total + 1
                                 set_feedback(TEXTS.success_hit, COLORS.Green, 1.5)
                             elseif detection.live_combo == 0 then
+                                -- Read native frame advantage for diagnostics
+                                local frame_adv = 99
+                                local fa_ok, fa_val = pcall(_hc_read_frame_adv)
+                                if fa_ok and fa_val then frame_adv = fa_val end
                                 local did_confirm = (detection.monitor.peak_combo and detection.monitor.peak_combo >= detection.monitor.target_combo) or detection.monitor.saw_new_action or detection.monitor.saw_recovery_to_startup
                                     local fail_txt = did_confirm and TEXTS.fail_combo_drop or TEXTS.fail_drop
                                     detection.mem_res[active_head_index] = { status = fail_txt, time = detection.abs_clock }; update_history_status(detection.abs_clock, fail_txt)
