@@ -135,7 +135,7 @@
 </div>
 
 <script>
-const UPDATED = "20/07/2026";
+const UPDATED = "20/07/2026 · #1 #2 intégrés";
 
 const UI = {
   fr:{ title_a:"Portage cdjay", title_b:"branche Wael",
@@ -164,12 +164,19 @@ const ITEMS = [
     note:{fr:"Câblé fail-open en tête de assign_groups (tous les chargements y passent). expand() idempotent. À tester : charger un combo avec un normal multi-hit (ex. cr.MK qui touche 2×) et vérifier l'affichage/matching.",
           zh:"以失败即放行方式接入 assign_groups 开头（所有加载都经过此处）。expand() 幂等。测试：加载含多段命中普通技的连段（如 2 段的 cr.MK），检查显示与匹配。"} },
 
-  { ord:2, title:"HP / trial-defense restore", status:"todo", risk:"high",
-    files:"TrainingComboTrials_v1.0.lua", fn:"18 fn", commit:"",
-    desc:{fr:"Sauvegarde avant le trial la vie + les réglages de defense du dummy (guard, recovery…) puis les restaure exactement au lancement / DEMO. Notre injection HP est déjà exacte au point ; ça ajoute la robustesse settings-menu.",
-          zh:"在 trial 开始前保存血量 + 假人防御设置（防御、恢复…），并在开始 / DEMO 时精确还原。我们的血量注入已精确到点；这补上菜单设置层面的健壮性。"},
-    note:{fr:"Le plus risqué : touche le démarrage de trial et lit des objets natifs (TrainingFighter defense). À faire fail-open.",
-          zh:"风险最高：涉及 trial 启动并读取原生对象（TrainingFighter 防御系统）。需失败即放行。"} },
+  { ord:"HP", title:"HP / vital restore", status:"done", risk:"med",
+    files:"TrainingComboTrials_v1.0.lua", fn:"25 fn", commit:"82e45b1",
+    desc:{fr:"Snapshot + injection + restauration de la vie au point près (attaquant & dummy), backup/restore des réglages recovery. DÉJÀ fait ce matin — le cœur HP est complet et identique au sien.",
+          zh:"血量的快照 + 注入 + 精确到点的还原（攻击方与假人），恢复设置的备份/还原。今早已完成 —— HP 核心完整，与他一致。"},
+    note:{fr:"Distinct du #2 : le HP restore n'était PAS un manque, il est déjà chez nous.",
+          zh:"与 #2 不同：HP 还原并非缺口，我们早已具备。"} },
+
+  { ord:2, title:"Trial defense-settings restore", status:"test", risk:"high",
+    files:"TrainingComboTrials_v1.0.lua", fn:"7 fn", commit:"580d6c7",
+    desc:{fr:"Désactive le Drive-Parry / Drive-Rush AUTO du dummy pendant le trial (pour qu'il n'auto-pare pas au milieu du combo), sauvegarde tes réglages de l'onglet Defense avant, les restaure après. Rien à voir avec le HP.",
+          zh:"在 trial 期间关闭假人的自动 Drive Parry / Drive Rush 防御（避免其在连段中途自动招架），先备份你的 Defense 选项卡设置，结束后还原。与 HP 无关。"},
+    note:{fr:"Câblé fail-open : apply dans start_trial, restore dans reset_trial_flags (no-op sans backup). À tester : mets le dummy en Drive Parry auto, lance un trial → il ne doit plus parer ; à la fin tes réglages Defense reviennent.",
+          zh:"以失败即放行接入：start_trial 中 apply，reset_trial_flags 中 restore（无备份时空操作）。测试：把假人设为自动 Drive Parry，开始 trial → 它不应再招架；结束后你的 Defense 设置恢复。"} },
 
   { ord:3, title:"Dummy crouch inference", status:"todo", risk:"med",
     files:"TrainingComboTrials_v1.0.lua", fn:"8 fn", commit:"",
