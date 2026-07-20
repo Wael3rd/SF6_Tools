@@ -745,6 +745,20 @@ local charge_p1_rect = { x = 0, y = 0, w = 0, h = 0 }
 local charge_p2_rect = { x = 0, y = 0, w = 0, h = 0 }
 local click_flash_frames = 0
 
+-- The four "master" visibility toggles above (VR ruler / HUD text / boxes /
+-- charge) are what clicking the on-screen overlay flips. They used to be
+-- runtime-only (reset to true on reload, only mirrored to the web bridge), so
+-- click-hides were lost on restart and had no menu checkbox. Persist them in
+-- config.display alongside the granular flags so a click + SAVE survives, and
+-- the menu checkboxes bound to these same variables stay in sync with clicks.
+if config.display then
+    local d = config.display
+    if d.vr_visible ~= nil then vr_visible = d.vr_visible end
+    if d.hud_text_visible ~= nil then hud_text_visible = d.hud_text_visible end
+    if d.boxes_visible ~= nil then boxes_visible = d.boxes_visible end
+    if d.charge_visible ~= nil then charge_visible = d.charge_visible end
+end
+
 local function vr_get_vital_max(player_idx)
     local p = (player_idx == 0) and GS.p1 or GS.p2
     if not p then return nil end
@@ -1332,6 +1346,10 @@ local function save_display_config()
         p1_hud_dr = display_p1_hud_dr, p1_hud_sa = display_p1_hud_sa,
         p2_hud_pos = display_p2_hud_pos, p2_hud_hp = display_p2_hud_hp,
         p2_hud_dr = display_p2_hud_dr, p2_hud_sa = display_p2_hud_sa,
+        -- Master click/checkbox visibility toggles (VR ruler / HUD text / boxes /
+        -- charge). Now persisted so a click-hide + SAVE survives a reload.
+        vr_visible = vr_visible, hud_text_visible = hud_text_visible,
+        boxes_visible = boxes_visible, charge_visible = charge_visible,
     }
     save_config()
 end
@@ -1348,6 +1366,19 @@ re.on_draw_ui(function()
         end
         imgui.pop_style_color(3)
         imgui.separator()
+
+        -- ==========================================
+        -- 0. QUICK SHOW / HIDE (synced with clicking the overlay)
+        -- These 4 checkboxes are bound to the SAME variables the on-screen
+        -- clicks flip, so clicking the overlay updates them live and vice versa.
+        -- "SAVE DISPLAY CONFIG" above persists them.
+        -- ==========================================
+        if styled_header("--- QUICK SHOW / HIDE (= click overlay) ---", UI_THEME.hdr_rules) then
+            _, boxes_visible = imgui.checkbox("Boxes##quick", boxes_visible); imgui.same_line()
+            _, vr_visible = imgui.checkbox("VR Ruler##quick", vr_visible); imgui.same_line()
+            _, hud_text_visible = imgui.checkbox("HUD Text##quick", hud_text_visible); imgui.same_line()
+            _, charge_visible = imgui.checkbox("Charge##quick", charge_visible)
+        end
 
         -- ==========================================
         -- 1. GLOBAL : HUD & FONT
