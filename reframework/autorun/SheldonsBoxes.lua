@@ -15,6 +15,7 @@ local json = json
 require("func/SharedHooks")
 local GS = require("func/GameState")
 local UIKit = require("func/UIKit")
+local RuntimeSafety = require("func/RuntimeSafety")
 local Vector3f = Vector3f
 
 -- =========================================================
@@ -492,6 +493,7 @@ end
 local detected_infos = { [0] = { name = "Waiting...", id = -1 }, [1] = { name = "Waiting...", id = -1 } }
 -- Player info from shared hook (0_SharedHooks.lua)
 re.on_frame(function()
+    if not RuntimeSafety.is_training_allowed() then return end
     if _G._shared_player_info then
         for i = 0, 1 do
             local info = _G._shared_player_info[i]
@@ -755,6 +757,11 @@ end
 -- [6. MAIN LOOP]
 -- =========================================================
 re.on_frame(function()
+    if _G.SheldonsBoxes_Enabled ~= true or not RuntimeSafety.is_training_allowed() then
+        _G._vr_queue = nil
+        click_flash_frames = 0
+        return
+    end
     try_load_font()
     if not GS.valid then return end
     if GS.in_pause_menu then return end
@@ -1225,6 +1232,14 @@ end
 
 if d2d and d2d.register then
     d2d.register(function() end, function()
+        if _G.SheldonsBoxes_Enabled ~= true then
+            _G._vr_queue = nil
+            return
+        end
+        if not RuntimeSafety.is_training_allowed() then
+            _G._vr_queue = nil
+            return
+        end
         -- Consume queue (pushed by re.on_frame — stops when script is disabled)
         local vr_data = _G._vr_queue
         _G._vr_queue = nil
@@ -1322,6 +1337,7 @@ local function save_display_config()
 end
 
 re.on_draw_ui(function()
+    if not RuntimeSafety.is_training_allowed() then return end
     if imgui.tree_node("SHELDON'S BOXES") then
 
         imgui.push_style_color(21, 0xFF005500)

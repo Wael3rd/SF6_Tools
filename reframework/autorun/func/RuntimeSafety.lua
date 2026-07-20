@@ -157,6 +157,15 @@ function M.is_replay_allowed() return _replay_allowed end
 function M.clear_runtime_flags()
     _G.TrainingModeActive = false
     _G.CurrentTrainerMode = 0
+    _G.TrainingScriptManagerActiveThisFrame = false
+    _G.TrainingGamePaused = true
+    _G.TrainingFloatingBar = nil
+    _G.TrainingFloatingBarTop = nil
+    _G.ComboTrialsD2DEnabled = false
+    _G.ComboTrials_HideNativeHUD = false
+    _G._ct_bar_geometry = nil
+    _G.TrainingBarsDrawn = false
+    _G._dv_aa_p2_mask = 0
 end
 
 _G.SF6CC_RuntimeSafety = { frame = 0 }

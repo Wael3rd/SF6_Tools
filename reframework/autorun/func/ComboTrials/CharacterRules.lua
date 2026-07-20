@@ -37,6 +37,19 @@ function CharacterRules.has_character_exception(character_rules, action_id)
     return character_rules and character_rules[tostring(action_id)] and true or false
 end
 
+function CharacterRules.is_action_required(exception)
+    if type(exception) ~= "table" then return false end
+    return exception.action_required == true
+        or exception.no_combo_auto_advance == true
+        or exception.require_absorb == true
+end
+
+local function absorb_requires_combo(exception)
+    if type(exception) ~= "table" then return true end
+    if exception.absorb_requires_combo == false then return false end
+    return not CharacterRules.is_action_required(exception)
+end
+
 local function parse_absorb_ids(exception)
     if not exception or type(exception.absorb_ids) ~= "string" or exception.absorb_ids == "" then
         return nil
@@ -88,7 +101,8 @@ function CharacterRules.find_recent_absorb_confirmation(character_rules, common_
             local match_reason = is_catalog_alias and "catalog_alias_recent_absorb"
                 or (is_honda and "ehonda_recent_absorb" or "exception_recent_absorb")
             local combo_count = tonumber(recent.combo_count) or 0
-            if combo_count >= expected_combo then
+            local combo_ok = (not absorb_requires_combo(exception)) or combo_count >= expected_combo
+            if combo_ok then
                 return {
                     matched = true,
                     actual_action_id = recent_id,
@@ -103,7 +117,8 @@ function CharacterRules.find_recent_absorb_confirmation(character_rules, common_
                     expected_id = expected.id,
                     expected_combo = expected_combo,
                     absorb_ids = exception and exception.absorb_ids or nil,
-                    source = is_catalog_alias and "catalog_alias" or "exception"
+                    source = is_catalog_alias and "catalog_alias" or "exception",
+                    ignore_combo_check = not absorb_requires_combo(exception)
                 }
             end
             return {
@@ -141,7 +156,8 @@ function CharacterRules.match_current_absorb_confirmation(character_rules, commo
     if expected_combo == nil then return { matched = false, block_reason = "missing_expected_combo" } end
 
     local current_combo = tonumber(combo_count) or 0
-    if current_combo < expected_combo then
+    local combo_ok = (not absorb_requires_combo(exception)) or current_combo >= expected_combo
+    if not combo_ok then
         return {
             matched = false,
             block_reason = "combo_not_reached",
@@ -162,7 +178,8 @@ function CharacterRules.match_current_absorb_confirmation(character_rules, commo
         absorb_ids = exception and exception.absorb_ids or nil,
         source = is_catalog_alias and "catalog_alias" or "current_non_intentional_absorb",
         motion = "Unknown",
-        real_input = "None"
+        real_input = "None",
+        ignore_combo_check = not absorb_requires_combo(exception)
     }
 end
 

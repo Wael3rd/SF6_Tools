@@ -130,6 +130,9 @@ function PendingAbsorb.apply_matched_step(ctx, params)
         current_combo = combo_count,
         opponent_knocked_down = ctx.pf.opponent_knocked_down
     })
+    if details and details.ignore_combo_check == true then
+        combo_ok = true
+    end
     local hp_ok = ctx.Validator.check_hp(
         expected.expected_hp,
         actual_hp,
@@ -348,7 +351,7 @@ function PendingAbsorb.check(ctx, phase)
         return false
     end
 
-    if current_combo < (pending.expected_combo or 0) then
+    if pending.ignore_combo_check ~= true and current_combo < (pending.expected_combo or 0) then
         probe.pending_reject_reason = "combo_not_reached"
         ctx.DebugTrace.record_match_probe(state, probe)
         return false
@@ -361,6 +364,9 @@ function PendingAbsorb.check(ctx, phase)
         current_combo = current_combo,
         opponent_knocked_down = ctx.pf.opponent_knocked_down
     })
+    if pending.ignore_combo_check == true then
+        combo_ok = true
+    end
     local hp_ok = ctx.Validator.check_hp(
         expected.expected_hp,
         current_hp,
@@ -400,6 +406,7 @@ function PendingAbsorb.check(ctx, phase)
             expected_id = pending.expected_id,
             expected_combo = pending.expected_combo,
             absorb_ids = pending.absorb_ids,
+            ignore_combo_check = pending.ignore_combo_check,
             source = "current_absorb_pending",
             action_instance = pending.action_instance,
             pending_age_frames = ctx.frame - (pending.created_at_frame or ctx.frame)
@@ -417,7 +424,8 @@ end
 function PendingAbsorb.store(ctx, expected, current_absorb, match_probe, actual_hp)
     local state = ctx.state
     if not expected or not current_absorb or current_absorb.block_reason ~= "combo_not_reached" then return false end
-    if ctx.p_state.profile_name ~= "EHonda" and ctx.p_state.profile_name ~= "Honda" then return false end
+    if current_absorb.ignore_combo_check ~= true
+        and ctx.p_state.profile_name ~= "EHonda" and ctx.p_state.profile_name ~= "Honda" then return false end
     if state.success_timer and state.success_timer > 0 then return false end
     if state.fail_timer and state.fail_timer > 0 then return false end
     if state.manual_reset_pending then return false end
@@ -455,6 +463,7 @@ function PendingAbsorb.store(ctx, expected, current_absorb, match_probe, actual_
         frame_diff = match_probe.frame_diff,
         actual_hp = actual_hp,
         absorb_ids = current_absorb.absorb_ids,
+        ignore_combo_check = current_absorb.ignore_combo_check == true,
         action_instance = match_probe.action_instance,
         created_combo = match_probe.current_combo or 0,
         created_at_frame = ctx.frame,
