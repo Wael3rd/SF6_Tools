@@ -135,7 +135,7 @@
 </div>
 
 <script>
-const UPDATED = "20/07/2026 · tout testé en jeu OK · seul #4 (invasif) en décision";
+const UPDATED = "20/07/2026 · FUSION COMPLÈTE · 7 portés/testés + #4 couvert autrement";
 
 const UI = {
   fr:{ title_a:"Portage cdjay", title_b:"branche Wael",
@@ -185,12 +185,12 @@ const ITEMS = [
     note:{fr:"Lit uniquement des données qu'on capture déjà (scene status.stance = crouching). À tester : un combo enregistré contre un dummy accroupi doit relancer le dummy accroupi ; vérifier aussi le guard.",
           zh:"仅读取我们已捕获的数据（scene status.stance = crouching）。测试：对蹲姿假人录制的连段，重放时假人应蹲下；同时检查防御类型。"} },
 
-  { ord:4, title:"Same-action continuation", status:"todo", risk:"high",
-    files:"TrainingComboTrials_v1.0.lua", fn:"5 fn + dep", commit:"",
-    desc:{fr:"Steps de pressing répétés (même move enchaîné, ex. cr.LK×3) où le moteur reporte le même action_instance — sans ça le trial reste bloqué à attendre une nouvelle action. Différent de notre continuation absorb.",
-          zh:"重复压制 step（同一 move 连续，如 cr.LK×3），引擎报告相同 action_instance —— 否则 trial 会卡住等待新动作。与我们的吸收式 continuation 不同。"},
-    note:{fr:"VÉRIFIÉ : PAS un port propre. Dépend de action_instance, tissé sur 62 sites chez lui dans le matcher/recording. On ne le track pas (0). L'intégrer = toucher en profondeur le validator qui marche. À reporter APRÈS validation du batch actuel, puis décider ensemble.",
-          zh:"已核实：非干净移植。依赖 action_instance，在他代码的匹配/录制中贯穿 62 处。我们完全未追踪（0）。集成 = 深度改动已工作的 validator。建议在当前批次实机验证后再定。"} },
+  { ord:4, title:"Same-action continuation", status:"skip", risk:"high",
+    files:"TrainingComboTrials_v1.0.lua", fn:"5 fn", commit:"couvert",
+    desc:{fr:"Steps de même move répété (ex. cr.LK×3). cdjay le résout via action_instance (identifiant d'instance moteur). NOUS le résolvons déjà autrement : par le compte de combo (Validator.check_combo, current_combo >= expected_combo distingue chaque répétition) + le Normalizer #1 qui compacte. Même problème, mécanisme différent.",
+          zh:"同一 move 重复的 step（如 cr.LK×3）。cdjay 用 action_instance（引擎实例标识）解决。我们已用另一方式解决：靠连段计数（Validator.check_combo，current_combo >= expected_combo 区分每次重复）+ 归一化器 #1 压缩。同一问题，不同机制。"},
+    note:{fr:"COUVERT AUTREMENT (validé en jeu par l'utilisateur). Porter action_instance serait redondant ET invasif (62 sites dans le matcher qui marche). Écarté à raison.",
+          zh:"已以其他方式覆盖（用户实机验证）。移植 action_instance 既冗余又侵入（已工作匹配器中的 62 处）。合理排除。"} },
 
   { ord:5, title:"Modern display — unresolved audit", status:"done", risk:"low",
     files:"func/ComboTrials_D2D.lua", fn:"4 fn + API", commit:"aa98694",
