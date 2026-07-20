@@ -375,12 +375,15 @@ local function _load_float_fonts(sh)
     end
 end
 
-local function _push_bar_style(sw, sh)
-    imgui.push_style_color(2, BAR_BG)       -- WindowBg
-    imgui.push_style_color(5, BAR_BORDER)    -- Border
+-- transparent = draw the bar with no backdrop and no neon border (used by the
+-- Chinese top bar, whose buttons sit straight over the game like CC's).
+-- Style push/pop counts stay identical either way, so _pop_bar_style is unchanged.
+local function _push_bar_style(sw, sh, transparent)
+    imgui.push_style_color(2, transparent and 0x00000000 or BAR_BG)     -- WindowBg
+    imgui.push_style_color(5, transparent and 0x00000000 or BAR_BORDER)  -- Border
     imgui.push_style_color(7, 0x00000000)    -- FrameBg
     imgui.push_style_color(8, 0x00000000)    -- TitleBg
-    imgui.push_style_var(4, 1.0)             -- WindowBorderSize
+    imgui.push_style_var(4, transparent and 0.0 or 1.0)  -- WindowBorderSize
     imgui.push_style_var(2, Vector2f.new(sw * 0.01, sh * 0.02))
     if float_ui_font then imgui.push_font(float_ui_font) end
 end
@@ -408,12 +411,12 @@ function UI.end_floating_window()
     _pop_bar_style()
 end
 
-function UI.begin_floating_window_top(window_name, width_pct, height_pct)
+function UI.begin_floating_window_top(window_name, width_pct, height_pct, transparent)
     local sw, sh = UI.get_screen_size()
     width_pct = width_pct or 1.0
     height_pct = height_pct or 0.0444
     _load_float_fonts(sh)
-    _push_bar_style(sw, sh)
+    _push_bar_style(sw, sh, transparent)
     local real_w, real_h = sw, sh
     if imgui.get_display_size then
         local result = imgui.get_display_size()

@@ -609,10 +609,14 @@ local function draw_top_floating_bar()
     -- whole layout shifts. English keeps our 0.74 bar.
     local is_zh = (i18n.get_lang() == "zh")
     local bar_width = is_zh and 1.0 or top_bar_width
-    local visible, sw, sh = SharedUI.begin_floating_window_top("TrainingModeSwitch##top", bar_width, top_bar_height)
+    -- Chinese bar: no purple backdrop, no neon border (CC look).
+    local visible, sw, sh = SharedUI.begin_floating_window_top("TrainingModeSwitch##top", bar_width, top_bar_height, is_zh)
     if not visible then
         SharedUI.end_floating_window_top(); return
     end
+    -- Kept in both languages: this only publishes the bar rect (click-through
+    -- + TrainingBarsDrawn), it draws nothing. The purple comes from the window
+    -- style, suppressed via the transparent flag passed to begin_ above.
     SharedUI.draw_floating_bg_top()
 
     if is_zh then
