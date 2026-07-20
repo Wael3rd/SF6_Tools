@@ -3496,6 +3496,117 @@ local function start_recording(player_idx)
     trial_state._raw_rec_active = true
 end
 
+-- =========================================================
+-- SUBSYSTEM PORT #3 -- dummy crouch + guard-type inference (verbatim from
+-- SF6_TOOLS_CC HEAD 9b851c5). Decides whether the dummy should crouch for a
+-- trial (and which guard type) from the recorded environment / scene status /
+-- combo text, richer than a single victim_pose flag. Reads only data we
+-- already capture (scene_state.*.status.stance = "crouching", _xt_meta).
+-- Pure data readers -- no external function deps beyond trial_state.
+-- =========================================================
+local DUMMY_ACTION_STAND = 0
+local DUMMY_ACTION_CROUCH = 1
+
+local function value_requests_dummy_crouch(value)
+    if type(value) == "boolean" then return value end
+    if type(value) == "number" then return value == DUMMY_ACTION_CROUCH end
+    if type(value) ~= "string" then return false end
+    local text = value:lower()
+    return text == "crouch" or text == "crouching" or text == "cr" or text == "down" or text == "low"
+        or text:find("crouch", 1, true) ~= nil
+        or text:find("蹲姿", 1, true) ~= nil
+end
+
+local function text_mentions_dummy_crouch(value)
+    if type(value) ~= "string" then return false end
+    local text = value:lower()
+    return text:find("蹲姿", 1, true) ~= nil
+        or text:find("蹲限定", 1, true) ~= nil
+        or text:find("crouch", 1, true) ~= nil
+end
+
+local function has_recorded_dummy_action_environment(env)
+    return type(env) == "table"
+        and (env.dummy_action_type ~= nil
+            or env.dummy_stance ~= nil
+            or env.dummy_posture ~= nil
+            or env.dummy_action ~= nil)
+end
+
+local function environment_requests_dummy_crouch(env)
+    if not has_recorded_dummy_action_environment(env) then return false end
+    if tonumber(env.dummy_action_type) == DUMMY_ACTION_CROUCH then return true end
+    if value_requests_dummy_crouch(env.dummy_stance) then return true end
+    if value_requests_dummy_crouch(env.dummy_posture) then return true end
+    if value_requests_dummy_crouch(env.dummy_action) then return true end
+    return false
+end
+
+local function trial_requires_dummy_crouch()
+    local first = trial_state.sequence and trial_state.sequence[1]
+    if type(first) ~= "table" then return false end
+
+    if first.requires_dummy_crouch == true then return true end
+    if value_requests_dummy_crouch(first.dummy_stance) then return true end
+    if value_requests_dummy_crouch(first.dummy_posture) then return true end
+    if value_requests_dummy_crouch(first.dummy_action) then return true end
+
+    local scene_state = type(first.scene_state) == "table" and first.scene_state or nil
+    if scene_state and type(scene_state.players) == "table" then
+        local recorded_by = tonumber(first.recorded_by or scene_state.recorded_by or 0) or 0
+        local defender_side = recorded_by == 1 and "p1" or "p2"
+        local defender = scene_state.players[defender_side]
+        local status = type(defender) == "table" and defender.status or nil
+        if type(status) == "table" and value_requests_dummy_crouch(status.stance) then return true end
+    end
+
+    local meta = type(first._xt_meta) == "table" and first._xt_meta or nil
+    if meta then
+        if has_recorded_dummy_action_environment(meta.environment) then
+            return environment_requests_dummy_crouch(meta.environment)
+        end
+        if meta.requires_dummy_crouch == true then return true end
+        if value_requests_dummy_crouch(meta.dummy_stance) then return true end
+        if value_requests_dummy_crouch(meta.dummy_posture) then return true end
+        if value_requests_dummy_crouch(meta.dummy_action) then return true end
+        if text_mentions_dummy_crouch(meta.title) or text_mentions_dummy_crouch(meta.note) then return true end
+    end
+
+    return false
+end
+
+function ct_trial_dummy_guard_type()
+    local first_step = trial_state.sequence and trial_state.sequence[1]
+    if type(first_step) ~= "table" then return 2 end
+
+    local meta = type(first_step._xt_meta) == "table" and first_step._xt_meta or nil
+    local env = meta and type(meta.environment) == "table" and meta.environment or nil
+    local guard_type = tonumber(first_step.dummy_guard_type)
+        or (meta and tonumber(meta.dummy_guard_type) or nil)
+        or (env and tonumber(env.dummy_guard_type) or nil)
+
+    if guard_type == nil then
+        local guard_name = first_step.dummy_guard
+            or (meta and meta.dummy_guard or nil)
+            or (env and env.dummy_guard or nil)
+        if type(guard_name) == "string" then
+            local guard_text = guard_name:lower()
+            if guard_text == "none" or guard_text == "no" or guard_text == "off" then
+                guard_type = 0
+            elseif guard_text == "after_first_hit" or guard_text == "after-first-hit" or guard_text == "after first hit" then
+                guard_type = 2
+            elseif guard_text == "all" or guard_text == "guard_all" or guard_text == "full" then
+                guard_type = 3
+            elseif guard_text == "random" then
+                guard_type = 4
+            end
+        end
+    end
+
+    if guard_type == nil or guard_type < 0 or guard_type > 4 then guard_type = 2 end
+    return guard_type
+end
+
 local function start_trial(player_idx)
     restore_trial_vital()
     unique_resources.restore()
@@ -3525,10 +3636,20 @@ local function start_trial(player_idx)
     local s1 = trial_state.sequence and trial_state.sequence[1]
     if s1 and s1.dummy_action_type ~= nil then
         set_dummy_action_type(s1.dummy_action_type, s1.dummy_jump_type)
-    elseif s1 and s1.victim_pose == 1 then
-        set_dummy_action_type(1)
+    elseif trial_requires_dummy_crouch() then
+        -- Subsystem #3: richer crouch inference (scene status / meta / text)
+        -- supersedes the old victim_pose==1 check.
+        set_dummy_action_type(DUMMY_ACTION_CROUCH)
     else
-        set_dummy_action_type(0)
+        set_dummy_action_type(DUMMY_ACTION_STAND)
+    end
+    -- Subsystem #3: infer and apply the dummy guard type for this trial.
+    do
+        local ok, gt = pcall(ct_trial_dummy_guard_type)
+        if ok and gt ~= nil then
+            _G.CT_COMBO_TRIALS_DUMMY_GUARD_TYPE = gt
+            set_dummy_guard_type(gt)
+        end
     end
 
     -- APPLY UNIQUE RESOURCES recorded with the combo (Jamie drinks etc.)
