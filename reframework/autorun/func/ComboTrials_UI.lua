@@ -24,7 +24,8 @@ i18n.register("combo_trials_ui", {
         modern_shortcut = "Shortcut",
         modern_motion = "Motion Input",
         modern_both = "Both",
-        use_bcm = "Use BCM Catalog (aliases + display; exceptions as fallback)",
+        use_bcm = "Use BCM Catalog (aliases + display)",
+        use_exceptions = "Activate Exceptions",
         progression = "--- Trial Progression ---",
         auto_next = "Auto Next Combo On Success",
         auto_next_tip = "After a manual success: automatically load and start the next combo in the list.\nCompleted combos get a * marker in the dropdown. DEMO finishes never count.",
@@ -75,7 +76,8 @@ i18n.register("combo_trials_ui", {
         modern_shortcut = "简化",
         modern_motion = "搓招",
         modern_both = "全部",
-        use_bcm = "使用 BCM 目录（别名+显示优先，例外表兜底）",
+        use_bcm = "使用 BCM 目录（别名+显示）",
+        use_exceptions = "启用例外表",
         progression = "--- 试炼进度 ---",
         auto_next = "成功后自动进入下一连段",
         auto_next_tip = "手动成功后：自动加载并开始列表中的下一个连段。\n已完成的连段在下拉列表中显示 * 标记。演示完成不计入。",
@@ -1430,8 +1432,11 @@ local function draw_combo_trials_menu_ui()
                 c, v = imgui.combo(T("modern_mode"), md_mode, md_labels)
                 if c then d2d_cfg.modern_display_mode = v; changed = true end
             end
-            c, v = imgui.checkbox(T("use_bcm"), d2d_cfg.use_bcm_catalog or false); if c then
+            c, v = imgui.checkbox(T("use_bcm"), d2d_cfg.use_bcm_catalog ~= false); if c then
                 d2d_cfg.use_bcm_catalog = v; _G.ComboTrials_UseBcmCatalog = v; changed = true
+            end
+            c, v = imgui.checkbox(T("use_exceptions"), d2d_cfg.use_exceptions ~= false); if c then
+                d2d_cfg.use_exceptions = v; _G.ComboTrials_UseExceptions = v; changed = true
             end
             imgui.spacing()
 

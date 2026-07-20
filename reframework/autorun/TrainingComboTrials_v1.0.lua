@@ -530,7 +530,8 @@ local D2D_CONFIG_FILE = "TrainingComboTrials_data/CommandLogger_Visualizer.json"
 local d2d_cfg = {
     enabled = true,
     auto_load = true,
-    use_bcm_catalog = true,    -- BCM catalog for aliases + display; exceptions remain as fallback
+    use_bcm_catalog = true,    -- BCM catalog for aliases + display
+    use_exceptions = true,     -- exception tables active (force/ignore/holdable/override_name)
     auto_next_trial = true,    -- after a manual success: auto-load the next combo in the list
     auto_retry_on_fail = true, -- after the fail banner ends: auto-reset the trial
     forced_position_idx = 1,
@@ -643,12 +644,14 @@ local function load_d2d_config()
             end
         end
     end
-    _G.ComboTrials_UseBcmCatalog = (d2d_cfg.use_bcm_catalog == true)
+    _G.ComboTrials_UseBcmCatalog = (d2d_cfg.use_bcm_catalog ~= false)
+    _G.ComboTrials_UseExceptions = (d2d_cfg.use_exceptions ~= false)
 end
 
 local function save_d2d_config()
     json.dump_file(D2D_CONFIG_FILE, d2d_cfg)
-    _G.ComboTrials_UseBcmCatalog = (d2d_cfg.use_bcm_catalog == true)
+    _G.ComboTrials_UseBcmCatalog = (d2d_cfg.use_bcm_catalog ~= false)
+    _G.ComboTrials_UseExceptions = (d2d_cfg.use_exceptions ~= false)
 end
 load_d2d_config()
 
@@ -3693,14 +3696,14 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
         local act_name = act_id_reverse_enum[act_id] or "Unknown"
 
         -- 1. EARLY EXCEPTION RESOLUTION (For Hold Link)
-        local exc, exc_char, exc_com = CharacterRules.get_exception(p_state.exceptions, common_exceptions, act_id)
+        local exc, exc_char, exc_com
+        if _G.ComboTrials_UseExceptions ~= false then
+            exc, exc_char, exc_com = CharacterRules.get_exception(p_state.exceptions, common_exceptions, act_id)
+        end
 
-        -- BCM Catalog: when enabled, the compiled catalog OWNS aliases + classic
-        -- display (priority). Exceptions remain as fallback for force/ignore/
-        -- holdable/override_name and for act_ids the catalog does not cover.
-        -- Characters without a catalog keep their exceptions unchanged.
+        -- BCM Catalog: aliases + display.
         local bcm_catalog = nil
-        if _G.ComboTrials_UseBcmCatalog then
+        if _G.ComboTrials_UseBcmCatalog ~= false then
             bcm_catalog = BcmCatalog.load_for_character(p_state.profile_name)
         end
 
@@ -3715,7 +3718,8 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
         local is_continuation = false
         if #p_state.log > 0 then
             local parent_id = p_state.log[1].id
-            local parent_exc = CharacterRules.get_exception(p_state.exceptions, common_exceptions, parent_id)
+            local parent_exc = (_G.ComboTrials_UseExceptions ~= false)
+                and CharacterRules.get_exception(p_state.exceptions, common_exceptions, parent_id) or nil
 
             -- Real-time update if we are editing the parent action
             if p_state.editing_id == parent_id then
@@ -4227,12 +4231,12 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                         local actx = build_absorb_ctx(p_idx, p_state)
                                         local frames_since_prev = engine_frame_count - (trial_state.last_played_frame or engine_frame_count)
                                         local abs_frame_diff = Validator.calculate_frame_diff(frames_since_prev, expected.delay_from_prev or 0)
-                                        -- Catalog + exceptions coexist: the absorb path checks both
-                                        -- the catalog alias chain and exception absorb_ids.
-                                        local _abs_cat = _G.ComboTrials_UseBcmCatalog == true
+                                        local _abs_cat = (_G.ComboTrials_UseBcmCatalog ~= false)
                                             and BcmCatalog.load_for_character(p_state.profile_name) or nil
+                                        local _abs_exc = (_G.ComboTrials_UseExceptions ~= false) and p_state.exceptions or nil
+                                        local _abs_com = (_G.ComboTrials_UseExceptions ~= false) and common_exceptions or nil
                                         local recent = CharacterRules.find_recent_absorb_confirmation(
-                                            p_state.exceptions, common_exceptions, expected, p_state.log, p_state.profile_name, _abs_cat)
+                                            _abs_exc, _abs_com, expected, p_state.log, p_state.profile_name, _abs_cat)
                                         if recent.matched then
                                             absorb_handled = ComboTrialsModules.PendingAbsorb.apply_matched_step(actx, {
                                                 expected = expected,
@@ -4247,7 +4251,7 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                             }) and true or false
                                         else
                                             local current_absorb = CharacterRules.match_current_absorb_confirmation(
-                                                p_state.exceptions, common_exceptions, expected, act_id, _pf.current_combo or 0, p_state.profile_name, _abs_cat)
+                                                _abs_exc, _abs_com, expected, act_id, _pf.current_combo or 0, p_state.profile_name, _abs_cat)
                                             if current_absorb.matched then
                                                 absorb_handled = ComboTrialsModules.PendingAbsorb.apply_matched_step(actx, {
                                                     expected = expected,
