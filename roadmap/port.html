@@ -135,7 +135,7 @@
 </div>
 
 <script>
-const UPDATED = "20/07/2026 · #1 #2 #3 #5 intégrés · #6 déjà présent · #4 en décision";
+const UPDATED = "20/07/2026 · #1 #2 #3 #5 #7 intégrés · #6 déjà présent · seul #4 en décision";
 
 const UI = {
   fr:{ title_a:"Portage cdjay", title_b:"branche Wael",
@@ -206,12 +206,12 @@ const ITEMS = [
     note:{fr:"Rien à porter. Design optimal : raw DEMO pour les combos récents (précision), son CTStunDemoRuntime gardé en fallback pour les vieux combos sans raw_inputs.",
           zh:"无需移植。最优设计：新连段用 raw DEMO（精确），旧的无 raw_inputs 连段回退到他的 CTStunDemoRuntime。"} },
 
-  { ord:7, title:"Combo list / files — reliquat", status:"todo", risk:"low",
-    files:"func/ComboTrials_Files.lua", fn:"2-3 fn", commit:"",
-    desc:{fr:"VÉRIFIÉ quasi déjà fait : signature (build_combo_list_signature), refresh préservé, filtre control-mode — tous couverts sous d'autres noms. Vrai reliquat = warn_newer_schema (alerte si combo d'un schéma plus récent) + sanitize_filename + refresh différé busy-state.",
-          zh:"已核实基本完成：签名、保留选择的刷新、control-mode 过滤 —— 均以其他名称覆盖。真正剩余 = warn_newer_schema（更新 schema 的连段告警）+ 文件名清理 + 延迟刷新 busy 状态。"},
-    note:{fr:"Confort pur. warn_newer_schema est le seul avec une vraie valeur (sécurité forward-compat). En dernier.",
-          zh:"纯易用性。仅 warn_newer_schema 有实际价值（向前兼容安全）。放最后。"} },
+  { ord:7, title:"Forward-compat schema guard", status:"test", risk:"low",
+    files:"func/ComboTrials_Files.lua", fn:"2 fn", commit:"147b049",
+    desc:{fr:"warn_newer_schema + warn_combo_file_once : un combo d'un schéma plus récent que le nôtre (max 2) prévient une fois (ticker + console) et se charge quand même au mieux, au lieu de casser en silence. Clé pour le format JSON partagé.",
+          zh:"warn_newer_schema + warn_combo_file_once：schema 高于我们（最高 2）的连段会提示一次（ticker + 控制台）并尽力加载，而非静默失败。对共享 JSON 格式很关键。"},
+    note:{fr:"Le reste de #7 vérifié et NON porté (redondant chez nous) : sanitize (on a sanitize_ascii_filename_part), refresh différé busy-state (notre liste ne refresh qu'à l'ouverture du dropdown, pas de poll timer à différer), signature/filter (déjà sous d'autres noms).",
+          zh:"#7 其余部分已核实且未移植（我们已冗余）：文件名清理（已有 sanitize_ascii_filename_part）、延迟刷新 busy 状态（我们的列表仅在下拉打开时刷新，无定时轮询需延迟）、签名/过滤（已以其他名称存在）。"} },
 ];
 
 const PW = "cdjayANDwael";
