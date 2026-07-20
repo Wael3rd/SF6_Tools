@@ -26,6 +26,92 @@ local ctx -- { d2d_cfg, trial_state, players, sf6_menu_state }
 local assets = { font = nil, last_pixel_size = -1, imgs = {} }
 local d2d_anim = { active_y = nil }
 
+-- =========================================================
+-- SUBSYSTEM PORT #5 -- modern-notation unresolved audit (logic from
+-- SF6_TOOLS_CC HEAD 9b851c5, wired to our ModernDisplay flow). Records the
+-- act_ids that the modern_display map does not resolve to a modern notation,
+-- so the coverage gaps can be found and fixed. Purely diagnostic and additive:
+-- it only observes when ModernDisplay.get_motion returns nil for a modern
+-- combo, and never changes what is drawn.
+-- =========================================================
+local _modern_audit_runtime = {
+    seen_refs = setmetatable({}, { __mode = "k" }),
+    seen_keys = {},
+}
+
+local function modern_unresolved_placeholder(step)
+    if ctx and ctx.d2d_cfg and ctx.d2d_cfg.show_modern_unresolved_ids == true then
+        return string.format("[ID %s unresolved]", tostring(step and step.id or "?"))
+    end
+    return "[modern unresolved]"
+end
+
+local function ensure_modern_unresolved_audit()
+    local state = ctx and ctx.trial_state
+    if type(state) ~= "table" then return nil end
+    if type(state.modern_unresolved_audit) ~= "table" then
+        state.modern_unresolved_audit = {
+            session_id = tonumber(state.modern_unresolved_audit_session) or 0,
+            unresolved_id_count = 0,
+            unresolved_step_count = 0,
+            current_character = "Unknown",
+            entries = {}
+        }
+    end
+    return state.modern_unresolved_audit
+end
+
+local function clear_modern_unresolved_audit()
+    local state = ctx and ctx.trial_state
+    _modern_audit_runtime.seen_refs = setmetatable({}, { __mode = "k" })
+    _modern_audit_runtime.seen_keys = {}
+    if type(state) ~= "table" then return end
+    state.modern_unresolved_audit_session = (tonumber(state.modern_unresolved_audit_session) or 0) + 1
+    state.modern_unresolved_audit = {
+        session_id = state.modern_unresolved_audit_session,
+        unresolved_id_count = 0,
+        unresolved_step_count = 0,
+        current_character = "Unknown",
+        entries = {}
+    }
+end
+
+local function audit_modern_unresolved(character, step, context_name, source, source_file, stable_identity)
+    local audit = ensure_modern_unresolved_audit()
+    if not audit then return end
+    if type(step) == "table" then
+        if _modern_audit_runtime.seen_refs[step] then return end
+        _modern_audit_runtime.seen_refs[step] = true
+    else
+        local identity = tostring(stable_identity or "")
+        if _modern_audit_runtime.seen_keys[identity] then return end
+        _modern_audit_runtime.seen_keys[identity] = true
+    end
+
+    character = type(character) == "string" and character ~= "" and character or "Unknown"
+    local action_id = tonumber(step and step.id)
+    local key = character .. ":" .. tostring(action_id or "Unknown")
+    local entry = audit.entries[key]
+    if not entry then
+        entry = {
+            character = character,
+            action_id = action_id,
+            occurrence_count = 0,
+            first_seen_at = os.time(),
+            context = context_name or "live",
+            control_mode = "modern",
+            source_file = source_file,
+            classic_motion_debug_reference = type(step) == "table" and tostring(step.motion or "") or "",
+            source = source or "unresolved"
+        }
+        audit.entries[key] = entry
+        audit.unresolved_id_count = (audit.unresolved_id_count or 0) + 1
+    end
+    entry.occurrence_count = (entry.occurrence_count or 0) + 1
+    audit.unresolved_step_count = (audit.unresolved_step_count or 0) + 1
+    audit.current_character = character
+end
+
 local image_files = {
     ["1"] = "1.png",
     ["2"] = "2.png",
@@ -370,6 +456,9 @@ local function with_best_motion(step, char)
     local new_motion = nil
     if char and modern_display_active() then
         local ok, mm = pcall(ModernDisplay.get_motion, char, step)
+        if not (ok and mm) then
+            pcall(audit_modern_unresolved, char, step, "live", "modern")
+        end
         if ok and mm then new_motion = mm end
     end
     if not new_motion and _G.ComboTrials_UseBcmCatalog and step.id then
@@ -418,7 +507,12 @@ local function merge_group_log_item(steps)
         -- a mapping exists for this step; falls back to the classic motion.
         if _md_char then
             local ok, mm = pcall(ModernDisplay.get_motion, _md_char, s)
-            if ok and mm then m = mm end
+            if ok and mm then m = mm
+            else
+                -- #5: modern combo but this act_id has no modern mapping.
+                pcall(audit_modern_unresolved, _md_char, s, "combo", "modern",
+                    _G.ComboTrials_CurrentPath)
+            end
         end
         -- For follow-ups: ensure > is BEFORE [AIR]/J. (not reversed)
         m = m:gsub("^(%[AIR%])%s*(>)", "%2%1")
@@ -1438,6 +1532,15 @@ end
 function M.reset_raw()
     raw_state.history_p1 = {}
     raw_state.history_p2 = {}
+end
+
+
+-- #5: public accessors for the modern-unresolved audit (diagnostic).
+function M.get_modern_unresolved_audit()
+    return ensure_modern_unresolved_audit()
+end
+function M.clear_modern_unresolved_audit()
+    clear_modern_unresolved_audit()
 end
 
 return M
