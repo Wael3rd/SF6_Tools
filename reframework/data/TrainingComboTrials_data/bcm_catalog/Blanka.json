@@ -1,8 +1,9 @@
 {
-  "schema": "sf6cc.action-runtime.v1",
+  "schema": "sf6cc.action-runtime.v2",
+  "compiler_rules_version": "sf6cc-ac-bcm-runtime-rules-v5",
   "character": "Blanka",
   "fighter_id": 15,
-  "policy": "universe:ac; commands:bcm; aliases:exceptions+ac-derived",
+  "policy": "universe:ac; commands:bcm; semantics:ac+bcm; manual-exceptions:last; off:forbidden",
   "sources": {
     "ac_schema": "sf6cr.action-catalog-full.v2",
     "ac_sha256": "ba1f14b9937bfd9265558e798a469014b04ac6d6c31d8d474bf79bb2e9aa0cea",
@@ -501,6 +502,7 @@
     "644": "6+HP",
     "646": "3+HP",
     "715": "Throw",
+    "717": "4+THROW",
     "731": "j.Throw",
     "850": "6+DI",
     "852": "6",
@@ -517,8 +519,8 @@
     "929": "P",
     "931": "214+LP+LK+MK",
     "935": "22+LP",
-    "936": "22+MP",
-    "937": "22+HP",
+    "936": ">22+MP",
+    "937": ">22+HP",
     "954": "63214+LK",
     "958": "63214+MK",
     "962": "63214+HK",
@@ -539,11 +541,59 @@
     "1018": "236+MK",
     "1023": "236+HK",
     "1028": "236+KK",
+    "1075": ">6+P",
+    "1076": ">9+P",
+    "1077": ">8+P",
+    "1078": ">7+P",
+    "1079": ">4+P",
+    "1080": ">1+P",
+    "1081": ">2+P",
+    "1082": ">3+P",
     "1083": "j.P",
+    "1084": ">6+P",
+    "1085": ">9+P",
+    "1086": ">8+P",
+    "1087": ">7+P",
+    "1088": ">4+P",
+    "1089": ">1+P",
+    "1090": ">2+P",
+    "1091": ">3+P",
     "1092": "j.P",
+    "1093": ">6+P",
+    "1094": ">9+P",
+    "1095": ">8+P",
+    "1096": ">7+P",
+    "1097": ">4+P",
+    "1098": ">1+P",
+    "1099": ">2+P",
+    "1100": ">3+P",
     "1101": "j.P",
+    "1106": ">6+P",
+    "1107": ">9+P",
+    "1108": ">8+P",
+    "1109": ">7+P",
+    "1110": ">4+P",
+    "1111": ">1+P",
+    "1112": ">2+P",
+    "1113": ">3+P",
     "1114": "j.P",
+    "1115": ">6+P",
+    "1116": ">9+P",
+    "1117": ">8+P",
+    "1118": ">7+P",
+    "1119": ">4+P",
+    "1120": ">1+P",
+    "1121": ">2+P",
+    "1122": ">3+P",
     "1123": "j.P",
+    "1124": ">6+P",
+    "1125": ">9+P",
+    "1126": ">8+P",
+    "1127": ">7+P",
+    "1128": ">4+P",
+    "1129": ">1+P",
+    "1130": ">2+P",
+    "1131": ">3+P",
     "1132": "j.P",
     "1200": "236236+P",
     "1210": "214214+P",
@@ -555,7 +605,1770 @@
   "aliases": {
     "933": "929"
   },
+  "validation": {
+    "rules": {
+      "17": {
+        "display": "66",
+        "display_source": "bcm",
+        "trigger_indices": [
+          0
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "18": {
+        "display": "44",
+        "display_source": "bcm",
+        "trigger_indices": [
+          1
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "34": {
+        "display": "8",
+        "display_source": "bcm",
+        "trigger_indices": [
+          242
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "480": {
+        "display": "Normal",
+        "display_source": "bcm",
+        "trigger_indices": [
+          156
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "500": {
+        "display": "RAW DR",
+        "display_source": "bcm",
+        "trigger_indices": [
+          157,
+          158
+        ],
+        "system_action": "raw_dr",
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "502": {
+        "display": "DRC",
+        "display_source": "bcm",
+        "trigger_indices": [
+          42
+        ],
+        "system_action": "drc",
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "600": {
+        "display": "LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          3
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "602": {
+        "display": "MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          5
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "604": {
+        "display": "HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          7
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "607": {
+        "display": "LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          4
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "608": {
+        "display": "LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          35
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "609": {
+        "display": "MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          6
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "611": {
+        "display": "HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          8
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "613": {
+        "display": "2+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          10
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "614": {
+        "display": "2+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          36
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "616": {
+        "display": "2+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          12
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "618": {
+        "display": "2+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          14
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "622": {
+        "display": "2+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          11
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "623": {
+        "display": "2+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          37
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "625": {
+        "display": "2+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          13
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "627": {
+        "display": "2+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          15
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "630": {
+        "display": "j.LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          17
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "631": {
+        "display": "j.MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          19
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "632": {
+        "display": "j.HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          21
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "633": {
+        "display": "j.HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          22
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "634": {
+        "display": "j.LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          18
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "635": {
+        "display": "j.MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          20
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "636": {
+        "display": "j.HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          23
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "639": {
+        "display": "6+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          26
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "640": {
+        "display": "6+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          27
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "642": {
+        "display": "4+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          29
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "644": {
+        "display": "6+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          30
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "646": {
+        "display": "3+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          32
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "715": {
+        "display": "Throw",
+        "display_source": "bcm",
+        "trigger_indices": [
+          161
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "717": {
+        "display": "4+THROW",
+        "display_source": "ac-branch-derived-command",
+        "force": true,
+        "branch_source_action_id": 715,
+        "branch_type": 63
+      },
+      "731": {
+        "display": "j.Throw",
+        "display_source": "bcm",
+        "trigger_indices": [
+          164
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "850": {
+        "display": "6+DI",
+        "display_source": "bcm",
+        "trigger_indices": [
+          168
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "852": {
+        "display": "6",
+        "display_source": "bcm",
+        "trigger_indices": [
+          169
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "855": {
+        "display": "DI",
+        "display_source": "bcm",
+        "trigger_indices": [
+          167
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "859": {
+        "display": "[4]6+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          64
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "867": {
+        "display": "[4]6+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          65
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "873": {
+        "display": "[4]6+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          66
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "885": {
+        "display": "[4]6+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          208
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "900": {
+        "display": "j.[4]6+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          88
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "904": {
+        "display": "j.[4]6+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          89
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "907": {
+        "display": "j.[4]6+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          90
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "910": {
+        "display": "j.[4]6+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          213
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "924": {
+        "display": "214+LP+LK+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          59
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "929": {
+        "display": "P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          61,
+          62
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "931": {
+        "display": "214+LP+LK+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          207
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "933": {
+        "display": "P",
+        "display_source": "ac-derived-alias",
+        "alias_target": 929,
+        "exact_id_or_alias_required": true
+      },
+      "935": {
+        "display": "22+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          70
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "936": {
+        "display": ">22+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          71
+        ],
+        "system_action": null,
+        "target_combo_followup": true,
+        "target_combo_parent_status": "resolved",
+        "optional_parent_ids": [
+          935
+        ],
+        "followup_evidence": "bcm-shared-gate",
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "937": {
+        "display": ">22+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          72
+        ],
+        "system_action": null,
+        "target_combo_followup": true,
+        "target_combo_parent_status": "resolved",
+        "optional_parent_ids": [
+          935
+        ],
+        "followup_evidence": "bcm-shared-gate",
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "954": {
+        "display": "63214+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          74
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "958": {
+        "display": "63214+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          75
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "962": {
+        "display": "63214+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          76
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "966": {
+        "display": "63214+KK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          210
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "971": {
+        "display": "[2]8+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          81,
+          82
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "975": {
+        "display": "[2]8+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          83
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "984": {
+        "display": "[2]8+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          84
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "990": {
+        "display": "[2]8+KK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          212
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": true
+      },
+      "999": {
+        "display": "2+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          54
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1001": {
+        "display": "2+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          73
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1004": {
+        "display": "P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          52
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1005": {
+        "display": "K",
+        "display_source": "bcm",
+        "trigger_indices": [
+          53
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1007": {
+        "display": "6+KKK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          221
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1008": {
+        "display": "4+KKK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          222
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1009": {
+        "display": "6+KKK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          219
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1010": {
+        "display": "4+KKK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          220
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1012": {
+        "display": "236+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          56
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1018": {
+        "display": "236+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          57
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1023": {
+        "display": "236+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          58
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1028": {
+        "display": "236+KK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          205
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1075": {
+        "display": ">6+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1083,
+        "branch_type": 63
+      },
+      "1076": {
+        "display": ">9+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1083,
+        "branch_type": 63
+      },
+      "1077": {
+        "display": ">8+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1083,
+        "branch_type": 63
+      },
+      "1078": {
+        "display": ">7+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1083,
+        "branch_type": 63
+      },
+      "1079": {
+        "display": ">4+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1083,
+        "branch_type": 63
+      },
+      "1080": {
+        "display": ">1+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1083,
+        "branch_type": 63
+      },
+      "1081": {
+        "display": ">2+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1083,
+        "branch_type": 63
+      },
+      "1082": {
+        "display": ">3+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1083,
+        "branch_type": 63
+      },
+      "1083": {
+        "display": "j.P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          102
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1084": {
+        "display": ">6+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1092,
+        "branch_type": 63
+      },
+      "1085": {
+        "display": ">9+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1092,
+        "branch_type": 63
+      },
+      "1086": {
+        "display": ">8+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1092,
+        "branch_type": 63
+      },
+      "1087": {
+        "display": ">7+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1092,
+        "branch_type": 63
+      },
+      "1088": {
+        "display": ">4+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1092,
+        "branch_type": 63
+      },
+      "1089": {
+        "display": ">1+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1092,
+        "branch_type": 63
+      },
+      "1090": {
+        "display": ">2+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1092,
+        "branch_type": 63
+      },
+      "1091": {
+        "display": ">3+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1092,
+        "branch_type": 63
+      },
+      "1092": {
+        "display": "j.P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          122
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1093": {
+        "display": ">6+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1101,
+        "branch_type": 63
+      },
+      "1094": {
+        "display": ">9+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1101,
+        "branch_type": 63
+      },
+      "1095": {
+        "display": ">8+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1101,
+        "branch_type": 63
+      },
+      "1096": {
+        "display": ">7+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1101,
+        "branch_type": 63
+      },
+      "1097": {
+        "display": ">4+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1101,
+        "branch_type": 63
+      },
+      "1098": {
+        "display": ">1+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1101,
+        "branch_type": 63
+      },
+      "1099": {
+        "display": ">2+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1101,
+        "branch_type": 63
+      },
+      "1100": {
+        "display": ">3+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1101,
+        "branch_type": 63
+      },
+      "1101": {
+        "display": "j.P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          142
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1106": {
+        "display": ">6+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1114,
+        "branch_type": 63
+      },
+      "1107": {
+        "display": ">9+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1114,
+        "branch_type": 63
+      },
+      "1108": {
+        "display": ">8+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1114,
+        "branch_type": 63
+      },
+      "1109": {
+        "display": ">7+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1114,
+        "branch_type": 63
+      },
+      "1110": {
+        "display": ">4+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1114,
+        "branch_type": 63
+      },
+      "1111": {
+        "display": ">1+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1114,
+        "branch_type": 63
+      },
+      "1112": {
+        "display": ">2+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1114,
+        "branch_type": 63
+      },
+      "1113": {
+        "display": ">3+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1114,
+        "branch_type": 63
+      },
+      "1114": {
+        "display": "j.P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          112
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1115": {
+        "display": ">6+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1123,
+        "branch_type": 63
+      },
+      "1116": {
+        "display": ">9+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1123,
+        "branch_type": 63
+      },
+      "1117": {
+        "display": ">8+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1123,
+        "branch_type": 63
+      },
+      "1118": {
+        "display": ">7+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1123,
+        "branch_type": 63
+      },
+      "1119": {
+        "display": ">4+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1123,
+        "branch_type": 63
+      },
+      "1120": {
+        "display": ">1+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1123,
+        "branch_type": 63
+      },
+      "1121": {
+        "display": ">2+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1123,
+        "branch_type": 63
+      },
+      "1122": {
+        "display": ">3+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1123,
+        "branch_type": 63
+      },
+      "1123": {
+        "display": "j.P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          132
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1124": {
+        "display": ">6+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1132,
+        "branch_type": 63
+      },
+      "1125": {
+        "display": ">9+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1132,
+        "branch_type": 63
+      },
+      "1126": {
+        "display": ">8+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1132,
+        "branch_type": 63
+      },
+      "1127": {
+        "display": ">7+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1132,
+        "branch_type": 63
+      },
+      "1128": {
+        "display": ">4+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1132,
+        "branch_type": 63
+      },
+      "1129": {
+        "display": ">1+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1132,
+        "branch_type": 63
+      },
+      "1130": {
+        "display": ">2+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1132,
+        "branch_type": 63
+      },
+      "1131": {
+        "display": ">3+P",
+        "display_source": "ac-branch-derived-command",
+        "force": false,
+        "branch_source_action_id": 1132,
+        "branch_type": 63
+      },
+      "1132": {
+        "display": "j.P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          151
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1200": {
+        "display": "236236+P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          180
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1210": {
+        "display": "214214+P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          183
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1211": {
+        "display": "214214+P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          185
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1215": {
+        "display": "236236+K",
+        "display_source": "bcm",
+        "trigger_indices": [
+          192,
+          194
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1220": {
+        "display": "236236+K",
+        "display_source": "bcm",
+        "trigger_indices": [
+          196,
+          198
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1497": {
+        "display": "LP+MP+HP+LK+MK+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          237
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      }
+    }
+  },
+  "evidence": {
+    "alias_relations": [
+      {
+        "alias_action_id": 933,
+        "target_action_id": 929,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      }
+    ],
+    "target_combo_followup_action_ids": [
+      936,
+      937
+    ],
+    "target_combo_relations": [
+      {
+        "action_id": 936,
+        "parent_action_ids": [
+          935
+        ],
+        "evidence": "bcm-shared-gate"
+      },
+      {
+        "action_id": 937,
+        "parent_action_ids": [
+          935
+        ],
+        "evidence": "bcm-shared-gate"
+      }
+    ],
+    "ac_derived_commands": [
+      {
+        "action_id": 717,
+        "source_action_id": 715,
+        "display": "4+THROW",
+        "branch_type": 63,
+        "force": true
+      },
+      {
+        "action_id": 1081,
+        "source_action_id": 1083,
+        "display": ">2+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1079,
+        "source_action_id": 1083,
+        "display": ">4+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1075,
+        "source_action_id": 1083,
+        "display": ">6+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1077,
+        "source_action_id": 1083,
+        "display": ">8+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1080,
+        "source_action_id": 1083,
+        "display": ">1+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1082,
+        "source_action_id": 1083,
+        "display": ">3+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1078,
+        "source_action_id": 1083,
+        "display": ">7+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1076,
+        "source_action_id": 1083,
+        "display": ">9+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1090,
+        "source_action_id": 1092,
+        "display": ">2+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1088,
+        "source_action_id": 1092,
+        "display": ">4+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1084,
+        "source_action_id": 1092,
+        "display": ">6+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1086,
+        "source_action_id": 1092,
+        "display": ">8+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1089,
+        "source_action_id": 1092,
+        "display": ">1+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1091,
+        "source_action_id": 1092,
+        "display": ">3+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1087,
+        "source_action_id": 1092,
+        "display": ">7+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1085,
+        "source_action_id": 1092,
+        "display": ">9+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1099,
+        "source_action_id": 1101,
+        "display": ">2+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1097,
+        "source_action_id": 1101,
+        "display": ">4+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1093,
+        "source_action_id": 1101,
+        "display": ">6+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1095,
+        "source_action_id": 1101,
+        "display": ">8+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1098,
+        "source_action_id": 1101,
+        "display": ">1+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1100,
+        "source_action_id": 1101,
+        "display": ">3+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1096,
+        "source_action_id": 1101,
+        "display": ">7+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1094,
+        "source_action_id": 1101,
+        "display": ">9+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1112,
+        "source_action_id": 1114,
+        "display": ">2+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1110,
+        "source_action_id": 1114,
+        "display": ">4+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1106,
+        "source_action_id": 1114,
+        "display": ">6+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1108,
+        "source_action_id": 1114,
+        "display": ">8+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1111,
+        "source_action_id": 1114,
+        "display": ">1+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1113,
+        "source_action_id": 1114,
+        "display": ">3+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1109,
+        "source_action_id": 1114,
+        "display": ">7+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1107,
+        "source_action_id": 1114,
+        "display": ">9+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1121,
+        "source_action_id": 1123,
+        "display": ">2+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1119,
+        "source_action_id": 1123,
+        "display": ">4+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1115,
+        "source_action_id": 1123,
+        "display": ">6+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1117,
+        "source_action_id": 1123,
+        "display": ">8+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1120,
+        "source_action_id": 1123,
+        "display": ">1+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1122,
+        "source_action_id": 1123,
+        "display": ">3+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1118,
+        "source_action_id": 1123,
+        "display": ">7+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1116,
+        "source_action_id": 1123,
+        "display": ">9+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1130,
+        "source_action_id": 1132,
+        "display": ">2+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1128,
+        "source_action_id": 1132,
+        "display": ">4+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1124,
+        "source_action_id": 1132,
+        "display": ">6+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1126,
+        "source_action_id": 1132,
+        "display": ">8+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1129,
+        "source_action_id": 1132,
+        "display": ">1+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1131,
+        "source_action_id": 1132,
+        "display": ">3+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1127,
+        "source_action_id": 1132,
+        "display": ">7+P",
+        "branch_type": 63,
+        "force": false
+      },
+      {
+        "action_id": 1125,
+        "source_action_id": 1132,
+        "display": ">9+P",
+        "branch_type": 63,
+        "force": false
+      }
+    ],
+    "holdable_source_action_ids": [],
+    "system_action_detection": "bcm-category+function+focus"
+  },
   "coverage": {
-    "ac_derived_alias_count": 1
+    "ac_action_count": 455,
+    "bcm_display_count": 84,
+    "compiled_display_count": 133,
+    "alias_count": 1,
+    "ac_derived_alias_count": 1,
+    "manual_exception_entry_count": 0,
+    "manual_display_override_count": 0,
+    "manual_display_fill_count": 0,
+    "redundant_manual_display_count": 0,
+    "manual_validation_rule_count": 0,
+    "manual_absorb_alias_count": 0,
+    "ac_action_ids_without_command_semantics_count": 321
   }
 }

@@ -1,10 +1,486 @@
 {
-  "schema": "sf6cc.bcm-runtime.v1",
+  "schema": "sf6cc.action-runtime.v2",
+  "compiler_rules_version": "sf6cc-ac-bcm-runtime-rules-v5",
   "character": "Ingrid",
   "fighter_id": 32,
-  "source_schema": "sf6cr.ingrid-bcm-full.v1",
-  "source_sha256": "e3f230dcaec5a4434b14794531e3c8169be7174157c2a2cc7333bc5954adc3ea",
-  "policy": "classic:norm>sprt; behavior:exceptions",
+  "policy": "universe:ac; commands:bcm; semantics:ac+bcm; manual-exceptions:last; off:forbidden",
+  "sources": {
+    "ac_schema": "sf6cr.action-catalog-full.v2",
+    "ac_sha256": "d4f1642197db0cc37a0f7c5c956c1aea3ab7f1b73a208c7291c868dbeb326003",
+    "bcm_schema": "sf6cr.bcm-full.v2",
+    "bcm_sha256": "16c8d193cc006d4fe03fa536dd120c794a44be630ba6d834ab72110bdc876331"
+  },
+  "action_ids": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    13,
+    14,
+    15,
+    17,
+    18,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    129,
+    130,
+    131,
+    132,
+    133,
+    134,
+    143,
+    144,
+    150,
+    151,
+    152,
+    153,
+    154,
+    155,
+    156,
+    157,
+    158,
+    159,
+    160,
+    161,
+    162,
+    163,
+    164,
+    165,
+    166,
+    167,
+    168,
+    169,
+    170,
+    171,
+    172,
+    173,
+    174,
+    175,
+    176,
+    177,
+    178,
+    179,
+    180,
+    181,
+    182,
+    183,
+    184,
+    200,
+    201,
+    202,
+    203,
+    204,
+    205,
+    206,
+    207,
+    208,
+    209,
+    210,
+    211,
+    212,
+    213,
+    214,
+    215,
+    216,
+    217,
+    218,
+    219,
+    261,
+    262,
+    264,
+    265,
+    267,
+    268,
+    270,
+    271,
+    320,
+    321,
+    322,
+    323,
+    340,
+    341,
+    342,
+    343,
+    344,
+    345,
+    400,
+    401,
+    405,
+    412,
+    413,
+    416,
+    417,
+    418,
+    419,
+    421,
+    425,
+    426,
+    430,
+    470,
+    477,
+    480,
+    481,
+    482,
+    483,
+    484,
+    485,
+    486,
+    487,
+    488,
+    489,
+    509,
+    510,
+    511,
+    512,
+    513,
+    514,
+    515,
+    516,
+    517,
+    518,
+    519,
+    520,
+    521,
+    523,
+    524,
+    580,
+    581,
+    600,
+    601,
+    605,
+    606,
+    609,
+    610,
+    612,
+    615,
+    618,
+    622,
+    623,
+    624,
+    627,
+    628,
+    631,
+    635,
+    636,
+    637,
+    640,
+    643,
+    650,
+    651,
+    652,
+    653,
+    654,
+    655,
+    656,
+    657,
+    661,
+    663,
+    664,
+    670,
+    671,
+    674,
+    675,
+    715,
+    717,
+    720,
+    721,
+    722,
+    724,
+    725,
+    726,
+    739,
+    740,
+    741,
+    850,
+    851,
+    852,
+    853,
+    854,
+    855,
+    856,
+    857,
+    860,
+    900,
+    901,
+    902,
+    904,
+    905,
+    906,
+    909,
+    910,
+    911,
+    912,
+    913,
+    914,
+    918,
+    919,
+    920,
+    921,
+    922,
+    923,
+    927,
+    928,
+    929,
+    930,
+    931,
+    932,
+    933,
+    934,
+    935,
+    936,
+    937,
+    938,
+    944,
+    945,
+    946,
+    947,
+    949,
+    950,
+    952,
+    953,
+    954,
+    955,
+    956,
+    962,
+    963,
+    964,
+    965,
+    969,
+    970,
+    971,
+    972,
+    973,
+    975,
+    976,
+    977,
+    978,
+    979,
+    980,
+    981,
+    982,
+    986,
+    987,
+    990,
+    991,
+    992,
+    995,
+    996,
+    997,
+    1002,
+    1003,
+    1004,
+    1007,
+    1008,
+    1010,
+    1011,
+    1013,
+    1014,
+    1021,
+    1022,
+    1023,
+    1024,
+    1025,
+    1026,
+    1027,
+    1028,
+    1029,
+    1030,
+    1036,
+    1037,
+    1038,
+    1040,
+    1042,
+    1043,
+    1045,
+    1046,
+    1051,
+    1052,
+    1053,
+    1056,
+    1057,
+    1059,
+    1060,
+    1062,
+    1063,
+    1066,
+    1067,
+    1068,
+    1071,
+    1072,
+    1073,
+    1074,
+    1075,
+    1076,
+    1081,
+    1082,
+    1083,
+    1084,
+    1085,
+    1087,
+    1088,
+    1089,
+    1091,
+    1092,
+    1093,
+    1101,
+    1102,
+    1104,
+    1105,
+    1107,
+    1108,
+    1109,
+    1110,
+    1112,
+    1113,
+    1115,
+    1116,
+    1150,
+    1152,
+    1154,
+    1156,
+    1157,
+    1158,
+    1159,
+    1200,
+    1201,
+    1202,
+    1203,
+    1205,
+    1206,
+    1208,
+    1209,
+    1212,
+    1213,
+    1217,
+    1218,
+    1219,
+    1222,
+    1223,
+    1224,
+    1227,
+    1228,
+    1229,
+    1233,
+    1234,
+    1235,
+    1237,
+    1238,
+    1239,
+    1241,
+    1242,
+    1243,
+    1247,
+    1248,
+    1249,
+    1250,
+    1251,
+    1252,
+    1253,
+    1254,
+    1255,
+    1256,
+    1259,
+    1260,
+    1261,
+    1262,
+    1263,
+    1266,
+    1267,
+    1268,
+    1269,
+    1270,
+    1273,
+    1276,
+    1277,
+    1287,
+    1288,
+    1289,
+    1290,
+    1292,
+    1293,
+    1296,
+    1297,
+    1298,
+    1299,
+    1301,
+    1302,
+    1310,
+    1311,
+    1312,
+    1314,
+    1315,
+    1317,
+    1319,
+    1320,
+    1465,
+    1466,
+    1467,
+    1468,
+    1469,
+    1470,
+    1471,
+    1478,
+    1479,
+    1480,
+    1481,
+    1484,
+    1485,
+    1486,
+    1487,
+    1488,
+    1489,
+    1491,
+    1492,
+    1495,
+    1496,
+    1497,
+    1498,
+    1499,
+    1500
+  ],
   "actions": {
     "17": "66",
     "18": "44",
@@ -12,7 +488,7 @@
     "600": "LP",
     "601": "LP",
     "605": "MP",
-    "606": "MK",
+    "606": ">MK",
     "609": "HP",
     "612": "LK",
     "615": "MK",
@@ -33,16 +509,17 @@
     "653": "j.LK",
     "654": "j.MK",
     "655": "j.HK",
-    "656": "j.HK",
+    "656": ">j.HK",
     "661": "6+MP",
     "663": "6+HP",
     "670": "4+MK",
-    "671": "HP",
+    "671": ">HP",
     "674": "4+HP",
-    "675": "HP",
+    "675": ">HP",
     "715": "Throw",
-    "739": "66",
-    "740": "66",
+    "717": "4+THROW",
+    "739": "DRC",
+    "740": "RAW DR",
     "850": "6+DI",
     "852": "6",
     "855": "DI",
@@ -80,12 +557,20 @@
     "1101": "22+K",
     "1102": "22+KK",
     "1200": "236236+K",
+    "1201": "236236+K",
+    "1202": "236236+K",
     "1217": "214214+MP",
+    "1218": "214214+MP",
+    "1219": "214214+MP",
     "1222": "214214+LP",
+    "1223": "214214+LP",
+    "1224": "214214+LP",
     "1227": "214214+HP",
+    "1228": "214214+HP",
+    "1229": "214214+HP",
     "1287": "236236+P",
     "1296": "236236+P",
-    "1310": "8+KK",
+    "1310": "360+KK",
     "1314": "214214+K",
     "1317": "22+PPP",
     "1465": "21426+DI",
@@ -95,5 +580,1533 @@
     "1488": "Throw",
     "1492": "5545+HK",
     "1497": "LP+MP+HP+LK+MK+HK"
+  },
+  "aliases": {
+    "970": "969",
+    "971": "969",
+    "972": "969",
+    "973": "969",
+    "1023": "1021",
+    "1025": "1021",
+    "1027": "1021",
+    "1029": "1021",
+    "1038": "1037",
+    "1052": "1051",
+    "1053": "1051",
+    "1073": "1072",
+    "1075": "1074",
+    "1076": "1074",
+    "1082": "1081",
+    "1083": "1081",
+    "1084": "1081",
+    "1085": "1081",
+    "1089": "1088",
+    "1092": "1091",
+    "1093": "1091"
+  },
+  "validation": {
+    "rules": {
+      "17": {
+        "display": "66",
+        "display_source": "bcm",
+        "trigger_indices": [
+          0
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "18": {
+        "display": "44",
+        "display_source": "bcm",
+        "trigger_indices": [
+          1
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "480": {
+        "display": "Normal",
+        "display_source": "bcm",
+        "trigger_indices": [
+          101
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "600": {
+        "display": "LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          2
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "601": {
+        "display": "LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          37
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "605": {
+        "display": "MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          4
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "606": {
+        "display": ">MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          32
+        ],
+        "system_action": null,
+        "target_combo_followup": true,
+        "target_combo_parent_status": "resolved",
+        "optional_parent_ids": [
+          605
+        ],
+        "followup_evidence": "bcm-turn-around",
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "609": {
+        "display": "HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          6
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "612": {
+        "display": "LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          3
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "615": {
+        "display": "MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          5
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "618": {
+        "display": "HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          7
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "622": {
+        "display": "2+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          15
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "623": {
+        "display": "2+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          38
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "624": {
+        "display": "2+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          39
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "627": {
+        "display": "2+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          17
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "631": {
+        "display": "2+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          19
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "635": {
+        "display": "2+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          16
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "636": {
+        "display": "2+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          40
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "637": {
+        "display": "2+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          41
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "640": {
+        "display": "2+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          18
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "643": {
+        "display": "2+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          20
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "650": {
+        "display": "j.LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          23
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "651": {
+        "display": "j.MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          25
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "652": {
+        "display": "j.HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          27
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "653": {
+        "display": "j.LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          24
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "654": {
+        "display": "j.MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          26
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "655": {
+        "display": "j.HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          28
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "656": {
+        "display": ">j.HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          29
+        ],
+        "system_action": null,
+        "target_combo_followup": true,
+        "target_combo_parent_status": "resolved",
+        "optional_parent_ids": [
+          655
+        ],
+        "followup_evidence": "bcm-turn-around",
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "661": {
+        "display": "6+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          9
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "663": {
+        "display": "6+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          12
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "670": {
+        "display": "4+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          10
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "671": {
+        "display": ">HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          33
+        ],
+        "system_action": null,
+        "target_combo_followup": true,
+        "target_combo_parent_status": "resolved",
+        "optional_parent_ids": [
+          670
+        ],
+        "followup_evidence": "bcm-turn-around",
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "674": {
+        "display": "4+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          11
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "675": {
+        "display": ">HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          34
+        ],
+        "system_action": null,
+        "target_combo_followup": true,
+        "target_combo_parent_status": "resolved",
+        "optional_parent_ids": [
+          674
+        ],
+        "followup_evidence": "bcm-turn-around",
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "715": {
+        "display": "Throw",
+        "display_source": "bcm",
+        "trigger_indices": [
+          106
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "717": {
+        "display": "4+THROW",
+        "display_source": "ac-branch-derived-command",
+        "force": true,
+        "branch_source_action_id": 715,
+        "branch_type": 63
+      },
+      "739": {
+        "display": "DRC",
+        "display_source": "bcm",
+        "trigger_indices": [
+          46
+        ],
+        "system_action": "drc",
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "740": {
+        "display": "RAW DR",
+        "display_source": "bcm",
+        "trigger_indices": [
+          102,
+          103
+        ],
+        "system_action": "raw_dr",
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "850": {
+        "display": "6+DI",
+        "display_source": "bcm",
+        "trigger_indices": [
+          116
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "852": {
+        "display": "6",
+        "display_source": "bcm",
+        "trigger_indices": [
+          117
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": false,
+        "charge_command": false
+      },
+      "855": {
+        "display": "DI",
+        "display_source": "bcm",
+        "trigger_indices": [
+          115
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "904": {
+        "display": "236+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          55
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "905": {
+        "display": "236+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          56
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "906": {
+        "display": "236+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          57
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "912": {
+        "display": "236+LP+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          153
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "913": {
+        "display": "236+LP+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          154
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "914": {
+        "display": "236+MP+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          155
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "944": {
+        "display": "236+LK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          70
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "945": {
+        "display": "236+MK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          71
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "946": {
+        "display": "236+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          72
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "949": {
+        "display": "236+KK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          157
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "962": {
+        "display": "4+KKK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          172
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "963": {
+        "display": "6+KKK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          171
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "964": {
+        "display": "2+KKK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          173
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "969": {
+        "display": "214+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          83
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "970": {
+        "display": "214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 969,
+        "exact_id_or_alias_required": true
+      },
+      "971": {
+        "display": "214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 969,
+        "exact_id_or_alias_required": true
+      },
+      "972": {
+        "display": "214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 969,
+        "exact_id_or_alias_required": true
+      },
+      "973": {
+        "display": "214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 969,
+        "exact_id_or_alias_required": true
+      },
+      "986": {
+        "display": "214+MP+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          84
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "990": {
+        "display": "214+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          85
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "995": {
+        "display": "214+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          86
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1002": {
+        "display": "214+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          165
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1003": {
+        "display": "214+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          166
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1004": {
+        "display": "214+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          167
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1021": {
+        "display": "j.214+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          60
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1023": {
+        "display": "j.214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1021,
+        "exact_id_or_alias_required": true
+      },
+      "1025": {
+        "display": "j.214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1021,
+        "exact_id_or_alias_required": true
+      },
+      "1027": {
+        "display": "j.214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1021,
+        "exact_id_or_alias_required": true
+      },
+      "1029": {
+        "display": "j.214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1021,
+        "exact_id_or_alias_required": true
+      },
+      "1036": {
+        "display": "j.214+MP+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          61
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1037": {
+        "display": "j.214+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          62
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1038": {
+        "display": "j.214+HP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1037,
+        "exact_id_or_alias_required": true
+      },
+      "1051": {
+        "display": "j.214+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          160
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1052": {
+        "display": "j.214+PP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1051,
+        "exact_id_or_alias_required": true
+      },
+      "1053": {
+        "display": "j.214+PP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1051,
+        "exact_id_or_alias_required": true
+      },
+      "1071": {
+        "display": "j.214+MP+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          65
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1072": {
+        "display": "j.214+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          66
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1073": {
+        "display": "j.214+HP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1072,
+        "exact_id_or_alias_required": true
+      },
+      "1074": {
+        "display": "j.214+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          161
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1075": {
+        "display": "j.214+PP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1074,
+        "exact_id_or_alias_required": true
+      },
+      "1076": {
+        "display": "j.214+PP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1074,
+        "exact_id_or_alias_required": true
+      },
+      "1081": {
+        "display": "j.214+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          75
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1082": {
+        "display": "j.214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1081,
+        "exact_id_or_alias_required": true
+      },
+      "1083": {
+        "display": "j.214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1081,
+        "exact_id_or_alias_required": true
+      },
+      "1084": {
+        "display": "j.214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1081,
+        "exact_id_or_alias_required": true
+      },
+      "1085": {
+        "display": "j.214+LP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1081,
+        "exact_id_or_alias_required": true
+      },
+      "1087": {
+        "display": "j.214+MP+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          76
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1088": {
+        "display": "j.214+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          77
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1089": {
+        "display": "j.214+HP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1088,
+        "exact_id_or_alias_required": true
+      },
+      "1091": {
+        "display": "j.214+PP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          78
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1092": {
+        "display": "j.214+PP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1091,
+        "exact_id_or_alias_required": true
+      },
+      "1093": {
+        "display": "j.214+PP",
+        "display_source": "ac-derived-alias",
+        "alias_target": 1091,
+        "exact_id_or_alias_required": true
+      },
+      "1101": {
+        "display": "22+K",
+        "display_source": "bcm",
+        "trigger_indices": [
+          49
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1102": {
+        "display": "22+KK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          150
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1200": {
+        "display": "236236+K",
+        "display_source": "bcm",
+        "trigger_indices": [
+          123
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false,
+        "is_holdable": true,
+        "holdable_evidence": "ac-type29+type20-shared-variants"
+      },
+      "1201": {
+        "display": "236236+K",
+        "display_source": "ac-hold-level-stage",
+        "force": true,
+        "branch_source_action_id": 1200,
+        "branch_type": 29
+      },
+      "1202": {
+        "display": "236236+K",
+        "display_source": "ac-hold-level-stage",
+        "force": true,
+        "branch_source_action_id": 1200,
+        "branch_type": 29
+      },
+      "1217": {
+        "display": "214214+MP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          129
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false,
+        "is_holdable": true,
+        "holdable_evidence": "ac-type29+type20-shared-variants"
+      },
+      "1218": {
+        "display": "214214+MP",
+        "display_source": "ac-hold-level-stage",
+        "force": true,
+        "branch_source_action_id": 1217,
+        "branch_type": 29
+      },
+      "1219": {
+        "display": "214214+MP",
+        "display_source": "ac-hold-level-stage",
+        "force": true,
+        "branch_source_action_id": 1217,
+        "branch_type": 29
+      },
+      "1222": {
+        "display": "214214+LP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          128
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false,
+        "is_holdable": true,
+        "holdable_evidence": "ac-type29+type20-shared-variants"
+      },
+      "1223": {
+        "display": "214214+LP",
+        "display_source": "ac-hold-level-stage",
+        "force": true,
+        "branch_source_action_id": 1222,
+        "branch_type": 29
+      },
+      "1224": {
+        "display": "214214+LP",
+        "display_source": "ac-hold-level-stage",
+        "force": true,
+        "branch_source_action_id": 1222,
+        "branch_type": 29
+      },
+      "1227": {
+        "display": "214214+HP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          130
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false,
+        "is_holdable": true,
+        "holdable_evidence": "ac-type29+type20-shared-variants"
+      },
+      "1228": {
+        "display": "214214+HP",
+        "display_source": "ac-hold-level-stage",
+        "force": true,
+        "branch_source_action_id": 1227,
+        "branch_type": 29
+      },
+      "1229": {
+        "display": "214214+HP",
+        "display_source": "ac-hold-level-stage",
+        "force": true,
+        "branch_source_action_id": 1227,
+        "branch_type": 29
+      },
+      "1287": {
+        "display": "236236+P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          134,
+          135
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1296": {
+        "display": "236236+P",
+        "display_source": "bcm",
+        "trigger_indices": [
+          142,
+          143
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1310": {
+        "display": "360+KK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          176
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1314": {
+        "display": "214214+K",
+        "display_source": "bcm",
+        "trigger_indices": [
+          147
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1317": {
+        "display": "22+PPP",
+        "display_source": "bcm",
+        "trigger_indices": [
+          148
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1465": {
+        "display": "21426+DI",
+        "display_source": "bcm",
+        "trigger_indices": [
+          186
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1485": {
+        "display": "DI",
+        "display_source": "bcm",
+        "trigger_indices": [
+          185
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1486": {
+        "display": "DI",
+        "display_source": "bcm",
+        "trigger_indices": [
+          184
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1487": {
+        "display": "Parry",
+        "display_source": "bcm",
+        "trigger_indices": [
+          183
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1488": {
+        "display": "Throw",
+        "display_source": "bcm",
+        "trigger_indices": [
+          182
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1492": {
+        "display": "5545+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          180
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      },
+      "1497": {
+        "display": "LP+MP+HP+LK+MK+HK",
+        "display_source": "bcm",
+        "trigger_indices": [
+          178
+        ],
+        "system_action": null,
+        "target_combo_followup": false,
+        "target_combo_parent_status": null,
+        "physical_button_required": true,
+        "charge_command": false
+      }
+    }
+  },
+  "evidence": {
+    "alias_relations": [
+      {
+        "alias_action_id": 970,
+        "target_action_id": 969,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 971,
+        "target_action_id": 969,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 972,
+        "target_action_id": 969,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 973,
+        "target_action_id": 969,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1023,
+        "target_action_id": 1021,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1025,
+        "target_action_id": 1021,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1027,
+        "target_action_id": 1021,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1029,
+        "target_action_id": 1021,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1038,
+        "target_action_id": 1037,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1052,
+        "target_action_id": 1051,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1053,
+        "target_action_id": 1051,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1073,
+        "target_action_id": 1072,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1075,
+        "target_action_id": 1074,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1076,
+        "target_action_id": 1074,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1082,
+        "target_action_id": 1081,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1083,
+        "target_action_id": 1081,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1084,
+        "target_action_id": 1081,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1085,
+        "target_action_id": 1081,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1089,
+        "target_action_id": 1088,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1092,
+        "target_action_id": 1091,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      },
+      {
+        "alias_action_id": 1093,
+        "target_action_id": 1091,
+        "relation": "equivalent-action-variant",
+        "source": "ac-branch",
+        "branch_type": 29
+      }
+    ],
+    "target_combo_followup_action_ids": [
+      606,
+      656,
+      671,
+      675
+    ],
+    "target_combo_relations": [
+      {
+        "action_id": 606,
+        "parent_action_ids": [
+          605
+        ],
+        "evidence": "bcm-turn-around"
+      },
+      {
+        "action_id": 656,
+        "parent_action_ids": [
+          655
+        ],
+        "evidence": "bcm-turn-around"
+      },
+      {
+        "action_id": 671,
+        "parent_action_ids": [
+          670
+        ],
+        "evidence": "bcm-turn-around"
+      },
+      {
+        "action_id": 675,
+        "parent_action_ids": [
+          674
+        ],
+        "evidence": "bcm-turn-around"
+      }
+    ],
+    "ac_derived_commands": [
+      {
+        "action_id": 717,
+        "source_action_id": 715,
+        "display": "4+THROW",
+        "branch_type": 63,
+        "force": true
+      }
+    ],
+    "holdable_source_action_ids": [
+      1200,
+      1217,
+      1222,
+      1227
+    ],
+    "system_action_detection": "bcm-category+function+focus"
+  },
+  "coverage": {
+    "ac_action_count": 469,
+    "bcm_display_count": 89,
+    "compiled_display_count": 98,
+    "alias_count": 21,
+    "ac_derived_alias_count": 29,
+    "manual_exception_entry_count": 0,
+    "manual_display_override_count": 0,
+    "manual_display_fill_count": 0,
+    "redundant_manual_display_count": 0,
+    "manual_validation_rule_count": 0,
+    "manual_absorb_alias_count": 0,
+    "ac_action_ids_without_command_semantics_count": 350
   }
 }
