@@ -3832,6 +3832,13 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                     end
                 end)
 
+                -- Promote catalog-recognized automatic actions to intentional
+                -- BEFORE the intentional block so combo recording includes them.
+                if not is_intentional and not is_ignored and bcm_catalog then
+                    local _cat_check = BcmCatalog.get_classic_display(bcm_catalog, act_id)
+                    if _cat_check then is_intentional = true end
+                end
+
                 if is_intentional then
                 -- 1. Calculate charge properties
                 if exc and exc.is_holdable then
@@ -4312,16 +4319,11 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
     				end
 
             ::continue_to_log::
-            -- Catalog display (runs for ALL actions, intentional or automatic).
-            -- Resolves aliases like 971->970->"22+K" even for AUTOMATIC entries.
-            -- When the catalog recognizes an automatic action, promote it to
-            -- intentional so it survives the "Ignore Automatic" D2D filter.
-            if bcm_catalog then
+            -- Catalog display fallback for actions that skipped the intentional
+            -- block (non-catalog automatic actions still land here).
+            if bcm_catalog and motion_str == act_name then
                 local cat_disp = BcmCatalog.get_classic_display(bcm_catalog, act_id)
-                if cat_disp then
-                    motion_str = cat_disp
-                    if not is_intentional then is_intentional = true end
-                end
+                if cat_disp then motion_str = cat_disp end
             end
             if motion_str == act_name then
                 motion_str = ActionMatcher.apply_override_name(motion_str, exc)
