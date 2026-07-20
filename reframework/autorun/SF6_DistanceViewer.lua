@@ -3249,10 +3249,26 @@ local function _dv_apply_p2_input_mask()
     p2:set_field("pl_input_new", final_mask)
     p2:set_field("pl_sw_new", final_mask)
 end
+-- Track whether we owned P2 input last frame, for explicit release.
+local _dv_p2_was_active = false
+
+local function _dv_release_p2_input()
+    local p2 = _dv_gBattle_td:get_field("Player"):get_data(nil).mcPlayer[1]
+    if not p2 then return end
+    p2:set_field("pl_input_new", 0)
+    p2:set_field("pl_sw_new", 0)
+end
+
 if _G._shared_input_post then
     table.insert(_G._shared_input_post, function(p_id, retval)
-        if p_id == 1 and (auto_activate.is_firing or auto_activate.footwork_enabled) and auto_activate.p2_mask > 0 then
+        if p_id ~= 1 then return end
+        local wants_input = (auto_activate.is_firing or auto_activate.footwork_enabled) and auto_activate.p2_mask > 0
+        if wants_input then
             pcall(_dv_apply_p2_input_mask)
+            _dv_p2_was_active = true
+        elseif _dv_p2_was_active then
+            pcall(_dv_release_p2_input)
+            _dv_p2_was_active = false
         end
     end)
 end
