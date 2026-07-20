@@ -7,6 +7,97 @@ local d2d = d2d
 
 local DynamicRecords = require("func/DynamicRecords")
 
+local i18n = require("func/i18n")
+-- Bilingual UI (EN / 中文). Chinese kept verbatim from cdjay; the "小吞MOD"
+-- (XiaoTun MOD) attribution is preserved in both languages on purpose.
+i18n.register("dynrec", {
+    en = {
+        header = "XiaoTun MOD: Training Config Manager",
+        website_note = "Note: configure and save specific configs on the website",
+        config_refreshed_pre = "Config list refreshed, found ",
+        config_refreshed_post = " JSON",
+        config_refresh_failed = "Config list refresh failed: ",
+        export_or_select = "Export or select a config first",
+        reject_mismatch = "Reject on fighter ID mismatch",
+        no_reversal = "No reversal settings to show.",
+        no_slot_data = "No slot data to show.",
+        group_unavailable = "Group data unavailable.",
+        backup_full = "Backup full config",
+        restore_backup = "Restore latest backup",
+        force_apply = "ForceApply after import",
+        import_valid_only = "Import valid slots only",
+        suffix_training_cfg = " Training Config",
+        current_fighter_col = "Current fighter: ",
+        current_fighter_brk = "Current fighter [",
+        unnamed_config = "Unnamed config",
+        no_configs = "(no configs)",
+        advanced_debug = "Advanced / Debug",
+        training_config = "Training Config",
+        export_config = "Export config",
+        import_config = "Import config",
+        refresh_list = "Refresh list",
+        clear_empty = "Clear empty slots",
+        rev_wakeup = "Wakeup reversal",
+        rev_guard = "Guard reversal",
+        rev_hit = "Hit reversal",
+        legacy_prefix = "[legacy] ",
+        col_input = "Input frames",
+        col_frames = "Frames",
+        col_weight = "Weight",
+        col_active = "Active",
+        col_valid = "Valid",
+        slot_space = "Slot ",
+        status_col = "Status: ",
+        unknown = "Unknown",
+        refresh = "Refresh",
+        clear = "Clear",
+        col_slot = "Slot",
+    },
+    zh = {
+        header = "小吞MOD: 训练配置管理",
+        website_note = "提醒：具体配置请在网站上配置和保存",
+        config_refreshed_pre = "配置列表已刷新，共识别 ",
+        config_refreshed_post = " 个 JSON",
+        config_refresh_failed = "配置列表刷新失败: ",
+        export_or_select = "请先导出或选择一个配置",
+        reject_mismatch = "角色 ID 不匹配时拒绝",
+        no_reversal = "没有可显示的反击设置。",
+        no_slot_data = "没有可显示的槽位数据。",
+        group_unavailable = "组数据不可用。",
+        backup_full = "备份当前完整配置",
+        restore_backup = "恢复最近备份",
+        force_apply = "导入后 ForceApply",
+        import_valid_only = "只导入有效槽",
+        suffix_training_cfg = " 训练配置",
+        current_fighter_col = "当前角色: ",
+        current_fighter_brk = "当前角色 [",
+        unnamed_config = "未命名配置",
+        no_configs = "（暂无配置）",
+        advanced_debug = "高级 / 调试",
+        training_config = "训练配置",
+        export_config = "导出配置",
+        import_config = "导入配置",
+        refresh_list = "刷新列表",
+        clear_empty = "清空空槽",
+        rev_wakeup = "倒地反击",
+        rev_guard = "格挡反击",
+        rev_hit = "受击反击",
+        legacy_prefix = "[旧目录] ",
+        col_input = "输入帧",
+        col_frames = "帧数",
+        col_weight = "权重",
+        col_active = "启用",
+        col_valid = "有效",
+        slot_space = "槽 ",
+        status_col = "状态: ",
+        unknown = "未知",
+        refresh = "刷新",
+        clear = "清空",
+        col_slot = "槽",
+    },
+})
+local T = i18n.scope("dynrec")
+
 local options = {
     only_import_valid = false,
     clear_empty_slots = true,
@@ -20,7 +111,7 @@ local last_slots = nil
 local last_snapshot = nil
 local last_fighter_id = nil
 local config_entries = {}
-local config_labels = { "（暂无配置）" }
+local config_labels = { T("no_configs") }
 local selected_config_index = 1
 local config_list_loaded = false
 
@@ -40,7 +131,7 @@ local function single_line_title(value)
 end
 
 local function config_title(entry)
-    if not entry then return "未命名配置" end
+    if not entry then return T("unnamed_config") end
     local metadata = DynamicRecords.read_config_metadata(entry.path)
     if type(metadata) == "table" then
         local title = single_line_title(metadata.title)
@@ -48,15 +139,15 @@ local function config_title(entry)
         local description = single_line_title(metadata.description)
         if description ~= "" then return description end
         local fighter_name = tostring(metadata.fighter_name or "")
-        if fighter_name ~= "" then return fighter_name .. " 训练配置" end
+        if fighter_name ~= "" then return fighter_name .. T("suffix_training_cfg") end
     end
-    return "未命名配置"
+    return T("unnamed_config")
 end
 
 local function refresh_config_list(select_path, silent)
     local ok, entries_or_err = pcall(DynamicRecords.list_configs)
     if not ok then
-        if not silent then set_status(false, "配置列表刷新失败: " .. tostring(entries_or_err)) end
+        if not silent then set_status(false, T("config_refresh_failed") .. tostring(entries_or_err)) end
         return false
     end
 
@@ -64,15 +155,15 @@ local function refresh_config_list(select_path, silent)
     config_labels = {}
     selected_config_index = 1
     for index, entry in ipairs(config_entries) do
-        local prefix = entry.legacy and "[旧目录] " or ""
+        local prefix = entry.legacy and T("legacy_prefix") or ""
         config_labels[index] = prefix .. config_title(entry)
             .. "##SF6CCConfigEntry" .. tostring(index)
         if select_path and entry.path == select_path then selected_config_index = index end
     end
-    if #config_labels == 0 then config_labels[1] = "（暂无配置）" end
+    if #config_labels == 0 then config_labels[1] = T("no_configs") end
     config_list_loaded = true
     if not silent then
-        set_status(true, "配置列表已刷新，共识别 " .. tostring(#config_entries) .. " 个 JSON")
+        set_status(true, T("config_refreshed_pre") .. tostring(#config_entries) .. T("config_refreshed_post"))
     end
     return true
 end
@@ -123,7 +214,7 @@ end
 local function import_selected_config()
     local entry = selected_config()
     if not entry then
-        set_status(false, "请先导出或选择一个配置")
+        set_status(false, T("export_or_select"))
         return
     end
     run_action("Import", function()
@@ -149,7 +240,7 @@ end
 local function draw_config_selector()
     if not config_list_loaded then refresh_config_list(nil, true) end
 
-    imgui.text("训练配置")
+    imgui.text(T("training_config"))
     local changed, new_index = imgui.combo(
         "##SF6CCTrainingConfigList", selected_config_index, config_labels)
     if changed and #config_entries > 0 then
@@ -157,7 +248,7 @@ local function draw_config_selector()
         import_selected_config()
     end
     imgui.same_line()
-    if imgui.small_button("刷新列表") then refresh_config_list(nil, false) end
+    if imgui.small_button(T("refresh_list")) then refresh_config_list(nil, false) end
 
     local entry = selected_config()
     if entry then
@@ -166,7 +257,7 @@ local function draw_config_selector()
 end
 
 local function draw_primary_actions()
-    if imgui.button("导出配置") then
+    if imgui.button(T("export_config")) then
         run_action("Export", function()
             return DynamicRecords.export_new()
         end, function(path)
@@ -175,12 +266,12 @@ local function draw_primary_actions()
     end
     imgui.same_line()
 
-    if imgui.button("导入配置") then
+    if imgui.button(T("import_config")) then
         import_selected_config()
     end
     imgui.same_line()
 
-    if imgui.button("清空") then
+    if imgui.button(T("clear")) then
         run_action("Clear", function()
             return DynamicRecords.clear_current_configuration()
         end, function()
@@ -190,19 +281,19 @@ local function draw_primary_actions()
 end
 
 local function draw_debug_actions()
-    if imgui.button("刷新") then
+    if imgui.button(T("refresh")) then
         refresh_slots(false)
     end
     imgui.same_line()
 
-    if imgui.button("备份当前完整配置") then
+    if imgui.button(T("backup_full")) then
         run_action("Backup", function()
             return DynamicRecords.backup_current()
         end)
     end
     imgui.same_line()
 
-    if imgui.button("恢复最近备份") then
+    if imgui.button(T("restore_backup")) then
         run_action("Restore", function()
             return DynamicRecords.restore_latest_backup(options)
         end)
@@ -212,28 +303,28 @@ end
 local function draw_options()
     local changed
 
-    changed, options.only_import_valid = imgui.checkbox("只导入有效槽", options.only_import_valid)
+    changed, options.only_import_valid = imgui.checkbox(T("import_valid_only"), options.only_import_valid)
     imgui.same_line()
-    changed, options.clear_empty_slots = imgui.checkbox("清空空槽", options.clear_empty_slots)
+    changed, options.clear_empty_slots = imgui.checkbox(T("clear_empty"), options.clear_empty_slots)
     imgui.same_line()
-    changed, options.reject_fighter_mismatch = imgui.checkbox("角色 ID 不匹配时拒绝", options.reject_fighter_mismatch)
+    changed, options.reject_fighter_mismatch = imgui.checkbox(T("reject_mismatch"), options.reject_fighter_mismatch)
     imgui.same_line()
-    changed, options.force_apply_after_import = imgui.checkbox("导入后 ForceApply", options.force_apply_after_import)
+    changed, options.force_apply_after_import = imgui.checkbox(T("force_apply"), options.force_apply_after_import)
 end
 
 local function draw_slots_table(slots)
     if not slots then
-        imgui.text_colored("没有可显示的槽位数据。", 0xFF888888)
+        imgui.text_colored(T("no_slot_data"), 0xFF888888)
         return
     end
 
     if imgui.begin_table("SF6CCDynamicRecordsSlots", 6, 1 << 0) then
-        imgui.table_setup_column("槽", 0, 30)
-        imgui.table_setup_column("有效", 0, 50)
-        imgui.table_setup_column("启用", 0, 50)
-        imgui.table_setup_column("帧数", 0, 60)
-        imgui.table_setup_column("权重", 0, 60)
-        imgui.table_setup_column("输入帧", 0, 70)
+        imgui.table_setup_column(T("col_slot"), 0, 30)
+        imgui.table_setup_column(T("col_valid"), 0, 50)
+        imgui.table_setup_column(T("col_active"), 0, 50)
+        imgui.table_setup_column(T("col_frames"), 0, 60)
+        imgui.table_setup_column(T("col_weight"), 0, 60)
+        imgui.table_setup_column(T("col_input"), 0, 70)
         imgui.table_headers_row()
 
         for _, slot in ipairs(slots) do
@@ -264,14 +355,14 @@ end
 
 local function draw_reversal_table(reversals)
     if type(reversals) ~= "table" then
-        imgui.text_colored("没有可显示的反击设置。", 0xFF888888)
+        imgui.text_colored(T("no_reversal"), 0xFF888888)
         return
     end
 
     local groups = {
-        { key = "down", label = "倒地反击" },
-        { key = "guard", label = "格挡反击" },
-        { key = "damage", label = "受击反击" },
+        { key = "down", label = T("rev_wakeup") },
+        { key = "guard", label = T("rev_guard") },
+        { key = "damage", label = T("rev_hit") },
     }
 
     for _, group in ipairs(groups) do
@@ -279,7 +370,7 @@ local function draw_reversal_table(reversals)
             local entries = reversals[group.key]
             if type(entries) == "table" then
                 for _, entry in ipairs(entries) do
-                    imgui.text("槽 " .. tostring(entry.slot or "-")
+                    imgui.text(T("slot_space") .. tostring(entry.slot or "-")
                         .. " | active=" .. tostring(entry.active)
                         .. " | type=" .. tostring(entry.type)
                         .. " | skill=" .. tostring(entry.skill_index)
@@ -288,7 +379,7 @@ local function draw_reversal_table(reversals)
                         .. " | meaty=" .. tostring(entry.meaty_frame))
                 end
             else
-                imgui.text_colored("组数据不可用。", 0xFF888888)
+                imgui.text_colored(T("group_unavailable"), 0xFF888888)
             end
             imgui.tree_pop()
         end
@@ -307,7 +398,7 @@ local function draw_debug_panel()
         last_snapshot = nil
     end
 
-    imgui.text("当前角色: " .. tostring(fighter_name)
+    imgui.text(T("current_fighter_col") .. tostring(fighter_name)
         .. " / fighter_id=" .. tostring(fighter_id or "?")
         .. " / source=" .. tostring(source_player))
 
@@ -328,28 +419,28 @@ local function draw_debug_panel()
     draw_reversal_table(last_snapshot and last_snapshot.reversals or nil)
 
     imgui.separator()
-    imgui.text("状态: ")
+    imgui.text(T("status_col"))
     imgui.same_line()
     imgui.text_colored(status_msg, status_color())
 end
 
 local function draw_panel()
     local ctx = DynamicRecords.get_context()
-    local fighter_name = tostring(ctx.fighter_name or "未知")
-    imgui.text("当前角色 [" .. fighter_name .. "]")
+    local fighter_name = tostring(ctx.fighter_name or T("unknown"))
+    imgui.text(T("current_fighter_brk") .. fighter_name .. "]")
 
     draw_config_selector()
     draw_primary_actions()
 
-    if imgui.tree_node("高级 / 调试") then
+    if imgui.tree_node(T("advanced_debug") .. "##SF6CCDynRecAdvanced") then
         draw_debug_panel()
         imgui.tree_pop()
     end
-    imgui.text_colored("提醒：具体配置请在网站上配置和保存", 0xFF888888)
+    imgui.text_colored(T("website_note"), 0xFF888888)
 end
 
 re.on_draw_ui(function()
-    if imgui.tree_node("小吞MOD: 训练配置管理") then
+    if imgui.tree_node(T("header") .. "##SF6CCDynRecMain") then
         draw_panel()
         imgui.tree_pop()
     end
