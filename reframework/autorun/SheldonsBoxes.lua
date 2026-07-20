@@ -75,6 +75,8 @@ local config = {
     -- Vital Ruler
     vital_ruler = {
         enabled       = true,
+        show_p1       = true,   -- per-player ruler visibility (click P1 ruler toggles this)
+        show_p2       = true,
         pos_x         = 0.10,
         pos_y         = 0.089,
         width         = 0.353,
@@ -821,9 +823,13 @@ re.on_frame(function()
         end
 
         local total_w, total_h = get_text_size_custom(full_txt)
+        -- Minimum clickable width so the zone survives when the HUD is empty
+        -- (all 4 fields toggled off) and can be clicked again to bring it back.
+        local min_w = 120 * (display_w / 1920)
+        if total_h < 1 then total_h = get_text_size_custom("HP") end
         hud_p1_rect.x = p1_x_start - 5
         hud_p1_rect.y = base_y_hud - 5
-        hud_p1_rect.w = total_w + 10
+        hud_p1_rect.w = math.max(total_w, min_w) + 10
         hud_p1_rect.h = total_h + 10
     end
 
@@ -863,9 +869,12 @@ re.on_frame(function()
 
         local full_w = w_stats + w_x
         local _, total_h = get_text_size_custom("HP")
-        hud_p2_rect.x = p2_edge - full_w - 5
+        -- Minimum clickable width, kept anchored to the right edge, so the zone
+        -- survives an empty HUD and stays clickable to restore it.
+        local eff_w = math.max(full_w, 120 * (display_w / 1920))
+        hud_p2_rect.x = p2_edge - eff_w - 5
         hud_p2_rect.y = base_y_hud - 5
-        hud_p2_rect.w = full_w + 10
+        hud_p2_rect.w = eff_w + 10
         hud_p2_rect.h = total_h + 10
     end
 
@@ -923,7 +932,11 @@ re.on_frame(function()
         end
     end
 
-    if config.show_distance_arrow and p1_data and p2_data then
+    -- Distance-arrow click zone is computed whenever both players exist, even
+    -- when the arrow is hidden, so it stays clickable to bring it back (the zone
+    -- tracks the live player positions). The arrow itself is drawn only when
+    -- show_distance_arrow is on.
+    if p1_data and p2_data then
         v_p1.x = p1_data.world_x; v_p1.y = p1_data.world_y; v_p1.z = 0
         v_p2.x = p2_data.world_x; v_p2.y = p2_data.world_y; v_p2.z = 0
         local p1s = draw.world_to_screen(v_p1); local p2s = draw.world_to_screen(v_p2)
@@ -938,7 +951,7 @@ re.on_frame(function()
             local ay_max = math.max(p1s.y, p2s.y) + ht + 5
             arrow_rect.x = ax_min; arrow_rect.y = ay_min; arrow_rect.w = ax_max - ax_min; arrow_rect.h = ay_max - ay_min
 
-            if boxes_visible then
+            if config.show_distance_arrow and boxes_visible then
                 local dist = math.abs(p2_data.world_x - p1_data.world_x)
                 local dx = p2s.x - p1s.x; local dy = p2s.y - p1s.y; local len = math.sqrt(dx*dx + dy*dy)
                 local base_col; local grad = 0
@@ -994,10 +1007,16 @@ re.on_frame(function()
             -- parallel flags): each click toggles the real display setting, so
             -- the menu reflects it and SAVE DISPLAY CONFIG persists it.
 
-            -- VR ruler -> the single "Enabled" checkbox.
+            -- VR ruler -> per-player "Show P1/P2 Ruler" checkboxes. We toggle
+            -- show_p1/show_p2 (NOT enabled), so the master stays on and the rects
+            -- keep being computed -> a hidden side stays clickable to bring back.
             local vr = vr_get_active()
-            if vr.enabled and (pt_in(vr_p1_rect) or pt_in(vr_p2_rect)) then
-                vr.enabled = false
+            if vr.enabled and pt_in(vr_p1_rect) then
+                vr.show_p1 = (vr.show_p1 == false)
+                clicked_any = true
+            end
+            if vr.enabled and pt_in(vr_p2_rect) then
+                vr.show_p2 = (vr.show_p2 == false)
                 clicked_any = true
             end
 
@@ -1014,10 +1033,14 @@ re.on_frame(function()
                 clicked_any = true
             end
 
-            -- Boxes (distance arrow zone) -> the "Hide All P1/P2 Boxes" checkboxes.
+            -- Distance-arrow zone -> hides the arrow AND all boxes together
+            -- ("Show Distance Arrow" + "Hide All P1/P2 Boxes"). Uses the arrow's
+            -- own state as the reference so both toggle in lockstep.
             if pt_in(arrow_rect) then
-                local hide = not (hide_p1_boxes and hide_p2_boxes)
-                hide_p1_boxes = hide; hide_p2_boxes = hide
+                local currently_shown = (config.show_distance_arrow == true)
+                config.show_distance_arrow = not currently_shown
+                hide_p1_boxes = currently_shown
+                hide_p2_boxes = currently_shown
                 clicked_any = true
             end
 
@@ -1035,10 +1058,13 @@ re.on_frame(function()
         end
     end
 
-    -- Push ruler data (D2D reads it — clears when stale)
+    -- Push ruler data (D2D reads it — clears when stale). Per-player: a ruler
+    -- side is only queued when its show_p1/show_p2 flag is on, so clicking one
+    -- side hides only that side (nil defaults to shown for older configs).
     if vr_get_active().enabled and vr_visible then
-        local p1_max = vr_get_vital_max(0)
-        local p2_max = vr_get_vital_max(1)
+        local vr = vr_get_active()
+        local p1_max = (vr.show_p1 ~= false) and vr_get_vital_max(0) or nil
+        local p2_max = (vr.show_p2 ~= false) and vr_get_vital_max(1) or nil
         if p1_max or p2_max then
             _G._vr_queue = { p1_max = p1_max, p2_max = p2_max }
         else
@@ -1486,6 +1512,12 @@ re.on_draw_ui(function()
             local vr = vr_get_active()
             local ch
             ch, vr.enabled = imgui.checkbox("Enabled##vr", vr.enabled); if ch then c = true end
+            -- Per-player ruler visibility (also driven by clicking a ruler side).
+            -- nil-safe: an older config with no show_p1/p2 reads as shown.
+            if vr.show_p1 == nil then vr.show_p1 = true end
+            if vr.show_p2 == nil then vr.show_p2 = true end
+            ch, vr.show_p1 = imgui.checkbox("Show P1 Ruler##vr", vr.show_p1); if ch then c = true end; imgui.same_line()
+            ch, vr.show_p2 = imgui.checkbox("Show P2 Ruler##vr", vr.show_p2); if ch then c = true end
             ch, vr.pos_x = imgui.drag_float("X position##vr", vr.pos_x, 0.001, 0.0, 1.0, "%.3f"); if ch then c = true end
             ch, vr.pos_y = imgui.drag_float("Y position##vr", vr.pos_y, 0.001, 0.0, 1.0, "%.3f"); if ch then c = true end
             ch, vr.width = imgui.drag_float("Width##vr", vr.width, 0.001, 0.0, 1.0, "%.3f"); if ch then c = true end
