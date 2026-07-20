@@ -135,7 +135,7 @@
 </div>
 
 <script>
-const UPDATED = "20/07/2026 · #1 #2 #3 intégrés · #6 déjà présent · reste vérifié";
+const UPDATED = "20/07/2026 · #1 #2 #3 #5 intégrés · #6 déjà présent · #4 en décision";
 
 const UI = {
   fr:{ title_a:"Portage cdjay", title_b:"branche Wael",
@@ -192,12 +192,12 @@ const ITEMS = [
     note:{fr:"VÉRIFIÉ : PAS un port propre. Dépend de action_instance, tissé sur 62 sites chez lui dans le matcher/recording. On ne le track pas (0). L'intégrer = toucher en profondeur le validator qui marche. À reporter APRÈS validation du batch actuel, puis décider ensemble.",
           zh:"已核实：非干净移植。依赖 action_instance，在他代码的匹配/录制中贯穿 62 处。我们完全未追踪（0）。集成 = 深度改动已工作的 validator。建议在当前批次实机验证后再定。"} },
 
-  { ord:5, title:"Modern display — unresolved audit", status:"todo", risk:"low",
-    files:"func/ComboTrials_D2D.lua", fn:"~10 fn", commit:"",
-    desc:{fr:"Le reste du moteur moderne : l'audit qui logge les notations non résolues (placeholder + session), la résolution de contexte recording / live plus profonde. Le rendu de base est déjà couvert par ModernDisplay.lua.",
-          zh:"现代记法引擎的其余部分：记录未解析记法的审计（占位符 + 会话）、更深的 recording / live 上下文解析。基础渲染已由 ModernDisplay.lua 覆盖。"},
-    note:{fr:"Faible risque : additif, purement diagnostic. Ne remplace PAS D2D — couche de résolution par-dessus.",
-          zh:"低风险：附加式，纯诊断。不替换 D2D —— 是其上的解析层。"} },
+  { ord:5, title:"Modern display — unresolved audit", status:"test", risk:"low",
+    files:"func/ComboTrials_D2D.lua", fn:"4 fn + API", commit:"aa98694",
+    desc:{fr:"Diagnostic : enregistre les act_id que la data modern_display v9 ne mappe pas (par perso:action_id, avec compteur d'occurrences), pour trouver et corriger les trous de couverture. Sa logique, câblée sur NOTRE ModernDisplay (get_motion → nil).",
+          zh:"诊断：记录 modern_display v9 数据未映射的 act_id（按 角色:action_id，含出现次数），以便发现并修复覆盖缺口。他的逻辑，接入我们的 ModernDisplay（get_motion → nil）。"},
+    note:{fr:"Purement additif : ne change JAMAIS ce qui est affiché (la notation classique reste). Accessible via M.get_modern_unresolved_audit. À tester : afficher un combo moderne d'un perso avec un act_id non mappé → l'audit doit le lister.",
+          zh:"纯附加：绝不改变显示内容（仍显示经典记法）。经 M.get_modern_unresolved_audit 访问。测试：显示某角色含未映射 act_id 的现代连段 → 审计应列出它。"} },
 
   { ord:6, title:"CTStunDemoRuntime", status:"done", risk:"high",
     files:"TrainingComboTrials_v1.0.lua", fn:"6 fn", commit:"60de4a2",
