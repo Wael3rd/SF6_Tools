@@ -771,7 +771,11 @@ end
 -- [6. MAIN LOOP]
 -- =========================================================
 re.on_frame(function()
-    if _G.SheldonsBoxes_Enabled ~= true or not RuntimeSafety.is_training_allowed() then
+    -- Fail-open: draw unless SheldonsBoxes is EXPLICITLY disabled. The cdjay
+    -- online-protection port added a `~= true` gate on a flag nothing set here,
+    -- which silently disabled the whole overlay. Only an explicit false (e.g. the
+    -- optional top-bar toggle) hides it now; the online guard stays below.
+    if _G.SheldonsBoxes_Enabled == false or not RuntimeSafety.is_training_allowed() then
         _G._vr_queue = nil
         click_flash_frames = 0
         return
@@ -1246,7 +1250,7 @@ end
 
 if d2d and d2d.register then
     d2d.register(function() end, function()
-        if _G.SheldonsBoxes_Enabled ~= true then
+        if _G.SheldonsBoxes_Enabled == false then
             _G._vr_queue = nil
             return
         end

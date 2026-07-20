@@ -113,12 +113,13 @@ local config = {
     top_alphas = { switch = 170, active = 170, inactive = 120 },
     hide_btn = { x_pct = 0.4625, y_pct = 0.05, w_pct = 0.075, h_pct = 0.075 },
     -- Feature toggles driven by the Chinese top bar (SF6_TOOLS_CC parity).
-    -- Defaults chosen to preserve today's behaviour exactly, per script:
-    --   Distance Viewer is currently always active  -> true
-    --   SheldonsBoxes reads _G.SheldonsBoxes_Enabled, which nothing ever set,
-    --   so it has been dormant -> false (turning it on stays a user action)
+    -- Both default TRUE: these overlays are on by default. The earlier "dormant"
+    -- assumption for SheldonsBoxes was wrong -- the cdjay online-protection port
+    -- had gated it on a flag nothing set, which silently disabled it. It is
+    -- fail-open now (SheldonsBoxes hides only on an explicit false), and this
+    -- default keeps the top-bar toggle consistent (starts on).
     distance_viewer_enabled = true,
-    sheldons_boxes_enabled = false,
+    sheldons_boxes_enabled = true,
 }
 
 -- ARGB -> ABGR conversion
