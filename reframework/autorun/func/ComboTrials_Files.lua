@@ -14,10 +14,53 @@ local M = {}
 local trial_state, file_system, players
 local assign_groups, reset_trial_flags, reset_visual_state
 
+-- =========================================================
+-- SUBSYSTEM PORT #7 (partial) -- forward-compat schema guard, adopted from
+-- SF6_TOOLS_CC HEAD 9b851c5. If a shared combo file was written with a newer
+-- _xt_meta.schema than this build understands, warn once (on-screen + console)
+-- and still load it best-effort by known fields, instead of breaking silently.
+-- Matters for the shared JSON format: when cdjay bumps the schema, our users
+-- get a clear message rather than a broken combo.
+-- (His sanitize_filename_component and deferred-refresh busy-state were checked
+-- and NOT ported: we already have sanitize_ascii_filename_part, and our combo
+-- list refreshes only on dropdown-open, so there is no timer-poll to defer.)
+-- =========================================================
+local XT_SCHEMA_MAX = 2   -- highest _xt_meta.schema this build writes/understands
+local schema_warning_paths = {}
+
+local function warn_combo_file_once(path, reason)
+    local warnings = file_system and file_system.combo_file_warnings
+    if type(warnings) ~= "table" then return end
+    local key = tostring(path) .. "|" .. tostring(reason)
+    if warnings[key] then return end
+    warnings[key] = true
+    pcall(print, string.format("[ComboTrials] Combo file issue: %s (%s)", tostring(path), tostring(reason)))
+end
+M.warn_combo_file_once = warn_combo_file_once
+
+local function warn_newer_schema(path, sequence)
+    local first = type(sequence) == "table" and sequence[1] or nil
+    local meta = type(first) == "table" and first._xt_meta or nil
+    local schema = type(meta) == "table" and tonumber(meta.schema) or nil
+    if not schema or schema <= XT_SCHEMA_MAX then return end
+    local key = tostring(path) .. "|" .. tostring(schema)
+    if schema_warning_paths[key] then return end
+    schema_warning_paths[key] = true
+    local msg = string.format("Combo schema %s is newer than supported %s; loading known fields only", schema, XT_SCHEMA_MAX)
+    pcall(print, "[ComboTrials] " .. msg)
+    if type(_G.show_custom_ticker) == "function" then pcall(_G.show_custom_ticker, msg, 0.3) end
+end
+M.warn_newer_schema = warn_newer_schema
+
 function M.load_combo_from_file(path)
     if not path then return false end
     local loaded = json.load_file(path)
-    if not loaded then return false end
+    if not loaded then
+        warn_combo_file_once(path, "JSON load failed")
+        return false
+    end
+    -- #7: forward-compat schema check (warns once, still loads best-effort).
+    warn_newer_schema(path, loaded)
     trial_state.sequence = loaded
     assign_groups(trial_state.sequence)
     trial_state.current_step = 1
@@ -294,6 +337,10 @@ function M.init(context)
     assign_groups = context.assign_groups
     reset_trial_flags = context.reset_trial_flags
     reset_visual_state = context.reset_visual_state
+    -- #7: dedup store for one-time combo-file warnings.
+    if type(file_system.combo_file_warnings) ~= "table" then
+        file_system.combo_file_warnings = {}
+    end
     attach_completion_api()
 end
 
