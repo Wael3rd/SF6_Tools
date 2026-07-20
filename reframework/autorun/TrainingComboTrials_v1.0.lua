@@ -3389,8 +3389,8 @@ function restore_trial_defense_settings()
     return true
 end
 
-function apply_trial_defense_cleanup()
-    local attacker_idx = tonumber(trial_state.playing_player or 0) or 0
+function apply_trial_defense_cleanup(attacker_override)
+    local attacker_idx = tonumber(attacker_override or trial_state.playing_player or 0) or 0
     if attacker_idx ~= 1 then attacker_idx = 0 end
     local defender_idx = 1 - attacker_idx
     ct_backup_trial_defense_settings(defender_idx)
@@ -3418,9 +3418,6 @@ end
 
 local function reset_trial_flags()
     trial_state.is_playing = false
-    -- Subsystem #2: put the dummy's Drive-Parry/DR defense back the way the
-    -- user had it (no-op when no trial backup exists). Fail-open.
-    pcall(restore_trial_defense_settings)
     trial_state.is_recording = false
     trial_state._was_playing = false
     trial_state.current_step = 1
@@ -3465,6 +3462,12 @@ local function start_recording(player_idx)
     trial_state.is_recording = true
     trial_state.recording_player = player_idx
     trial_state.sequence = {}
+
+    -- Subsystem #2: also stop the dummy auto Drive-Parry/DR-ing WHILE RECORDING
+    -- (the recorder is the attacker), so combos actually connect. Backs up the
+    -- user's Defense settings once; the per-frame idle check restores them when
+    -- neither recording nor a trial is active. Fail-open.
+    pcall(apply_trial_defense_cleanup, player_idx)
 
     -- LOGGER EXPORT RECORDING INIT
     if player_idx == 0 then
@@ -5683,6 +5686,15 @@ end
 re.on_frame(function()
     pcall(_ct_track_live_combo)
     ct_handle_web_commands()
+
+    -- Subsystem #2: restore the dummy's Defense settings the moment we are
+    -- neither recording nor playing a trial. This covers EVERY stop path (the
+    -- Stop Trial button, web stop, completion, character switch...) which do not
+    -- all funnel through reset_trial_flags. No-op unless a backup is pending.
+    if trial_state._trial_defense_backup
+       and not trial_state.is_playing and not trial_state.is_recording then
+        pcall(restore_trial_defense_settings)
+    end
 
     -- External combo file detection (mobile imports) is NO LONGER polled on a
     -- timer: check_external_changes() does a full fs.glob (REFramework walks the

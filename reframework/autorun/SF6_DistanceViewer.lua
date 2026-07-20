@@ -1396,7 +1396,7 @@ end
 
 local function evaluate_player_zone(pi, cache_data, opponent_data)
     local _, dist_target = get_closest_edge(cache_data.id)
-    if not dist_target then return { name = "Out Range", color = colors.Grey } end
+    if not dist_target then return { name = DVT("out_of_range"), color = colors.Grey } end
 
     local is_adv = (pi == 0) and config.p1_advanced_mode or config.p2_advanced_mode
     if auto_activate.enabled and auto_activate.move and pi == 1 then is_adv = true end
@@ -1446,7 +1446,7 @@ local function evaluate_player_zone(pi, cache_data, opponent_data)
         end
     end
     if auto_activate.enabled and auto_activate.move and pi == 1 then
-        return { name = "Out Of Range", color = AA_COLOR_WHITE }
+        return { name = DVT("out_of_range"), color = AA_COLOR_WHITE }
     end
     return { name = ((pi == 0) and "P1" or "P2") .. " " .. DVT("green_zone"), color = colors.Green }
 end
@@ -1598,7 +1598,7 @@ local function get_advanced_zone_label(pi, char_name, dist_cc, prefix, show_titl
         end
     end
     
-    if show_title or show_name then return space .. "Out Range", colors.White end
+    if show_title or show_name then return space .. DVT("out_of_range"), colors.White end
         return "", colors.White
 end
 
@@ -1610,7 +1610,7 @@ local function get_opp_zone_info(cache_data, opponent_data)
         if dist and dist <= get_effective_ar(auto_activate.move, 1) + 0.0000001 then
             return "{" .. auto_activate.move.input .. "}", AA_COLOR_RED
         end
-        return "Out Of Range", colors.White
+        return DVT("out_of_range"), colors.White
     end
 
     -- MY ZONE LOGIC: Evaluate own position relative to the opponent's zone
@@ -4180,6 +4180,7 @@ do
                 yellow_zone = "Yellow Zone",
                 green_zone = "Green Zone",
                 no_cross = "No Cross",
+                out_of_range = "Out Of Range",
                 options_header = "--- %s (P%d) OPTIONS ---",
                 aa_label = "AUTO ACTIVATE",
                 auto_lock_on_attack_freeze_during_active_fra = "Auto-Lock on Attack (Freeze during active frames)",
@@ -4282,6 +4283,7 @@ do
                 yellow_zone = "黄色区域",
                 green_zone = "绿色区域",
                 no_cross = "无逆向",
+                out_of_range = "超出范围",
                 options_header = "--- %s (P%d) 设置 ---",
                 aa_label = "自动激活",
                 auto_lock_on_attack_freeze_during_active_fra = "攻击时自动锁定（活跃帧期间冻结）",
