@@ -135,7 +135,7 @@
 </div>
 
 <script>
-const UPDATED = "20/07/2026 · #1 #2 #3 #5 #7 intégrés · #6 déjà présent · seul #4 en décision";
+const UPDATED = "20/07/2026 · #2 validé en jeu · #1 #3 #5 #7 à tester · #6 déjà présent · seul #4 en décision";
 
 const UI = {
   fr:{ title_a:"Portage cdjay", title_b:"branche Wael",
@@ -171,12 +171,12 @@ const ITEMS = [
     note:{fr:"Distinct du #2 : le HP restore n'était PAS un manque, il est déjà chez nous.",
           zh:"与 #2 不同：HP 还原并非缺口，我们早已具备。"} },
 
-  { ord:2, title:"Trial defense-settings restore", status:"test", risk:"high",
+  { ord:2, title:"Trial defense-settings restore", status:"done", risk:"high",
     files:"TrainingComboTrials_v1.0.lua", fn:"7 fn", commit:"580d6c7",
     desc:{fr:"Désactive le Drive-Parry / Drive-Rush AUTO du dummy pendant le trial (pour qu'il n'auto-pare pas au milieu du combo), sauvegarde tes réglages de l'onglet Defense avant, les restaure après. Rien à voir avec le HP.",
           zh:"在 trial 期间关闭假人的自动 Drive Parry / Drive Rush 防御（避免其在连段中途自动招架），先备份你的 Defense 选项卡设置，结束后还原。与 HP 无关。"},
-    note:{fr:"Câblé fail-open : apply dans start_trial, restore dans reset_trial_flags (no-op sans backup). À tester : mets le dummy en Drive Parry auto, lance un trial → il ne doit plus parer ; à la fin tes réglages Defense reviennent.",
-          zh:"以失败即放行接入：start_trial 中 apply，reset_trial_flags 中 restore（无备份时空操作）。测试：把假人设为自动 Drive Parry，开始 trial → 它不应再招架；结束后你的 Defense 设置恢复。"} },
+    note:{fr:"VALIDÉ EN JEU : le dummy ne pare plus pendant record + trial, réglages restaurés au stop. Bug corrigé : le port avait sauté CT_TRIAL_DEFENSE_FIELDS (définie juste au-dessus du bloc chez cdjay) → ipairs(nil) throw avalé par pcall → no-op silencieux. Restore via check per-frame idle (couvre tous les stop).",
+          zh:"已实机验证：假人在录制与 trial 期间不再招架，停止时恢复设置。已修复：移植遗漏了 CT_TRIAL_DEFENSE_FIELDS（cdjay 在块正上方定义）→ ipairs(nil) 抛错被 pcall 吞掉 → 静默无效。恢复改为每帧空闲检查（覆盖所有停止路径）。"} },
 
   { ord:3, title:"Dummy crouch + guard inference", status:"test", risk:"med",
     files:"TrainingComboTrials_v1.0.lua", fn:"8 fn", commit:"4ec37e6",
