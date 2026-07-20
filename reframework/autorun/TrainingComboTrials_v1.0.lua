@@ -3298,8 +3298,129 @@ local function reset_visual_state()
     end
 end
 
+-- =========================================================
+-- SUBSYSTEM PORT #2 -- trial DEFENSE-settings backup/restore (verbatim from
+-- SF6_TOOLS_CC HEAD 9b851c5). Disables the dummy's automatic Drive-Parry /
+-- Drive-Rush defense while a combo trial plays (so it does not auto-parry mid
+-- combo), backing up the user's Defense-tab settings first and restoring them
+-- when the trial ends. Separate from HP restore, which is already ported.
+-- Self-contained: only native (sdk) + trial_state.
+-- =========================================================
+function ct_get_tf_defense_system()
+    if _ct_tf_defense_system_cache then return _ct_tf_defense_system_cache end
+    pcall(function()
+        local tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        if not tm then return end
+        local dict = tm:get_field("_tfFuncs")
+        if not dict then return end
+        local entries = dict:get_field("_entries")
+        if not entries then return end
+        local count = entries:call("get_Count")
+        for i = 0, count - 1 do
+            local entry = entries:call("get_Item", i)
+            local val = entry and entry:get_field("value") or nil
+            if val then
+                local td = val:get_type_definition()
+                local full_name = td and td:get_full_name() or ""
+                if full_name:find("tf_DefenseSystem") then
+                    _ct_tf_defense_system_cache = val
+                    return
+                end
+            end
+        end
+    end)
+    return _ct_tf_defense_system_cache
+end
+
+function ct_get_trial_defense_objects(player_idx)
+    local out = { player_idx = tonumber(player_idx or 1) or 1 }
+    if out.player_idx ~= 1 then out.player_idx = 0 end
+    pcall(function()
+        out.tm = sdk.get_managed_singleton("app.training.TrainingManager")
+        out.defense_func = out.tm and out.tm:call("get_DefenseFunc") or nil
+        local t_data = out.tm and out.tm:get_field("_tData") or nil
+        out.defense_system = t_data and t_data:get_field("DefenseSystem") or nil
+        if out.defense_system then
+            out.dummy_data = out.defense_system.DummyData
+            out.player_data = out.defense_system.PlayerDatas and out.defense_system.PlayerDatas[out.player_idx] or nil
+        end
+        out.tf_defense = ct_get_tf_defense_system()
+    end)
+    return out
+end
+
+function ct_copy_trial_defense_fields(obj)
+    local fields = {}
+    if not obj then return fields end
+    for _, field_name in ipairs(CT_TRIAL_DEFENSE_FIELDS) do
+        local ok, value = pcall(function() return obj[field_name] end)
+        if ok and value ~= nil then fields[field_name] = value end
+    end
+    return fields
+end
+
+function ct_write_trial_defense_fields(obj, fields)
+    if not obj then return end
+    for field_name, value in pairs(fields or {}) do
+        pcall(function() obj[field_name] = value end)
+    end
+end
+
+function ct_backup_trial_defense_settings(defender_idx)
+    defender_idx = tonumber(defender_idx or 1) or 1
+    if defender_idx ~= 1 then defender_idx = 0 end
+    if type(trial_state._trial_defense_backup) == "table" then return end
+    local objects = ct_get_trial_defense_objects(defender_idx)
+    trial_state._trial_defense_backup = {
+        player_idx = defender_idx,
+        dummy = ct_copy_trial_defense_fields(objects.dummy_data),
+        player = ct_copy_trial_defense_fields(objects.player_data)
+    }
+end
+
+function restore_trial_defense_settings()
+    local backup = trial_state._trial_defense_backup
+    if type(backup) ~= "table" then return false end
+    local objects = ct_get_trial_defense_objects(backup.player_idx)
+    ct_write_trial_defense_fields(objects.dummy_data, backup.dummy)
+    ct_write_trial_defense_fields(objects.player_data, backup.player)
+    if objects.tf_defense then pcall(function() objects.tf_defense:call("bApply") end) end
+    trial_state._trial_defense_backup = nil
+    return true
+end
+
+function apply_trial_defense_cleanup()
+    local attacker_idx = tonumber(trial_state.playing_player or 0) or 0
+    if attacker_idx ~= 1 then attacker_idx = 0 end
+    local defender_idx = 1 - attacker_idx
+    ct_backup_trial_defense_settings(defender_idx)
+
+    local objects = ct_get_trial_defense_objects(defender_idx)
+    if objects.defense_func then
+        pcall(function() objects.defense_func:call("SetDriveParry", defender_idx, 0) end)
+        pcall(function() objects.defense_func:call("ChangeDRType", defender_idx, 0) end)
+        pcall(function() objects.defense_func:call("SetDR_Guard_Weight", defender_idx, 0) end)
+        pcall(function() objects.defense_func:call("SetDR_Getup_Weight", defender_idx, 0) end)
+        pcall(function() objects.defense_func:call("SetDR_No_Weight", defender_idx, 100) end)
+    end
+
+    local disabled = {
+        DR_Type = 0,
+        DP_Type = 0,
+        DR_Guard_Weight = 0,
+        DR_Getup_Weight = 0,
+        DR_No_Weight = 100
+    }
+    ct_write_trial_defense_fields(objects.dummy_data, disabled)
+    ct_write_trial_defense_fields(objects.player_data, disabled)
+    if objects.tf_defense then pcall(function() objects.tf_defense:call("bApply") end) end
+end
+
 local function reset_trial_flags()
     trial_state.is_playing = false
+    -- Subsystem #2: put the dummy's Drive-Parry/DR defense back the way the
+    -- user had it (no-op when no trial backup exists). Fail-open.
+    pcall(restore_trial_defense_settings)
     trial_state.is_recording = false
     trial_state._was_playing = false
     trial_state.current_step = 1
@@ -3390,6 +3511,10 @@ local function start_trial(player_idx)
     save_dummy_counter_type()
     save_dummy_guard_type()
     save_dummy_action_type()
+
+    -- Subsystem #2: stop the dummy auto Drive-Parry/DR-ing during the trial
+    -- (backs up the user's Defense settings first). Fail-open.
+    pcall(apply_trial_defense_cleanup)
 
     -- INJECT COUNTER STATE for the first step
     local first_ct = trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].counter_type or 0
