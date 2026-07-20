@@ -135,7 +135,7 @@
 </div>
 
 <script>
-const UPDATED = "20/07/2026 · #2 validé en jeu · #1 #3 #5 #7 à tester · #6 déjà présent · seul #4 en décision";
+const UPDATED = "20/07/2026 · tout testé en jeu OK · seul #4 (invasif) en décision";
 
 const UI = {
   fr:{ title_a:"Portage cdjay", title_b:"branche Wael",
@@ -157,7 +157,7 @@ const UI = {
 // status: todo | prog | test | done | skip   ·   risk: low | med | high
 // title/files are language-neutral (code); desc/note carry fr + zh.
 const ITEMS = [
-  { ord:1, title:"CTTimelineSequenceNormalizer", status:"test", risk:"med",
+  { ord:1, title:"CTTimelineSequenceNormalizer", status:"done", risk:"med",
     files:"TrainingComboTrials_v1.0.lua", fn:"20 fn", commit:"803a8ab",
     desc:{fr:"Normalise les séquences : normaux répétés / multi-hit compactés en un step (anti-bug d'affichage et de matching sur les coups qui touchent plusieurs fois). Porté verbatim.",
           zh:"序列归一化：将重复 / 多段命中的普通技压缩为单个 step（修复多段命中招式的显示与匹配错误）。逐行原样移植。"},
@@ -178,7 +178,7 @@ const ITEMS = [
     note:{fr:"VALIDÉ EN JEU : le dummy ne pare plus pendant record + trial, réglages restaurés au stop. Bug corrigé : le port avait sauté CT_TRIAL_DEFENSE_FIELDS (définie juste au-dessus du bloc chez cdjay) → ipairs(nil) throw avalé par pcall → no-op silencieux. Restore via check per-frame idle (couvre tous les stop).",
           zh:"已实机验证：假人在录制与 trial 期间不再招架，停止时恢复设置。已修复：移植遗漏了 CT_TRIAL_DEFENSE_FIELDS（cdjay 在块正上方定义）→ ipairs(nil) 抛错被 pcall 吞掉 → 静默无效。恢复改为每帧空闲检查（覆盖所有停止路径）。"} },
 
-  { ord:3, title:"Dummy crouch + guard inference", status:"test", risk:"med",
+  { ord:3, title:"Dummy crouch + guard inference", status:"done", risk:"med",
     files:"TrainingComboTrials_v1.0.lua", fn:"8 fn", commit:"4ec37e6",
     desc:{fr:"Déduit si le dummy doit être accroupi (et son type de guard) depuis l'environnement / le statut de scène / le texte du combo — plus riche qu'un simple flag de pose. On garde notre gestion du jump.",
           zh:"从环境 / 场景状态 / 连段文本推断假人是否应蹲姿（及其防御类型）—— 比单一姿态标志更完整。保留我们的跳跃处理。"},
@@ -192,7 +192,7 @@ const ITEMS = [
     note:{fr:"VÉRIFIÉ : PAS un port propre. Dépend de action_instance, tissé sur 62 sites chez lui dans le matcher/recording. On ne le track pas (0). L'intégrer = toucher en profondeur le validator qui marche. À reporter APRÈS validation du batch actuel, puis décider ensemble.",
           zh:"已核实：非干净移植。依赖 action_instance，在他代码的匹配/录制中贯穿 62 处。我们完全未追踪（0）。集成 = 深度改动已工作的 validator。建议在当前批次实机验证后再定。"} },
 
-  { ord:5, title:"Modern display — unresolved audit", status:"test", risk:"low",
+  { ord:5, title:"Modern display — unresolved audit", status:"done", risk:"low",
     files:"func/ComboTrials_D2D.lua", fn:"4 fn + API", commit:"aa98694",
     desc:{fr:"Diagnostic : enregistre les act_id que la data modern_display v9 ne mappe pas (par perso:action_id, avec compteur d'occurrences), pour trouver et corriger les trous de couverture. Sa logique, câblée sur NOTRE ModernDisplay (get_motion → nil).",
           zh:"诊断：记录 modern_display v9 数据未映射的 act_id（按 角色:action_id，含出现次数），以便发现并修复覆盖缺口。他的逻辑，接入我们的 ModernDisplay（get_motion → nil）。"},
@@ -206,7 +206,7 @@ const ITEMS = [
     note:{fr:"Rien à porter. Design optimal : raw DEMO pour les combos récents (précision), son CTStunDemoRuntime gardé en fallback pour les vieux combos sans raw_inputs.",
           zh:"无需移植。最优设计：新连段用 raw DEMO（精确），旧的无 raw_inputs 连段回退到他的 CTStunDemoRuntime。"} },
 
-  { ord:7, title:"Forward-compat schema guard", status:"test", risk:"low",
+  { ord:7, title:"Forward-compat schema guard", status:"done", risk:"low",
     files:"func/ComboTrials_Files.lua", fn:"2 fn", commit:"147b049",
     desc:{fr:"warn_newer_schema + warn_combo_file_once : un combo d'un schéma plus récent que le nôtre (max 2) prévient une fois (ticker + console) et se charge quand même au mieux, au lieu de casser en silence. Clé pour le format JSON partagé.",
           zh:"warn_newer_schema + warn_combo_file_once：schema 高于我们（最高 2）的连段会提示一次（ticker + 控制台）并尽力加载，而非静默失败。对共享 JSON 格式很关键。"},
