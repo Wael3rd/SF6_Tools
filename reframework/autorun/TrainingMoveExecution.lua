@@ -3,6 +3,7 @@ local sdk = sdk
 local imgui = imgui
 local GS = require("func/GameState")
 local UIKit = require("func/UIKit")
+local i18n = require("func/i18n")
 
 
 local TOTAL = 10
@@ -567,8 +568,10 @@ re.on_frame(function()
     local center_y = sh / 2 + sh * config.n_y
 
     local _dp_font = nil
+    local _dp_file = i18n.font("capcom_goji-udkakugoc80pro-db.ttf")
+    local _dp_size = math.max(10, math.floor(18 * config.font_scale * (sh / 1080.0)))
     pcall(function()
-        _dp_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", math.max(10, math.floor(18 * config.font_scale * (sh / 1080.0))))
+        _dp_font = imgui.load_font(_dp_file, _dp_size)
     end)
     if _dp_font then imgui.push_font(_dp_font) end
     local text_h = imgui.calc_text_size("X").y

@@ -10,6 +10,7 @@ local imgui = imgui
 local M = {}
 local ModernDisplay = require("func/ModernDisplay")
 local BcmCatalog = require("func/ComboTrials/BcmCatalog")
+local i18n = require("func/i18n")
 
 -- Shared context (set by init)
 local ctx -- { d2d_cfg, trial_state, players, sf6_menu_state }
@@ -992,9 +993,15 @@ local function d2d_draw_inner()
 
 
     local pixel_font_h = d2d_cfg.font_size * sh
-    if math.abs(assets.last_pixel_size - pixel_font_h) > 1.0 or assets.font == nil then
-        assets.font = d2d.Font.new("capcom_goji-udkakugoc80pro-db.ttf", math.floor(pixel_font_h))
+    -- Same font substitution as the ImGui side: capcom_goji has no
+    -- Simplified-Chinese glyphs. SF6_TOOLS_CC swaps the file here too (msyhbd).
+    local d2d_font_file = i18n.font("capcom_goji-udkakugoc80pro-db.ttf", true)
+    local d2d_font_gen = i18n.font_gen()
+    if math.abs(assets.last_pixel_size - pixel_font_h) > 1.0 or assets.font == nil
+       or assets.last_font_gen ~= d2d_font_gen then
+        assets.font = d2d.Font.new(d2d_font_file, math.floor(pixel_font_h))
         assets.last_pixel_size = pixel_font_h
+        assets.last_font_gen = d2d_font_gen
     end
 
     local icon_h = d2d_cfg.icon_size * sh

@@ -1,6 +1,7 @@
 -- Training_SharedUI.lua
 local UI = {}
 local imgui = imgui
+local i18n = require("func/i18n")
 
 -- Global floating rect registry (cleared each frame, any script can publish)
 function UI.clear_rects()
@@ -73,16 +74,21 @@ function UI.update_fonts(cfg)
     local t_main = math.floor((cfg.hud_base_size or 20) * (cfg.hud_auto_scale and scale or 1.0))
     local t_timer = math.floor((hud_cfg.size) * (cfg.hud_auto_scale and scale or 1.0))
 
-    if fonts.main_size ~= t_main then
-        fonts.main = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", t_main)
+    -- font_gen is part of the cache key: flipping EN/中文 swaps the font file.
+    local gen = i18n.font_gen()
+
+    if fonts.main_size ~= t_main or fonts.main_gen ~= gen then
+        fonts.main = imgui.load_font(i18n.font("capcom_goji-udkakugoc80pro-db.ttf"), t_main)
         fonts.main_size = t_main
+        fonts.main_gen = gen
     end
-    
+
     -- Reload if the size OR the font name changes!
-    if fonts.timer_size ~= t_timer or fonts.timer_font_name ~= hud_cfg.font then
-        fonts.timer = imgui.load_font(hud_cfg.font, t_timer)
+    if fonts.timer_size ~= t_timer or fonts.timer_font_name ~= hud_cfg.font or fonts.timer_gen ~= gen then
+        fonts.timer = imgui.load_font(i18n.font(hud_cfg.font), t_timer)
         fonts.timer_size = t_timer
         fonts.timer_font_name = hud_cfg.font
+        fonts.timer_gen = gen
     end
 end
 
@@ -342,13 +348,20 @@ local float_last_sh = 0
 local BAR_BG     = 0xFC800024   -- ABGR: dark purple, ~99% opaque
 local BAR_BORDER = 0xFFEF51EF   -- ABGR: neon pink
 
+local float_last_gen = -1
 local function _load_float_fonts(sh)
-    if not float_font_attempted or sh ~= float_last_sh then
+    local gen = i18n.font_gen()
+    if not float_font_attempted or sh ~= float_last_sh or gen ~= float_last_gen then
         float_font_attempted = true
         float_last_sh = sh
+        float_last_gen = gen
         local s = sh / 1080.0
-        pcall(function() float_ui_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", math.max(10, math.floor(20 * s))) end)
-        pcall(function() float_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * s))) end)
+        local ui_file  = i18n.font("capcom_goji-udkakugoc80pro-db.ttf")
+        local btn_file = i18n.font("SF6_college.ttf")
+        local ui_size  = math.max(10, math.floor(20 * s))
+        local btn_size = math.max(10, math.floor(22 * s))
+        pcall(function() float_ui_font = imgui.load_font(ui_file, ui_size) end)
+        pcall(function() float_btn_font = imgui.load_font(btn_file, btn_size) end)
     end
 end
 

@@ -20,8 +20,31 @@ local CONFIG_FILE = "Training_ScriptManager_data/UILang_Config.json"
 local LANGS = { "en", "zh" }
 local LANG_LABEL = { en = "EN", zh = "中文" }
 
-local state = { lang = "en", loaded = false }
+local state = { lang = "en", loaded = false, font_gen = 0 }
 local tables = {}   -- scope -> { en = {..}, zh = {..} }
+
+-- Font substitution for Chinese.
+-- Our display fonts carry no Simplified-Chinese glyphs: capcom_goji is a
+-- Japanese face (kana + kanji, but not the simplified-only forms) and
+-- SF6_college is Latin-only. ImGui draws every missing glyph as '?', which is
+-- exactly what the bottom bar showed. REFramework already bakes the CJK ranges,
+-- so swapping the FILE is enough (this is what SF6_TOOLS_CC does with msyh).
+-- We use the Noto Sans SC bundled in reframework/fonts/ rather than a Windows
+-- system font, so the mod stays self-contained.
+-- Same two faces as SF6_TOOLS_CC, so both forks render Chinese identically.
+local CJK_REGULAR = "msyh.ttc"      -- Microsoft YaHei
+local CJK_BOLD    = "msyhbd.ttc"    -- Microsoft YaHei Bold
+-- Faces with no Simplified-Chinese glyphs -> which CJK weight replaces them.
+-- Mapping mirrors CC's per-call-site choices.
+local NO_CJK = {
+    ["SF6_college.ttf"]                  = CJK_BOLD,     -- display / buttons
+    ["sf6_college.otf"]                  = CJK_BOLD,
+    ["capcom_goji-udkakugoc80pro-db.ttf"] = CJK_REGULAR, -- body text
+    ["capcom_goji-udkakugoc80pro-r.ttf"]  = CJK_REGULAR,
+    ["frutigerltarabic-57cn.ttf"]         = CJK_REGULAR,
+}
+
+-- M.font / M.font_gen are defined below, after load_lang().
 
 local function load_lang()
     if state.loaded then return end
@@ -43,6 +66,21 @@ function M.get_lang()
     return state.lang
 end
 
+-- Returns the font file to actually load for the active language.
+-- bold=true forces the bold CJK face (HUD overlay / D2D, as CC does).
+function M.font(filename, bold)
+    load_lang()
+    if state.lang == "zh" then
+        local sub = NO_CJK[filename]
+        if sub then return bold and CJK_BOLD or sub end
+    end
+    return filename
+end
+
+-- Bumped on every language change: callers fold it into their font cache key
+-- so fonts are rebuilt when the language flips.
+function M.font_gen() return state.font_gen end
+
 function M.langs() return LANGS end
 function M.lang_label(l) return LANG_LABEL[l] or l end
 
@@ -52,6 +90,7 @@ function M.set_lang(lang)
     if state.lang == lang then return end
     state.lang = lang
     _G.SF6_UI_LANG = lang
+    state.font_gen = state.font_gen + 1   -- forces font caches to rebuild
     save_lang()
 end
 

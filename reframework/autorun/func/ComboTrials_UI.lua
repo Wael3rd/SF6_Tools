@@ -334,6 +334,7 @@ local sf6_btn_font = nil
 local custom_ui_font = nil
 local hud_overlay_font = nil
 local font_attempted = false
+local _ct_font_gen = -1   -- i18n.font_gen() the current fonts were built for
 
 -- =========================================================
 -- BUTTON FUNCTION (Chameleon: Neon or Native)
@@ -1026,17 +1027,21 @@ re.on_frame(function()
     d2d_cfg.float_pos.x = 0.0
     d2d_cfg.float_size.w = 1.0
 
-    -- FONT RELOAD (Only on the exact frame of change)
-    if not font_attempted or res_changed then
+    -- FONT RELOAD (Only on the exact frame of change, or on a language flip)
+    local _font_gen = i18n.font_gen()
+    if not font_attempted or res_changed or _ct_font_gen ~= _font_gen then
         local font_scale = sh / 1080.0
-        pcall(function()
-            custom_ui_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf",
-                math.max(10, math.floor(20 * font_scale)))
-        end)
-        pcall(function() sf6_btn_font = imgui.load_font("SF6_college.ttf", math.max(10, math.floor(22 * font_scale))) end)
+        local ui_file  = i18n.font("capcom_goji-udkakugoc80pro-db.ttf")
+        local btn_file = i18n.font("SF6_college.ttf")
+        local ui_size  = math.max(10, math.floor(20 * font_scale))
+        local btn_size = math.max(10, math.floor(22 * font_scale))
         local hud_size = math.max(10, math.floor((d2d_cfg.hud_font_size or 20) * font_scale))
-        pcall(function() hud_overlay_font = imgui.load_font("capcom_goji-udkakugoc80pro-db.ttf", hud_size) end)
+        local hud_file = i18n.font("capcom_goji-udkakugoc80pro-db.ttf", true)  -- bold, as in CC
+        pcall(function() custom_ui_font = imgui.load_font(ui_file, ui_size) end)
+        pcall(function() sf6_btn_font = imgui.load_font(btn_file, btn_size) end)
+        pcall(function() hud_overlay_font = imgui.load_font(hud_file, hud_size) end)
         font_attempted = true
+        _ct_font_gen = _font_gen
     end
 
     -- =========================================================
