@@ -4475,6 +4475,7 @@ re.on_frame(function()
     _G.ComboTrials_CurrentIsModern = (_G._ct_pmode_cache == "modern")
         or (_fname ~= "" and ComboTrials_Files.combo_control_mode(_fname) == "modern")
         or false
+    _G.ComboTrials_ModernDisplayMode = d2d_cfg.modern_display_mode or 1
     _G.ComboTrials_CurrentStep = trial_state.current_step or 0
     _G.ComboTrials_TotalSteps = trial_state.sequence and #trial_state.sequence or 0
     _G.ComboTrials_IsPlaying = trial_state.is_playing or false

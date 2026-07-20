@@ -63,6 +63,10 @@ local function translate_modern(s)
     return s
 end
 
+-- Modern display mode (set by the UI toggle, read via d2d_cfg):
+--   1 = Shortcut (keep first form before /, e.g. "SP")
+--   2 = Motion input (keep second form after /, e.g. "236+H"; or first if no /)
+--   3 = Both (keep as-is, e.g. "SP / 236+H")
 function M.get_motion(char_name, step)
     if type(step) ~= "table" then return nil end
     local map = M.load(char_name)
@@ -70,10 +74,13 @@ function M.get_motion(char_name, step)
     local md = map[tostring(step.id or "")]  -- slim map: act_id -> display string
     if type(md) == "string" and md ~= "" then
         md = translate_modern(md)
-        -- v9 strings list alternative input methods as "SP/236 + H" (the SP
-        -- shortcut OR the classic motion). Keep only the first (shortcut) form
-        -- so the display shows how a Modern player actually did it, not both.
-        md = md:gsub("%s*/.*$", "")
+        local mode = tonumber(_G.ComboTrials_ModernDisplayMode) or 1
+        if mode == 2 then
+            local after = md:match("/%s*(.+)$")
+            md = after or md
+        elseif mode ~= 3 then
+            md = md:gsub("%s*/.*$", "")
+        end
         return md
     end
     return nil
