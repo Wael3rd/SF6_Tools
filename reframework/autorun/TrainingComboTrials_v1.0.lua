@@ -530,7 +530,7 @@ local D2D_CONFIG_FILE = "TrainingComboTrials_data/CommandLogger_Visualizer.json"
 local d2d_cfg = {
     enabled = true,
     auto_load = true,
-    use_bcm_catalog = false,   -- opt-in: use cdjay's BCM catalog instead of manual exception files
+    use_bcm_catalog = true,    -- BCM catalog for aliases + display; exceptions remain as fallback
     auto_next_trial = true,    -- after a manual success: auto-load the next combo in the list
     auto_retry_on_fail = true, -- after the fail banner ends: auto-reset the trial
     forced_position_idx = 1,
@@ -3695,26 +3695,21 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
         -- 1. EARLY EXCEPTION RESOLUTION (For Hold Link)
         local exc, exc_char, exc_com = CharacterRules.get_exception(p_state.exceptions, common_exceptions, act_id)
 
-        -- BCM Catalog (opt-in toggle): when enabled AND a catalog exists for this
-        -- character, cdjay's compiled catalog OWNS aliases + classic display, and
-        -- the manual/runtime exceptions are ignored ENTIRELY (strict test: gaps in
-        -- the catalog show the raw action, revealing exactly what it covers).
-        -- Characters without a catalog keep their exceptions (nothing to test).
+        -- BCM Catalog: when enabled, the compiled catalog OWNS aliases + classic
+        -- display (priority). Exceptions remain as fallback for force/ignore/
+        -- holdable/override_name and for act_ids the catalog does not cover.
+        -- Characters without a catalog keep their exceptions unchanged.
         local bcm_catalog = nil
         if _G.ComboTrials_UseBcmCatalog then
             bcm_catalog = BcmCatalog.load_for_character(p_state.profile_name)
         end
-        if bcm_catalog then exc, exc_char, exc_com = nil, nil, nil end
 
         if p_state.editing_id == act_id then
             exc = ActionMatcher.build_edit_exception(p_state)
         end
 
-        -- Character-specific runtime overrides (Cammy TC followups etc.) — skipped
-        -- in BCM catalog mode so the test stays pure.
-        if not bcm_catalog then
-            exc = CharacterRules.apply_runtime_overrides(p_state.profile_name, act_id, exc, p_state.log)
-        end
+        -- Character-specific runtime overrides (Cammy TC followups etc.)
+        exc = CharacterRules.apply_runtime_overrides(p_state.profile_name, act_id, exc, p_state.log)
 
         -- ABSORPTION CHECK (Does the active parent action want to absorb this new ID?)
         local is_continuation = false
@@ -3727,9 +3722,11 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                 parent_exc = { absorb_ids = p_state.edit_absorb_ids }
             end
 
+            -- Catalog alias takes priority; exception absorb_ids as fallback.
             if bcm_catalog then
                 is_continuation = BcmCatalog.is_alias_for(bcm_catalog, act_id, parent_id)
-            else
+            end
+            if not is_continuation then
                 is_continuation = ActionMatcher.matches_absorb_id(parent_exc, act_id)
             end
         end
@@ -3951,11 +3948,10 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                     motion_str = "7"; real_input_str = "7"; frame_diff_str = "Mouvement"
                 end
 
-                if bcm_catalog then
-                    -- Catalog owns the display. No exception fallback: an act_id the
-                    -- catalog does not cover keeps its raw value (shows the gap).
-                    local cat_disp = BcmCatalog.get_classic_display(bcm_catalog, act_id)
-                    if cat_disp then motion_str = cat_disp end
+                -- Catalog display takes priority; exception override_name as fallback.
+                local cat_disp = bcm_catalog and BcmCatalog.get_classic_display(bcm_catalog, act_id) or nil
+                if cat_disp then
+                    motion_str = cat_disp
                 else
                     motion_str = ActionMatcher.apply_override_name(motion_str, exc)
                 end
@@ -4235,14 +4231,12 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                         local actx = build_absorb_ctx(p_idx, p_state)
                                         local frames_since_prev = engine_frame_count - (trial_state.last_played_frame or engine_frame_count)
                                         local abs_frame_diff = Validator.calculate_frame_diff(frames_since_prev, expected.delay_from_prev or 0)
-                                        -- BCM strict: install/absorb confirmed by catalog aliases only
-                                        -- (exceptions ignored); otherwise the exception absorb_ids path (unchanged).
-                                        local _use_bcm = _G.ComboTrials_UseBcmCatalog == true
-                                        local _abs_cat = _use_bcm and BcmCatalog.load_for_character(p_state.profile_name) or nil
-                                        local _abs_exc = (not _use_bcm) and p_state.exceptions or nil
-                                        local _abs_com = (not _use_bcm) and common_exceptions or nil
+                                        -- Catalog + exceptions coexist: the absorb path checks both
+                                        -- the catalog alias chain and exception absorb_ids.
+                                        local _abs_cat = _G.ComboTrials_UseBcmCatalog == true
+                                            and BcmCatalog.load_for_character(p_state.profile_name) or nil
                                         local recent = CharacterRules.find_recent_absorb_confirmation(
-                                            _abs_exc, _abs_com, expected, p_state.log, p_state.profile_name, _abs_cat)
+                                            p_state.exceptions, common_exceptions, expected, p_state.log, p_state.profile_name, _abs_cat)
                                         if recent.matched then
                                             absorb_handled = ComboTrialsModules.PendingAbsorb.apply_matched_step(actx, {
                                                 expected = expected,
@@ -4257,7 +4251,7 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                                             }) and true or false
                                         else
                                             local current_absorb = CharacterRules.match_current_absorb_confirmation(
-                                                _abs_exc, _abs_com, expected, act_id, _pf.current_combo or 0, p_state.profile_name, _abs_cat)
+                                                p_state.exceptions, common_exceptions, expected, act_id, _pf.current_combo or 0, p_state.profile_name, _abs_cat)
                                             if current_absorb.matched then
                                                 absorb_handled = ComboTrialsModules.PendingAbsorb.apply_matched_step(actx, {
                                                     expected = expected,
