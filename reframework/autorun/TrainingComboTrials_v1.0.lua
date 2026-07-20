@@ -4314,9 +4314,14 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
             ::continue_to_log::
             -- Catalog display (runs for ALL actions, intentional or automatic).
             -- Resolves aliases like 971->970->"22+K" even for AUTOMATIC entries.
+            -- When the catalog recognizes an automatic action, promote it to
+            -- intentional so it survives the "Ignore Automatic" D2D filter.
             if bcm_catalog then
                 local cat_disp = BcmCatalog.get_classic_display(bcm_catalog, act_id)
-                if cat_disp then motion_str = cat_disp end
+                if cat_disp then
+                    motion_str = cat_disp
+                    if not is_intentional then is_intentional = true end
+                end
             end
             if motion_str == act_name then
                 motion_str = ActionMatcher.apply_override_name(motion_str, exc)
