@@ -2895,7 +2895,7 @@ end
 -- Only external dependency: is_drive_rush_id (already defined above).
 -- =========================================================
 
-local function counter_type_from_hit_type(hit_type)
+function counter_type_from_hit_type(hit_type)
     if hit_type == "PC" then return 2 end
     if hit_type == "CH" then return 1 end
     return 0
@@ -3224,7 +3224,7 @@ function CTTimelineSequenceNormalizer.expand(sequence)
     for i, step in ipairs(expanded) do sequence[i] = step end
 end
 
-local function normalize_sequence_counter_types(sequence)
+function normalize_sequence_counter_types(sequence)
     if type(sequence) ~= "table" or type(sequence[1]) ~= "table" then return end
     CTTimelineSequenceNormalizer.expand(sequence)
     local first = sequence[1]
@@ -3504,10 +3504,10 @@ end
 -- already capture (scene_state.*.status.stance = "crouching", _xt_meta).
 -- Pure data readers -- no external function deps beyond trial_state.
 -- =========================================================
-local DUMMY_ACTION_STAND = 0
-local DUMMY_ACTION_CROUCH = 1
+DUMMY_ACTION_STAND = 0
+DUMMY_ACTION_CROUCH = 1
 
-local function value_requests_dummy_crouch(value)
+function value_requests_dummy_crouch(value)
     if type(value) == "boolean" then return value end
     if type(value) == "number" then return value == DUMMY_ACTION_CROUCH end
     if type(value) ~= "string" then return false end
@@ -3517,7 +3517,7 @@ local function value_requests_dummy_crouch(value)
         or text:find("蹲姿", 1, true) ~= nil
 end
 
-local function text_mentions_dummy_crouch(value)
+function text_mentions_dummy_crouch(value)
     if type(value) ~= "string" then return false end
     local text = value:lower()
     return text:find("蹲姿", 1, true) ~= nil
@@ -3525,7 +3525,7 @@ local function text_mentions_dummy_crouch(value)
         or text:find("crouch", 1, true) ~= nil
 end
 
-local function has_recorded_dummy_action_environment(env)
+function has_recorded_dummy_action_environment(env)
     return type(env) == "table"
         and (env.dummy_action_type ~= nil
             or env.dummy_stance ~= nil
@@ -3533,7 +3533,7 @@ local function has_recorded_dummy_action_environment(env)
             or env.dummy_action ~= nil)
 end
 
-local function environment_requests_dummy_crouch(env)
+function environment_requests_dummy_crouch(env)
     if not has_recorded_dummy_action_environment(env) then return false end
     if tonumber(env.dummy_action_type) == DUMMY_ACTION_CROUCH then return true end
     if value_requests_dummy_crouch(env.dummy_stance) then return true end
@@ -3542,7 +3542,7 @@ local function environment_requests_dummy_crouch(env)
     return false
 end
 
-local function trial_requires_dummy_crouch()
+function trial_requires_dummy_crouch()
     local first = trial_state.sequence and trial_state.sequence[1]
     if type(first) ~= "table" then return false end
 
