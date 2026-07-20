@@ -3945,14 +3945,6 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                     motion_str = "7"; real_input_str = "7"; frame_diff_str = "Mouvement"
                 end
 
-                -- Catalog display takes priority; exception override_name as fallback.
-                local cat_disp = bcm_catalog and BcmCatalog.get_classic_display(bcm_catalog, act_id) or nil
-                if cat_disp then
-                    motion_str = cat_disp
-                else
-                    motion_str = ActionMatcher.apply_override_name(motion_str, exc)
-                end
-
                 -- 3. COMBO TRIAL HANDLING (Now that motion_str is finalized!)
                 if trial_state.is_recording and p_idx == trial_state.recording_player then
                     -- Capture exact position at the frame when input was detected
@@ -4320,6 +4312,15 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
     				end
 
             ::continue_to_log::
+            -- Catalog display (runs for ALL actions, intentional or automatic).
+            -- Resolves aliases like 971->970->"22+K" even for AUTOMATIC entries.
+            if bcm_catalog then
+                local cat_disp = BcmCatalog.get_classic_display(bcm_catalog, act_id)
+                if cat_disp then motion_str = cat_disp end
+            end
+            if motion_str == act_name then
+                motion_str = ActionMatcher.apply_override_name(motion_str, exc)
+            end
             -- Raw input fallback for UNKNOWN automatic actions: show what was
             -- actually pressed so unmapped install-variant IDs (Sumo Spirit
             -- normals etc.) are easy to identify and except. Uses the same
@@ -4347,7 +4348,7 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
             table.insert(p_state.log, 1, {
                 dual_threshold = dual_threshold,
                 id = act_id,
-                name = act_name,
+                name = motion_str,
                 motion = motion_str,
                 real_input = real_input_str,
                 frame_diff = frame_diff_str,
