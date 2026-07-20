@@ -135,7 +135,7 @@
 </div>
 
 <script>
-const UPDATED = "20/07/2026 · #1 #2 #3 intégrés";
+const UPDATED = "20/07/2026 · #1 #2 #3 intégrés · #6 déjà présent · reste vérifié";
 
 const UI = {
   fr:{ title_a:"Portage cdjay", title_b:"branche Wael",
@@ -186,11 +186,11 @@ const ITEMS = [
           zh:"仅读取我们已捕获的数据（scene status.stance = crouching）。测试：对蹲姿假人录制的连段，重放时假人应蹲下；同时检查防御类型。"} },
 
   { ord:4, title:"Same-action continuation", status:"todo", risk:"high",
-    files:"TrainingComboTrials_v1.0.lua", fn:"5 fn", commit:"",
-    desc:{fr:"Steps de pressing répétés (même action enchaînée) : détection, auto-advance, skip des steps de pression non reportés.",
-          zh:"重复压制 step（同一动作连续）：检测、自动推进、跳过未上报的压制 step。"},
-    note:{fr:"Risqué : modifie la logique de progression de step qui marche déjà. À brancher derrière un flag.",
-          zh:"有风险：改动已工作的 step 推进逻辑。需置于开关之后。"} },
+    files:"TrainingComboTrials_v1.0.lua", fn:"5 fn + dep", commit:"",
+    desc:{fr:"Steps de pressing répétés (même move enchaîné, ex. cr.LK×3) où le moteur reporte le même action_instance — sans ça le trial reste bloqué à attendre une nouvelle action. Différent de notre continuation absorb.",
+          zh:"重复压制 step（同一 move 连续，如 cr.LK×3），引擎报告相同 action_instance —— 否则 trial 会卡住等待新动作。与我们的吸收式 continuation 不同。"},
+    note:{fr:"VÉRIFIÉ : PAS un port propre. Dépend de action_instance, tissé sur 62 sites chez lui dans le matcher/recording. On ne le track pas (0). L'intégrer = toucher en profondeur le validator qui marche. À reporter APRÈS validation du batch actuel, puis décider ensemble.",
+          zh:"已核实：非干净移植。依赖 action_instance，在他代码的匹配/录制中贯穿 62 处。我们完全未追踪（0）。集成 = 深度改动已工作的 validator。建议在当前批次实机验证后再定。"} },
 
   { ord:5, title:"Modern display — unresolved audit", status:"todo", risk:"low",
     files:"func/ComboTrials_D2D.lua", fn:"~10 fn", commit:"",
@@ -207,11 +207,11 @@ const ITEMS = [
           zh:"无需移植。最优设计：新连段用 raw DEMO（精确），旧的无 raw_inputs 连段回退到他的 CTStunDemoRuntime。"} },
 
   { ord:7, title:"Combo list / files — reliquat", status:"todo", risk:"low",
-    files:"func/ComboTrials_Files.lua", fn:"~5 fn", commit:"",
-    desc:{fr:"Les helpers de liste/fichiers pas déjà couverts sous un autre nom : signatures busy-state, warning schéma plus récent, sanitize filename. La majorité des 19 est déjà couverte différemment.",
-          zh:"尚未以其他名称覆盖的列表/文件辅助函数：busy 状态签名、更新 schema 警告、文件名清理。19 个中大部分已以其他方式覆盖。"},
-    note:{fr:"Surtout du confort — en dernier, en nettoyage.",
-          zh:"主要是易用性 —— 放在最后收尾。"} },
+    files:"func/ComboTrials_Files.lua", fn:"2-3 fn", commit:"",
+    desc:{fr:"VÉRIFIÉ quasi déjà fait : signature (build_combo_list_signature), refresh préservé, filtre control-mode — tous couverts sous d'autres noms. Vrai reliquat = warn_newer_schema (alerte si combo d'un schéma plus récent) + sanitize_filename + refresh différé busy-state.",
+          zh:"已核实基本完成：签名、保留选择的刷新、control-mode 过滤 —— 均以其他名称覆盖。真正剩余 = warn_newer_schema（更新 schema 的连段告警）+ 文件名清理 + 延迟刷新 busy 状态。"},
+    note:{fr:"Confort pur. warn_newer_schema est le seul avec une vraie valeur (sécurité forward-compat). En dernier.",
+          zh:"纯易用性。仅 warn_newer_schema 有实际价值（向前兼容安全）。放最后。"} },
 ];
 
 const PW = "cdjayANDwael";
