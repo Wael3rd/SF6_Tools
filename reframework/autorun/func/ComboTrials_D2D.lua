@@ -12,6 +12,14 @@ local ModernDisplay = require("func/ModernDisplay")
 local BcmCatalog = require("func/ComboTrials/BcmCatalog")
 local i18n = require("func/i18n")
 
+-- Chinese terms taken verbatim from SF6_TOOLS_CC (community slang, not a
+-- literal translation) so both forks read the same to Chinese players.
+i18n.register("combo_trials_d2d", {
+    en = { counter_hit = " (CH)", punish_counter = " (PC)" },
+    zh = { counter_hit = " (打康)", punish_counter = " (确反康)" },
+})
+local TD = i18n.scope("combo_trials_d2d")
+
 -- Shared context (set by init)
 local ctx -- { d2d_cfg, trial_state, players, sf6_menu_state }
 
@@ -778,9 +786,9 @@ local function parse_motion_to_icons(log_entry, trial_mode, should_flip, reverse
     -- Tag (CH) or (PC) per step
     local ct = log_entry.counter_type
     if ct == 1 then
-        table.insert(final_tokens, { type = "text", val = " (CH)", col = 0xFFFFFFFF })
+        table.insert(final_tokens, { type = "text", val = TD("counter_hit"), col = 0xFFFFFFFF })
     elseif ct == 2 then
-        table.insert(final_tokens, { type = "text", val = " (PC)", col = 0xFFFFFFFF })
+        table.insert(final_tokens, { type = "text", val = TD("punish_counter"), col = 0xFFFFFFFF })
     end
 
     return final_tokens

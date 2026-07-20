@@ -841,6 +841,9 @@ local custom_font_num = { obj = nil, filename = "SF6_college.ttf", loaded_size =
 local ui_font = { obj = nil, filename = "SF6_college.ttf", loaded_size = 0, status = "Init..." }
 local res_watcher = { last_w = 0, last_h = 0, cooldown = 0 }
 
+-- Bound i18n getter for this script (strings registered at the bottom).
+local DVT = require("func/i18n").scope("distance_viewer_ui")
+
 local function try_load_font()
     if not imgui.load_font then custom_font.status = "API Error"; custom_font_num.status = "API Error"; return end
     local sw, sh = get_dynamic_screen_size()
@@ -1983,20 +1986,20 @@ local function draw_debug_values(cache, opponent_cache, p_idx)
     end
     
     imgui.separator()
-    imgui.text("-- CROSSUP DATA --")
+    imgui.text(DVT("crossup_data"))
     imgui.text(string.format("Center Dist: %.4f", current_dist))
     if frames then
         local st = frames.cross_up_st or 0; local cr = frames.cross_up_cr or 0
         imgui.text(string.format("vs ST: %.4f | vs CR: %.4f", st, cr))
-    else imgui.text("No Jump Data") end
+    else imgui.text(DVT("no_jump_data")) end
 
     imgui.separator()
-    imgui.text("-- ZONE DATA --")
+    imgui.text(DVT("zone_data"))
     imgui.text(string.format("Edge Dist: %.4f", z_dist_val))
     local limits = get_player_limits(p_idx, cache)
     if limits then
         imgui.text(string.format("R:%.1f | O:%.1f | Y:%.1f", limits.low*100, limits.red*100, limits.yellow*100))
-    else imgui.text("Using Fallback Limits") end
+    else imgui.text(DVT("using_fallback_limits")) end
     
     imgui.separator()
 end
@@ -2036,17 +2039,17 @@ end
 local function draw_pos_radios(id_suffix, current_mode)
     local new_mode = current_mode
     local has_changed = false
-    imgui.text("POSITION")
-    local c1, v1 = imgui.checkbox("Head##h" .. id_suffix, current_mode == 1)
+    imgui.text(DVT("position"))
+    local c1, v1 = imgui.checkbox(DVT("head") .. id_suffix, current_mode == 1)
     if c1 and v1 then new_mode = 1; has_changed = true end
     imgui.same_line()
-    local c2, v2 = imgui.checkbox("Root##r" .. id_suffix, current_mode == 2)
+    local c2, v2 = imgui.checkbox(DVT("root") .. id_suffix, current_mode == 2)
     if c2 and v2 then new_mode = 2; has_changed = true end
     imgui.same_line()
-    local c3, v3 = imgui.checkbox("Fixed##f" .. id_suffix, current_mode == 3)
+    local c3, v3 = imgui.checkbox(DVT("fixed") .. id_suffix, current_mode == 3)
     if c3 and v3 then new_mode = 3; has_changed = true end
     imgui.same_line()
-    local c4, v4 = imgui.checkbox("Cursor##c" .. id_suffix, current_mode == 4)
+    local c4, v4 = imgui.checkbox(DVT("cursor") .. id_suffix, current_mode == 4)
     if c4 and v4 then new_mode = 4; has_changed = true end
     return has_changed, new_mode
 end
@@ -2067,7 +2070,7 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
         end
 
         if #all_sets == 0 then
-            imgui.text_colored("(no moves logged)", COL_GREY)
+            imgui.text_colored(DVT("no_moves_logged"), COL_GREY)
         else
             local prefs = get_char_prefs(pi, rname)
             local ar_min, ar_max = get_ar_range(pi, rname)
@@ -2084,19 +2087,19 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
                 end
             end
 
-            if imgui.button("Show All##"..pi) then
+            if imgui.button(DVT("show_all")..pi) then
                 for _, s in ipairs(all_sets) do
                     for _, mv in ipairs(s.moves) do set_move_visible(pi, s.name, mv.input, true) end
                 end
             end
             imgui.same_line()
-            if imgui.button("Hide All##"..pi) then
+            if imgui.button(DVT("hide_all")..pi) then
                 for _, s in ipairs(all_sets) do
                     for _, mv in ipairs(s.moves) do set_move_visible(pi, s.name, mv.input, false) end
                 end
             end
             imgui.same_line()
-            if imgui.button("Max Only##"..pi) then
+            if imgui.button(DVT("max_only")..pi) then
                 for si, s in ipairs(all_sets) do
                     local set_max = max_ar_per_gb_per_set[si]
                     for _, mv in ipairs(s.moves) do
@@ -2145,11 +2148,11 @@ local function draw_advanced_moves_menu(pi, rname, cdata)
                     imgui.push_style_color(21, 0xFF994400) -- Button
                     imgui.push_style_color(22, 0xFFBB6600) -- Hovered
                     imgui.push_style_color(23, 0xFFDD8800) -- Active
-                    if imgui.button("Teleport##tp_adv_" .. pi .. "_" .. s.name .. "_" .. mv.input) then apply_teleport_exact(pi, mv.ar, false, mv.input == "THROW") end
+                    if imgui.button(DVT("teleport") .. pi .. "_" .. s.name .. "_" .. mv.input) then apply_teleport_exact(pi, mv.ar, false, mv.input == "THROW") end
                     imgui.pop_style_color(3)
                     if is_max_for_gb then
                         imgui.same_line()
-                        imgui.text_colored("MAX " .. gb_name, COL_GOLD)
+                        imgui.text_colored(DVT("max") .. gb_name, COL_GOLD)
                     end
                 end
             end
@@ -2404,18 +2407,18 @@ local function draw_config_ui()
     -- 0. HELP & INFO
     -- ==========================================
     if styled_header(require("func/i18n").t("distance_viewer_ui","help"), UI_THEME.hdr_info) then
-        imgui.text("SHORTCUTS:")
-        imgui.text_colored("Bind Cycle P1 / Cycle P2 / Toggle Overlay in", COL_GREY)
-        imgui.text_colored("Script Manager > HOTKEY BINDINGS > Distance Viewer.", COL_GREY)
+        imgui.text(DVT("shortcuts"))
+        imgui.text_colored(DVT("bind_cycle_p1_cycle_p2_toggle_overlay_in"), COL_GREY)
+        imgui.text_colored(DVT("script_manager_hotkey_bindings_distance_view"), COL_GREY)
         imgui.spacing()
         imgui.separator()
-        imgui.text_colored("AUTO ACTIVATE", 0xFF00FFFF)
-        imgui.text("  MAIN (M): Sets the trigger move and its range.")
-        imgui.text("  SUB (S): Additional moves picked randomly when firing.")
-        imgui.text("  WEIGHT (W): Selection probability per SUB move (0-10).")
-        imgui.text("  Delay: Frames to wait before firing. Delay Cancel aborts if out of range.")
-        imgui.text("  Footwork: Dummy walks FW/BW between attacks. Random randomizes duration.")
-        imgui.text("  Re-arms automatically after battle reset.")
+        imgui.text_colored(DVT("aa_label"), 0xFF00FFFF)
+        imgui.text(DVT("main_m_sets_the_trigger_move_and_its_range"))
+        imgui.text(DVT("sub_s_additional_moves_picked_randomly_when_"))
+        imgui.text(DVT("weight_w_selection_probability_per_sub_move_"))
+        imgui.text(DVT("delay_frames_to_wait_before_firing_delay_can"))
+        imgui.text(DVT("footwork_dummy_walks_fw_bw_between_attacks_r"))
+        imgui.text(DVT("re_arms_automatically_after_battle_reset"))
         imgui.spacing()
     end -- end HELP & INFO
 
@@ -2431,7 +2434,7 @@ local function draw_config_ui()
                 if styled_header(header_label, hdr_color) then
                     -- Display toggle
                     local is_on = config[p_prefix .. "_vertical_mode"] ~= 7
-                    local c_disp, v_disp = imgui.checkbox("Display P" .. (pi+1) .. " Distance##disp_" .. p_prefix, is_on)
+                    local c_disp, v_disp = imgui.checkbox(DVT("display_p") .. (pi+1) .. " Distance##disp_" .. p_prefix, is_on)
                     if c_disp then cycle_player_display(p_prefix); save_settings() end
 
                     -- Build list of move sets: base + variants
@@ -2474,9 +2477,9 @@ local function draw_config_ui()
 
                             -- Red Zone
                             local chg_l, nv_l = colored_move_dropdown("##" .. uid .. "_red", low_idx, cd.moves, 200)
-                            imgui.same_line(); imgui.text_colored("Red Zone" .. suffix, COL_RED)
+                            imgui.same_line(); imgui.text_colored(DVT("red_zone") .. suffix, COL_RED)
                             imgui.same_line()
-                            if imgui.button("TELEPORT##tp_red_" .. uid) then
+                            if imgui.button(DVT("teleport_2") .. uid) then
                                 if low_idx > 1 then apply_teleport_exact(pi, cd.moves[low_idx-1].ar, false, cd.moves[low_idx-1].input == "THROW") end
                             end
                             if chg_l then
@@ -2486,9 +2489,9 @@ local function draw_config_ui()
 
                             -- Orange Zone
                             local chg_r, nv_r = colored_move_dropdown("##" .. uid .. "_org", red_idx, cd.moves, 200)
-                            imgui.same_line(); imgui.text_colored("Orange Zone" .. suffix, COL_ORANGE)
+                            imgui.same_line(); imgui.text_colored(DVT("orange_zone") .. suffix, COL_ORANGE)
                             imgui.same_line()
-                            if imgui.button("TELEPORT##tp_org_" .. uid) then
+                            if imgui.button(DVT("teleport_3") .. uid) then
                                 if red_idx > 1 then apply_teleport_exact(pi, cd.moves[red_idx-1].ar, false, cd.moves[red_idx-1].input == "THROW") end
                             end
                             if chg_r then
@@ -2501,9 +2504,9 @@ local function draw_config_ui()
                             imgui.push_item_width(150)
                             local chg_y, nv_y = imgui.drag_int("##" .. uid .. "_yel", y_off, 1, 0, 300)
                             imgui.pop_item_width()
-                            imgui.same_line(); imgui.text_colored("Yellow Offset" .. suffix, COL_YELLOW)
+                            imgui.same_line(); imgui.text_colored(DVT("yellow_offset") .. suffix, COL_YELLOW)
                             imgui.same_line()
-                            if imgui.button("TELEPORT##tp_yel_" .. uid) then
+                            if imgui.button(DVT("teleport_4") .. uid) then
                                 local limits = get_player_limits(pi, cache)
                                 if limits and limits.yellow then apply_teleport_exact(pi, limits.yellow * 100.0) end
                             end
@@ -2513,7 +2516,7 @@ local function draw_config_ui()
                             end
                         end
                     else
-                        imgui.text_colored("No attack data for " .. rname, COL_GREY)
+                        imgui.text_colored(DVT("no_attack_data_for") .. rname, COL_GREY)
                     end
                 end
             end
@@ -2533,19 +2536,19 @@ local function draw_config_ui()
         local c_fns, v_fns = safe_input_int("Numbers Font Size (Px)", config.number_font_size or 60)
         if c_fns then config.number_font_size = v_fns; save_settings(); try_load_font() end
 
-        local c_us, v_us = imgui.drag_float("Floating UI Scale", config.ui_scale or 1.25, 0.05, 0.5, 4.0)
+        local c_us, v_us = imgui.drag_float(DVT("floating_ui_scale"), config.ui_scale or 1.25, 0.05, 0.5, 4.0)
         if c_us then config.ui_scale = v_us; save_settings(); try_load_font() end
 
-        local changed_lock, new_lock = imgui.checkbox("Auto-Lock on Attack (Freeze during active frames)", config.use_attack_lock)
+        local changed_lock, new_lock = imgui.checkbox(DVT("auto_lock_on_attack_freeze_during_active_fra"), config.use_attack_lock)
         if changed_lock then config.use_attack_lock = new_lock; save_settings() end
 
         local changed_op, new_op = imgui.drag_int("Zone Opacity (%)", config.zone_opacity, 1, 0, 100)
         if changed_op then config.zone_opacity = new_op; save_settings() end
 		
-		local c_is, v_is = imgui.drag_float("Icon Scale", config.icon_scale or 1.0, 0.05, 0.5, 3.0)
+		local c_is, v_is = imgui.drag_float(DVT("icon_scale"), config.icon_scale or 1.0, 0.05, 0.5, 3.0)
         if c_is then config.icon_scale = v_is; save_settings() end
 
-        local c_ioy, v_ioy = imgui.drag_float("Icon Y Offset", config.icon_offset_y or 0.0, 1.0, -100.0, 100.0)
+        local c_ioy, v_ioy = imgui.drag_float(DVT("icon_y_offset"), config.icon_offset_y or 0.0, 1.0, -100.0, 100.0)
         if c_ioy then config.icon_offset_y = v_ioy; save_settings() end
     end
 
@@ -2569,22 +2572,22 @@ local function draw_config_ui()
 
         if styled_tree_node("-- CUSTOMIZE OVERLAY##p1", COL_YELLOW) then
             local changed_any = false
-            c, config.p1_fill_bg = imgui.checkbox("Zones##p1", config.p1_fill_bg); if c then changed_any = true end; imgui.same_line()
-            c, config.p1_show_markers = imgui.checkbox("Lines##p1", config.p1_show_markers); if c then changed_any = true end; imgui.same_line()
-            c, config.p1_show_vertical_cursor = imgui.checkbox("Cursor##p1", config.p1_show_vertical_cursor); if c then changed_any = true end; imgui.same_line()
-            c, config.p1_show_horizontal_lines = imgui.checkbox("Distance##p1", config.p1_show_horizontal_lines); if c then changed_any = true end; imgui.same_line()
-            local c_num1, v_num1 = imgui.checkbox("Numbers##p1", config.p1_show_numbers); if c_num1 then config.p1_show_numbers = v_num1; changed_any = true end; imgui.same_line()
-            local c_txt1, v_txt1 = imgui.checkbox("Text ##p1", config.p1_opp_zone_show)
+            c, config.p1_fill_bg = imgui.checkbox(DVT("zones"), config.p1_fill_bg); if c then changed_any = true end; imgui.same_line()
+            c, config.p1_show_markers = imgui.checkbox(DVT("lines"), config.p1_show_markers); if c then changed_any = true end; imgui.same_line()
+            c, config.p1_show_vertical_cursor = imgui.checkbox(DVT("cursor_2"), config.p1_show_vertical_cursor); if c then changed_any = true end; imgui.same_line()
+            c, config.p1_show_horizontal_lines = imgui.checkbox(DVT("distance"), config.p1_show_horizontal_lines); if c then changed_any = true end; imgui.same_line()
+            local c_num1, v_num1 = imgui.checkbox(DVT("numbers"), config.p1_show_numbers); if c_num1 then config.p1_show_numbers = v_num1; changed_any = true end; imgui.same_line()
+            local c_txt1, v_txt1 = imgui.checkbox(DVT("text"), config.p1_opp_zone_show)
             if c_txt1 then config.p1_opp_zone_show = v_txt1; changed_any = true end
             
             -- Options independent of Custom mode
-            local c_col1, v_col1 = imgui.checkbox("Color Text##p1", config.p1_opp_zone_color_text)
+            local c_col1, v_col1 = imgui.checkbox(DVT("color_text"), config.p1_opp_zone_color_text)
             if c_col1 then config.p1_opp_zone_color_text = v_col1; config.p1_crossup_color_text = v_col1; changed = true end
             imgui.same_line()
-            local c_cu1, v_cu1 = imgui.checkbox("CrossUp Text##p1", config.p1_crossup_show)
+            local c_cu1, v_cu1 = imgui.checkbox(DVT("crossup_text"), config.p1_crossup_show)
             if c_cu1 then config.p1_crossup_show = v_cu1; changed = true end
             imgui.same_line()
-            local c_arc1, v_arc1 = imgui.checkbox("CrossUp Arch##p1", config.p1_show_jump_arc)
+            local c_arc1, v_arc1 = imgui.checkbox(DVT("crossup_arch"), config.p1_show_jump_arc)
             if c_arc1 then config.p1_show_jump_arc = v_arc1; changed = true end
 
             if changed_any then changed = true end
@@ -2607,22 +2610,22 @@ local function draw_config_ui()
 
         if styled_tree_node("-- CUSTOMIZE OVERLAY##p2", COL_YELLOW) then
             local changed_any = false
-            c, config.p2_fill_bg = imgui.checkbox("Zones##p2", config.p2_fill_bg); if c then changed_any = true end; imgui.same_line()
-            c, config.p2_show_markers = imgui.checkbox("Lines##p2", config.p2_show_markers); if c then changed_any = true end; imgui.same_line()
-            c, config.p2_show_vertical_cursor = imgui.checkbox("Cursor##p2", config.p2_show_vertical_cursor); if c then changed_any = true end; imgui.same_line()
-            c, config.p2_show_horizontal_lines = imgui.checkbox("Distance##p2", config.p2_show_horizontal_lines); if c then changed_any = true end; imgui.same_line()
-            local c_num2, v_num2 = imgui.checkbox("Numbers##p2", config.p2_show_numbers); if c_num2 then config.p2_show_numbers = v_num2; changed_any = true end; imgui.same_line()
-            local c_txt2, v_txt2 = imgui.checkbox("Text ##p2", config.p2_opp_zone_show)
+            c, config.p2_fill_bg = imgui.checkbox(DVT("zones_2"), config.p2_fill_bg); if c then changed_any = true end; imgui.same_line()
+            c, config.p2_show_markers = imgui.checkbox(DVT("lines_2"), config.p2_show_markers); if c then changed_any = true end; imgui.same_line()
+            c, config.p2_show_vertical_cursor = imgui.checkbox(DVT("cursor_3"), config.p2_show_vertical_cursor); if c then changed_any = true end; imgui.same_line()
+            c, config.p2_show_horizontal_lines = imgui.checkbox(DVT("distance_2"), config.p2_show_horizontal_lines); if c then changed_any = true end; imgui.same_line()
+            local c_num2, v_num2 = imgui.checkbox(DVT("numbers_2"), config.p2_show_numbers); if c_num2 then config.p2_show_numbers = v_num2; changed_any = true end; imgui.same_line()
+            local c_txt2, v_txt2 = imgui.checkbox(DVT("text_2"), config.p2_opp_zone_show)
             if c_txt2 then config.p2_opp_zone_show = v_txt2; changed_any = true end
             
             -- Options independent of Custom mode
-            local c_col2, v_col2 = imgui.checkbox("Color Text##p2", config.p2_opp_zone_color_text)
+            local c_col2, v_col2 = imgui.checkbox(DVT("color_text_2"), config.p2_opp_zone_color_text)
             if c_col2 then config.p2_opp_zone_color_text = v_col2; config.p2_crossup_color_text = v_col2; changed = true end
             imgui.same_line()
-            local c_cu2, v_cu2 = imgui.checkbox("CrossUp Text##p2", config.p2_crossup_show)
+            local c_cu2, v_cu2 = imgui.checkbox(DVT("crossup_text_2"), config.p2_crossup_show)
             if c_cu2 then config.p2_crossup_show = v_cu2; changed = true end
             imgui.same_line()
-            local c_arc2, v_arc2 = imgui.checkbox("CrossUp Arch##p2", config.p2_show_jump_arc)
+            local c_arc2, v_arc2 = imgui.checkbox(DVT("crossup_arch_2"), config.p2_show_jump_arc)
             if c_arc2 then config.p2_show_jump_arc = v_arc2; changed = true end
 
             local act_v2 = config.p2_vertical_mode
@@ -2654,10 +2657,10 @@ local function draw_config_ui()
         imgui.text_colored(string.format("Last Click Pos: X: %.1f | Y: %.1f", debug_mouse_x, debug_mouse_y), COL_CYAN)
         imgui.separator()
 
-        imgui.text_colored("[LOAD STATUS]", COL_GREY)
-        imgui.text("Dist Config: "); imgui.same_line(); imgui.text_colored(debug_dist_status, debug_dist_color)
-        imgui.text("Jump File: "); imgui.same_line(); imgui.text_colored(debug_jump_status, debug_jump_color)
-        imgui.text("Font Status: " .. custom_font.status)
+        imgui.text_colored(DVT("load_status"), COL_GREY)
+        imgui.text(DVT("dist_config")); imgui.same_line(); imgui.text_colored(debug_dist_status, debug_dist_color)
+        imgui.text(DVT("jump_file")); imgui.same_line(); imgui.text_colored(debug_jump_status, debug_jump_color)
+        imgui.text(DVT("font_status") .. custom_font.status)
         imgui.separator()
 
         draw_debug_values(p1_cache, p2_cache, 0)
@@ -2666,16 +2669,16 @@ local function draw_config_ui()
         imgui.separator()
         imgui.text_colored("[BOX FILTERS — Distance Calculation]", COL_YELLOW)
         local bc = false
-        local c1, v1 = imgui.checkbox("Hurtbox", config.box_use_hurtbox); if c1 then config.box_use_hurtbox = v1; bc = true end
+        local c1, v1 = imgui.checkbox(DVT("hurtbox"), config.box_use_hurtbox); if c1 then config.box_use_hurtbox = v1; bc = true end
         imgui.same_line()
-        local c2, v2 = imgui.checkbox("Hurtbox Invuln", config.box_use_hurtbox_invuln); if c2 then config.box_use_hurtbox_invuln = v2; bc = true end
-        local c3, v3 = imgui.checkbox("Pushbox", config.box_use_pushbox); if c3 then config.box_use_pushbox = v3; bc = true end
+        local c2, v2 = imgui.checkbox(DVT("hurtbox_invuln"), config.box_use_hurtbox_invuln); if c2 then config.box_use_hurtbox_invuln = v2; bc = true end
+        local c3, v3 = imgui.checkbox(DVT("pushbox"), config.box_use_pushbox); if c3 then config.box_use_pushbox = v3; bc = true end
         imgui.same_line()
-        local c4, v4 = imgui.checkbox("Hitbox", config.box_use_hitbox); if c4 then config.box_use_hitbox = v4; bc = true end
-        local c5, v5 = imgui.checkbox("Throwbox", config.box_use_throwbox); if c5 then config.box_use_throwbox = v5; bc = true end
+        local c4, v4 = imgui.checkbox(DVT("hitbox"), config.box_use_hitbox); if c4 then config.box_use_hitbox = v4; bc = true end
+        local c5, v5 = imgui.checkbox(DVT("throwbox"), config.box_use_throwbox); if c5 then config.box_use_throwbox = v5; bc = true end
         imgui.same_line()
-        local c6, v6 = imgui.checkbox("Clash", config.box_use_clash); if c6 then config.box_use_clash = v6; bc = true end
-        local c7, v7 = imgui.checkbox("Proximity", config.box_use_proximity); if c7 then config.box_use_proximity = v7; bc = true end
+        local c6, v6 = imgui.checkbox(DVT("clash"), config.box_use_clash); if c6 then config.box_use_clash = v6; bc = true end
+        local c7, v7 = imgui.checkbox(DVT("proximity"), config.box_use_proximity); if c7 then config.box_use_proximity = v7; bc = true end
         if bc then save_settings() end
 
         imgui.separator()
@@ -2711,7 +2714,7 @@ local function draw_config_ui()
         end
         _G._dv_aa_moves = all_moves
 
-        local c_en, v_en = imgui.checkbox("Enable##aa", auto_activate.enabled)
+        local c_en, v_en = imgui.checkbox(DVT("enable"), auto_activate.enabled)
         if c_en then
             auto_activate.enabled = v_en
             if v_en then auto_activate.was_in_range = true
@@ -2719,22 +2722,22 @@ local function draw_config_ui()
         end
 
 
-        imgui.text("REACTION DELAY")
+        imgui.text(DVT("reaction_delay"))
         imgui.same_line()
         imgui.push_item_width(40)
-        local dmc, dmv = imgui.input_text("MIN##aa_delay", tostring(auto_activate.delay_min), 4)
+        local dmc, dmv = imgui.input_text(DVT("min"), tostring(auto_activate.delay_min), 4)
         if dmc then local n = tonumber(dmv); if n and n >= -99 and n <= 999 then auto_activate.delay_min = math.floor(n); config.aa_delay_min = auto_activate.delay_min; save_settings() end end
         imgui.pop_item_width()
         imgui.same_line()
         imgui.push_item_width(40)
-        local dxc, dxv = imgui.input_text("MAX##aa_delay", tostring(auto_activate.delay_max), 4)
+        local dxc, dxv = imgui.input_text(DVT("max_2"), tostring(auto_activate.delay_max), 4)
         if dxc then local n = tonumber(dxv); if n and n >= -99 and n <= 999 then auto_activate.delay_max = math.floor(n); config.aa_delay_max = auto_activate.delay_max; save_settings() end end
         imgui.pop_item_width()
 
-        local dc_changed, dc_val = imgui.checkbox("Delay Cancel", config.aa_delay_cancel)
+        local dc_changed, dc_val = imgui.checkbox(DVT("delay_cancel"), config.aa_delay_cancel)
         if dc_changed then config.aa_delay_cancel = dc_val; save_settings() end
 
-        imgui.text("NEUTRAL BUFFER")
+        imgui.text(DVT("neutral_buffer"))
         imgui.same_line()
         imgui.push_item_width(40)
         local nbc, nbv = imgui.input_text("##aa_nbuf", tostring(auto_activate.neutral_buffer), 4)
@@ -2755,9 +2758,9 @@ local function draw_config_ui()
                 end
             end
         end
-        if _aa_log.active then imgui.same_line(); imgui.text_colored("LOGGING " .. _aa_log.frame .. "f", 0xFF00A5FF) end
+        if _aa_log.active then imgui.same_line(); imgui.text_colored(DVT("logging") .. _aa_log.frame .. "f", 0xFF00A5FF) end
 
-        local fw_changed, fw_val = imgui.checkbox("Footwork", auto_activate.footwork_enabled)
+        local fw_changed, fw_val = imgui.checkbox(DVT("footwork"), auto_activate.footwork_enabled)
         if fw_changed then
             auto_activate.footwork_enabled = fw_val
             if not fw_val then auto_activate.p2_mask = 0; auto_activate.footwork_counter = 0; auto_activate.footwork_cur_limit = 0 end
@@ -2778,47 +2781,47 @@ local function draw_config_ui()
         local is_rand = cur_mode == "random"
         if is_rand then
             imgui.push_item_width(40)
-            local fwc, fwv = imgui.input_text("MIN##fw", tostring(auto_activate.footwork_fw), 4)
+            local fwc, fwv = imgui.input_text(DVT("min_2"), tostring(auto_activate.footwork_fw), 4)
             if fwc then local n = tonumber(fwv); if n and n >= 0 and n <= 999 then auto_activate.footwork_fw = math.floor(n) end end
             imgui.pop_item_width()
             imgui.same_line()
             imgui.push_item_width(40)
-            local bwc, bwv = imgui.input_text("MAX##fw_bw", tostring(auto_activate.footwork_bw), 4)
+            local bwc, bwv = imgui.input_text(DVT("max_3"), tostring(auto_activate.footwork_bw), 4)
             if bwc then local n = tonumber(bwv); if n and n >= 0 and n <= 999 then auto_activate.footwork_bw = math.floor(n) end end
             imgui.pop_item_width()
             imgui.same_line()
-            imgui.text("FW/BW")
+            imgui.text(DVT("fw_bw"))
             imgui.push_item_width(40)
-            local cmc, cmv = imgui.input_text("MIN##cr", tostring(auto_activate.footwork_cr_min), 4)
+            local cmc, cmv = imgui.input_text(DVT("min_3"), tostring(auto_activate.footwork_cr_min), 4)
             if cmc then local n = tonumber(cmv); if n and n >= 0 and n <= 999 then auto_activate.footwork_cr_min = math.floor(n) end end
             imgui.pop_item_width()
             imgui.same_line()
             imgui.push_item_width(40)
-            local cxc, cxv = imgui.input_text("MAX##cr", tostring(auto_activate.footwork_cr_max), 4)
+            local cxc, cxv = imgui.input_text(DVT("max_4"), tostring(auto_activate.footwork_cr_max), 4)
             if cxc then local n = tonumber(cxv); if n and n >= 0 and n <= 999 then auto_activate.footwork_cr_max = math.floor(n) end end
             imgui.pop_item_width()
             imgui.same_line()
-            imgui.text("Crouch")
+            imgui.text(DVT("crouch"))
         else
             imgui.push_item_width(40)
-            local fwc, fwv = imgui.input_text("FW##fw", tostring(auto_activate.footwork_fw), 4)
+            local fwc, fwv = imgui.input_text(DVT("fw"), tostring(auto_activate.footwork_fw), 4)
             if fwc then local n = tonumber(fwv); if n and n >= 0 and n <= 999 then auto_activate.footwork_fw = math.floor(n) end end
             imgui.pop_item_width()
             imgui.same_line()
             imgui.push_item_width(40)
-            local bwc, bwv = imgui.input_text("BW##fw", tostring(auto_activate.footwork_bw), 4)
+            local bwc, bwv = imgui.input_text(DVT("bw"), tostring(auto_activate.footwork_bw), 4)
             if bwc then local n = tonumber(bwv); if n and n >= 0 and n <= 999 then auto_activate.footwork_bw = math.floor(n) end end
             imgui.pop_item_width()
             imgui.same_line()
             imgui.push_item_width(40)
-            local crc, crv = imgui.input_text("CR##fw", tostring(auto_activate.footwork_cr), 4)
+            local crc, crv = imgui.input_text(DVT("cr"), tostring(auto_activate.footwork_cr), 4)
             if crc then local n = tonumber(crv); if n and n >= 0 and n <= 999 then auto_activate.footwork_cr = math.floor(n) end end
             imgui.pop_item_width()
         end
 
         if #all_moves > 0 then
             imgui.spacing()
-            imgui.text_colored("MAIN  SUB  W   MOVE", 0xFF888888)
+            imgui.text_colored(DVT("main_sub_w_move"), 0xFF888888)
             imgui.separator()
             imgui.begin_child_window("##aa_list", Vector2f.new(0, 300), false, 0)
             for i, mv in ipairs(all_moves) do
@@ -2829,7 +2832,7 @@ local function draw_config_ui()
                 local weight = is_sub and sub_entry.weight or 0
 
                 if is_main then imgui.push_style_color(21, 0xFF00FFFF) end
-                local mc, _ = imgui.checkbox("M##main_" .. i, is_main)
+                local mc, _ = imgui.checkbox(DVT("m") .. i, is_main)
                 if is_main then imgui.pop_style_color(1) end
                 if mc then
                     if not is_main then
@@ -2853,7 +2856,7 @@ local function draw_config_ui()
 
                 imgui.same_line()
                 if is_sub then imgui.push_style_color(21, 0xFF00FF00) end
-                local sc, sv = imgui.checkbox("S##sub_" .. i, is_sub)
+                local sc, sv = imgui.checkbox(DVT("s") .. i, is_sub)
                 if is_sub then imgui.pop_style_color(1) end
                 if sc then
                     if sv then
@@ -4003,17 +4006,17 @@ re.on_frame(function()
             window_flags = 64
         end
 
-        if imgui.begin_window("SF6 DISTANCE VIEWER", true, window_flags) then
+        if imgui.begin_window(DVT("sf6_distance_viewer"), true, window_flags) then
             -- Save rect for next frame's click detection (on_draw_ui runs after on_frame)
             pcall(_dv_save_window_rect)
             if ui_font.obj then imgui.push_font(ui_font.obj) end
             
             -- Checkbox to hide the floating window from within itself
-            local chg_ov, new_ov = imgui.checkbox("Floating Window", config.show_debug_window)
+            local chg_ov, new_ov = imgui.checkbox(DVT("floating_window"), config.show_debug_window)
             imgui.same_line()
-            if imgui.button("Reload Data") then load_advanced_data() end
+            if imgui.button(DVT("reload_data")) then load_advanced_data() end
             imgui.same_line()
-            local chg_em, new_em = imgui.checkbox("EXPERT MODE ", config.expert_mode_enabled)
+            local chg_em, new_em = imgui.checkbox(DVT("expert_mode"), config.expert_mode_enabled)
             if chg_em then
                 config.expert_mode_enabled = new_em
                 for _, p in ipairs({"p1", "p2"}) do
@@ -4077,7 +4080,7 @@ end)
 
 local function draw_distance_viewer_menu_ui()
     if imgui.tree_node("SF6 DISTANCE VIEWER") then
-        local changed_ov, new_ov = imgui.checkbox("FLOATING WINDOW", config.show_debug_window)
+        local changed_ov, new_ov = imgui.checkbox(DVT("floating_window_2"), config.show_debug_window)
         if changed_ov then
             config.show_debug_window = new_ov
             first_draw = true
@@ -4124,7 +4127,7 @@ local function draw_distance_viewer_menu_ui()
 
         if not config.show_debug_window then
             imgui.separator()
-            imgui.text_colored("REFRAMEWORK MENU MODE (Window Hidden)", COL_CYAN)
+            imgui.text_colored(DVT("reframework_menu_mode_window_hidden"), COL_CYAN)
             draw_config_ui()
         end
 
@@ -4145,12 +4148,196 @@ do
                 global_settings = "--- GLOBAL SETTINGS ---",
                 debug_values = "--- DEBUG VALUES (Live) ---",
                 auto_activate = "--- AUTO ACTIVATE MOVE ---",
+                aa_label = "AUTO ACTIVATE",
+                auto_lock_on_attack_freeze_during_active_fra = "Auto-Lock on Attack (Freeze during active frames)",
+                bind_cycle_p1_cycle_p2_toggle_overlay_in = "Bind Cycle P1 / Cycle P2 / Toggle Overlay in",
+                bw = "BW##fw",
+                clash = "Clash",
+                color_text = "Color Text##p1",
+                color_text_2 = "Color Text##p2",
+                cr = "CR##fw",
+                crossup_arch = "CrossUp Arch##p1",
+                crossup_arch_2 = "CrossUp Arch##p2",
+                crossup_data = "-- CROSSUP DATA --",
+                crossup_text = "CrossUp Text##p1",
+                crossup_text_2 = "CrossUp Text##p2",
+                crouch = "Crouch",
+                cursor = "Cursor##c",
+                cursor_2 = "Cursor##p1",
+                cursor_3 = "Cursor##p2",
+                delay_cancel = "Delay Cancel",
+                delay_frames_to_wait_before_firing_delay_can = "  Delay: Frames to wait before firing. Delay Cancel aborts if out of range.",
+                display_p = "Display P",
+                dist_config = "Dist Config: ",
+                distance = "Distance##p1",
+                distance_2 = "Distance##p2",
+                enable = "Enable##aa",
+                expert_mode = "EXPERT MODE ",
+                fixed = "Fixed##f",
+                floating_ui_scale = "Floating UI Scale",
+                floating_window = "Floating Window",
+                floating_window_2 = "FLOATING WINDOW",
+                font_status = "Font Status: ",
+                footwork = "Footwork",
+                footwork_dummy_walks_fw_bw_between_attacks_r = "  Footwork: Dummy walks FW/BW between attacks. Random randomizes duration.",
+                fw = "FW##fw",
+                fw_bw = "FW/BW",
+                head = "Head##h",
+                hide_all = "Hide All##",
+                hitbox = "Hitbox",
+                hurtbox = "Hurtbox",
+                hurtbox_invuln = "Hurtbox Invuln",
+                icon_scale = "Icon Scale",
+                icon_y_offset = "Icon Y Offset",
+                jump_file = "Jump File: ",
+                lines = "Lines##p1",
+                lines_2 = "Lines##p2",
+                load_status = "[LOAD STATUS]",
+                logging = "LOGGING ",
+                m = "M##main_",
+                main_m_sets_the_trigger_move_and_its_range = "  MAIN (M): Sets the trigger move and its range.",
+                main_sub_w_move = "MAIN  SUB  W   MOVE",
+                max = "MAX ",
+                max_2 = "MAX##aa_delay",
+                max_3 = "MAX##fw_bw",
+                max_4 = "MAX##cr",
+                max_only = "Max Only##",
+                min = "MIN##aa_delay",
+                min_2 = "MIN##fw",
+                min_3 = "MIN##cr",
+                neutral_buffer = "NEUTRAL BUFFER",
+                no_attack_data_for = "No attack data for ",
+                no_jump_data = "No Jump Data",
+                no_moves_logged = "(no moves logged)",
+                numbers = "Numbers##p1",
+                numbers_2 = "Numbers##p2",
+                orange_zone = "Orange Zone",
+                position = "POSITION",
+                proximity = "Proximity",
+                pushbox = "Pushbox",
+                re_arms_automatically_after_battle_reset = "  Re-arms automatically after battle reset.",
+                reaction_delay = "REACTION DELAY",
+                red_zone = "Red Zone",
+                reframework_menu_mode_window_hidden = "REFRAMEWORK MENU MODE (Window Hidden)",
+                reload_data = "Reload Data",
+                root = "Root##r",
+                s = "S##sub_",
+                script_manager_hotkey_bindings_distance_view = "Script Manager > HOTKEY BINDINGS > Distance Viewer.",
+                sf6_distance_viewer = "SF6 DISTANCE VIEWER",
+                shortcuts = "SHORTCUTS:",
+                show_all = "Show All##",
+                sub_s_additional_moves_picked_randomly_when_ = "  SUB (S): Additional moves picked randomly when firing.",
+                teleport = "Teleport##tp_adv_",
+                teleport_2 = "TELEPORT##tp_red_",
+                teleport_3 = "TELEPORT##tp_org_",
+                teleport_4 = "TELEPORT##tp_yel_",
+                text = "Text ##p1",
+                text_2 = "Text ##p2",
+                throwbox = "Throwbox",
+                using_fallback_limits = "Using Fallback Limits",
+                weight_w_selection_probability_per_sub_move_ = "  WEIGHT (W): Selection probability per SUB move (0-10).",
+                yellow_offset = "Yellow Offset",
+                zone_data = "-- ZONE DATA --",
+                zones = "Zones##p1",
+                zones_2 = "Zones##p2",
             },
             zh = {
                 help = "--- 帮助与信息 ---",
                 global_settings = "--- 全局设置 ---",
                 debug_values = "--- 调试数值（实时）---",
                 auto_activate = "--- 自动激活招式 ---",
+                aa_label = "自动激活",
+                auto_lock_on_attack_freeze_during_active_fra = "攻击时自动锁定（活跃帧期间冻结）",
+                bind_cycle_p1_cycle_p2_toggle_overlay_in = "在以下位置绑定 切换P1 / 切换P2 / 开关覆盖层：",
+                bw = "后##fw",
+                clash = "相杀框",
+                color_text = "色彩文字##p1",
+                color_text_2 = "色彩文字##p2",
+                cr = "蹲##fw",
+                crossup_arch = "逆向弧线##p1",
+                crossup_arch_2 = "逆向弧线##p2",
+                crossup_data = "-- 逆向数据 --",
+                crossup_text = "逆向文字##p1",
+                crossup_text_2 = "逆向文字##p2",
+                crouch = "蹲姿",
+                cursor = "光标##c",
+                cursor_2 = "光标##p1",
+                cursor_3 = "光标##p2",
+                delay_cancel = "延迟取消",
+                delay_frames_to_wait_before_firing_delay_can = "  延迟: 开火前等待的帧数。延迟取消会在超出范围时中止。",
+                display_p = "显示 P",
+                dist_config = "距离配置: ",
+                distance = "距离##p1",
+                distance_2 = "距离##p2",
+                enable = "启用##aa",
+                expert_mode = "专家模式 ",
+                fixed = "固定##f",
+                floating_ui_scale = "浮动 UI 缩放",
+                floating_window = "浮动窗口",
+                floating_window_2 = "浮动窗口",
+                font_status = "字体状态: ",
+                footwork = "步法",
+                footwork_dummy_walks_fw_bw_between_attacks_r = "  步法: 假人在攻击之间前后移动。随机模式随机化持续时间。",
+                fw = "前##fw",
+                fw_bw = "前/后",
+                head = "头部##h",
+                hide_all = "全部隐藏##",
+                hitbox = "攻击框",
+                hurtbox = "受伤框",
+                hurtbox_invuln = "受伤框（无敌）",
+                icon_scale = "图标缩放",
+                icon_y_offset = "图标 Y 偏移",
+                jump_file = "跳跃文件: ",
+                lines = "标线##p1",
+                lines_2 = "标线##p2",
+                load_status = "[加载状态]",
+                logging = "记录中 ",
+                m = "主##main_",
+                main_m_sets_the_trigger_move_and_its_range = "  主(M): 设置触发招式及其范围。",
+                main_sub_w_move = "主  副  权重  招式",
+                max = "最大 ",
+                max_2 = "最大##aa_delay",
+                max_3 = "最大##fw_bw",
+                max_4 = "最大##cr",
+                max_only = "仅最大##",
+                min = "最小##aa_delay",
+                min_2 = "最小##fw",
+                min_3 = "最小##cr",
+                neutral_buffer = "回中缓冲",
+                no_attack_data_for = "无攻击数据: ",
+                no_jump_data = "无跳跃数据",
+                no_moves_logged = "（无招式记录）",
+                numbers = "数值##p1",
+                numbers_2 = "数值##p2",
+                orange_zone = "橙色区域",
+                position = "位置",
+                proximity = "接近框",
+                pushbox = "受击框",
+                re_arms_automatically_after_battle_reset = "  战斗重置后自动重新装填。",
+                reaction_delay = "反应延迟",
+                red_zone = "红色区域",
+                reframework_menu_mode_window_hidden = "REFRAMEWORK 菜单模式（窗口已隐藏）",
+                reload_data = "重新加载数据",
+                root = "根部##r",
+                s = "副##sub_",
+                script_manager_hotkey_bindings_distance_view = "Script Manager > 快捷键绑定 > 距离查看器。",
+                sf6_distance_viewer = "SF6 距离查看器",
+                shortcuts = "快捷键：",
+                show_all = "全部显示##",
+                sub_s_additional_moves_picked_randomly_when_ = "  副(S): 开火时随机选择的额外招式。",
+                teleport = "传送##tp_adv_",
+                teleport_2 = "传送##tp_red_",
+                teleport_3 = "传送##tp_org_",
+                teleport_4 = "传送##tp_yel_",
+                text = "文字 ##p1",
+                text_2 = "文字 ##p2",
+                throwbox = "投技框",
+                using_fallback_limits = "使用备用限制",
+                weight_w_selection_probability_per_sub_move_ = "  权重(W): 每个副招式的选择概率（0-10）。",
+                yellow_offset = "黄色偏移",
+                zone_data = "-- 区域数据 --",
+                zones = "区域##p1",
+                zones_2 = "区域##p2",
             },
         })
     end
