@@ -3306,6 +3306,19 @@ end
 -- when the trial ends. Separate from HP restore, which is already ported.
 -- Self-contained: only native (sdk) + trial_state.
 -- =========================================================
+-- The Defense-tab fields copied/written by ct_copy/ct_write. This was defined
+-- separately just above cdjay's block and was missed in the original port, so
+-- ipairs(nil) threw and the whole cleanup silently no-oped -- the real reason #2
+-- never worked in-game.
+CT_TRIAL_DEFENSE_FIELDS = {
+    "DR_Type",
+    "DP_Type",
+    "DR_Guard_Weight",
+    "DR_Getup_Weight",
+    "DR_No_Weight"
+}
+_ct_tf_defense_system_cache = nil
+
 function ct_get_tf_defense_system()
     if _ct_tf_defense_system_cache then return _ct_tf_defense_system_cache end
     pcall(function()
