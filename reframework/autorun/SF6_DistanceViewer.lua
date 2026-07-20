@@ -10,6 +10,11 @@ require("func/SharedHooks")
 local GS = require("func/GameState")
 local UIKit = require("func/UIKit")
 
+-- Bound i18n getter for this script (strings are registered at the bottom of
+-- the file; registration happens at load, every lookup happens at draw time).
+-- Declared here because on-screen zone labels resolve it early in the file.
+local DVT = require("func/i18n").scope("distance_viewer_ui")
+
 -- Numpad to Unicode arrow conversion
 local _numpad_arrows = { ["1"]="↙", ["2"]="↓", ["3"]="↘", ["4"]="←", ["6"]="→", ["7"]="↖", ["8"]="↑", ["9"]="↗" }
 local function input_to_arrows(str)
@@ -810,9 +815,9 @@ local function get_sorted_thresholds(limits, show_title, show_name, prefix)
         end
 
     local arr = {}
-    if limits.low then arr[#arr+1] = { name = make_name("Red Zone", limits.low_input), dist = limits.low, color = colors.Red, fill = get_dynamic_color(colors.Red) } end
-    if limits.red then arr[#arr+1] = { name = make_name("Orange Zone", limits.red_input), dist = limits.red, color = colors.Orange, fill = get_dynamic_color(colors.Orange) } end
-    if limits.yellow then arr[#arr+1] = { name = make_name("Yellow Zone", nil), dist = limits.yellow, color = colors.Yellow, fill = get_dynamic_color(colors.Yellow) } end
+    if limits.low then arr[#arr+1] = { name = make_name(DVT("red_zone"), limits.low_input), dist = limits.low, color = colors.Red, fill = get_dynamic_color(colors.Red) } end
+    if limits.red then arr[#arr+1] = { name = make_name(DVT("orange_zone"), limits.red_input), dist = limits.red, color = colors.Orange, fill = get_dynamic_color(colors.Orange) } end
+    if limits.yellow then arr[#arr+1] = { name = make_name(DVT("yellow_zone"), nil), dist = limits.yellow, color = colors.Yellow, fill = get_dynamic_color(colors.Yellow) } end
     table.sort(arr, function(a, b) return a.dist < b.dist end)
     return arr
 end
@@ -841,36 +846,40 @@ local custom_font_num = { obj = nil, filename = "SF6_college.ttf", loaded_size =
 local ui_font = { obj = nil, filename = "SF6_college.ttf", loaded_size = 0, status = "Init..." }
 local res_watcher = { last_w = 0, last_h = 0, cooldown = 0 }
 
--- Bound i18n getter for this script (strings registered at the bottom).
-local DVT = require("func/i18n").scope("distance_viewer_ui")
-
 local function try_load_font()
     if not imgui.load_font then custom_font.status = "API Error"; custom_font_num.status = "API Error"; return end
     local sw, sh = get_dynamic_screen_size()
     local scale_factor = sh / 1080.0
     if scale_factor < 0.1 then scale_factor = 1.0 end
     
+    -- SF6_college has no CJK glyphs (ImGui would draw every one as '?'), so in
+    -- 中文 the file is swapped for Microsoft YaHei — the same face SF6_TOOLS_CC
+    -- uses for all three Distance Viewer fonts. font_gen joins the reload
+    -- condition so a language flip rebuilds them immediately.
+    local _i18n = require("func/i18n")
+    local gen = _i18n.font_gen()
+
     local target_size = math.floor(config.stats_font_size * scale_factor)
-    if custom_font.obj == nil or custom_font.loaded_size ~= target_size then
-        local font = imgui.load_font(custom_font.filename, target_size)
-        if font then 
-            custom_font.obj = font; custom_font.loaded_size = target_size; custom_font.status = "OK ("..target_size.."px)"
+    if custom_font.obj == nil or custom_font.loaded_size ~= target_size or custom_font.loaded_gen ~= gen then
+        local font = imgui.load_font(_i18n.font(custom_font.filename, "regular"), target_size)
+        if font then
+            custom_font.obj = font; custom_font.loaded_size = target_size; custom_font.loaded_gen = gen; custom_font.status = "OK ("..target_size.."px)"
         else custom_font.status = "File Not Found" end
     end
 
     local target_size_num = math.floor((config.number_font_size or 60) * scale_factor)
-    if custom_font_num.obj == nil or custom_font_num.loaded_size ~= target_size_num then
-        local font_num = imgui.load_font(custom_font_num.filename, target_size_num)
-        if font_num then 
-            custom_font_num.obj = font_num; custom_font_num.loaded_size = target_size_num; custom_font_num.status = "OK ("..target_size_num.."px)"
+    if custom_font_num.obj == nil or custom_font_num.loaded_size ~= target_size_num or custom_font_num.loaded_gen ~= gen then
+        local font_num = imgui.load_font(_i18n.font(custom_font_num.filename, "regular"), target_size_num)
+        if font_num then
+            custom_font_num.obj = font_num; custom_font_num.loaded_size = target_size_num; custom_font_num.loaded_gen = gen; custom_font_num.status = "OK ("..target_size_num.."px)"
         else custom_font_num.status = "File Not Found" end
     end
 
     local target_size_ui = math.floor(18 * (config.ui_scale or 1.25) * scale_factor)
-    if ui_font.obj == nil or ui_font.loaded_size ~= target_size_ui then
-        local font_ui = imgui.load_font(ui_font.filename, target_size_ui)
-        if font_ui then 
-            ui_font.obj = font_ui; ui_font.loaded_size = target_size_ui; ui_font.status = "OK ("..target_size_ui.."px)"
+    if ui_font.obj == nil or ui_font.loaded_size ~= target_size_ui or ui_font.loaded_gen ~= gen then
+        local font_ui = imgui.load_font(_i18n.font(ui_font.filename, "regular"), target_size_ui)
+        if font_ui then
+            ui_font.obj = font_ui; ui_font.loaded_size = target_size_ui; ui_font.loaded_gen = gen; ui_font.status = "OK ("..target_size_ui.."px)"
         else ui_font.status = "File Not Found" end
     end
 
@@ -1410,8 +1419,8 @@ local function evaluate_player_zone(pi, cache_data, opponent_data)
                     local col = ar_to_color_abgr(mv.ar, ar_min, ar_max, pi)
                     local zone_name = "{" .. mv.input .. "}"
                     local prefix = (pi == 0) and "P1" or "P2"
-                    if prefs.red and prefs.red.input == mv.input then zone_name = prefix .. " Orange Zone\n" .. zone_name
-                    elseif prefs.low and prefs.low.input == mv.input then zone_name = prefix .. " Red Zone\n" .. zone_name end
+                    if prefs.red and prefs.red.input == mv.input then zone_name = prefix .. " " .. DVT("orange_zone") .. "\n" .. zone_name
+                    elseif prefs.low and prefs.low.input == mv.input then zone_name = prefix .. " " .. DVT("red_zone") .. "\n" .. zone_name end
                     return { name = zone_name, color = col }
                 end
             end
@@ -1430,7 +1439,7 @@ local function evaluate_player_zone(pi, cache_data, opponent_data)
     if auto_activate.enabled and auto_activate.move and pi == 1 then
         return { name = "Out Of Range", color = AA_COLOR_WHITE }
     end
-    return { name = ((pi == 0) and "P1" or "P2") .. " Green Zone", color = colors.Green }
+    return { name = ((pi == 0) and "P1" or "P2") .. " " .. DVT("green_zone"), color = colors.Green }
 end
 
 local function draw_text_safe(text, x, y, color, size) 
@@ -1538,7 +1547,7 @@ local function get_crossup_info(cache_data, opponent_data)
         local st_limit = frames.cross_up_st or 9999.0; local cr_limit = frames.cross_up_cr or 9999.0
         if real_distance < st_limit then text_str = "CrossUpSt"; text_col = colors.Red
         elseif real_distance < cr_limit then text_str = "CrossUpCr"; text_col = colors.Yellow
-        else text_str = "No Cross"; text_col = colors.Grey end
+        else text_str = DVT("no_cross"); text_col = colors.Grey end
     end
     return text_str, text_col
 end
@@ -1622,7 +1631,7 @@ local function get_opp_zone_info(cache_data, opponent_data)
     local text_str = ""
     if show_t or show_n then 
         local space = (prefix and prefix ~= "") and (prefix .. " ") or ""
-        text_str = space .. "Green Zone" 
+        text_str = space .. DVT("green_zone")
     end
     local text_col = colors.Green
     
@@ -2430,7 +2439,7 @@ local function draw_config_ui()
                 local rname = cache.valid and cache.adv_name or get_real_name(detected_infos[pi] and detected_infos[pi].name or "?")
                 -- Always use base character name for menu (not stance variant)
                 local base_display = cache.valid and (esf_names_map[cache.real_name] or cache.real_name) or get_real_name(detected_infos[pi] and detected_infos[pi].name or "?")
-                local header_label = string.format("--- %s (P%d) OPTIONS ---", base_display, pi + 1)
+                local header_label = DVT("options_header", base_display, pi + 1)
                 if styled_header(header_label, hdr_color) then
                     -- Display toggle
                     local is_on = config[p_prefix .. "_vertical_mode"] ~= 7
@@ -2558,7 +2567,7 @@ local function draw_config_ui()
     -- ==========================================
     local changed = false; local c = false
     local p1_rname_expert = p1_cache.valid and (esf_names_map[p1_cache.real_name] or p1_cache.real_name) or "P1"
-    if styled_header(string.format("--- %s (P1) OPTIONS ---", p1_rname_expert), UI_THEME.hdr_session_1) then
+    if styled_header(DVT("options_header", p1_rname_expert, 1), UI_THEME.hdr_session_1) then
 --        c, config.p1_show_all = imgui.checkbox("SHOW ALL P1 OVERLAYS##p1_master", config.p1_show_all); if c then changed = true end
 --        imgui.separator()
         
@@ -2600,7 +2609,7 @@ local function draw_config_ui()
     -- 4. PLAYER 2 SETTINGS
     -- ==========================================
     local p2_rname_expert = p2_cache.valid and (esf_names_map[p2_cache.real_name] or p2_cache.real_name) or "P2"
-    if styled_header(string.format("--- %s (P2) OPTIONS ---", p2_rname_expert), UI_THEME.hdr_session_2) then
+    if styled_header(DVT("options_header", p2_rname_expert, 2), UI_THEME.hdr_session_2) then
         config.p2_advanced_mode = true
         local rname_p2 = p2_rname_expert
         local cdata_p2 = advanced_data[rname_p2]
@@ -4148,6 +4157,10 @@ do
                 global_settings = "--- GLOBAL SETTINGS ---",
                 debug_values = "--- DEBUG VALUES (Live) ---",
                 auto_activate = "--- AUTO ACTIVATE MOVE ---",
+                yellow_zone = "Yellow Zone",
+                green_zone = "Green Zone",
+                no_cross = "No Cross",
+                options_header = "--- %s (P%d) OPTIONS ---",
                 aa_label = "AUTO ACTIVATE",
                 auto_lock_on_attack_freeze_during_active_fra = "Auto-Lock on Attack (Freeze during active frames)",
                 bind_cycle_p1_cycle_p2_toggle_overlay_in = "Bind Cycle P1 / Cycle P2 / Toggle Overlay in",
@@ -4246,6 +4259,10 @@ do
                 global_settings = "--- 全局设置 ---",
                 debug_values = "--- 调试数值（实时）---",
                 auto_activate = "--- 自动激活招式 ---",
+                yellow_zone = "黄色区域",
+                green_zone = "绿色区域",
+                no_cross = "无逆向",
+                options_header = "--- %s (P%d) 设置 ---",
                 aa_label = "自动激活",
                 auto_lock_on_attack_freeze_during_active_fra = "攻击时自动锁定（活跃帧期间冻结）",
                 bind_cycle_p1_cycle_p2_toggle_overlay_in = "在以下位置绑定 切换P1 / 切换P2 / 开关覆盖层：",

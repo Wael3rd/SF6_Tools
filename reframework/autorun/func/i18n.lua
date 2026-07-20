@@ -67,12 +67,19 @@ function M.get_lang()
 end
 
 -- Returns the font file to actually load for the active language.
--- bold=true forces the bold CJK face (HUD overlay / D2D, as CC does).
-function M.font(filename, bold)
+-- weight (optional) overrides the default mapping, matching CC per call site:
+--   true / "bold" -> msyhbd (HUD overlay, D2D)
+--   "regular"     -> msyh   (Distance Viewer panel)
+-- Unknown filenames (e.g. a user-configured font) pass through untouched.
+function M.font(filename, weight)
     load_lang()
     if state.lang == "zh" then
         local sub = NO_CJK[filename]
-        if sub then return bold and CJK_BOLD or sub end
+        if sub then
+            if weight == true or weight == "bold" then return CJK_BOLD end
+            if weight == "regular" then return CJK_REGULAR end
+            return sub
+        end
     end
     return filename
 end
