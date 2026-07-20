@@ -2104,10 +2104,10 @@ local function draw_combo_trials_menu_ui()
                         imgui.text_colored("-> " .. right_col, COLORS.Cyan)
                     else
                         if log.is_ignored then
-                            local line = string.format("IGNORED   | %s (ID: %d) %s", log.name, log.id, log.ignore_reason)
+                            local line = string.format("IGNORED   | %s (ID: %d) %s", log.motion or log.name, log.id, log.ignore_reason)
                             imgui.text_colored(line, COLORS.DarkGrey)
                         else
-                            local line = string.format("AUTOMATIC | %s (ID: %d)", log.name, log.id)
+                            local line = string.format("AUTOMATIC | %s (ID: %d)", log.motion or log.name, log.id)
                             if log.real_input and log.real_input ~= "None" and log.real_input ~= "Ghost" then
                                 line = line .. "  -> Raw: " .. log.real_input
                             end
