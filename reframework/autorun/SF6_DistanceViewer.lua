@@ -2994,43 +2994,6 @@ local function _dv_read_p1_act_st()
     return GS.p1_act_st or 0
 end
 
--- =========================================================
--- AA STATE SYNC: publish AA input state to globals for SharedHooks finalizer
--- =========================================================
-local function _dv_mark_aa_release(frames)
-    local had_input = _G._dv_aa_last_had_input == true
-        or _G._dv_aa_enabled == true
-        or (_G._dv_aa_p2_mask or 0) > 0
-    _G.SF6_DistanceViewer_AutoActivate_Enabled = false
-    _G._dv_aa_enabled = false
-    _G._dv_aa_p2_mask = 0
-    if had_input then
-        _G._dv_aa_release_frames = math.max(_G._dv_aa_release_frames or 0, frames or 8)
-    end
-    _G._dv_aa_last_had_input = false
-    _G._dv_aa_heartbeat = os.clock()
-    local rs = _G.SF6CC_RuntimeSafety
-    _G._dv_aa_frame = rs and rs.frame or 0
-end
-
-local function _dv_update_aa_input_state()
-    local mask = auto_activate and (auto_activate.p2_mask or 0) or 0
-    local aa_enabled = _G.SF6_DistanceViewer_Enabled == true and auto_activate and auto_activate.enabled == true
-    local owns_input = aa_enabled and mask > 0
-    _G.SF6_DistanceViewer_AutoActivate_Enabled = aa_enabled
-    _G._dv_aa_enabled = owns_input
-    _G._dv_aa_p2_mask = owns_input and mask or 0
-    if owns_input then
-        _G._dv_aa_release_frames = 0
-    elseif aa_enabled and (_G._dv_aa_last_had_input == true) then
-        _G._dv_aa_release_frames = math.max(_G._dv_aa_release_frames or 0, 4)
-    end
-    _G._dv_aa_last_had_input = owns_input
-    _G._dv_aa_heartbeat = os.clock()
-    local rs = _G.SF6CC_RuntimeSafety
-    _G._dv_aa_frame = rs and rs.frame or 0
-end
-
 local function aa_tick()
     if not _G.TrainingModeActive or _G.IsInReplay or _G.FlowMapID == 10 then
         auto_activate.p2_mask = 0
@@ -3267,49 +3230,31 @@ local function aa_tick()
 
     auto_activate.was_in_range = in_range
     if auto_activate.was_in_range and not in_range then auto_activate._anticipation_roll = nil end
-    _dv_update_aa_input_state()
 
 end
 
 -- Register AA input injection with shared pl_input_sub hook (0_SharedHooks.lua)
--- Input application is now centralized in SharedHooks (finalize_distance_viewer_p2_input).
--- This callback only manages the release path when AA or DV is disabled.
 local _dv_gBattle_td = sdk.find_type_definition("gBattle")
+local function _dv_apply_p2_input_mask()
+    local p2 = _dv_gBattle_td:get_field("Player"):get_data(nil).mcPlayer[1]
+    if not p2 then return end
+    local final_mask = auto_activate.p2_mask
+    if p2:get_field("rl_dir") then
+        local has_right = (final_mask & 4) ~= 0
+        local has_left  = (final_mask & 8) ~= 0
+        final_mask = final_mask & ~12
+        if has_right then final_mask = final_mask | 8 end
+        if has_left  then final_mask = final_mask | 4 end
+    end
+    p2:set_field("pl_input_new", final_mask)
+    p2:set_field("pl_sw_new", final_mask)
+end
 if _G._shared_input_post then
-    for i = #_G._shared_input_post, 1, -1 do
-        local cb = _G._shared_input_post[i]
-        local ok_info, info = false, nil
-        if debug and debug.getinfo then
-            ok_info, info = pcall(debug.getinfo, cb, "S")
+    table.insert(_G._shared_input_post, function(p_id, retval)
+        if p_id == 1 and (auto_activate.is_firing or auto_activate.footwork_enabled) and auto_activate.p2_mask > 0 then
+            pcall(_dv_apply_p2_input_mask)
         end
-        local src = ok_info and info and info.source or ""
-        if src:find("SF6_DistanceViewer.lua", 1, true) then
-            table.remove(_G._shared_input_post, i)
-        end
-    end
-    if _G._dv_ensure_shared_input_finalizer_tail then
-        pcall(_G._dv_ensure_shared_input_finalizer_tail)
-    end
-    local function dv_shared_input_post(p_id, retval)
-        if p_id == 1 and (auto_activate.enabled ~= true or _G.SF6_DistanceViewer_Enabled ~= true) then
-            _dv_mark_aa_release(8)
-        end
-    end
-    local replaced = false
-    for i, cb in ipairs(_G._shared_input_post) do
-        if cb == _G._dv_shared_input_post then
-            _G._shared_input_post[i] = dv_shared_input_post
-            replaced = true
-            break
-        end
-    end
-    if not replaced then
-        table.insert(_G._shared_input_post, dv_shared_input_post)
-    end
-    _G._dv_shared_input_post = dv_shared_input_post
-    if _G._dv_ensure_shared_input_finalizer_tail then
-        pcall(_G._dv_ensure_shared_input_finalizer_tail)
-    end
+    end)
 end
 
 -- Hook set_IsReqRefresh to detect battle reset → re-arm AA
