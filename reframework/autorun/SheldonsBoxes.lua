@@ -735,6 +735,10 @@ end
 
 
 local hud_text_visible = true
+-- Widest HUD text seen per player, so the click zone keeps the full size even
+-- when the fields are toggled off (empty text would otherwise shrink the rect).
+local hud_p1_full_w = 0
+local hud_p2_full_w = 0
 local hud_p1_rect = { x = 0, y = 0, w = 0, h = 0 }
 local hud_p2_rect = { x = 0, y = 0, w = 0, h = 0 }
 local vr_visible = true
@@ -823,13 +827,14 @@ re.on_frame(function()
         end
 
         local total_w, total_h = get_text_size_custom(full_txt)
-        -- Minimum clickable width so the zone survives when the HUD is empty
-        -- (all 4 fields toggled off) and can be clicked again to bring it back.
-        local min_w = 120 * (display_w / 1920)
-        if total_h < 1 then total_h = get_text_size_custom("HP") end
+        -- Keep the click zone at the full size even when the fields are off:
+        -- remember the widest text seen and use it as the floor. Height falls
+        -- back to a line height so an empty HUD still has a grabbable box.
+        if total_w > hud_p1_full_w then hud_p1_full_w = total_w end
+        if total_h < 1 then _, total_h = get_text_size_custom("HP") end
         hud_p1_rect.x = p1_x_start - 5
         hud_p1_rect.y = base_y_hud - 5
-        hud_p1_rect.w = math.max(total_w, min_w) + 10
+        hud_p1_rect.w = hud_p1_full_w + 10
         hud_p1_rect.h = total_h + 10
     end
 
@@ -869,12 +874,11 @@ re.on_frame(function()
 
         local full_w = w_stats + w_x
         local _, total_h = get_text_size_custom("HP")
-        -- Minimum clickable width, kept anchored to the right edge, so the zone
-        -- survives an empty HUD and stays clickable to restore it.
-        local eff_w = math.max(full_w, 120 * (display_w / 1920))
-        hud_p2_rect.x = p2_edge - eff_w - 5
+        -- Full-size click zone even when empty, kept anchored to the right edge.
+        if full_w > hud_p2_full_w then hud_p2_full_w = full_w end
+        hud_p2_rect.x = p2_edge - hud_p2_full_w - 5
         hud_p2_rect.y = base_y_hud - 5
-        hud_p2_rect.w = eff_w + 10
+        hud_p2_rect.w = hud_p2_full_w + 10
         hud_p2_rect.h = total_h + 10
     end
 
