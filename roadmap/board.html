@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>WTT × SF6CC — Shared Feature Board</title>
+<style>
+:root{--bg:#0b0e14;--panel:#131826;--line:#232b3d;--txt:#dce3f0;--dim:#8b96ab;
+--gold:#e8b44a;--blue:#57a5ff;--green:#43d17c;--red:#ff6969;--purple:#b07aff;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh}
+/* ---------- password gate ---------- */
+#gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
+#gate .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:38px 44px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+#gate h1{font-size:20px;margin-bottom:6px}
+#gate p{color:var(--dim);font-size:13px;margin-bottom:18px}
+#gate input{background:#0d1220;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:10px 14px;font-size:14px;width:220px;outline:none}
+#gate button{margin-left:8px;background:var(--gold);border:none;border-radius:8px;color:#161006;font-weight:700;padding:10px 18px;font-size:14px;cursor:pointer}
+#gate .err{color:var(--red);font-size:12px;margin-top:10px;min-height:14px}
+#app.locked{display:none}
+/* ---------- layout ---------- */
+header{display:flex;align-items:center;justify-content:space-between;padding:26px 4vw 10px}
+.title h1{font-size:22px}.title .x{color:var(--gold)}
+.title p{color:var(--dim);font-size:13px;margin-top:3px}
+.lang button{background:#0d1220;border:1px solid var(--line);color:var(--dim);border-radius:7px;padding:6px 12px;font-size:13px;cursor:pointer}
+.lang button.on{color:var(--gold);border-color:var(--gold)}
+main{padding:8px 4vw 40px;max-width:1180px;margin:0 auto}
+.intro{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--dim);margin:14px 0 22px;line-height:1.55}
+.intro b{color:var(--txt)}
+h2.sec{font-size:15px;margin:26px 0 12px;letter-spacing:.4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+.card .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card h3{font-size:15px;flex:1;min-width:220px}
+.badge{font-size:11px;font-weight:700;border-radius:20px;padding:3px 11px;letter-spacing:.4px;white-space:nowrap}
+.b-frozen{background:rgba(87,165,255,.14);color:var(--blue)}
+.b-prog{background:rgba(232,180,74,.14);color:var(--gold)}
+.b-agreed{background:rgba(67,209,124,.14);color:var(--green)}
+.b-proposed{background:rgba(139,150,171,.16);color:var(--dim)}
+.b-decision{background:rgba(176,122,255,.15);color:var(--purple)}
+.owner{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:3px 11px;white-space:nowrap}
+.card .desc{color:var(--dim);font-size:13px;line-height:1.55;margin-top:9px}
+.meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px}
+.meta div{font-size:12px;color:var(--dim)}
+.meta b{color:var(--txt);font-weight:600;display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;color:#a8b3c9}
+.meta code{background:#0d1220;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;color:#c9d4e8}
+footer{text-align:center;color:var(--dim);font-size:12px;padding:20px 0 34px}
+footer a{color:var(--blue);text-decoration:none}
+</style>
+</head>
+<body>
+
+<!-- ===== PASSWORD GATE ===== -->
+<div id="gate">
+  <div class="box">
+    <h1>🔒 WTT × SF6CC</h1>
+    <p data-i18n="gatehint">Shared feature board — enter password</p>
+    <input id="pw" type="password" autocomplete="off" placeholder="password" />
+    <button onclick="tryUnlock()" data-i18n="enter">Enter</button>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+
+<div id="app" class="locked">
+  <header>
+    <div class="title">
+      <h1>WTT <span class="x">×</span> SF6CC</h1>
+      <p data-i18n="subtitle">Shared feature board — owner, modules, JSON fields, tests, status</p>
+    </div>
+    <div class="lang">
+      <button id="l-en" class="on" onclick="setLang('en')">EN</button>
+      <button id="l-zh" onclick="setLang('zh')">中文</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="intro" data-i18n-html="intro"></div>
+    <div id="board"></div>
+  </main>
+
+  <footer>
+    <p data-i18n="foot">New features are posted here BEFORE implementation · updated manually by both maintainers</p>
+    <p style="margin-top:6px"><a href="https://github.com/Wael3rd/SF6_Tools">Wael3rd/SF6_Tools</a> · <a href="index.html">roadmap</a> · <a href="port.html">port tracker</a></p>
+  </footer>
+</div>
+
+<script>
+const PW = "cdjayANDwael";
+
+const I = {
+  en: {
+    gatehint:"Shared feature board — enter password", enter:"Enter",
+    subtitle:"Shared feature board — owner, modules, JSON fields, tests, status",
+    intro:"<b>Working agreement (2026-07-23):</b> WTT and SF6CC remain two product branches (A/B implementations). The JSON contracts are the shared core. Every new feature or exchange is posted on this board <b>before implementation</b> with an owner, the Lua modules and JSON fields it touches, and how it will be tested. Modules are promoted to shared core only with a stable API, regression tests and evidence from A/B runs.",
+    foot:"New features are posted here BEFORE implementation · updated manually by both maintainers",
+    s_contracts:"📜 Shared contracts", s_active:"🔧 Active work", s_ab:"⚖️ A/B evidence runs", s_decisions:"🤝 Joint decisions pending",
+    owner_joint:"joint", owner_wael:"Wael", owner_jaxen:"jaxen", owner_wael_jaxen:"Wael · cases by jaxen",
+    st_frozen:"FROZEN", st_prog:"IN PROGRESS", st_agreed:"AGREED", st_proposed:"PROPOSED", st_decision:"DECISION",
+    m_modules:"Modules", m_json:"JSON fields", m_tests:"Tests / evidence",
+  },
+  zh: {
+    gatehint:"共享功能看板 — 请输入密码", enter:"进入",
+    subtitle:"共享功能看板 — 负责人、模块、JSON 字段、测试、状态",
+    intro:"<b>协作约定（2026-07-23）：</b>WTT 与 SF6CC 保持两条产品分支（A/B 实现）。JSON 契约是共享核心。任何新功能或交换<b>在实现之前</b>发布到本看板：写明负责人、涉及的 Lua 模块与 JSON 字段、以及测试方式。模块只有在拥有稳定 API、回归测试和 A/B 证据后才提升为共享核心。",
+    foot:"新功能在实现之前先发布到此看板 · 由双方维护者手动更新",
+    s_contracts:"📜 共享契约", s_active:"🔧 进行中", s_ab:"⚖️ A/B 验证", s_decisions:"🤝 待共同决定",
+    owner_joint:"共同", owner_wael:"Wael", owner_jaxen:"jaxen", owner_wael_jaxen:"Wael · 用例由 jaxen 提供",
+    st_frozen:"已冻结", st_prog:"进行中", st_agreed:"已同意", st_proposed:"提议中", st_decision:"待决定",
+    m_modules:"模块", m_json:"JSON 字段", m_tests:"测试 / 证据",
+  }
+};
+
+const CARDS = [
+  { sec:"s_contracts", status:"frozen", owner:"owner_joint",
+    t:{en:"COMBO_JSON_SPEC v2.0.0 — frozen",zh:"COMBO_JSON_SPEC v2.0.0 — 已冻结"},
+    d:{en:"The combo trial contract (incl. scene_state scene.v2) is frozen. §3d reconciled with implementation-neutral wording: command catalog (SF6CC) and exception files (WTT) are both compliant resolvers — the file always carries the canonical base notation. SF6CC to mirror the reconciled text.",
+       zh:"连段契约（含 scene_state scene.v2）已冻结。§3d 已用实现中立的措辞统一：指令目录（SF6CC）与例外文件（WTT）都是合规的解析器 —— 文件始终记录规范的基础记法。SF6CC 同步该措辞即可。"},
+    modules:"—", json:"_xt_meta, scene_state, raw_inputs, motion_aliases", tests:{en:"Cross-replay: combos recorded in each tool replay in the other",zh:"交叉回放：任一工具录制的连段在另一工具中回放"} },
+  { sec:"s_contracts", status:"frozen", owner:"owner_joint",
+    t:{en:"RECORD_SLOT_SPEC v1.0.0 — frozen",zh:"RECORD_SLOT_SPEC v1.0.0 — 已冻结"},
+    d:{en:"Dummy record-slot format frozen (single-character files, sibling doc). The shared timeline token-grammar appendix is additive follow-up work.",
+       zh:"假人录制槽格式已冻结（按角色单文件、独立文档）。共享 timeline 记号语法附录为后续追加项。"},
+    modules:"RSM / DynamicRecords", json:"_meta, slots[], timeline, inputs", tests:{en:"Import/export round-trip both sides + pre-import backup",zh:"双方导入/导出往返 + 导入前备份"} },
+  { sec:"s_contracts", status:"proposed", owner:"owner_joint",
+    t:{en:"Timeline token grammar — shared appendix",zh:"Timeline 记号语法 — 共享附录"},
+    d:{en:"Standardize the numpad+button token grammar used by timeline/motion strings so both parsers are provably identical. Additive to both frozen specs.",
+       zh:"统一 timeline/motion 字符串使用的数字键+按钮记号语法，确保双方解析器一致。对两个已冻结规范均为追加。"},
+    modules:"ActionMatcher, RSM export", json:"timeline, motion", tests:{en:"Shared token test vectors file",zh:"共享记号测试向量文件"} },
+  { sec:"s_contracts", status:"proposed", owner:"owner_joint",
+    t:{en:"command_display / modern_display schema alignment",zh:"command_display / modern_display 模式对齐"},
+    d:{en:"Same purpose, different directory + resolver. Align the schema (contract level) so data files are exchangeable; each side keeps its own resolver.",
+       zh:"用途相同、目录与解析器不同。在契约层对齐模式，使数据文件可互换；解析器各自保留。"},
+    modules:"ModernDisplay (WTT) / unified command system (SF6CC)", json:"xt.modern_display.v1 / command_display", tests:{en:"Same act_id set resolves identically from both data sets",zh:"同一 act_id 集合在两套数据中解析一致"} },
+
+  { sec:"s_active", status:"prog", owner:"owner_wael",
+    t:{en:"Review SF6CC pure-ImGui renderer",zh:"评审 SF6CC 纯 ImGui 渲染"},
+    d:{en:"Study ComboTrials_ImGui.lua + the texture-bridge audit. Goal: optional ImGui backend on WTT for users hitting D2D errors. No removal of D2D on WTT until tested.",
+       zh:"研究 ComboTrials_ImGui.lua 与纹理桥审计。目标：为遇到 D2D 错误的 WTT 用户提供可选 ImGui 后端。测试完成前 WTT 不移除 D2D。"},
+    modules:"ComboTrials_ImGui, ComboTrials_D2D", json:"—", tests:{en:"Side-by-side render on a D2D-failing config",zh:"在 D2D 故障配置上并排渲染对比"} },
+  { sec:"s_active", status:"agreed", owner:"owner_wael_jaxen",
+    t:{en:"Evaluate unified command system (installs + DRC)",zh:"评估统一指令系统（install 与 DRC）"},
+    d:{en:"Test SF6CC's unified Classic/Modern-Simple/Modern-Motion system against the known hard cases: install-shifted act_ids (Honda 971) and the 500/501 RAW-DR/DRC labeling. jaxen provides test cases and implementation details.",
+       zh:"用已知难例测试 SF6CC 统一的 经典/现代简化/现代搓招 系统：install 位移的 act_id（本田 971）与 500/501 RAW-DR/DRC 标注。jaxen 提供测试用例与实现细节。"},
+    modules:"BcmCatalog (WTT), unified command table (SF6CC), exceptions/*", json:"—", tests:{en:"Honda Sumo combo record+replay; DRC step display per character",zh:"本田相扑连段录制+回放；各角色 DRC 步骤显示"} },
+
+  { sec:"s_ab", status:"agreed", owner:"owner_joint",
+    t:{en:"DEMO playback policy — raw vs timeline vs mismatch fallback",zh:"DEMO 回放策略 — raw vs timeline vs 模式不匹配回退"},
+    d:{en:"Identical combo files run on both branches: raw_inputs primary (WTT+SF6CC), timeline fallback, and SF6CC's control-mode mismatch fallback. Keep both mechanisms until evidence shows one fully covers the other.",
+       zh:"两分支运行完全相同的连段文件：raw_inputs 主路径、timeline 回退、以及 SF6CC 的操作模式不匹配回退。在证据表明一方完全覆盖另一方之前，双机制并存。"},
+    modules:"CTStunDemoRuntime, raw DEMO hook, CTJsonInterop", json:"raw_inputs, timeline, control_mode", tests:{en:"Shared test-combo pack incl. stun/DI/DRC-cancel cases",zh:"共享测试连段包，含 晕眩/DI/DRC 取消 用例"} },
+  { sec:"s_ab", status:"agreed", owner:"owner_joint",
+    t:{en:"Same-action continuation — action_instance vs combo-count",zh:"同招式连续 — action_instance vs 连段计数"},
+    d:{en:"cr.LK×3-style repeats: SF6CC resolves via action_instance, WTT via combo count + timeline normalizer. Neither side deletes its path until regression cases prove equivalence.",
+       zh:"cr.LK×3 类重复：SF6CC 用 action_instance，WTT 用连段计数 + timeline 规整器。回归用例证明等价之前双方均不删除自己的路径。"},
+    modules:"Validator, ActionMatcher, CTTimelineSequenceNormalizer", json:"expected_combo", tests:{en:"Repeat-normal regression set (lights, target combos, multi-hit)",zh:"重复普通技回归集（轻攻击、目标连段、多段）"} },
+
+  { sec:"s_decisions", status:"decision", owner:"owner_joint",
+    t:{en:"DynamicRecords vs RSM — product decision",zh:"DynamicRecords 与 RSM — 产品决策"},
+    d:{en:"Real overlap, not equivalent systems. Decide calmly on the board: unify, keep both, or split responsibilities (e.g. DynamicRecords = training-config exchange, RSM = slot management).",
+       zh:"确有重叠但并非等价系统。在看板上从容决定：统一、并存、或职责拆分（如 DynamicRecords=训练配置交换，RSM=录制槽管理）。"},
+    modules:"SF6CC_DynamicRecords, SF6_RecordingSlotManager", json:"xt.record_slot", tests:{en:"—",zh:"—"} },
+  { sec:"s_decisions", status:"proposed", owner:"owner_joint",
+    t:{en:"Validator → shared core promotion",zh:"Validator → 提升为共享核心"},
+    d:{en:"Already effectively aligned on both sides. First candidate for a truly shared module once it gets a stable documented API + regression tests + a named owner.",
+       zh:"双方已基本对齐。一旦具备稳定的文档化 API、回归测试与明确负责人，即为第一个真正的共享模块。"},
+    modules:"func/ComboTrials/Validator.lua", json:"—", tests:{en:"Shared validator regression suite",zh:"共享 Validator 回归套件"} },
+  { sec:"s_decisions", status:"proposed", owner:"owner_joint",
+    t:{en:"Exceptions data review (32 files each side)",zh:"例外数据评审（双方各 32 个文件）"},
+    d:{en:"File counts match but content diverged heavily. Per-character diff review + known-combo regression before choosing/merging data.",
+       zh:"文件数量一致但内容差异大。逐角色 diff 评审 + 已知连段回归后再选择/合并数据。"},
+    modules:"exceptions/*.json loaders", json:"force, override_name, absorb data", tests:{en:"Known-combo pack per reviewed character",zh:"每个已评审角色的已知连段包"} },
+];
+
+function esc(s){return s}
+function render(lang){
+  const t = I[lang];
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ const k=el.getAttribute("data-i18n"); if(t[k]) el.textContent=t[k]; });
+  document.querySelectorAll("[data-i18n-html]").forEach(el=>{ const k=el.getAttribute("data-i18n-html"); if(t[k]) el.innerHTML=t[k]; });
+  const secs = ["s_contracts","s_active","s_ab","s_decisions"];
+  const badge = {frozen:["b-frozen","st_frozen"],prog:["b-prog","st_prog"],agreed:["b-agreed","st_agreed"],proposed:["b-proposed","st_proposed"],decision:["b-decision","st_decision"]};
+  let html = "";
+  for(const s of secs){
+    html += `<h2 class="sec">${t[s]}</h2>`;
+    for(const c of CARDS.filter(x=>x.sec===s)){
+      const [bc,bk] = badge[c.status];
+      const tests = typeof c.tests==="object" ? c.tests[lang] : c.tests;
+      html += `<div class="card">
+        <div class="top"><h3>${c.t[lang]}</h3>
+          <span class="badge ${bc}">${t[bk]}</span>
+          <span class="owner">👤 ${t[c.owner]}</span></div>
+        <div class="desc">${c.d[lang]}</div>
+        <div class="meta">
+          <div><b>${t.m_modules}</b><code>${esc(c.modules)}</code></div>
+          <div><b>${t.m_json}</b><code>${esc(c.json)}</code></div>
+          <div><b>${t.m_tests}</b>${esc(tests)}</div>
+        </div></div>`;
+    }
+  }
+  document.getElementById("board").innerHTML = html;
+  document.getElementById("l-en").classList.toggle("on", lang==="en");
+  document.getElementById("l-zh").classList.toggle("on", lang==="zh");
+}
+let LANG = localStorage.getItem("wtt_lang") || "en";
+function setLang(l){ LANG=l; localStorage.setItem("wtt_lang",l); render(l); }
+
+function unlock(){
+  document.getElementById("gate").style.display="none";
+  document.getElementById("app").classList.remove("locked");
+  render(LANG);
+}
+function tryUnlock(){
+  const v = document.getElementById("pw").value;
+  if(v === PW){ sessionStorage.setItem("wtt_ok","1"); unlock(); }
+  else document.getElementById("err").textContent = "wrong password";
+}
+document.getElementById("pw").addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlock(); });
+if(sessionStorage.getItem("wtt_ok")==="1") unlock();
+</script>
+</body>
+</html>

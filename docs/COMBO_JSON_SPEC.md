@@ -1,8 +1,11 @@
-# SF6 Combo Trial File Format — Versioned Specification (DRAFT v2, rev 2)
+# SF6 Combo Trial File Format — Versioned Specification (v2.0.0, FROZEN)
 
-> Joint specification proposal for WTT/SF6_Tools and SF6_TOOLS_CC (+ SF6CM), so
+> Joint specification for WTT/SF6_Tools and SF6_TOOLS_CC (+ SF6CM), so
 > combo files recorded in either project replay in the other, permanently.
-> Status: **draft under review** — rev 2 incorporates the first review pass.
+> Status: **FROZEN v2.0.0 (2026-07-23)** — agreed by both maintainers as the
+> shared contract (includes `scene_state` scene.v2, §3c). Changes from here
+> follow the compatibility rules in §4: additive fields anytime; breaking
+> changes require a schema bump agreed on the shared board.
 
 ## 1. Goals
 
@@ -158,9 +161,14 @@ able to declare equivalences explicitly:
 
 - Matchers normalize notations (uppercase, strip whitespace and whiff markers)
   and accept `motion` or any alias.
-- Per-character exception files map variant ids to the base notation
-  (`force` + `override_name` = base move notation) so both states record and
-  replay interchangeably.
+- How a tool resolves variant ids to the base notation is an implementation
+  choice, not part of this contract: a per-character command catalog
+  (auto-generated from the game's AC/BCM data, as in SF6CC's unified command
+  table) and per-character exception files (`force` + `override_name` = base
+  move notation, as in WTT) are both compliant. The contract requirement is
+  only this: **the notation written into the file is the canonical base
+  notation**, so files record and replay interchangeably regardless of which
+  resolver produced them.
 
 ## 4. Compatibility rules
 
