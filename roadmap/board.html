@@ -156,8 +156,8 @@ const CARDS = [
 
   { sec:"s_decisions", status:"proposed", owner:"owner_joint",
     t:{en:"Community platform — joint operation (SF6CM)",zh:"社区平台 — 共同运营（SF6CM）"},
-    d:{en:"One shared backend + content database, localized front-ends, equal admin permissions. Safeguards from day one: periodic DB exports in the open formats (xt.combo_trial / xt.record_slot) accessible to both admins + shared platform source access — content never locked to a single deployment. Original text always preserved; AI translations marked as such; SF6-style predefined multilingual quick replies for comments. Each product keeps its own tray/distribution; clients may consume the platform release API later.",
-       zh:"共享后端与内容数据库、按语言本地化前端、双方平等管理员权限。自始内置保障：定期以开放格式（xt.combo_trial / xt.record_slot）导出数据库，双方管理员均可访问 + 平台源码共享 —— 内容永不锁定于单一部署。始终保留原文；AI 翻译明确标注；评论采用 SF6 式多语言预设快捷回复。各产品保留自己的托盘/分发渠道；客户端后续可接入平台发布 API。"},
+    d:{en:"One shared backend + content database, localized front-ends, equal admin permissions. Safeguards from day one: periodic DB exports in the open formats (xt.combo_trial / xt.record_slot) accessible to both admins + shared platform source access — content never locked to a single deployment. Original text always preserved; AI translations marked as such; SF6-style predefined multilingual quick replies for comments. WTT adopts the shared tray as its distribution client (replacing the R2 updater); WTT's remote-control server (phone web app / SSE) stays a product feature outside distribution.",
+       zh:"共享后端与内容数据库、按语言本地化前端、双方平等管理员权限。自始内置保障：定期以开放格式（xt.combo_trial / xt.record_slot）导出数据库，双方管理员均可访问 + 平台源码共享 —— 内容永不锁定于单一部署。始终保留原文；AI 翻译明确标注；评论采用 SF6 式多语言预设快捷回复。WTT 采用共享托盘作为分发客户端（替代 R2 更新器）；WTT 的远程控制服务器（手机 Web 应用 / SSE）作为产品功能保留在分发之外。"},
     modules:"SF6CM backend, tray clients", json:"xt.combo_trial, xt.record_slot (export format)", tests:{en:"Export/redeploy drill: rebuild a working instance from an export",zh:"导出/重建演练：从导出数据重建可用实例"} },
   { sec:"s_decisions", status:"decision", owner:"owner_joint",
     t:{en:"DynamicRecords vs RSM — product decision",zh:"DynamicRecords 与 RSM — 产品决策"},
