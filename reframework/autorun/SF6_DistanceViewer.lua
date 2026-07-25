@@ -4415,9 +4415,20 @@ end
 do
     local ok_c, Canvas = pcall(require, "func/ImGuiCanvas")
     if ok_c and Canvas then
-        local ICON_LABEL = {
-            lp = "LP", mp = "MP", hp = "HP", lk = "LK", mk = "MK", hk = "HK",
-            dr = "DR", di = "DI", HOLD = "HOLD", THROW = "THR",
+        -- Labels + SF6 strength colors (ABGR): Light=blue, Medium=yellow,
+        -- Heavy=red; system keys gold. Directions render as drawn arrows.
+        local ICON_STYLE = {
+            lp = { "LP", 0xFFFFA44A }, lk = { "LK", 0xFFFFA44A },
+            mp = { "MP", 0xFF4AD6FF }, mk = { "MK", 0xFF4AD6FF },
+            hp = { "HP", 0xFF4A5AFF }, hk = { "HK", 0xFF4A5AFF },
+            dr = { "DR", 0xFF43D17C }, di = { "DI", 0xFF43D17C },
+            HOLD = { "HOLD", 0xFFE8B44A }, THROW = { "THR", 0xFFE8B44A },
+        }
+        -- Screen-space direction vectors (numpad, y down)
+        local DIR_VEC = {
+            ["1"] = { -1, 1 }, ["2"] = { 0, 1 }, ["3"] = { 1, 1 },
+            ["4"] = { -1, 0 },                   ["6"] = { 1, 0 },
+            ["7"] = { -1, -1 }, ["8"] = { 0, -1 }, ["9"] = { 1, -1 },
         }
         local icon_fonts = {}
         local function icon_font(px)
@@ -4426,6 +4437,23 @@ do
                 icon_fonts[px] = Canvas.Font.new("SF6_college.ttf", px) or false
             end
             return icon_fonts[px]
+        end
+        local function draw_arrow(cx, cy, dx, dy, s, color)
+            local len = math.sqrt(dx * dx + dy * dy)
+            local ux, uy = dx / len, dy / len
+            local r = s * 0.32
+            local tip_x, tip_y = cx + ux * r, cy + uy * r
+            local tail_x, tail_y = cx - ux * r, cy - uy * r
+            local th = math.max(2.0, s * 0.09)
+            Canvas.line(tail_x, tail_y, tip_x, tip_y, th, color)
+            -- head: two barbs at 145 degrees from the direction
+            local a = math.atan(uy, ux)
+            local barb = s * 0.18
+            for _, da in ipairs({ 2.53, -2.53 }) do
+                Canvas.line(tip_x, tip_y,
+                    tip_x + math.cos(a + da) * barb,
+                    tip_y + math.sin(a + da) * barb, th, color)
+            end
         end
         re.on_frame(function()
             if config.renderer_backend ~= "imgui" then return end
@@ -4436,13 +4464,28 @@ do
             end
             for _, item in ipairs(d2d_queue) do
                 local s = item.size
-                local label = ICON_LABEL[item.key] or tostring(item.key)
-                Canvas.fill_rect(item.x, item.y, s, s, 0xB0181010)
-                Canvas.outline_rect(item.x, item.y, s, s, 1.5, 0xFFE8B44A)
-                local f = icon_font(s * 0.42)
-                if f then
-                    local tw, th = f:measure(label)
-                    Canvas.text(f, label, item.x + (s - tw) / 2, item.y + (s - th) / 2, 0xFFFFFFFF)
+                local cx, cy = item.x + s / 2, item.y + s / 2
+                local dir = DIR_VEC[item.key]
+                if dir then
+                    draw_arrow(cx, cy, dir[1], dir[2], s, 0xFFFFFFFF)
+                elseif item.key == "5" then
+                    -- neutral: small centered diamond
+                    local r = s * 0.12
+                    Canvas.line(cx - r, cy, cx, cy - r, 2.0, 0xFFAAAAAA)
+                    Canvas.line(cx, cy - r, cx + r, cy, 2.0, 0xFFAAAAAA)
+                    Canvas.line(cx + r, cy, cx, cy + r, 2.0, 0xFFAAAAAA)
+                    Canvas.line(cx, cy + r, cx - r, cy, 2.0, 0xFFAAAAAA)
+                else
+                    local style = ICON_STYLE[item.key]
+                    local label = style and style[1] or tostring(item.key)
+                    local color = style and style[2] or 0xFFE8B44A
+                    Canvas.fill_rect(item.x, item.y, s, s, 0xC0141014)
+                    Canvas.outline_rect(item.x, item.y, s, s, math.max(1.5, s * 0.05), color)
+                    local f = icon_font(s * (#label > 2 and 0.30 or 0.42))
+                    if f then
+                        local tw, th2 = f:measure(label)
+                        Canvas.text(f, label, item.x + (s - tw) / 2, item.y + (s - th2) / 2, color)
+                    end
                 end
             end
             d2d_queue = {}
