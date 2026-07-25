@@ -24,6 +24,8 @@ i18n.register("combo_trials_ui", {
         modern_shortcut = "Shortcut",
         modern_motion = "Motion Input",
         modern_both = "Both",
+        rb_toggle = "ImGui renderer (experimental)",
+        rb_hint = "Overlay drawn by ImGui instead of D2D. Icons appear as arrows/colored boxes until the texture plugin lands. For setups where D2D fails.",
         use_bcm = "Use BCM Catalog (aliases + display)",
         use_exceptions = "Activate Exceptions",
         progression = "--- Trial Progression ---",
@@ -76,6 +78,8 @@ i18n.register("combo_trials_ui", {
         modern_shortcut = "简化",
         modern_motion = "搓招",
         modern_both = "全部",
+        rb_toggle = "ImGui 渲染（实验）",
+        rb_hint = "叠加层由 ImGui 而非 D2D 绘制。纹理插件就绪前图标以箭头/彩色方框显示。适用于 D2D 故障的环境。",
         use_bcm = "使用 BCM 目录（别名+显示）",
         use_exceptions = "启用例外表",
         progression = "--- 试炼进度 ---",
@@ -1443,6 +1447,10 @@ local function draw_combo_trials_menu_ui()
             c, v = imgui.checkbox(T("use_exceptions"), d2d_cfg.use_exceptions ~= false); if c then
                 d2d_cfg.use_exceptions = v; _G.ComboTrials_UseExceptions = v; changed = true
             end
+            c, v = imgui.checkbox(T("rb_toggle"), d2d_cfg.renderer_backend == "imgui"); if c then
+                d2d_cfg.renderer_backend = v and "imgui" or "d2d"; changed = true
+            end
+            if imgui.is_item_hovered() then imgui.set_tooltip(T("rb_hint")) end
             imgui.spacing()
 
             imgui.text_colored(T("progression"), COLORS.Cyan)
