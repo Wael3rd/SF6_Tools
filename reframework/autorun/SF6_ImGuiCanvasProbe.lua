@@ -15,8 +15,9 @@ local imgui = imgui
 local Canvas = require("func/ImGuiCanvas")
 
 local enabled = false
-local stats = { frames = 0, fill = 0, outline = 0, line = 0, text = 0, image = 0 }
+local stats = { frames = 0, fill = 0, outline = 0, line = 0, text = 0, cjk = 0, image = 0 }
 local test_font = nil
+local test_font_cjk = nil
 local test_image = nil
 
 -- Static API surface report (computed once, cheap)
@@ -50,8 +51,19 @@ re.on_frame(function()
         test_font = Canvas.Font.new("SF6_college.ttf", 22) or false
     end
     if test_font then
-        if Canvas.text(test_font, "ImGui canvas OK - 中文测试", x + 10, y + 10, 0xFFE8B44A) then
+        if Canvas.text(test_font, "ImGui canvas OK (latin font)", x + 10, y + 10, 0xFFE8B44A) then
             stats.text = stats.text + 1
+        end
+    end
+
+    -- CJK path: same glyphs but through the CJK-capable font file (the
+    -- "????" with SF6_college is expected — it has no Chinese glyphs).
+    if test_font_cjk == nil then
+        test_font_cjk = Canvas.Font.new("msyh.ttc", 22) or false
+    end
+    if test_font_cjk then
+        if Canvas.text(test_font_cjk, "中文测试 OK (msyh.ttc)", x + 10, y + 38, 0xFF7CD143) then
+            stats.cjk = stats.cjk + 1
         end
     end
 
@@ -77,7 +89,7 @@ re.on_draw_ui(function()
         if changed then
             enabled = value
             if not value then
-                stats = { frames = 0, fill = 0, outline = 0, line = 0, text = 0, image = 0 }
+                stats = { frames = 0, fill = 0, outline = 0, line = 0, text = 0, cjk = 0, image = 0 }
             end
         end
 
@@ -85,7 +97,7 @@ re.on_draw_ui(function()
             imgui.text("--- Live results (calls succeeded / frames) ---")
             imgui.text(string.format("frames: %d", stats.frames))
             imgui.text(string.format("fill_rect: %d   outline_rect: %d   line: %d", stats.fill, stats.outline, stats.line))
-            imgui.text(string.format("text: %d   image (needs plugin): %d", stats.text, stats.image))
+            imgui.text(string.format("text: %d   cjk (msyh.ttc): %d   image (needs plugin): %d", stats.text, stats.cjk, stats.image))
             if stats.frames > 0 and stats.fill == 0 then
                 imgui.text_colored("DrawList obtained but drawing fails -> report this build.", 0xFF6969FF)
             elseif stats.frames == 0 then
