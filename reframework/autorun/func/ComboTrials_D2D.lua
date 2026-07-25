@@ -1149,18 +1149,20 @@ local function d2d_init()
     local folder = "buttonsAndArrows/"
     for k, filename in pairs(image_files) do
         assets.imgs[k] = d2d.Image.new(folder .. filename)
-        img_keys[assets.imgs[k]] = k
+        -- d2d.Image.new returns nil for missing files: indexing img_keys
+        -- with nil would abort the whole d2d init (and kill the overlay).
+        if assets.imgs[k] then img_keys[assets.imgs[k]] = k end
     end
     _img_arrow_down = d2d.Image.new("ui_icons/chevron_down_ios.png")
     _img_arrow_up = d2d.Image.new("ui_icons/chevron_up_ios.png")
-    img_keys[_img_arrow_down] = "arrow_down"
-    img_keys[_img_arrow_up] = "arrow_up"
+    if _img_arrow_down then img_keys[_img_arrow_down] = "arrow_down" end
+    if _img_arrow_up then img_keys[_img_arrow_up] = "arrow_up" end
     assets.imgs["done_bar"] = d2d.Image.new("done-bar.png")
     assets.imgs["active_bar"] = d2d.Image.new("active-bar.png")
     assets.imgs["fail_bar"] = d2d.Image.new("fail-bar.png")
     assets.imgs["success_bar"] = d2d.Image.new("success-bar.png")
     for _, bk in ipairs({ "done_bar", "active_bar", "fail_bar", "success_bar" }) do
-        img_keys[assets.imgs[bk]] = bk
+        if assets.imgs[bk] then img_keys[assets.imgs[bk]] = bk end
     end
 end
 
