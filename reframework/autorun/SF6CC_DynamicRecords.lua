@@ -472,10 +472,17 @@ local function is_native_training_menu_open()
     local pause_manager = sdk.get_managed_singleton("app.PauseManager")
     if not pause_manager then return false end
     local pause_bit = pause_manager:get_field("_CurrentPauseTypeBit")
-    return pause_bit ~= nil and pause_bit ~= 64 and pause_bit ~= 2112
+    -- 0 = no pause menu at all: treating it as "open" made the per-frame
+    -- probe below run during normal gameplay/menus, where the game method
+    -- get_CurrentParentData throws internally — one REFramework error line
+    -- per frame (multi-GB logs). Bit 64 / 2112 = non-training pauses.
+    return pause_bit ~= nil and pause_bit ~= 0 and pause_bit ~= 64 and pause_bit ~= 2112
 end
 
 local function detect_native_training_page()
+    -- Native training pages only exist in training mode; never probe the
+    -- TrainingManager outside it (online/menus), it throws internally.
+    if _G.TrainingModeActive ~= true then return nil end
     if not is_native_training_menu_open() then return nil end
     local manager = sdk.get_managed_singleton("app.training.TrainingManager")
     if not manager then return nil end

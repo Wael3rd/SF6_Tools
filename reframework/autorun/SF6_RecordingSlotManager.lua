@@ -1482,6 +1482,10 @@ end)
 
 local function _rsm_detect_overlays()
         if not GS.in_pause_menu then return end
+        -- Only probe the TrainingManager in training mode: outside it
+        -- (online pause), get_CurrentParentData throws internally and
+        -- REFramework logs one error line per call.
+        if _G.TrainingModeActive ~= true then return end
         local mgr = sdk.get_managed_singleton("app.training.TrainingManager")
         if not mgr then return end
         local cpd = mgr:call("get_CurrentParentData")
