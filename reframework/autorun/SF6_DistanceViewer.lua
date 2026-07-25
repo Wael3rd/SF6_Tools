@@ -4117,6 +4117,14 @@ end)
 local function draw_distance_viewer_menu_ui()
     if not dv_feature_enabled() then return end
     if imgui.tree_node("SF6 DISTANCE VIEWER") then
+        -- Experimental renderer toggle: always visible (not expert-gated) so
+        -- users hit by D2D failures can reach it without hunting.
+        do
+            local _i18n_dv = require("func/i18n")
+            local chg_rb2, v_rb2 = imgui.checkbox(_i18n_dv.t("distance_viewer_ui", "rb_toggle") .. "##dv_rb_top", config.renderer_backend == "imgui")
+            if imgui.is_item_hovered() then imgui.set_tooltip(_i18n_dv.t("distance_viewer_ui", "rb_hint")) end
+            if chg_rb2 then config.renderer_backend = v_rb2 and "imgui" or "d2d"; save_settings() end
+        end
         local changed_ov, new_ov = imgui.checkbox(DVT("floating_window_2"), config.show_debug_window)
         if changed_ov then
             config.show_debug_window = new_ov
