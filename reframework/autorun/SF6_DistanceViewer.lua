@@ -169,6 +169,7 @@ local VMODE_BOTTOM_HALF = 3
 local VMODE_FULL = 4
 
 local config = {
+    renderer_backend = "d2d", -- "d2d" | "imgui" (experimental icon path)
     -- Box filters for distance calculation
     box_use_hurtbox = true,
     box_use_hurtbox_invuln = false,
@@ -911,6 +912,9 @@ local function dv_feature_enabled()
 end
 
 local function draw_d2d_icons()
+    -- Experimental ImGui backend owns (and clears) the queue in its own
+    -- on_frame drain; the d2d callback must not touch it then.
+    if config.renderer_backend == "imgui" then return end
     if not dv_feature_enabled() then d2d_queue = {}; return end
     if not d2d_initialized then init_d2d_icons() end
     for _, item in ipairs(d2d_queue) do
@@ -2548,6 +2552,10 @@ local function draw_config_ui()
         -- 1. GLOBAL SETTINGS (Font, Thickness, Attack Lock)
         -- ==========================================
         if styled_header(require("func/i18n").t("distance_viewer_ui","global_settings"), UI_THEME.hdr_rules) then
+            local _i18n_dv = require("func/i18n")
+            local chg_rb, v_rb = imgui.checkbox(_i18n_dv.t("distance_viewer_ui","rb_toggle"), config.renderer_backend == "imgui")
+            if imgui.is_item_hovered() then imgui.set_tooltip(_i18n_dv.t("distance_viewer_ui","rb_hint")) end
+            if chg_rb then config.renderer_backend = v_rb and "imgui" or "d2d"; save_settings() end
         local c_fs, v_fs = safe_input_int("Master Font Quality (Px)", config.stats_font_size)
         if c_fs then config.stats_font_size = v_fs; save_settings(); try_load_font() end
 
@@ -4177,6 +4185,8 @@ do
                 global_settings = "--- GLOBAL SETTINGS ---",
                 debug_values = "--- DEBUG VALUES (Live) ---",
                 auto_activate = "--- AUTO ACTIVATE MOVE ---",
+                rb_toggle = "ImGui renderer (experimental)",
+                rb_hint = "Icons drawn as text boxes until the texture plugin handshake lands. For setups where D2D fails.",
                 yellow_zone = "Yellow Zone",
                 green_zone = "Green Zone",
                 no_cross = "No Cross",
@@ -4280,6 +4290,8 @@ do
                 global_settings = "--- 全局设置 ---",
                 debug_values = "--- 调试数值（实时）---",
                 auto_activate = "--- 自动激活招式 ---",
+                rb_toggle = "ImGui 渲染（实验）",
+                rb_hint = "纹理插件握手完成前，图标以文字框显示。适用于 D2D 故障的环境。",
                 yellow_zone = "黄色区域",
                 green_zone = "绿色区域",
                 no_cross = "无逆向",
@@ -4386,6 +4398,47 @@ do
             cycle_p2 = function() cycle_player_display("p2"); save_settings() end,
             toggle_window = function() config.show_debug_window = not config.show_debug_window; save_settings() end,
         }, TrainingHotkeys)
+    end
+end
+
+-- Experimental ImGui renderer: drains the icon queue through the shared
+-- geometry/text canvas. PNG icons render as labeled boxes until the
+-- texture-plugin capability handshake lands (agreed integration order).
+do
+    local ok_c, Canvas = pcall(require, "func/ImGuiCanvas")
+    if ok_c and Canvas then
+        local ICON_LABEL = {
+            lp = "LP", mp = "MP", hp = "HP", lk = "LK", mk = "MK", hk = "HK",
+            dr = "DR", di = "DI", HOLD = "HOLD", THROW = "THR",
+        }
+        local icon_fonts = {}
+        local function icon_font(px)
+            px = math.max(10, math.floor(px))
+            if icon_fonts[px] == nil then
+                icon_fonts[px] = Canvas.Font.new("SF6_college.ttf", px) or false
+            end
+            return icon_fonts[px]
+        end
+        re.on_frame(function()
+            if config.renderer_backend ~= "imgui" then return end
+            if #d2d_queue == 0 then return end
+            if not dv_feature_enabled() or not Canvas.begin_frame() then
+                d2d_queue = {}
+                return
+            end
+            for _, item in ipairs(d2d_queue) do
+                local s = item.size
+                local label = ICON_LABEL[item.key] or tostring(item.key)
+                Canvas.fill_rect(item.x, item.y, s, s, 0xB0181010)
+                Canvas.outline_rect(item.x, item.y, s, s, 1.5, 0xFFE8B44A)
+                local f = icon_font(s * 0.42)
+                if f then
+                    local tw, th = f:measure(label)
+                    Canvas.text(f, label, item.x + (s - tw) / 2, item.y + (s - th) / 2, 0xFFFFFFFF)
+                end
+            end
+            d2d_queue = {}
+        end)
     end
 end
 
