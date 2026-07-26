@@ -35,7 +35,7 @@ file-level payloads:
 | `motion` | string | Display/matching notation ("5HP", "236+P", "> 214+P"…) |
 | `motion_aliases` | string[]? | Extra notations accepted by the matcher (§3d) |
 | `expected_combo` | int | Combo counter expected after the previous step |
-| `expected_hp` | int? | Victim HP expected at this step (validation, NOT the starting HP — see §3c) |
+| `expected_hp` | int? | **Combo executor's** HP expected at this step — hit-interruption check (see Errata §7; NOT the victim's HP, NOT starting HP) |
 | `delay_from_prev` | int | Frames between this step and the previous one |
 | `counter_type` | int | 0 normal / 1 CH / 2 PC required on this step |
 | `victim_pose` | int? | 0 stand / 1 crouch (live pose at recording) |
@@ -209,3 +209,19 @@ able to declare equivalences explicitly:
 | 1 | 2026-06 | `_xt_meta` introduced (author/title/tags/created_at) |
 | 2 rev 1 | 2026-07-13 | `versions` block, `language`, `control_mode`, `environment`, `raw_inputs`, `scene_state`, `motion_aliases`, explicit-preconditions principle, compat rules |
 | 2 rev 2 | 2026-07-14 | Review pass 1: `resources`/`status` in scene_state (start state ≠ consumption), `step_notes`, ISO 8601 + `updated_at`, structured `versions` objects, raw_inputs optionality + timeline status + no-batch-conversion rules |
+| 2.0.0 (frozen) | 2026-07-23 | Frozen as the shared contract; §3d reconciled implementation-neutral (catalog and exception resolvers both compliant) |
+
+## 7. Errata
+
+- **2026-07-26 — `expected_hp` semantics (documentation fix only).** The
+  original v2 text described `expected_hp` as the victim's HP. Both
+  reference implementations (WTT and SF6CC) in fact record and validate
+  the **combo executor's** HP at each step — a hit-interruption check
+  ("the attacker was not hit during the combo"). The field keeps its
+  implemented semantics; no code and no existing files change. Starting
+  HP for both players is a scene precondition carried by
+  `scene_state.players.*.resources.hp` (implementations MAY additionally
+  record attacker/victim gauge snapshots, e.g. `snapshot_gauges` with
+  `current_hp`/`max_hp`/`heal_hp`, when not at full health — readers
+  ignore unknown fields as usual). If per-step victim-HP validation is
+  ever needed, it MUST be a new field — never a reuse of `expected_hp`.
