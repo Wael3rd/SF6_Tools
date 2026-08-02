@@ -517,19 +517,23 @@ re.on_frame(function()
 end)
 
 if d2d and d2d.register then
+    -- Record labels can be Chinese whatever the UI language, so this overlay
+    -- always uses the bundled CJK face. SF6_TOOLS_CC uses msyhbd here; we ship
+    -- Noto Sans SC instead because it is redistributable (SIL OFL).
+    local CJK_FONT = "NotoSansSC-Bold.otf"
     local overlay_font = nil
     local overlay_font_px = 0
     local shrink_fonts = {}
 
     local function d2d_init()
-        overlay_font = d2d.Font.new("msyhbd.ttc", 22)
+        overlay_font = d2d.Font.new(CJK_FONT, 22)
         overlay_font_px = 22
     end
 
     local function get_font(pixel_size)
         if pixel_size < 10 then pixel_size = 10 end
         if not overlay_font or math.abs(pixel_size - overlay_font_px) > 1 then
-            overlay_font = d2d.Font.new("msyhbd.ttc", pixel_size)
+            overlay_font = d2d.Font.new(CJK_FONT, pixel_size)
             overlay_font_px = pixel_size
             shrink_fonts = {}
         end
@@ -558,7 +562,7 @@ if d2d and d2d.register then
                 if text_w > box_w - 8 then
                     local smaller = math.max(10, math.floor(pixel_size * (box_w - 8) / text_w))
                     if not shrink_fonts[smaller] then
-                        shrink_fonts[smaller] = d2d.Font.new("msyhbd.ttc", smaller)
+                        shrink_fonts[smaller] = d2d.Font.new(CJK_FONT, smaller)
                     end
                     font = shrink_fonts[smaller]
                     _, text_h = font:measure(label)

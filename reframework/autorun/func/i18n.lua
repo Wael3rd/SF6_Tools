@@ -29,11 +29,11 @@ local tables = {}   -- scope -> { en = {..}, zh = {..} }
 -- SF6_college is Latin-only. ImGui draws every missing glyph as '?', which is
 -- exactly what the bottom bar showed. REFramework already bakes the CJK ranges,
 -- so swapping the FILE is enough (this is what SF6_TOOLS_CC does with msyh).
--- We use the Noto Sans SC bundled in reframework/fonts/ rather than a Windows
--- system font, so the mod stays self-contained.
--- Same two faces as SF6_TOOLS_CC, so both forks render Chinese identically.
-local CJK_REGULAR = "msyh.ttc"      -- Microsoft YaHei
-local CJK_BOLD    = "msyhbd.ttc"    -- Microsoft YaHei Bold
+-- We bundle Noto Sans SC in reframework/fonts/ rather than reusing the Windows
+-- system face: it keeps the mod self-contained AND redistributable (SIL Open
+-- Font License, see NotoSansSC-OFL.txt — Microsoft YaHei is not).
+local CJK_REGULAR = "NotoSansSC-Regular.otf"
+local CJK_BOLD    = "NotoSansSC-Bold.otf"
 -- Faces with no Simplified-Chinese glyphs -> which CJK weight replaces them.
 -- Mapping mirrors CC's per-call-site choices.
 local NO_CJK = {
@@ -68,8 +68,8 @@ end
 
 -- Returns the font file to actually load for the active language.
 -- weight (optional) overrides the default mapping, matching CC per call site:
---   true / "bold" -> msyhbd (HUD overlay, D2D)
---   "regular"     -> msyh   (Distance Viewer panel)
+--   true / "bold" -> CJK bold    (HUD overlay, D2D)
+--   "regular"     -> CJK regular (Distance Viewer panel)
 -- Unknown filenames (e.g. a user-configured font) pass through untouched.
 function M.font(filename, weight)
     load_lang()

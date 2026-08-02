@@ -19,7 +19,7 @@ Download the latest release from the [releases page](https://github.com/Wael3rd/
 
 The following `.lua` scripts go into `Street Fighter 6\reframework\autorun\`:
 
-**Training Suite (Script Manager + 4 modes):**
+**Training Suite (Script Manager + 5 modes):**
 | Script | Description |
 | :--- | :--- |
 | `Training_ScriptManager.lua` | The Main Controller — central hub for all training modes |
@@ -27,6 +27,7 @@ The following `.lua` scripts go into `Street Fighter 6\reframework\autorun\`:
 | `TrainingHitConfirm_v1.0.lua` | Hit Confirm reaction training with random guard |
 | `TrainingReactions_v1.0.lua` | Reaction Drills against randomized dummy recordings |
 | `TrainingPostGuard_v0.1.lua` | Post-Guard punish training after blocking |
+| `TrainingMoveExecution.lua` | Execution Drill — motion input practice (DP, QCF, HCB, 360…) |
 
 **Analysis & Visualization Tools:**
 | Script | Description |
@@ -39,14 +40,19 @@ The following `.lua` scripts go into `Street Fighter 6\reframework\autorun\`:
 | :--- | :--- |
 | `SF6_RecordingSlotManager.lua` | Advanced recording slot management (import/export/program) |
 | `SF6_Teleport.lua` | Teleport players to specific positions for distance testing |
-| `SF6_TrainingRemoteControlServerState.lua` | State bridge for the WIT Remote Control app |
+| `SF6CC_DynamicRecords.lua` | Training configuration import/export with on-screen record labels |
 
 **Shared Modules** (in `autorun/func/` — loaded automatically):
-- `ComboTrials_UI.lua` — Combo Trials UI rendering
-- `ComboTrials_D2D.lua` — Combo Trials overlay (input notation, step display)
+- `ComboTrials_UI.lua` / `ComboTrials_D2D.lua` — Combo Trials UI and overlay
+- `ComboTrials_Files.lua` / `ComboTrials_Hotkeys.lua` — combo file handling, shortcuts
+- `ComboTrials/` — validation engine (`Validator`, `ActionMatcher`, `BcmCatalog`, `CharacterRules`, `PendingAbsorb`)
+- `i18n.lua` — runtime English / 中文 language registry and font substitution
+- `ModernDisplay.lua` — Modern-control notation lookup
+- `Training_Hotkeys.lua` + per-script scopes — rebindable keyboard/controller shortcuts
+- `RuntimeSafety.lua` — safety gate that blocks input injection outside training
+- `GameState.lua` / `SharedHooks.lua` / `UIKit.lua` / `Training_SharedUI.lua` — shared state, hooks, UI toolkit
+- `ImGuiCanvas.lua` — experimental pure-ImGui rendering backend
 - `Training_SessionRecap.lua` — End-of-session stats summary
-- `Training_SharedUI.lua` — Shared UI utilities and color palette
-- `SharedHooks.lua` — Shared REFramework hook setup
 
 ### 2. Font Installation
 
@@ -56,6 +62,7 @@ Copy the font files from `fonts/` into `Street Fighter 6\reframework\fonts\`:
 - `capcom_goji-udkakugoc80pro-db.ttf`
 - `capcom_goji-udkakugoc80pro-r.ttf`
 - `frutigerltarabic-57cn.ttf`
+- `NotoSansSC-Regular.otf` / `NotoSansSC-Bold.otf` — required for the Chinese UI (SIL Open Font License, see `NotoSansSC-OFL.txt`)
 
 > **Note:** If the `fonts` folder does not exist inside `reframework`, create it manually.
 
@@ -85,6 +92,15 @@ Select your active training mode:
 | 2 | **Reaction Drills** | Practicing reactions to random dummy actions |
 | 3 | **Post Guard** | Practicing punishes after blocking |
 | 4 | **Custom Combo Trials** | Recording and practicing your own combos |
+| 5 | **Execution Drill** | Drilling motion inputs (DP, QCF, QCB, HCF, HCB, 360…) |
+
+---
+
+## 🌐 Language
+
+The whole interface ships in **English and 简体中文**. Switch at any time from the
+language toggle in the REFramework menu — panels, overlays and on-screen labels all
+follow, and the fonts are rebuilt on the fly so Chinese glyphs render correctly.
 
 ---
 
@@ -105,6 +121,11 @@ You do not need to keep the menu open. The tools are controlled entirely via you
 
 Keyboard shortcuts are also available per mode — see the individual guides in `guides/`.
 
+**Custom bindings.** On top of the built-in shortcuts above, every script exposes a
+rebindable shortcut scope in the REFramework menu. Bind any command to a key, a pad
+combination, or both. Custom scopes are disabled and unbound by default, so the
+shortcuts you already know keep working untouched until you decide otherwise.
+
 ---
 
 ## 🛠️ Training Modes Explained
@@ -118,6 +139,12 @@ Record your own combos and practice them with full input validation, visual feed
 - **Per-character combo libraries** — comes pre-loaded with combos across 30 characters
 - **Stats tracking** with success rate, timing data, and session history
 - D2D overlay shows input notation in real-time with button/arrow icons
+- **Modern controls supported** — notation is detected from your control type and can be
+  displayed as the Modern shortcut, the motion input, or both
+- **Move recognition from the game's own data** — BCM catalogs for all 30 characters name
+  every action, so combo steps read correctly even for moves nobody wrote an exception for
+- **Combo sharing** — combo files use a versioned JSON schema shared with the SF6_TOOLS_CC
+  fork, so combos recorded in either tool can be practiced in the other
 
 ### 2. Hit Confirm Training
 
@@ -225,6 +252,7 @@ Full user guides are included in the `guides/` folder:
 | `06_ReactionDrills.md` | Reaction drill setup and slot management |
 | `07_RecordingSlotManager.md` | Importing, exporting, and programming slots |
 | `08_TrainingRemoteControl.md` | WIT Remote Control setup (PC + Android) |
+| `09_UniqueGauges.md` | Character-specific gauges in combo trials (also in 简体中文) |
 
 ---
 
@@ -233,24 +261,24 @@ Full user guides are included in the `guides/` folder:
 ```
 reframework/
 ├── autorun/                         Lua scripts (auto-loaded by REFramework)
-│   ├── func/                        Shared modules (UI, D2D, hooks, session recap)
-│   └── Small Tools/                 Debug/inspection scripts
+│   └── func/                        Shared modules (UI, D2D, hooks, i18n, hotkeys)
+│       └── ComboTrials/             Combo validation engine
 ├── data/
-│   ├── TrainingComboTrials_data/    Custom combos, replay records, input exceptions
-│   ├── SF6_RecordingSlotManager_data/  Slot exports per character (28 characters)
+│   ├── TrainingComboTrials_data/    Custom combos, input exceptions
+│   │   ├── bcm_catalog/             Per-character action catalogs (30 characters)
+│   │   └── modern_display/          Modern-control notation data (30 characters)
+│   ├── SF6_RecordingSlotManager_data/  Slot exports per character
 │   ├── SF6_DistanceViewer_data/     Distance zone configs & attack data
 │   ├── SheldonsBoxes_data/          Hitbox display configs
-│   ├── SF6_TrainingRemoteControl_data/  WebBridge & WebState for remote control
 │   ├── Stats/                       Session statistics
 │   └── ...                          Per-module config files
-├── fonts/                           Overlay fonts (.ttf/.otf)
-├── guides/                          User documentation (9 guides)
+├── fonts/                           Overlay fonts (.ttf/.otf/.otc)
+├── guides/                          User documentation (10 guides)
 ├── html viewers/                    Standalone dashboards & replay editor
 ├── images/
 │   ├── buttonsAndArrows/            Button input & directional icons
 │   └── ui_icons/                    UI element icons
-├── plugins/                         Native DLL plugins (reframework-d2d)
-└── SF6_TrainingRemoteControlServer/ WIT Remote Control tray app
+└── plugins/                         Native DLL plugins (reframework-d2d)
 ```
 
 ---
@@ -258,7 +286,15 @@ reframework/
 ## ⚠️ Troubleshooting
 
 - **Menu not showing?** Press `Insert` to open REFramework.
+- **No overlays at all, or the game crashes on startup with D2D installed?**
+  Install the latest **Microsoft Visual C++ Redistributable (x64)** —
+  [aka.ms/vs/17/release/vc_redist.x64.exe](https://aka.ms/vs/17/release/vc_redist.x64.exe).
+  An outdated `msvcp140.dll` makes `reframework-d2d.dll` fault the moment it takes its
+  first lock, which kills every overlay. This is the single most common cause of
+  "the overlays do nothing" reports, and installing the redistributable fixes it.
 - **Text looks wrong/blocks?** Ensure the font files are correctly placed in `reframework/fonts/`.
+- **Chinese text shows as `?`** Copy `NotoSansSC-Regular.otf` and `NotoSansSC-Bold.otf`
+  into `reframework/fonts/` — the display fonts carry no Simplified-Chinese glyphs.
 - **Shortcuts not working?** Make sure you are **holding** the Function button (`Select` or `R3`) while pressing the D-Pad.
 - **Script crash?** Ensure you have the latest REFramework Nightly build.
 - **Distance Viewer not showing?** Make sure `reframework-d2d.dll` is in `reframework/plugins/`.
