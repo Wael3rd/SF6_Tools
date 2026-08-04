@@ -586,7 +586,8 @@ local esf_names_map = {
     ["ESF_017"]="Marisa",  ["ESF_018"]="Guile",   ["ESF_019"]="Ed",
     ["ESF_020"]="E. Honda",["ESF_021"]="Jamie",   ["ESF_022"]="Akuma",
     ["ESF_025"]="Sagat",   ["ESF_026"]="M.Bison", ["ESF_027"]="Terry",
-    ["ESF_028"]="Mai",     ["ESF_029"]="Elena",   ["ESF_030"]="Viper",["ESF_031"]="Alex",["ESF_032"]="Ingrid" 
+    ["ESF_028"]="Mai",     ["ESF_029"]="Elena",   ["ESF_030"]="Viper",["ESF_031"]="Alex",["ESF_032"]="Ingrid",
+    ["ESF_033"]="Yasmine"
 }
 
 local function get_real_name(esf_key)

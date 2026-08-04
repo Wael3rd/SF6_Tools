@@ -74,6 +74,7 @@ local CHARACTER_NAMES = {
     [21] = "Jamie",     [22] = "Akuma",     [23] = "M. Bison",  [24] = "Terry",
     [25] = "Sagat",     [26] = "M. Bison",  [27] = "Terry",     [28] = "Mai",
     [29] = "Elena",     [30] = "Viper",      [32] = "Ingrid",
+    [33] = "Yasmine",
 }
 
 local cached_context = {

@@ -8,6 +8,11 @@
 
 local json = json
 
+-- Unified xt.command_display.v1 reader (cdjay's ac_bcm export). When a
+-- character has a command_display/ catalog we take modern notation from it;
+-- the legacy modern_display/ files below stay as a fallback.
+local CommandDisplay = require("func/ComboTrials/CommandDisplay")
+
 local M = {}
 local DIR = "TrainingComboTrials_data/modern_display/"
 local cache = {}  -- char_name -> slim map (act_id string -> display string) | false
@@ -67,8 +72,23 @@ end
 --   1 = Shortcut (keep first form before /, e.g. "SP")
 --   2 = Motion input (keep second form after /, e.g. "236+H"; or first if no /)
 --   3 = Both (keep as-is, e.g. "SP / 236+H")
+-- ComboTrials_ModernDisplayMode: 1=Shortcut, 2=Motion, 3=Both.
+-- The unified catalog exposes the three ready-made variants directly.
+local MODE_TO_SLOT = { [1] = "simple", [2] = "motion", [3] = "all" }
+
 function M.get_motion(char_name, step)
     if type(step) ~= "table" then return nil end
+
+    -- Prefer the unified command_display catalog when the character has one.
+    local unified = CommandDisplay.load_for_character(char_name)
+    if type(unified) == "table" then
+        local mode = tonumber(_G.ComboTrials_ModernDisplayMode) or 1
+        local slot = MODE_TO_SLOT[mode] or "simple"
+        local md = CommandDisplay.get_command_display(unified, step.id, slot)
+        if type(md) == "string" and md ~= "" then return translate_modern(md) end
+        return nil
+    end
+
     local map = M.load(char_name)
     if not map then return nil end
     local md = map[tostring(step.id or "")]  -- slim map: act_id -> display string

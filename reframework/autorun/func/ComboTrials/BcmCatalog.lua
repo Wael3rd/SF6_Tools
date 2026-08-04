@@ -1,5 +1,11 @@
 local json = json
 
+-- Unified xt.command_display.v1 reader (cdjay's ac_bcm export). When a
+-- character has a command_display/ catalog it supersedes the legacy
+-- bcm_catalog/ file below for classic notation; the old format stays as a
+-- fallback for anything not yet migrated.
+local CommandDisplay = require("func/ComboTrials/CommandDisplay")
+
 local BcmCatalog = {
     name = "ComboTrials.BcmCatalog"
 }
@@ -25,6 +31,13 @@ function BcmCatalog.load_for_character(character_name)
     if key == "" or key == "Unknown" then return nil end
     if cache[key] ~= nil then return cache[key] ~= false and cache[key] or nil end
 
+    -- Prefer the unified command_display catalog (slim map, carries _slim=true).
+    local unified = CommandDisplay.load_for_character(key)
+    if type(unified) == "table" then
+        cache[key] = unified
+        return unified
+    end
+
     local ok, loaded = pcall(json.load_file, BcmCatalog.get_filename(key))
     if not ok or type(loaded) ~= "table" or not EXPECTED_SCHEMAS[loaded.schema] or type(loaded.actions) ~= "table" then
         cache[key] = false
@@ -39,6 +52,12 @@ function BcmCatalog.load_for_character(character_name)
 end
 
 function BcmCatalog.get_classic_display(catalog, action_id)
+    -- Unified slim map: delegate to the vendored resolver.
+    if type(catalog) == "table" and catalog._slim == true then
+        local disp = CommandDisplay.get_command_display(catalog, action_id, "classic")
+        if type(disp) == "string" and disp ~= "" then return disp end
+        return nil
+    end
     if type(catalog) ~= "table" or type(catalog.actions) ~= "table" then return nil end
     local id = tostring(action_id)
     local display = catalog.actions[id]

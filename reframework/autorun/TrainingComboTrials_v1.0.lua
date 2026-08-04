@@ -182,7 +182,8 @@ local esf_names_map = {
     ["ESF_029"] = "Elena",
     ["ESF_030"] = "CViper",
     ["ESF_031"] = "Alex",
-	["ESF_032"]="Ingrid" 
+    ["ESF_032"] = "Ingrid",
+    ["ESF_033"] = "Yasmine"
 }
 
 
