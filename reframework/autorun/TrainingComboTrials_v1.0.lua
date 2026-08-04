@@ -129,7 +129,11 @@ local unique_resources = {
     [33] = {
         name = "Yasmine",
         resources = {
-            { id = "stock_0_033", kind = "stock", min = 0, max = 1, allow_infinite = true }
+            { id = "stock_0_033", kind = "stock", min = 0, max = 1, allow_infinite = true },
+            -- SA2 install: live style_timer > 0 while active (0 = off, 1 = on).
+            -- max = 2 to match the other install timers; a binary gauge never
+            -- exceeds it, so nothing is clamped.
+            { id = "timer_0_033", kind = "timer", min = 0, max = 2 }
         }
     }
     },
