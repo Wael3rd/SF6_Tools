@@ -51,6 +51,7 @@ local config = {
     font_base_size = (reframework:get_commit_count() <= 1695) and 99 or 24,
     font_filename = "frutigerltarabic-57cn.ttf",
     outline_thickness = 1.13,
+    ultrawide_correction = false,  -- opt-in: fit boxes to the centred 16:9 render on ultrawide/letterboxed windows
     -- Charge Bars
     show_charge_bars = true,
     charge_x_pos = 0.02,
@@ -351,10 +352,37 @@ local function get_real_text_size(t) local ts = imgui.calc_text_size(t); return 
 local function draw_text_safe(text, x, y, color, size) for offset = 1, shadow_layers do draw.text(text, x + offset, y + offset, shadow_color, size) end; draw.text(text, x, y, color, size) end
 
 -- Frame type reader (from training mode frame meter widget)
+-- Ultra-widescreen fit (opt-in, config.ultrawide_correction, default OFF).
+-- SF6 renders the game 16:9 CENTRED inside wider/taller windows (pillarbox on a
+-- 32:9 monitor in borderless), but draw.world_to_screen maps NDC across the FULL
+-- surface, so on ultrawide the boxes stretch past the game image and drift.
+-- When the toggle is on, remap each projected point into the centred 16:9 render
+-- rect. When OFF, this returns draw.world_to_screen(v) untouched -> byte-for-byte
+-- identical behaviour to before, so standard 16:9 setups are never affected.
+local function sb_w2s(v)
+    local s = draw.world_to_screen(v)
+    if not s or not config.ultrawide_correction then return s end
+    local ds = imgui.get_display_size()
+    if not ds or ds.x <= 0 or ds.y <= 0 then return s end
+    local win_w, win_h = ds.x, ds.y
+    local target = 16 / 9
+    local render_w, render_h
+    if win_w / win_h > target then
+        render_h = win_h; render_w = win_h * target   -- pillarbox (ultrawide 32:9)
+    else
+        render_w = win_w; render_h = win_w / target   -- letterbox (taller than 16:9)
+    end
+    local off_x = (win_w - render_w) * 0.5
+    local off_y = (win_h - render_h) * 0.5
+    s.x = off_x + s.x / win_w * render_w
+    s.y = off_y + s.y / win_h * render_h
+    return s
+end
+
 local _sb_fm = { p1_list = nil, p2_list = nil, refresh = 0, head = 0, idle = false, idle_i = 0 }
 local _sb_ft = {
-    [0] = { clean = 0, prev_raw = 0, recovery_count = 0, hitstun_count = 0, in_move = false, in_hitstun = false },
-    [1] = { clean = 0, prev_raw = 0, recovery_count = 0, hitstun_count = 0, in_move = false, in_hitstun = false },
+    [0] = { clean = 0, prev_raw = 0, recovery_count = 0, hitstun_count = 0, in_move = false, in_hitstun = false, hold_act_st = nil },
+    [1] = { clean = 0, prev_raw = 0, recovery_count = 0, hitstun_count = 0, in_move = false, in_hitstun = false, hold_act_st = nil },
 }
 
 local function _sb_clean_ft(raw_ft, raw_mg, st)
@@ -442,6 +470,35 @@ local function _sb_ft_clean(raw_ft, raw_mg, st)
     st.clean = raw_ft
 end
 
+-- Recovery (clean 8) and hitstun (clean 9) are "held" display states: the
+-- native frame meter parks on its last non-idle cell, so returning to the idle
+-- colour depends on an actionable signal, not the meter. act_st == 0 is
+-- neutral-idle, but HOLDING A DIRECTION at the very end of recovery drops the
+-- character straight into walk/crouch (act_st ~= 0), so the old "act_st == 0"
+-- exit never fired and the box stayed stuck on the recovery colour
+-- (bug 2026-08-04). A move's recovery/hitstun is a single action state, so we
+-- capture it the first held frame and treat ANY change (walk, crouch, next
+-- move, neutral) as actionable -> back to idle.
+local function _sb_exit_if_actionable(st, act_st)
+    if act_st == 0 then
+        -- neutral idle is always actionable (preserves the original behaviour)
+        st.clean = 0; st.in_move = false; st.in_hitstun = false; st.hold_act_st = nil
+        return
+    end
+    -- Only the held recovery/hitstun states can get stuck; startup/active
+    -- advance on their own via the meter and never read a movement act_st.
+    if st.clean ~= 8 and st.clean ~= 9 then
+        st.hold_act_st = nil
+        return
+    end
+    if st.hold_act_st == nil then
+        st.hold_act_st = act_st            -- first held frame: this is the move's state
+    elseif act_st ~= st.hold_act_st then
+        -- left the recovery/hitstun action (walking, crouching, cancelling...)
+        st.clean = 0; st.in_move = false; st.in_hitstun = false; st.hold_act_st = nil
+    end
+end
+
 local function _sb_update_frame_types()
     _sb_fm.refresh = _sb_fm.refresh - 1
     if _sb_fm.refresh <= 0 or not _sb_fm.p1_list or not _sb_fm.p2_list then
@@ -488,8 +545,8 @@ local function _sb_update_frame_types()
     -- ajoutait une cellule — or elle s'arrete PILE a la fin de la recovery, donc il ne pouvait
     -- jamais voir la transition ; la sortie venait de l'heuristique MainGauge, une frame trop
     -- tot. act_st == 0 = actionnable = fin de recovery par definition (source func/GameState).
-    if GS.p1_act_st == 0 then _sb_ft[0].clean = 0; _sb_ft[0].in_move = false; _sb_ft[0].in_hitstun = false end
-    if GS.p2_act_st == 0 then _sb_ft[1].clean = 0; _sb_ft[1].in_move = false; _sb_ft[1].in_hitstun = false end
+    _sb_exit_if_actionable(_sb_ft[0], GS.p1_act_st)
+    _sb_exit_if_actionable(_sb_ft[1], GS.p2_act_st)
 end
 
 local detected_infos = { [0] = { name = "Waiting...", id = -1 }, [1] = { name = "Waiting...", id = -1 } }
@@ -653,8 +710,8 @@ local draw_boxes = function(w, aP, p1)
             v_bl.x = acx - sX / 2; v_bl.y = acy - sY / 2; v_bl.z = 0
             v_br.x = acx + sX / 2; v_br.y = acy - sY / 2; v_br.z = 0
 
-            local sTL = draw.world_to_screen(v_tl); local sTR = draw.world_to_screen(v_tr)
-            local sBL = draw.world_to_screen(v_bl); local sBR = draw.world_to_screen(v_br)
+            local sTL = sb_w2s(v_tl); local sTR = sb_w2s(v_tr)
+            local sBL = sb_w2s(v_bl); local sBR = sb_w2s(v_br)
 
             if sTL and sTR and sBL and sBR then
                 local fX = (sTL.x + sTR.x) / 2; local fY = (sBL.y + sTL.y) / 2
@@ -913,10 +970,10 @@ re.on_frame(function()
                        local is_team1 = false; local success_team, result_team = pcall(obj.get_IsTeam1P, obj); if success_team then is_team1 = result_team end
                        if is_team1 and not hide_p1_boxes then draw_boxes(obj, actParam, true);
                             v_pos.x = obj.pos.x.v / 6553600.0; v_pos.y = obj.pos.y.v / 6553600.0; v_pos.z = 0
-                            local objPos = draw.world_to_screen(v_pos); if objPos and display_p1_position_dot then draw.filled_circle(objPos.x, objPos.y + config.arrow_y_offset, 5, 0xFFFFFF00, 10) end
+                            local objPos = sb_w2s(v_pos); if objPos and display_p1_position_dot then draw.filled_circle(objPos.x, objPos.y + config.arrow_y_offset, 5, 0xFFFFFF00, 10) end
                        elseif not is_team1 and not hide_p2_boxes then draw_boxes(obj, actParam, false);
                             v_pos.x = obj.pos.x.v / 6553600.0; v_pos.y = obj.pos.y.v / 6553600.0; v_pos.z = 0
-                            local objPos = draw.world_to_screen(v_pos); if objPos and display_p2_position_dot then draw.filled_circle(objPos.x, objPos.y + config.arrow_y_offset, 5, 0xFF0000FF, 10) end end
+                            local objPos = sb_w2s(v_pos); if objPos and display_p2_position_dot then draw.filled_circle(objPos.x, objPos.y + config.arrow_y_offset, 5, 0xFF0000FF, 10) end end
                    end
                 end
             end
@@ -927,10 +984,10 @@ re.on_frame(function()
                 if player and player.mpActParam and player.pos and player.pos.x and player.pos.y then
                     if i == 0 and not hide_p1_boxes then draw_boxes(player, player.mpActParam, true);
                         v_pos.x = player.pos.x.v / 6553600.0; v_pos.y = player.pos.y.v / 6553600.0; v_pos.z = 0
-                        local worldPos = draw.world_to_screen(v_pos); if worldPos and display_p1_position_dot then draw.filled_circle(worldPos.x, worldPos.y + config.arrow_y_offset, 10, 0xFFFFFFFF, 10) end
+                        local worldPos = sb_w2s(v_pos); if worldPos and display_p1_position_dot then draw.filled_circle(worldPos.x, worldPos.y + config.arrow_y_offset, 10, 0xFFFFFFFF, 10) end
                     elseif i == 1 and not hide_p2_boxes then draw_boxes(player, player.mpActParam, false);
                         v_pos.x = player.pos.x.v / 6553600.0; v_pos.y = player.pos.y.v / 6553600.0; v_pos.z = 0
-                        local worldPos = draw.world_to_screen(v_pos); if worldPos and display_p2_position_dot then draw.filled_circle(worldPos.x, worldPos.y + config.arrow_y_offset, 10, 0xFFFFFFFF, 10) end end
+                        local worldPos = sb_w2s(v_pos); if worldPos and display_p2_position_dot then draw.filled_circle(worldPos.x, worldPos.y + config.arrow_y_offset, 10, 0xFFFFFFFF, 10) end end
                 end
             end
         end
@@ -943,7 +1000,7 @@ re.on_frame(function()
     if p1_data and p2_data then
         v_p1.x = p1_data.world_x; v_p1.y = p1_data.world_y; v_p1.z = 0
         v_p2.x = p2_data.world_x; v_p2.y = p2_data.world_y; v_p2.z = 0
-        local p1s = draw.world_to_screen(v_p1); local p2s = draw.world_to_screen(v_p2)
+        local p1s = sb_w2s(v_p1); local p2s = sb_w2s(v_p2)
         if p1s and p2s then
             p1s.y = p1s.y + config.arrow_y_offset
             p2s.y = p2s.y + config.arrow_y_offset
@@ -1414,6 +1471,10 @@ re.on_draw_ui(function()
             local ct, nt = imgui.drag_float("Outline Thickness", config.outline_thickness, 0.1, 1.0, 10.0, "%.1f"); if ct then config.outline_thickness = nt; c = true end
             imgui.separator()
             local cd, nd = imgui.checkbox("Divide Distance/Pos by 100", config.divide_distance_display); if cd then config.divide_distance_display = nd; c = true end
+            imgui.separator()
+            local cuw, nuw = imgui.checkbox("Ultra-widescreen fit (16:9 letterbox/pillarbox)", config.ultrawide_correction)
+            if cuw then config.ultrawide_correction = nuw; c = true end
+            if imgui.is_item_hovered() then imgui.set_tooltip("Enable ONLY on ultrawide (e.g. 32:9) or non-16:9 windows where the boxes don't line up with the game. Realigns the hitboxes to SF6's centred 16:9 image. Leave OFF on a standard 16:9 monitor.") end
             imgui.separator()
             if c then save_config() end
 		end
