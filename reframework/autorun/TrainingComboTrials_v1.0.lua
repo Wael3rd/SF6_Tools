@@ -125,6 +125,12 @@ local unique_resources = {
         resources = {
             { id = "stock_0_032", kind = "stock", min = 0, max = 4, allow_infinite = true }
         }
+    },
+    [33] = {
+        name = "Yasmine",
+        resources = {
+            { id = "stock_0_033", kind = "stock", min = 0, max = 1, allow_infinite = true }
+        }
     }
     },
     by_id = nil
