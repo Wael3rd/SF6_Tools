@@ -40,7 +40,6 @@ The following `.lua` scripts go into `Street Fighter 6\reframework\autorun\`:
 | :--- | :--- |
 | `SF6_RecordingSlotManager.lua` | Advanced recording slot management (import/export/program) |
 | `SF6_Teleport.lua` | Teleport players to specific positions for distance testing |
-| `SF6CC_DynamicRecords.lua` | Training configuration import/export with on-screen record labels |
 
 **Shared Modules** (in `autorun/func/` — loaded automatically):
 - `ComboTrials_UI.lua` / `ComboTrials_D2D.lua` — Combo Trials UI and overlay
