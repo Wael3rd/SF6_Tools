@@ -216,13 +216,21 @@ end
 
 -- ==========================================
 -- 0.5. SCENE DETECTION (ABSOLUTE KILLSWITCH)
--- Reads _G.TrainingModeActive if TRCSS set it, otherwise detects locally
+-- Detects training locally. An external controller (e.g. the remote-control
+-- server) may FORCE the state via _G.TrainingModeOverride (true/false); nil
+-- (the default) means "detect locally".
+-- IMPORTANT: never read _G.TrainingModeActive here. The main loop writes that
+-- flag every frame from THIS function's result, so reading it back latched
+-- detection on the first frame — fine after a Reset (fresh Lua state while
+-- already in training), but on a cold start the first frame runs OUTSIDE
+-- training, latched false, and the overlays never appeared until a manual
+-- Reset Scripts. (fix 2026-08-05)
 -- ==========================================
 local _itm_cache = false
 local _itm_refresh = 0
 local function is_in_training_mode()
-    if _G.TrainingModeActive ~= nil then
-        return _G.TrainingModeActive == true
+    if _G.TrainingModeOverride ~= nil then
+        return _G.TrainingModeOverride == true
     end
     _itm_refresh = _itm_refresh - 1
     if _itm_refresh > 0 then return _itm_cache end
