@@ -1393,7 +1393,10 @@ end
 local function inject_player_style(player_idx, style)
     pcall(function()
         local p = (player_idx == 0) and GS.p1 or GS.p2
-        if p and style ~= nil then p.mReqStyle = style end
+        if p and style ~= nil then
+            p.mReqStyle = style   -- requested style
+            p.mStyleNo  = style   -- current style; the game derives style_hosei_atk (the buff) from it
+        end
     end)
 end
 
@@ -4546,6 +4549,11 @@ local function ct_handle_hp_injection()
                 if trial_state._pending_victim_drive ~= nil or trial_state._pending_victim_burnout then
                     local vdrive = trial_state._pending_victim_burnout and 0 or trial_state._pending_victim_drive
                     inject_player_gauges(victim_idx, vdrive, trial_state._pending_victim_super)
+                end
+                -- Hold the attacker install/style each frame like the gauges above,
+                -- otherwise the engine resets mStyleNo before the first hit.
+                if trial_state._pending_attacker_style and trial_state._pending_attacker_style > 0 then
+                    inject_player_style(attacker_idx, trial_state._pending_attacker_style)
                 end
             end
         end
