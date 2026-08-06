@@ -4175,6 +4175,18 @@ local function _ct_track_rec_gauges(victim, p_char, p_idx)
         if v_hp and rg.min_victim_hp then rg.min_victim_hp = math.min(rg.min_victim_hp, v_hp) end
         if a_dr and rg.min_atk_drive then rg.min_atk_drive = math.min(rg.min_atk_drive, a_dr) end
         if a_sa and rg.min_atk_super then rg.min_atk_super = math.min(rg.min_atk_super, a_sa) end
+
+        -- Track whether the victim BLOCKED at any point during the combo
+        -- (gard_combo_cnt > 0). scene_state is snapshotted at record START,
+        -- before the first contact, so guarding reads false there; this records
+        -- what actually happened and is folded into scene_state at save.
+        pcall(function()
+            local g = victim:get_field("gard_combo_cnt")
+            if g == nil then g = victim:get_field("dgard_combo_cnt") end
+            if g ~= nil and (tonumber(tostring(g)) or 0) > 0 then
+                trial_state._rec_victim_guarded = true
+            end
+        end)
     end
 end
 
@@ -4676,6 +4688,7 @@ local function ct_player_tracking(p_idx, p_state)
     if trial_state._rec_pending_snapshot == 0 then
     trial_state._rec_gauges = snapshot_gauges(p_idx)
     trial_state._rec_scene_state = unique_resources.capture_scene_state(p_idx)
+    trial_state._rec_victim_guarded = false  -- tracked per-frame from here (see _ct_track_rec_gauges)
     -- At this point vital_new = character's real max_hp, so damage is calculated from 100%
     end
     end
@@ -6075,6 +6088,19 @@ function save_trial_sequence()
         -- Unique resources snapshot (SF6_TOOLS_CC-compatible scene_state)
         local scene_state = trial_state._rec_scene_state
         if scene_state then
+            -- Fold the block that actually happened into the start snapshot: the
+            -- snapshot is taken BEFORE the first contact (guarding reads false),
+            -- so use the per-frame tracking to mark the victim as guarding if
+            -- they blocked at any point during the recorded combo.
+            if trial_state._rec_victim_guarded and type(scene_state.players) == "table" then
+                local rb = tonumber(scene_state.recorded_by or trial_state.recording_player or 0) or 0
+                local vic_side = (rb == 1) and "p1" or "p2"
+                local vp = scene_state.players[vic_side]
+                if type(vp) == "table" then
+                    vp.status = (type(vp.status) == "table") and vp.status or {}
+                    vp.status.guarding = true
+                end
+            end
             trial_state.sequence[1].scene_state = scene_state
         end
         trial_state._rec_scene_state = nil
