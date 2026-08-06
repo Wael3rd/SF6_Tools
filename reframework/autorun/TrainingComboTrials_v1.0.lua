@@ -4531,6 +4531,20 @@ local function ct_handle_position_correction(_in_replay)
 end
 
 local function ct_handle_hp_injection()
+    -- Keep the attacker's install/style buff (Kimberly SA3 etc.) active for the
+    -- WHOLE trial: it is a lasting buff, not a resource consumed at the first hit
+    -- like the gauges below, so re-request it every frame while playing (the
+    -- engine otherwise resets mStyleNo mid-combo). Only forced when it dropped,
+    -- to avoid fighting the character's own actions each frame.
+    if trial_state.is_playing and trial_state._pending_attacker_style
+        and trial_state._pending_attacker_style > 0 then
+        local ap = (trial_state.playing_player == 0) and GS.p1 or GS.p2
+        local cur = ap and (tonumber(tostring(ap:get_field("mStyleNo"))) or 0) or 0
+        if cur ~= trial_state._pending_attacker_style then
+            inject_player_style(trial_state.playing_player, trial_state._pending_attacker_style)
+        end
+    end
+
     -- INJECTION HP EXACT VIA PLAYER OBJECT
     -- Inject continuously while the trial waits for the first hit (current_step == 1)
     -- Stop permanently once the victim takes a hit (combo_cnt > 0)
@@ -4561,11 +4575,6 @@ local function ct_handle_hp_injection()
                 if trial_state._pending_victim_drive ~= nil or trial_state._pending_victim_burnout then
                     local vdrive = trial_state._pending_victim_burnout and 0 or trial_state._pending_victim_drive
                     inject_player_gauges(victim_idx, vdrive, trial_state._pending_victim_super)
-                end
-                -- Hold the attacker install/style each frame like the gauges above,
-                -- otherwise the engine resets mStyleNo before the first hit.
-                if trial_state._pending_attacker_style and trial_state._pending_attacker_style > 0 then
-                    inject_player_style(attacker_idx, trial_state._pending_attacker_style)
                 end
             end
         end
