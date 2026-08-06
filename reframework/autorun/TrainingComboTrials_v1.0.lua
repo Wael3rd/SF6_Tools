@@ -1262,6 +1262,16 @@ local function apply_trial_vital()
         end
     end
 
+    -- Attacker install / style buff (e.g. Kimberly after SA3: mReqStyle/mStyleNo=3,
+    -- game derives style_hosei_atk = the damage correction). Re-requested live.
+    do
+        local s1 = trial_state.sequence[1]
+        local sc = s1 and s1.scene_state
+        local atk_side = (s1 and s1.recorded_by == 1) and "p2" or "p1"
+        local atk = sc and sc.players and sc.players[atk_side]
+        trial_state._pending_attacker_style = (atk and atk.install and tonumber(atk.install.style)) or nil
+    end
+
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
@@ -1330,25 +1340,63 @@ local function apply_trial_vital()
             ad.Is_SA_No_Recovery = true
         end
 
-        -- Victim (dummy) drive gauge / burnout state
-        if trial_state._pending_victim_burnout ~= nil or trial_state._pending_victim_drive ~= nil then
+        -- Victim (dummy) drive gauge / burnout / super state
+        if trial_state._pending_victim_burnout ~= nil or trial_state._pending_victim_drive ~= nil
+            or trial_state._pending_victim_super ~= nil then
             local vd = ps.PlayerDatas[victim_idx]
             if not trial_state._saved_gauge_vic then
                 trial_state._saved_gauge_vic = {
                     DG_Type = vd.DG_Type, Is_DG_Recovery_Timer = vd.Is_DG_Recovery_Timer,
                     Is_DG_Infinity = vd.Is_DG_Infinity, Is_DG_Break = vd.Is_DG_Break,
+                    DG_Point = vd.DG_Point, DG_Stock = vd.DG_Stock,
+                    SA_Type = vd.SA_Type, Is_SA_Recovery_Timer = vd.Is_SA_Recovery_Timer,
+                    Is_SA_Infinity = vd.Is_SA_Infinity, Is_SA_No_Recovery = vd.Is_SA_No_Recovery,
+                    SA_Point = vd.SA_Point, SA_Stock = vd.SA_Stock,
                 }
             end
             vd.DG_Type = 0
             vd.Is_DG_Infinity = false
             vd.Is_DG_Recovery_Timer = false
             vd.Is_DG_Break = (trial_state._pending_victim_burnout == true)
+            -- Burnout: seed the recovering drive level + stock the menu expects,
+            -- so the state is applied cleanly by the refresh below (cdjay parity).
+            if trial_state._pending_victim_burnout == true and trial_state._pending_victim_drive ~= nil then
+                vd.DG_Point = trial_state._pending_victim_drive
+                vd.DG_Stock = math.floor((trial_state._pending_victim_drive + 5000) / 10000)
+            end
+            -- Lock the victim's super exactly like the attacker's, so training mode
+            -- stops refilling it and fighting the injected value (this was the
+            -- 2.5<->3 bar race on the opponent's super). SA_Point mirrors the
+            -- recorded super so the refresh below stays consistent with it.
+            if trial_state._pending_victim_super ~= nil then
+                vd.SA_Type = 0
+                vd.Is_SA_Infinity = false
+                vd.Is_SA_Recovery_Timer = false
+                vd.Is_SA_No_Recovery = true
+                vd.SA_Point = trial_state._pending_victim_super
+                vd.SA_Stock = math.floor((trial_state._pending_victim_super + 5000) / 10000)
+            end
+            -- Burnout only takes effect once the menu params are pushed to the
+            -- live state, so request a single training refresh (cdjay parity).
+            if trial_state._pending_victim_burnout == true then
+                pcall(function() tm._IsReqRefresh = true end)
+            end
         end
 
     end)
 end
 
 -- Re-inject HP (after a fail / reset)
+-- Re-request an install/style on the live player (Kimberly SA3 etc.). Setting
+-- mReqStyle makes the game transition mStyleNo and apply the style buff
+-- (style_hosei_atk). style 0 clears it. Guarded: installs are engine-touchy.
+local function inject_player_style(player_idx, style)
+    pcall(function()
+        local p = (player_idx == 0) and GS.p1 or GS.p2
+        if p and style ~= nil then p.mReqStyle = style end
+    end)
+end
+
 local function reinject_trial_vital()
     local attacker_idx = trial_state.playing_player
     local victim_idx = 1 - attacker_idx
@@ -1365,6 +1413,9 @@ local function reinject_trial_vital()
         local vdrive = trial_state._pending_victim_burnout and 0 or trial_state._pending_victim_drive
         inject_player_gauges(victim_idx, vdrive, trial_state._pending_victim_super)
     end
+    if trial_state._pending_attacker_style and trial_state._pending_attacker_style > 0 then
+        inject_player_style(attacker_idx, trial_state._pending_attacker_style)
+    end
 end
 
 -- Restore vital settings to original values
@@ -1376,6 +1427,11 @@ local function restore_trial_vital()
     trial_state._pending_victim_drive = nil
     trial_state._pending_victim_super = nil
     trial_state._pending_victim_burnout = nil
+    -- Clear the attacker install/style buff (Kimberly SA3 etc.) on stop.
+    if trial_state._pending_attacker_style then
+        inject_player_style(trial_state.playing_player or 0, 0)
+        trial_state._pending_attacker_style = nil
+    end
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
         if not tm then return end
@@ -1424,6 +1480,16 @@ local function restore_trial_vital()
             local sv = trial_state._saved_gauge_vic
             vd.DG_Type = sv.DG_Type; vd.Is_DG_Recovery_Timer = sv.Is_DG_Recovery_Timer
             vd.Is_DG_Infinity = sv.Is_DG_Infinity; vd.Is_DG_Break = sv.Is_DG_Break
+            if sv.DG_Point ~= nil then vd.DG_Point = sv.DG_Point end
+            if sv.DG_Stock ~= nil then vd.DG_Stock = sv.DG_Stock end
+            if sv.SA_Type ~= nil then vd.SA_Type = sv.SA_Type end
+            if sv.Is_SA_Recovery_Timer ~= nil then vd.Is_SA_Recovery_Timer = sv.Is_SA_Recovery_Timer end
+            if sv.Is_SA_Infinity ~= nil then vd.Is_SA_Infinity = sv.Is_SA_Infinity end
+            if sv.Is_SA_No_Recovery ~= nil then vd.Is_SA_No_Recovery = sv.Is_SA_No_Recovery end
+            if sv.SA_Point ~= nil then vd.SA_Point = sv.SA_Point end
+            if sv.SA_Stock ~= nil then vd.SA_Stock = sv.SA_Stock end
+            -- Push the cleared burnout / restored gauges back to the live state.
+            pcall(function() tm._IsReqRefresh = true end)
             trial_state._saved_gauge_vic = nil
         end
 
@@ -2298,15 +2364,43 @@ function unique_resources.capture_scene_state(recorded_by)
 
             local burnout = false
             pcall(function()
-                local tm2 = sdk.get_managed_singleton("app.training.TrainingManager")
-                local ps2 = tm2:get_field("_tData"):get_field("ParameterSetting")
-                local pdd = ps2 and ps2.PlayerDatas and ps2.PlayerDatas[player_idx]
-                if pdd then
-                    burnout = (pdd.Is_DG_Break == true or pdd.Is_DG_Break == 1)
+                -- LIVE burnout: cPlayer.incapacitated is true exactly while the
+                -- drive gauge is broken (burnout). This works in a REPLAY, where
+                -- the training-menu Is_DG_Break param is meaningless. Fall back to
+                -- the menu param only if the live field can't be read.
+                local live = p:get_field("incapacitated")
+                if live ~= nil then
+                    burnout = (live == true)
+                else
+                    local tm2 = sdk.get_managed_singleton("app.training.TrainingManager")
+                    local ps2 = tm2:get_field("_tData"):get_field("ParameterSetting")
+                    local pdd = ps2 and ps2.PlayerDatas and ps2.PlayerDatas[player_idx]
+                    if pdd then
+                        burnout = (pdd.Is_DG_Break == true or pdd.Is_DG_Break == 1)
+                    end
                 end
             end)
 
-            side.status = { burnout = burnout, stunned = stunned, stance = stance }
+            -- LIVE guard: gBattle.Player.mcPlayer[x].gard_combo_cnt > 0 means the
+            -- character is currently blocking an attack. GS.p1/p2 ARE those
+            -- mcPlayer objects, so this is the real block state (works in replay).
+            local guarding = false
+            pcall(function()
+                local g = p:get_field("dgard_combo_cnt")
+                if g == nil then g = p:get_field("gard_combo_cnt") end
+                if g ~= nil then guarding = (tonumber(tostring(g)) or 0) > 0 end
+            end)
+
+            side.status = { burnout = burnout, stunned = stunned, stance = stance, guarding = guarding }
+
+            -- LIVE install / style buff (e.g. Kimberly after SA3: mStyleNo /
+            -- mReqStyle = 3, from which the game derives style_hosei_atk = the
+            -- damage correction). Captured so the trial can re-request it.
+            pcall(function()
+                local sno = p:get_field("mStyleNo")
+                sno = sno ~= nil and (tonumber(tostring(sno)) or 0) or 0
+                if sno > 0 then side.install = { style = sno } end
+            end)
         end)
         players_state[side_key] = side
     end
@@ -3630,6 +3724,18 @@ function ct_trial_dummy_guard_type()
         end
     end
 
+    -- Reproduce the recorded opponent guard: if the victim was blocking at record
+    -- time (gard_combo_cnt > 0 -> status.guarding), the dummy must Guard All (3)
+    -- so it blocks from the first hit. An explicit dummy_guard_type still wins.
+    if guard_type == nil then
+        local sc = first_step.scene_state
+        local rb = tonumber(first_step.recorded_by or (sc and sc.recorded_by) or 0) or 0
+        local vic_side = rb == 1 and "p1" or "p2"
+        local vic = (type(sc) == "table" and type(sc.players) == "table") and sc.players[vic_side] or nil
+        if type(vic) == "table" and type(vic.status) == "table" and vic.status.guarding == true then
+            guard_type = 3
+        end
+    end
     if guard_type == nil or guard_type < 0 or guard_type > 4 then guard_type = 2 end
     return guard_type
 end
@@ -3693,8 +3799,11 @@ local function start_trial(player_idx)
         end
     end)
 
-    -- Guard: After 1st Hit (2) at trial start
-    set_dummy_guard_type(2)
+    -- Guard: use the combo's recorded guard type (default "after 1st hit" = 2).
+    -- Was hardcoded to 2, which clobbered ct_trial_dummy_guard_type() above and
+    -- made per-combo guard (e.g. Guard All for a combo recorded vs a blocking
+    -- opponent) impossible.
+    set_dummy_guard_type(_G.CT_COMBO_TRIALS_DUMMY_GUARD_TYPE or 2)
     if _G.p2_vital_mode and type(set_vital_recovery) == "function" then
         set_vital_recovery(1, _G.p2_vital_mode)
     end
@@ -4395,7 +4504,7 @@ local function ct_handle_position_correction(_in_replay)
             trial_state._pending_reinject_settings = false
             local first_ct = trial_state.sequence and trial_state.sequence[1] and trial_state.sequence[1].counter_type or 0
             set_dummy_counter_type(first_ct)
-            set_dummy_guard_type(2)
+            set_dummy_guard_type(_G.CT_COMBO_TRIALS_DUMMY_GUARD_TYPE or 2)
             apply_pending_hp_restore_once("post_refresh_reinject")
             hp_restore_checked = true
         end
@@ -5215,6 +5324,15 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                     motion_str = "7"; real_input_str = "7"; frame_diff_str = "Mouvement"
                 end
 
+                -- The user's manual EXCEPTION override_name is the highest-priority
+                -- display: it wins over bcm_cache AND every special case above
+                -- (drive rush, 17/18/36/37/38). Applied here on the FINALIZED
+                -- motion_str so the recorded step (line ~5400), the live input log
+                -- and the whiff/parry detection below all see it. This is what was
+                -- missing: the previous override lived past the step insert, too
+                -- late. (no-op when the exception has no override_name.)
+                motion_str = ActionMatcher.apply_override_name(motion_str, exc)
+
                 -- 3. COMBO TRIAL HANDLING (Now that motion_str is finalized!)
                 if trial_state.is_recording and p_idx == trial_state.recording_player then
                     -- Capture exact position at the frame when input was detected
@@ -5582,14 +5700,17 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
     				end
 
             ::continue_to_log::
-            -- Catalog display fallback for actions that skipped the intentional
-            -- block (non-catalog automatic actions still land here).
+            -- Display priority: the user's manual EXCEPTION override_name always
+            -- wins, over BOTH the BCM-derived display (bcm_cache, set for
+            -- intentional actions) and the catalog fallback below. This was gated
+            -- on motion_str == act_name, so an exception could never override a
+            -- BCM display -> Kimberly actions showed the BCM name instead of the
+            -- exception. apply_override_name is a no-op when the exception has no
+            -- override_name, so calling it unconditionally is safe.
+            motion_str = ActionMatcher.apply_override_name(motion_str, exc)
             if bcm_catalog and motion_str == act_name then
                 local cat_disp = BcmCatalog.get_classic_display(bcm_catalog, act_id)
                 if cat_disp then motion_str = cat_disp end
-            end
-            if motion_str == act_name then
-                motion_str = ActionMatcher.apply_override_name(motion_str, exc)
             end
             -- Raw input fallback for UNKNOWN automatic actions: show what was
             -- actually pressed so unmapped install-variant IDs (Sumo Spirit
