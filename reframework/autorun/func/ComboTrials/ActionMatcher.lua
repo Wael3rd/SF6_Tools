@@ -22,6 +22,8 @@ function ActionMatcher.normalize_motion_token(value)
     s = s:gsub("（空挥）", "")
     s = s:gsub("（绌烘尌）", "")
     s = s:gsub("（WHIFF）", "")
+    s = s:gsub("%(BLOCKED%)", "")
+    s = s:gsub("（BLOCKED）", "")
     return s
 end
 

@@ -95,6 +95,7 @@
   tr.hit td .idx{border-color:var(--ok)}
   .tag-hit{font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:#12351f;color:var(--ok);margin-left:6px}
   .tag-whiff{background:#3a2b12;color:var(--warn)}
+  .tag-blocked{background:#12303a;color:var(--cyan)}
   .scroll{overflow-x:auto}
   select.mini{padding:5px 6px;font-size:12px;min-width:96px}
   .note{color:var(--dim);font-size:12px;margin-top:8px}
@@ -282,13 +283,15 @@ function render(){
   sec.innerHTML=`<div class="card"><div class="sub">Steps</div><div class="scroll"></div></div>`;
   const tbl=document.createElement("table");
   tbl.innerHTML=`<thead><tr>
-    <th>#</th><th>Notation</th><th>Counter</th><th>Dummy pose</th><th>Victim pose</th><th>Facing</th><th>Holdable</th>
+    <th>#</th><th>Notation</th><th>Status</th><th>Counter</th><th>Dummy pose</th><th>Victim pose</th><th>Facing</th><th>Holdable</th>
   </tr></thead>`;
   const tb=document.createElement("tbody");
   data.forEach((step,i)=>{
     const tr=document.createElement("tr");
     if(step.has_hit) tr.className="hit";
-    const hitTag = step.has_hit?`<span class="tag-hit">HIT</span>`:(/\(WHIFF\)/i.test(step.motion||"")?`<span class="tag-hit tag-whiff">WHIFF</span>`:"");
+    const hitTag = step.has_hit?`<span class="tag-hit">HIT</span>`
+      :(/\(BLOCKED\)/i.test(step.motion||"")?`<span class="tag-hit tag-blocked">BLOCKED</span>`
+      :(/\(WHIFF\)/i.test(step.motion||"")?`<span class="tag-hit tag-whiff">WHIFF</span>`:""));
     const c1=document.createElement("td");c1.innerHTML=`<span class="idx">${i+1}</span>`;
     // Editable notation: bind a text input to step.motion so the displayed
     // command can be corrected/renamed and saved back with Download JSON.
@@ -299,6 +302,9 @@ function render(){
     const mMeta=document.createElement("div");mMeta.className="aid";
     mMeta.innerHTML=`id ${esc(step.id)} ${hitTag}`;
     c2.appendChild(mInput);c2.appendChild(mMeta);
+    // Contact status enum: HIT / BLOCKED / WHIFFED (derives from has_hit + tags).
+    const cB=document.createElement("td");
+    cB.appendChild(mini(statusSel(step)));
     const c3=document.createElement("td");
     const c4=document.createElement("td");
     const c5=document.createElement("td");
@@ -315,13 +321,39 @@ function render(){
     c6.appendChild(mini(sel(step,"facing_left",FACING,"mini")));
     if(step.is_holdable==null) step.is_holdable=false;
     c7.appendChild(mini(sel(step,"is_holdable",BOOL,"mini")));
-    tr.append(c1,c2,c3,c4,c5,c6,c7);tb.appendChild(tr);
+    tr.append(c1,c2,cB,c3,c4,c5,c6,c7);tb.appendChild(tr);
   });
   tbl.appendChild(tb);
   sec.querySelector(".scroll").appendChild(tbl);
   app.appendChild(sec);
 }
 function mini(s){s.classList.add("mini");return s;}
+
+// Contact status as one enum (HIT / BLOCKED / WHIFFED). Not a stored field —
+// it derives from and writes back the existing model: has_hit + the (BLOCKED)/
+// (WHIFF) tag in step.motion (mutually exclusive). Keeps the JSON format
+// unchanged while giving a single clean control.
+function statusSel(step){
+  let cur = "hit";
+  if(step.has_hit) cur="hit";
+  else if(/\(BLOCKED\)/i.test(step.motion||"")) cur="blocked";
+  else if(/\(WHIFF\)/i.test(step.motion||"")) cur="whiff";
+  const s=document.createElement("select");
+  for(const [val,lab] of [["hit","HIT"],["blocked","BLOCKED"],["whiff","WHIFFED"]]){
+    const o=document.createElement("option");o.value=val;o.textContent=lab;
+    if(val===cur) o.selected=true;
+    s.appendChild(o);
+  }
+  s.addEventListener("change",()=>{
+    let m=String(step.motion||"").replace(/\s*\(BLOCKED\)/ig,"").replace(/\s*\(WHIFF\)/ig,"");
+    if(s.value==="hit"){ step.has_hit=true; }
+    else if(s.value==="blocked"){ step.has_hit=false; m=m+" (BLOCKED)"; }
+    else { step.has_hit=false; m=m+" (WHIFF)"; }
+    step.motion=m.trim();
+    render();  // refresh the notation input, tag chip and status
+  });
+  return s;
+}
 
 // ---- load / save ----
 function loadText(text,name){

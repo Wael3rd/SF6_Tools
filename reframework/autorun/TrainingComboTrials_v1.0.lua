@@ -4201,9 +4201,17 @@ local function _ct_track_rec_gauges(victim, p_char, p_idx)
         pcall(function()
             local g = victim:get_field("gard_combo_cnt")
             if g == nil then g = victim:get_field("dgard_combo_cnt") end
-            if g ~= nil and (tonumber(tostring(g)) or 0) > 0 then
-                trial_state._rec_victim_guarded = true
+            local gc = g ~= nil and (tonumber(tostring(g)) or 0) or 0
+            if gc > 0 then trial_state._rec_victim_guarded = true end
+            -- PER-STEP BLOCKED: the guard counter RISES on the step that was
+            -- guarded, so attribute the block to the current step -> it gets
+            -- tagged (BLOCKED) instead of (WHIFF) at finalization. Using the
+            -- increase (not just >0) avoids mislabelling a later whiff during the
+            -- same blockstun. (feat 2026-08-08)
+            if gc > (rg._last_gard_cnt or 0) and #trial_state.sequence > 0 then
+                trial_state.sequence[#trial_state.sequence]._was_blocked = true
             end
+            rg._last_gard_cnt = gc
         end)
 
         -- REAL combo damage from the game counter (player.mpTeam.mComboDamage).
@@ -5431,13 +5439,15 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                             local is_parry = m_str:match("PARRY")
                             local is_dash = m_str:match("DASH") or m_str:match("66") or m_str:match("44") or is_drive_rush_motion(prev_step.motion)
 
-                            if not is_mov and not is_parry and not is_dash and not m_str:match("WHIFF") then
-                                prev_step.motion = prev_step.motion .. " (WHIFF)"
+                            if not is_mov and not is_parry and not is_dash and not m_str:match("WHIFF") and not m_str:match("BLOCKED") then
+                                -- A guarded move connected on block -> (BLOCKED), else a true whiff.
+                                local tag = prev_step._was_blocked and " (BLOCKED)" or " (WHIFF)"
+                                prev_step.motion = prev_step.motion .. tag
                                 -- Update the Live Log for real-time display
                                 if p_state.log and #p_state.log > 0 then
                                     local log_to_update = p_state.log[1]
                                     if log_to_update and log_to_update.id == prev_step.id then
-                                        log_to_update.motion = log_to_update.motion .. " (WHIFF)"
+                                        log_to_update.motion = log_to_update.motion .. tag
                                     end
                                 end
                             end
@@ -6083,8 +6093,8 @@ function save_trial_sequence()
                     local is_parry = m_str:match("PARRY")
                     local is_dash = m_str:match("DASH") or m_str:match("66") or m_str:match("44") or is_drive_rush_motion(last_step.motion)
 
-                    if not is_mov and not is_parry and not is_dash and not m_str:match("WHIFF") then
-                        last_step.motion = last_step.motion .. " (WHIFF)"
+                    if not is_mov and not is_parry and not is_dash and not m_str:match("WHIFF") and not m_str:match("BLOCKED") then
+                        last_step.motion = last_step.motion .. (last_step._was_blocked and " (BLOCKED)" or " (WHIFF)")
                     end
                 end
 
