@@ -105,7 +105,9 @@ local unique_resources = {
         name = "Jamie",
         resources = {
             { id = "timer_0_021", kind = "timer", min = 0, max = 2 },
-            { id = "stock_0_021", kind = "stock", min = 0, max = 4 }
+            -- Jamie's drinks live in cPlayer.mStyleNo (gained via 22P in-game),
+            -- so the live-mStyleNo capture heuristic applies to this stock.
+            { id = "stock_0_021", kind = "stock", min = 0, max = 4, live_mstyleno = true }
         }
     },
     [28] = {
@@ -1269,7 +1271,10 @@ local function apply_trial_vital()
         local sc = s1 and s1.scene_state
         local atk_side = (s1 and s1.recorded_by == 1) and "p2" or "p1"
         local atk = sc and sc.players and sc.players[atk_side]
-        trial_state._pending_attacker_style = (atk and atk.install and tonumber(atk.install.style)) or nil
+        local inst = atk and atk.install
+        trial_state._pending_attacker_style     = (inst and tonumber(inst.style)) or nil
+        trial_state._pending_attacker_hosei     = inst and tonumber(inst.hosei_atk) or nil
+        trial_state._pending_attacker_style_old = inst and tonumber(inst.style_old) or nil
     end
 
     pcall(function()
@@ -1387,15 +1392,22 @@ local function apply_trial_vital()
 end
 
 -- Re-inject HP (after a fail / reset)
--- Re-request an install/style on the live player (Kimberly SA3 etc.). Setting
--- mReqStyle makes the game transition mStyleNo and apply the style buff
--- (style_hosei_atk). style 0 clears it. Guarded: installs are engine-touchy.
-local function inject_player_style(player_idx, style)
+-- Re-request an install/style on the live player (Kimberly SA3 etc.).
+-- Setting mStyleNo alone does NOT make the engine recompute the damage buff,
+-- so the actual correction fields must be written directly (verified in game):
+--   style_hosei_atk : 100 = normal, e.g. 111 = Kimberly furie (+11% damage)
+--   style_old       : 65535 = install off, 0 = install active
+-- The engine resets these every frame, so callers re-inject them live.
+-- `hosei`/`style_old` are optional: when absent (legacy combos with no captured
+-- buff) only the style number is set, best-effort.
+local function inject_player_style(player_idx, style, hosei, style_old)
     pcall(function()
         local p = (player_idx == 0) and GS.p1 or GS.p2
         if p and style ~= nil then
             p.mReqStyle = style   -- requested style
-            p.mStyleNo  = style   -- current style; the game derives style_hosei_atk (the buff) from it
+            p.mStyleNo  = style   -- current style (drives the on-screen install sign)
+            if style_old ~= nil then p.style_old = style_old end
+            if hosei ~= nil then p.style_hosei_atk = hosei end   -- the actual damage buff
         end
     end)
 end
@@ -1417,7 +1429,7 @@ local function reinject_trial_vital()
         inject_player_gauges(victim_idx, vdrive, trial_state._pending_victim_super)
     end
     if trial_state._pending_attacker_style and trial_state._pending_attacker_style > 0 then
-        inject_player_style(attacker_idx, trial_state._pending_attacker_style)
+        inject_player_style(attacker_idx, trial_state._pending_attacker_style, trial_state._pending_attacker_hosei, trial_state._pending_attacker_style_old)
     end
 end
 
@@ -1432,8 +1444,10 @@ local function restore_trial_vital()
     trial_state._pending_victim_burnout = nil
     -- Clear the attacker install/style buff (Kimberly SA3 etc.) on stop.
     if trial_state._pending_attacker_style then
-        inject_player_style(trial_state.playing_player or 0, 0)
+        inject_player_style(trial_state.playing_player or 0, 0, 100, 65535)
         trial_state._pending_attacker_style = nil
+        trial_state._pending_attacker_hosei = nil
+        trial_state._pending_attacker_style_old = nil
     end
     pcall(function()
         local tm = sdk.get_managed_singleton("app.training.TrainingManager")
@@ -2255,7 +2269,11 @@ function unique_resources.capture_for_fighter(fighter_id, unique_data, side_key)
         -- LOCAL EXTENSION: resources gained IN-GAME (e.g. Jamie drinking via
         -- 22P) live in cPlayer.mStyleNo, not in the training menu settings.
         -- Prefer the live value for stock resources when it is higher.
-        if resource.kind == "stock" then
+        -- ONLY for resources that actually live in mStyleNo (live_mstyleno flag):
+        -- for install chars (e.g. Kimberly), mStyleNo is the INSTALL style (3),
+        -- NOT a stock count — reading it here overwrote the real can count.
+        -- (fix 2026-08-06)
+        if resource.kind == "stock" and resource.live_mstyleno then
             pcall(function()
                 local p = (side_key == "p2") and GS.p2 or GS.p1
                 local live = p and p:get_field("mStyleNo")
@@ -2402,7 +2420,13 @@ function unique_resources.capture_scene_state(recorded_by)
             pcall(function()
                 local sno = p:get_field("mStyleNo")
                 sno = sno ~= nil and (tonumber(tostring(sno)) or 0) or 0
-                if sno > 0 then side.install = { style = sno } end
+                if sno > 0 then
+                    -- Capture the actual damage buff so the trial can re-apply it
+                    -- (the engine won't re-derive it from mStyleNo alone).
+                    local hosei = p:get_field("style_hosei_atk"); hosei = hosei ~= nil and tonumber(tostring(hosei)) or nil
+                    local sold  = p:get_field("style_old");        sold  = sold  ~= nil and tonumber(tostring(sold))  or nil
+                    side.install = { style = sno, hosei_atk = hosei, style_old = sold }
+                end
             end)
         end)
         players_state[side_key] = side
@@ -4106,18 +4130,12 @@ local function _ct_track_live_combo()
 end
 
 local function _ct_update_flip_live()
-    local p1 = GS.p1
-    local p2 = GS.p2
-    if not p1 or not p2 then return end
-    local r1 = p1.pos.x.v
-    local r2 = p2.pos.x.v
-    local facing_left = false
-    if trial_state.playing_player == 0 then
-        facing_left = (r1 > r2)
-    else
-        facing_left = (r2 > r1)
-    end
-    trial_state.flip_inputs = facing_left
+    -- Use the character's real facing (rl_dir: true = facing RIGHT), not an X
+    -- position compare — positions cross during juggles/crossups and gave the
+    -- wrong side. facing_left = not rl_dir.
+    local p = (trial_state.playing_player == 0) and GS.p1 or GS.p2
+    if not p then return end
+    trial_state.flip_inputs = not p:get_field("rl_dir")
 end
 
 local function _ct_replay_bridge_poll()
@@ -4185,6 +4203,30 @@ local function _ct_track_rec_gauges(victim, p_char, p_idx)
             if g == nil then g = victim:get_field("dgard_combo_cnt") end
             if g ~= nil and (tonumber(tostring(g)) or 0) > 0 then
                 trial_state._rec_victim_guarded = true
+            end
+        end)
+
+        -- REAL combo damage from the game counter (player.mpTeam.mComboDamage).
+        -- Unlike HP tracking (victim_hp - min_victim_hp) it isn't capped when the
+        -- victim reaches 0 and it persists after the round ends. It resets to 0
+        -- between combos, so we bank each segment's peak and SUM them — that makes
+        -- OKI / multi-knockdown setups report the whole total. (feat 2026-08-06)
+        pcall(function()
+            local cd = 0
+            for _, pl in ipairs({ p_char, victim }) do
+                local t = pl and pl.mpTeam
+                local v = t and t.mComboDamage
+                v = v ~= nil and (tonumber(tostring(v)) or 0) or 0
+                if v > cd then cd = v end
+            end
+            rg._combo_dmg_peak = rg._combo_dmg_peak or 0
+            rg._combo_dmg_total = rg._combo_dmg_total or 0
+            if cd > rg._combo_dmg_peak then
+                rg._combo_dmg_peak = cd
+            elseif cd == 0 and rg._combo_dmg_peak > 0 then
+                -- segment ended (counter reset) -> bank it and start a new one
+                rg._combo_dmg_total = rg._combo_dmg_total + rg._combo_dmg_peak
+                rg._combo_dmg_peak = 0
             end
         end)
     end
@@ -4540,8 +4582,12 @@ local function ct_handle_hp_injection()
         and trial_state._pending_attacker_style > 0 then
         local ap = (trial_state.playing_player == 0) and GS.p1 or GS.p2
         local cur = ap and (tonumber(tostring(ap:get_field("mStyleNo"))) or 0) or 0
-        if cur ~= trial_state._pending_attacker_style then
-            inject_player_style(trial_state.playing_player, trial_state._pending_attacker_style)
+        -- The engine also resets style_hosei_atk (the damage buff) to 100 each
+        -- frame, so re-inject when EITHER the style number or the buff dropped.
+        local want_hosei = trial_state._pending_attacker_hosei
+        local cur_hosei = (ap and want_hosei) and (tonumber(tostring(ap:get_field("style_hosei_atk"))) or 0) or nil
+        if cur ~= trial_state._pending_attacker_style or (want_hosei and cur_hosei ~= want_hosei) then
+            inject_player_style(trial_state.playing_player, trial_state._pending_attacker_style, want_hosei, trial_state._pending_attacker_style_old)
         end
     end
 
@@ -5221,17 +5267,13 @@ local function ct_player_process_actions(p_idx, p_state, actions_to_process)
                 if is_ignored then is_intentional = false end
 
                 -- CALCULATE FACING DIRECTION AT THIS FRAME (outside is_intentional block so log has access)
+                -- Use the attacker's real facing (rl_dir: true = facing RIGHT), not
+                -- an X position compare — positions cross during juggles/crossups so
+                -- the compare mis-flipped later notations. facing_left = not rl_dir.
                 pcall(function()
-                    local gs_p1 = GS.p1
-                    local gs_p2 = GS.p2
-                    if not gs_p1 or not gs_p2 then return end
-                    local p1_x = gs_p1.pos.x.v
-                    local p2_x = gs_p2.pos.x.v
-                    if p_idx == 0 then
-                        is_facing_left = (p1_x > p2_x)
-                    else
-                        is_facing_left = (p2_x > p1_x)
-                    end
+                    local p = (p_idx == 0) and GS.p1 or GS.p2
+                    if not p then return end
+                    is_facing_left = not p:get_field("rl_dir")
                 end)
 
                 -- Promote catalog-recognized automatic actions to intentional
@@ -6071,7 +6113,15 @@ function save_trial_sequence()
         local init = trial_state._rec_gauges
         local stats = { hit_type = trial_state._rec_hit_type }
         if init then
-            stats.damage     = math.max(0, init.victim_hp - (init.min_victim_hp or init.victim_hp))
+            -- Prefer the game's real combo counter (summed across OKI segments);
+            -- it isn't capped at lethal like the HP delta. Fall back to HP when
+            -- mComboDamage wasn't readable (0).
+            local combo_dmg = (init._combo_dmg_total or 0) + (init._combo_dmg_peak or 0)
+            if combo_dmg > 0 then
+                stats.damage = combo_dmg
+            else
+                stats.damage = math.max(0, init.victim_hp - (init.min_victim_hp or init.victim_hp))
+            end
             stats.drive_used = math.max(0, init.attacker_drive - (init.min_atk_drive or init.attacker_drive))
             stats.super_used = math.max(0, init.attacker_super - (init.min_atk_super or init.attacker_super))
         end
