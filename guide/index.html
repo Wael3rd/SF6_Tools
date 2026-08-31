@@ -25,308 +25,71 @@
     body.ready .app-nav.no-badge { padding-right: 0; }
     .markdown-section pre { border-radius: 6px; }
     .cover-main img { margin: 0; }
-
-    /* ---- password gate overlay ---- */
-    #app { visibility: hidden; }
-    #gate-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #1a1a2e;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    }
-    #gate-card {
-      width: 90%;
-      max-width: 360px;
-      background: #22223a;
-      border: 1px solid #33334f;
-      border-radius: 10px;
-      padding: 32px 28px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
-      text-align: center;
-    }
-    #gate-card h1 {
-      margin: 0 0 6px;
-      font-size: 20px;
-      font-weight: 700;
-      color: #f2f2f5;
-    }
-    #gate-card .gate-sub {
-      margin: 0 0 22px;
-      font-size: 12.5px;
-      color: #9a9ab0;
-      line-height: 1.5;
-    }
-    #gate-password {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 10px 12px;
-      font-size: 14px;
-      border-radius: 6px;
-      border: 1px solid #3f3f60;
-      background: #14142280;
-      color: #f2f2f5;
-      outline: none;
-    }
-    #gate-password:focus { border-color: #e0334f; }
-    #gate-unlock {
-      width: 100%;
-      margin-top: 12px;
-      padding: 10px 12px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #fff;
-      background: #e0334f;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    #gate-unlock:disabled { opacity: 0.6; cursor: default; }
-    #gate-unlock:not(:disabled):hover { background: #c92a44; }
-    #gate-error {
-      display: none;
-      margin-top: 14px;
-      font-size: 12.5px;
-      color: #ff6b6b;
-    }
   </style>
 </head>
 <body>
-  <div id="gate-overlay">
-    <div id="gate-card">
-      <h1>SF6 Native Menus Guide</h1>
-      <p class="gate-sub">
-        Enter the password / Entrez le mot de passe /<br>
-        请输入密码 / パスワードを入力してください
-      </p>
-      <input id="gate-password" type="password" autocomplete="current-password" autofocus>
-      <button id="gate-unlock" type="button">Unlock</button>
-      <p id="gate-error"></p>
-    </div>
-  </div>
-
   <div id="app">Loading SF6 Native Menus Guide...</div>
-
   <script>
-    // ---- client-side password gate --------------------------------------
-    // Pages are published to site_gated/ as AES-256-GCM ciphertext (see
-    // gate/build_gate.py); this file is the ONLY part of the gate that
-    // ships as plaintext, and it never contains the password or the key.
-    // Key derivation: PBKDF2-HMAC-SHA256 (iterations from gate/keyinfo.json)
-    // over the entered password + a random salt -> AES-256-GCM key. That
-    // key both verifies the password (against keyinfo.json's "check" value)
-    // and decrypts each page's ciphertext body in Docsify's beforeEach hook
-    // below. The gate holds up rendering (never calls next()) until a
-    // verified key exists, so no ciphertext-derived content is ever shown
-    // before that -- this is deliberately not "hide it with CSS", the
-    // Markdown plaintext plainly does not exist in the page until then.
-    (function () {
-      "use strict";
-
-      var GATE_KEY_STORAGE = "sf6gate_rawkey_b64";
-      var CHECK_PLAINTEXT = "SF6-GUIDE-OK";
-
-      var overlay = document.getElementById("gate-overlay");
-      var appEl = document.getElementById("app");
-      var pwInput = document.getElementById("gate-password");
-      var unlockBtn = document.getElementById("gate-unlock");
-      var errorEl = document.getElementById("gate-error");
-
-      var keyinfoPromise = null;
-      var resolveKeyReady;
-      // Resolves with a usable AES-GCM CryptoKey once the password is
-      // verified. Docsify's beforeEach hook awaits this -- it is set up
-      // and installed into window.$docsify BEFORE docsify.min.js loads,
-      // same static <script> order as the ungated site.
-      var keyReadyPromise = new Promise(function (resolve) { resolveKeyReady = resolve; });
-
-      function b64ToBytes(b64) {
-        var bin = atob(b64);
-        var bytes = new Uint8Array(bin.length);
-        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        return bytes;
-      }
-      function bytesToB64(bytes) {
-        var bin = "";
-        for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-        return btoa(bin);
-      }
-
-      function fetchKeyinfo() {
-        if (!keyinfoPromise) {
-          keyinfoPromise = fetch("gate/keyinfo.json", { cache: "no-store" }).then(function (r) {
-            if (!r.ok) throw new Error("keyinfo fetch failed: " + r.status);
-            return r.json();
-          });
+    // relativePath:true -- required so language-folder copies (fr/, zh-cn/,
+    // ja/) resolve their own README.md / _sidebar.md relative to their own
+    // folder instead of the site root. See site/sync.py header comment
+    // ("Image path strategy") for exactly how image links depend on this.
+    window.$docsify = {
+      name: 'SF6 Native Menus Guide',
+      repo: 'https://github.com/Wael3rd/SF6_Tools',
+      loadSidebar: true,
+      loadNavbar: true,
+      relativePath: true,
+      subMaxLevel: 3,
+      auto2top: true,
+      maxLevel: 3,
+      alias: {
+        // Multi-language fallback pattern recommended by the Docsify docs:
+        // language-prefixed routes resolve within their own folder first,
+        // with a root catch-all so nothing 404s while translations land.
+        '/fr/(.*)': '/fr/$1',
+        '/zh-cn/(.*)': '/zh-cn/$1',
+        '/ja/(.*)': '/ja/$1',
+        '/(.*)': '/$1'
+      },
+      nameLink: {
+        '/fr/': '#/fr/',
+        '/zh-cn/': '#/zh-cn/',
+        '/ja/': '#/ja/',
+        '/': '#/'
+      },
+      search: {
+        maxAge: 86400000,
+        paths: 'auto',
+        depth: 3,
+        placeholder: {
+          '/fr/': 'Rechercher',
+          '/zh-cn/': '搜索',
+          '/ja/': '検索',
+          '/': 'Search'
+        },
+        noData: {
+          '/fr/': 'Aucun résultat',
+          '/zh-cn/': '没有结果',
+          '/ja/': '結果がありません',
+          '/': 'No results'
         }
-        return keyinfoPromise;
+      },
+      copyCode: {
+        buttonText: 'Copy',
+        errorText: 'Error',
+        successText: 'Copied'
+      },
+      zoomImage: {
+        selector: '.markdown-section img'
       }
-
-      function importAesKey(rawBytes) {
-        return crypto.subtle.importKey("raw", rawBytes, "AES-GCM", true, ["decrypt"]);
-      }
-
-      function deriveKeyFromPassword(password, saltB64, iterations) {
-        var enc = new TextEncoder();
-        return crypto.subtle
-          .importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"])
-          .then(function (baseKey) {
-            return crypto.subtle.deriveKey(
-              { name: "PBKDF2", salt: b64ToBytes(saltB64), iterations: iterations, hash: "SHA-256" },
-              baseKey,
-              { name: "AES-GCM", length: 256 },
-              true, // extractable -- cached in sessionStorage for same-tab reloads
-              ["decrypt"]
-            );
-          });
-      }
-
-      function decryptToString(key, ivB64, ctB64) {
-        var iv = b64ToBytes(ivB64);
-        var ct = b64ToBytes(ctB64);
-        return crypto.subtle
-          .decrypt({ name: "AES-GCM", iv: iv }, key, ct)
-          .then(function (plainBuf) { return new TextDecoder().decode(plainBuf); });
-      }
-
-      function hideOverlay() {
-        overlay.style.display = "none";
-        appEl.style.visibility = "visible";
-      }
-
-      function showError(msg) {
-        errorEl.textContent = msg;
-        errorEl.style.display = "block";
-      }
-
-      function tryCachedKey() {
-        var cached;
-        try { cached = sessionStorage.getItem(GATE_KEY_STORAGE); } catch (e) { cached = null; }
-        if (!cached) return;
-        var key;
-        importAesKey(b64ToBytes(cached))
-          .then(function (importedKey) {
-            key = importedKey;
-            return fetchKeyinfo();
-          })
-          .then(function (info) {
-            return decryptToString(key, info.check.iv, info.check.ct);
-          })
-          .then(function (plaintext) {
-            if (plaintext !== CHECK_PLAINTEXT) throw new Error("stale cached key");
-            resolveKeyReady(key);
-            hideOverlay();
-          })
-          .catch(function () {
-            try { sessionStorage.removeItem(GATE_KEY_STORAGE); } catch (e) {}
-          });
-      }
-
-      function attemptUnlock() {
-        var password = pwInput.value || "";
-        unlockBtn.disabled = true;
-        errorEl.style.display = "none";
-        var key;
-        fetchKeyinfo()
-          .then(function (info) {
-            return deriveKeyFromPassword(password, info.salt, info.iter).then(function (derivedKey) {
-              key = derivedKey;
-              return decryptToString(key, info.check.iv, info.check.ct);
-            });
-          })
-          .then(function (plaintext) {
-            if (plaintext !== CHECK_PLAINTEXT) throw new Error("wrong password");
-            return crypto.subtle.exportKey("raw", key);
-          })
-          .then(function (rawKeyBuf) {
-            try { sessionStorage.setItem(GATE_KEY_STORAGE, bytesToB64(new Uint8Array(rawKeyBuf))); } catch (e) {}
-            resolveKeyReady(key);
-            hideOverlay();
-          })
-          .catch(function () {
-            showError("Incorrect password / Mot de passe incorrect / 密码错误 / パスワードが間違っています");
-            unlockBtn.disabled = false;
-            pwInput.focus();
-            pwInput.select();
-          });
-      }
-
-      unlockBtn.addEventListener("click", attemptUnlock);
-      pwInput.addEventListener("keydown", function (ev) {
-        if (ev.key === "Enter") attemptUnlock();
-      });
-
-      // Docsify plugin: gate every page's content behind keyReadyPromise.
-      // Non-JSON content (the sidebar/navbar markdown, which stay
-      // plaintext on purpose) is passed through unchanged.
-      function gatePlugin(hook) {
-        hook.beforeEach(function (content, next) {
-          var parsed;
-          try {
-            parsed = JSON.parse(content);
-          } catch (e) {
-            next(content);
-            return;
-          }
-          if (!parsed || parsed.v !== 1 || !parsed.iv || !parsed.ct) {
-            next(content);
-            return;
-          }
-          keyReadyPromise
-            .then(function (key) { return decryptToString(key, parsed.iv, parsed.ct); })
-            .then(next)
-            .catch(function () {
-              next("# Decryption failed\n\nPlease reload this page and re-enter the password.");
-            });
-        });
-      }
-
-      window.$docsify = {
-        name: "SF6 Native Menus Guide",
-        repo: "https://github.com/Wael3rd/SF6_Tools",
-        loadSidebar: true,
-        loadNavbar: true,
-        relativePath: true,
-        subMaxLevel: 3,
-        auto2top: true,
-        maxLevel: 3,
-        alias: {
-          "/fr/(.*)": "/fr/$1",
-          "/zh-cn/(.*)": "/zh-cn/$1",
-          "/ja/(.*)": "/ja/$1",
-          "/(.*)": "/$1"
-        },
-        nameLink: {
-          "/fr/": "#/fr/",
-          "/zh-cn/": "#/zh-cn/",
-          "/ja/": "#/ja/",
-          "/": "#/"
-        },
-        // NOTE: no `search` block -- docsify-search fetches and indexes
-        // every page's raw file itself, which would pull ciphertext JSON
-        // straight past this gate. Search is intentionally dropped from
-        // the gated build (see gate/build_gate.py / PUBLISH.md).
-        copyCode: {
-          buttonText: "Copy",
-          errorText: "Error",
-          successText: "Copied"
-        },
-        zoomImage: {
-          selector: ".markdown-section img"
-        },
-        plugins: [gatePlugin]
-      };
-
-      tryCachedKey();
-    })();
+    };
   </script>
 
   <!-- Docsify core -->
   <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
-  <!-- Plugins (search intentionally omitted -- see gate script above) -->
+  <!-- Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2/dist/docsify-copy-code.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/zoom-image.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docsify-pagination@2/dist/docsify-pagination.min.js"></script>
