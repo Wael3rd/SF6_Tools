@@ -1178,7 +1178,7 @@ Settings are per character **and per side**. The menu edits the side it was open
 title says so: "LUKE - P2"), and `<Fighter>.json` holds two settings, `p1` and `p2`. With two
 different characters each side writes its own effect providers, so P1 Off / P2 On just works. In
 a mirror match both Drive Impacts read the **same** providers: the colours are then written the
-moment a side's Drive Impact starts (player `act_st` 11), with that side's setting -- its
+moment a side's Drive Impact starts (post-hook on `nAction.Engine.SetActionData`, action id 855 / 857: one frame before a poll would see it, and before the startup trails spawn), with that side's setting -- its
 colours, or the game's palette when Off.
 
 ### Data

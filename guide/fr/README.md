@@ -1234,8 +1234,8 @@ Les réglages sont par personnage **et par camp**. Le menu édite le camp depuis
 ouvert (le titre l'indique : « LUKE - P2 »), et `<Fighter>.json` contient deux réglages, `p1` et
 `p2`. Avec deux personnages différents, chaque camp écrit ses propres providers d'effet, donc
 P1 Off / P2 On marche tel quel. En miroir, les deux Drive Impact lisent les **mêmes** providers :
-les couleurs sont alors écrites à l'instant où le Drive Impact d'un camp démarre (`act_st` 11 du
-joueur), avec le réglage de ce camp -- ses couleurs, ou la palette du jeu s'il est Off.
+les couleurs sont alors écrites à l'instant où le Drive Impact d'un camp démarre (post-hook sur `nAction.Engine.SetActionData`, action 855 / 857 :
+une frame avant qu'un sondage le voie, et avant l'émission des traînées de démarrage), avec le réglage de ce camp -- ses couleurs, ou la palette du jeu s'il est Off.
 
 ### Données
 
