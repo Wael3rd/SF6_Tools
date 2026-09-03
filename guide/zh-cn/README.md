@@ -1170,15 +1170,16 @@ end
 
 | 模块 | 路径 | 作用 |
 |---|---|---|
-| NativeOptions | `autorun/func/NativeOptions.lua` | Options 对话框窗口(技巧 1) |
-| NativePauseMenu | `autorun/func/NativePauseMenu.lua` | 暂停菜单行与标签页(技巧 2) |
-| NativeHud | `autorun/func/NativeHud.lua` | 伤害面板与计时器(技巧 3) |
-| NativePopup | `autorun/func/NativePopup.lua` | 借用元素的弹窗(技巧 4) |
-| NativeShortcuts | `autorun/func/NativeShortcuts.lua` | Shortcut Settings 替换(技巧 5A) |
-| NativeDialog | `autorun/func/NativeDialog.lua` | KeyConfig 对话框劫持(技巧 5B) |
-| NativeTopBar | `autorun/func/NativeTopBar.lua` | 模式选择条(借用元素,已禁用) |
-| NativeBottomBar | `autorun/func/NativeBottomBar.lua` | 动作按钮条(实验性,已禁用) |
-| GameState | `autorun/func/GameState.lua` | 暂停检测(`GS.in_pause_menu`) |
+| NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Options 对话框窗口(技巧 1) |
+| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Optional: game-language strings for NativeOptions (Off / On) |
+| NativePauseMenu | [`autorun/func/NativePauseMenu.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePauseMenu.lua) | 暂停菜单行与标签页(技巧 2) |
+| NativeHud | [`autorun/func/NativeHud.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeHud.lua) | 伤害面板与计时器(技巧 3) |
+| NativePopup | [`autorun/func/NativePopup.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePopup.lua) | 借用元素的弹窗(技巧 4) |
+| NativeShortcuts | [`autorun/func/NativeShortcuts.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeShortcuts.lua) | Shortcut Settings 替换(技巧 5A) |
+| NativeDialog | [`autorun/func/NativeDialog.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeDialog.lua) | KeyConfig 对话框劫持(技巧 5B) |
+| NativeTopBar | [`autorun/func/NativeTopBar.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeTopBar.lua) | 模式选择条(借用元素,已禁用) |
+| NativeBottomBar | [`autorun/func/NativeBottomBar.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeBottomBar.lua) | 动作按钮条(实验性,已禁用) |
+| GameState | [`autorun/func/GameState.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/GameState.lua) | 暂停检测(`GS.in_pause_menu`) |
 | Training_ScriptManager | `autorun/Training_ScriptManager.lua` | 总控脚本(模式切换、注册) |
 
 ---

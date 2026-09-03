@@ -1044,15 +1044,16 @@ end
 
 | モジュール | パス | 役割 |
 |---|---|---|
-| NativeOptions | `autorun/func/NativeOptions.lua` | Optionsダイアログウィンドウ（テクニック1） |
-| NativePauseMenu | `autorun/func/NativePauseMenu.lua` | ポーズメニューの行とタブ（テクニック2） |
-| NativeHud | `autorun/func/NativeHud.lua` | ダメージパネルとタイマー（テクニック3） |
-| NativePopup | `autorun/func/NativePopup.lua` | 借用要素によるポップアップ（テクニック4） |
-| NativeShortcuts | `autorun/func/NativeShortcuts.lua` | Shortcut Settingsの差し替え（テクニック5A） |
-| NativeDialog | `autorun/func/NativeDialog.lua` | KeyConfigダイアログの乗っ取り（テクニック5B） |
-| NativeTopBar | `autorun/func/NativeTopBar.lua` | モードセレクターバー（借用要素、無効化） |
-| NativeBottomBar | `autorun/func/NativeBottomBar.lua` | アクションボタンバー（実験的、無効化） |
-| GameState | `autorun/func/GameState.lua` | ポーズ検出（`GS.in_pause_menu`） |
+| NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Optionsダイアログウィンドウ（テクニック1） |
+| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Optional: game-language strings for NativeOptions (Off / On) |
+| NativePauseMenu | [`autorun/func/NativePauseMenu.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePauseMenu.lua) | ポーズメニューの行とタブ（テクニック2） |
+| NativeHud | [`autorun/func/NativeHud.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeHud.lua) | ダメージパネルとタイマー（テクニック3） |
+| NativePopup | [`autorun/func/NativePopup.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePopup.lua) | 借用要素によるポップアップ（テクニック4） |
+| NativeShortcuts | [`autorun/func/NativeShortcuts.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeShortcuts.lua) | Shortcut Settingsの差し替え（テクニック5A） |
+| NativeDialog | [`autorun/func/NativeDialog.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeDialog.lua) | KeyConfigダイアログの乗っ取り（テクニック5B） |
+| NativeTopBar | [`autorun/func/NativeTopBar.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeTopBar.lua) | モードセレクターバー（借用要素、無効化） |
+| NativeBottomBar | [`autorun/func/NativeBottomBar.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeBottomBar.lua) | アクションボタンバー（実験的、無効化） |
+| GameState | [`autorun/func/GameState.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/GameState.lua) | ポーズ検出（`GS.in_pause_menu`） |
 | Training_ScriptManager | `autorun/Training_ScriptManager.lua` | オーケストレーター（モード切り替え、登録） |
 
 ---

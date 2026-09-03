@@ -1270,17 +1270,20 @@ end
 
 ### Fichiers sources
 
+Tous les modules ci-dessous sont publiés dans [`guide/lua/func/`](https://github.com/Wael3rd/SF6_Tools/tree/main/guide/lua/func). Copiez-les dans `reframework/autorun/func/` ; `NativeOptions.lua` est le module de base (`NativePauseMenu`, `NativeDialog` et `NativeShortcuts` en dépendent).
+
 | Module | Chemin | Rôle |
 |---|---|---|
-| NativeOptions | `autorun/func/NativeOptions.lua` | Fenêtre du dialogue Options (Technique 1) |
-| NativePauseMenu | `autorun/func/NativePauseMenu.lua` | Lignes et onglets du menu pause (Technique 2) |
-| NativeHud | `autorun/func/NativeHud.lua` | Panneau de dégâts et minuteur (Technique 3) |
-| NativePopup | `autorun/func/NativePopup.lua` | Popups à éléments empruntés (Technique 4) |
-| NativeShortcuts | `autorun/func/NativeShortcuts.lua` | Substitution de Shortcut Settings (Technique 5A) |
-| NativeDialog | `autorun/func/NativeDialog.lua` | Détournement du dialogue KeyConfig (Technique 5B) |
-| NativeTopBar | `autorun/func/NativeTopBar.lua` | Barre de sélection de mode (éléments empruntés, désactivée) |
-| NativeBottomBar | `autorun/func/NativeBottomBar.lua` | Barre de boutons d'action (expérimentale, désactivée) |
-| GameState | `autorun/func/GameState.lua` | Détection de la pause (`GS.in_pause_menu`) |
+| NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Fenêtre du dialogue Options (Technique 1) |
+| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Optional: game-language strings for NativeOptions (Off / On) |
+| NativePauseMenu | [`autorun/func/NativePauseMenu.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePauseMenu.lua) | Lignes et onglets du menu pause (Technique 2) |
+| NativeHud | [`autorun/func/NativeHud.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeHud.lua) | Panneau de dégâts et minuteur (Technique 3) |
+| NativePopup | [`autorun/func/NativePopup.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePopup.lua) | Popups à éléments empruntés (Technique 4) |
+| NativeShortcuts | [`autorun/func/NativeShortcuts.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeShortcuts.lua) | Substitution de Shortcut Settings (Technique 5A) |
+| NativeDialog | [`autorun/func/NativeDialog.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeDialog.lua) | Détournement du dialogue KeyConfig (Technique 5B) |
+| NativeTopBar | [`autorun/func/NativeTopBar.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeTopBar.lua) | Barre de sélection de mode (éléments empruntés, désactivée) |
+| NativeBottomBar | [`autorun/func/NativeBottomBar.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeBottomBar.lua) | Barre de boutons d'action (expérimentale, désactivée) |
+| GameState | [`autorun/func/GameState.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/GameState.lua) | Détection de la pause (`GS.in_pause_menu`) |
 | Training_ScriptManager | `autorun/Training_ScriptManager.lua` | Orchestrateur (changement de mode, enregistrement) |
 
 ---

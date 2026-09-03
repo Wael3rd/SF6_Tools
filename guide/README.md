@@ -1219,17 +1219,20 @@ end
 
 ### Source Files
 
+All modules below are published in [`guide/lua/func/`](https://github.com/Wael3rd/SF6_Tools/tree/main/guide/lua/func). Copy them into `reframework/autorun/func/`; `NativeOptions.lua` is the base module (`NativePauseMenu`, `NativeDialog` and `NativeShortcuts` require it).
+
 | Module | Path | Role |
 |---|---|---|
-| NativeOptions | `autorun/func/NativeOptions.lua` | Options dialog window (Technique 1) |
-| NativePauseMenu | `autorun/func/NativePauseMenu.lua` | Pause menu rows and tabs (Technique 2) |
-| NativeHud | `autorun/func/NativeHud.lua` | Damage panel and timer (Technique 3) |
-| NativePopup | `autorun/func/NativePopup.lua` | Borrowed-element popups (Technique 4) |
-| NativeShortcuts | `autorun/func/NativeShortcuts.lua` | Shortcut Settings swap (Technique 5A) |
-| NativeDialog | `autorun/func/NativeDialog.lua` | KeyConfig dialog hijack (Technique 5B) |
-| NativeTopBar | `autorun/func/NativeTopBar.lua` | Mode selector bar (borrowed elements, disabled) |
-| NativeBottomBar | `autorun/func/NativeBottomBar.lua` | Action button bar (experimental, disabled) |
-| GameState | `autorun/func/GameState.lua` | Pause detection (`GS.in_pause_menu`) |
+| NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Options dialog window (Technique 1) |
+| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Optional: game-language strings for NativeOptions (Off / On) |
+| NativePauseMenu | [`autorun/func/NativePauseMenu.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePauseMenu.lua) | Pause menu rows and tabs (Technique 2) |
+| NativeHud | [`autorun/func/NativeHud.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeHud.lua) | Damage panel and timer (Technique 3) |
+| NativePopup | [`autorun/func/NativePopup.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePopup.lua) | Borrowed-element popups (Technique 4) |
+| NativeShortcuts | [`autorun/func/NativeShortcuts.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeShortcuts.lua) | Shortcut Settings swap (Technique 5A) |
+| NativeDialog | [`autorun/func/NativeDialog.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeDialog.lua) | KeyConfig dialog hijack (Technique 5B) |
+| NativeTopBar | [`autorun/func/NativeTopBar.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeTopBar.lua) | Mode selector bar (borrowed elements, disabled) |
+| NativeBottomBar | [`autorun/func/NativeBottomBar.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeBottomBar.lua) | Action button bar (experimental, disabled) |
+| GameState | [`autorun/func/GameState.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/GameState.lua) | Pause detection (`GS.in_pause_menu`) |
 | Training_ScriptManager | `autorun/Training_ScriptManager.lua` | Orchestrator (mode switching, registration) |
 
 ---
