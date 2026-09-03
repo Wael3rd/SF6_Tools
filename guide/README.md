@@ -12,10 +12,30 @@
 | **Reading time** | ~45 minutes (full); ~15 minutes (techniques 1-2 only) |
 | **Skill level** | Intermediate REFramework Lua (you know `sdk.hook`, `sdk.find_type_definition`, `sdk.get_managed_singleton`) |
 | **Game version** | Street Fighter 6, RE Engine (tested with REFramework-Websockets build LL5271; plain REFramework works for all menu techniques) |
-| **Last updated** | 2026-08-31 |
+| **Last updated** | 2026-09-03 |
 
 [![Native window over the fight](img/native_window_hitconfirm.png)](img/native_window_hitconfirm.png)
 *The "Hit Confirm" settings window, built entirely from the game's own Options dialog UI, displayed over the live fight with the combat paused.*
+
+---
+
+## Table of Contents
+
+1.  [Who This Is For](#1-who-this-is-for)
+2.  [Prerequisites](#2-prerequisites)
+3.  [How the Game's UI Works](#3-how-the-games-ui-works)
+4.  [The Golden Rules (Crash-Proven)](#4-the-golden-rules-crash-proven)
+5.  [Technique 1 -- Options Dialog Rows (NativeOptions)](#5-technique-1----options-dialog-rows-nativeoptions)
+6.  [Technique 2 -- Pause Menu Rows and Tabs (NativePauseMenu)](#6-technique-2----pause-menu-rows-and-tabs-nativepausemenu)
+7.  [Technique 3 -- Driving the Game's HUD (NativeHud)](#7-technique-3----driving-the-games-hud-nativehud)
+8.  [Technique 4 -- Borrowing GUI Elements (NativePopup)](#8-technique-4----borrowing-gui-elements-nativepopup)
+9.  [Technique 5 -- Reusing Whole Game Menus (NativeShortcuts, NativeDialog)](#9-technique-5----reusing-whole-game-menus-nativeshortcuts-nativedialog)
+10. [Case Study -- The Colour Editor](#10-case-study----the-colour-editor)
+11. [Case Study -- The Drive Impact Colour Menu](#11-case-study----the-drive-impact-colour-menu)
+12. [Dissecting a Game Menu Yourself](#12-dissecting-a-game-menu-yourself)
+13. [Troubleshooting](#13-troubleshooting)
+14. [Appendix -- Type and Enum Reference](#14-appendix----type-and-enum-reference)
+15. [Credits](#15-credits)
 
 ---
 
@@ -1038,7 +1058,146 @@ the left, items on the right). For most settings, Technique 1 is simpler and mor
 
 ---
 
-## 10. Dissecting a Game Menu Yourself
+## 10. Case Study -- The Colour Editor
+
+A worked example of Technique 1 (NativeOptions) pushed to a real, full-depth settings UI: a
+per-slot HSV colour and material editor for character costumes, opened straight from the game's
+own Edit Character screen. If Technique 1 above showed you the mechanics, this section shows what
+they scale to.
+
+### Opening It
+
+On the Edit Character screen (Fighter Settings), the Color row's bottom guide shows an "Edit
+Color" hint. Press F (keyboard) / A (pad), or left-click the row, to open it. The editor has
+seven pages: QUICK EDIT, EDIT COLORS, EDIT MATERIALS, EDIT SQUARES, SAVE, SAVE AS, and RESET (or
+RESET / ERASE when an "MC" colour is selected). Turn pages with A / E (L1 / R1), or click the
+arrows next to the title.
+
+### Sliders and Values
+
+Sliders are HSV, not RGB: Hue, Saturation, and Brightness, each on a 0-255 scale (Hue 0-255 maps
+to 0-360 degrees). Materials use Blend / Rough / Metal, each 0-1000. Backspace (R3) resets the
+focused row to its **saved** value -- not to a default. C / V (Square / Triangle) copy and paste a
+row's number.
+
+### Dirty-State Indicator
+
+A red dot at the top-left of a row means something below it in the tree differs from the saved
+state: the modified slider itself first, then its cluster, then the root rows, so you can always
+see at a glance where an unsaved change lives. It disappears after SAVE, or the moment a value is
+moved back to its saved position.
+
+### Save / Save As / Reset / Erase
+
+SAVE writes the current values and keeps the window open, flipping the title to "SAVE OK!" as
+confirmation. SAVE AS creates a new "MC n" slot and reopens the editor on it. RESET returns to the
+pristine state -- the game's own colours, or an installed colour pack -- or, on an "MC" colour, to
+its last SAVE. ERASE deletes an "MC" slot entirely.
+
+### Quick Edit
+
+One absolute-hue slider per colour family. The game's own costume clusters group into seven
+families, each named after its largest cluster: SKIN, HAIR, FACE, plus the outfit's own clusters.
+The guide line under each row spells out exactly which clusters it will move ("Changes: ...").
+
+### Texture Slots
+
+Some slots stay on their texture in the colour you're currently viewing, but the game does use a
+flat colour for that same slot in another colour of the costume. Those are marked "(texture)" in
+the slot list. Moving the slider assigns the slot a colour of its own (Backspace returns it to the
+texture); Generate Random covers texture slots too.
+
+### Colour List
+
+Beyond the game's own numbered colours, the list can contain: **RW n**, colour packs modders drop
+into `data/SF6_ColorSpinExtra_data/colors/<Fighter>/`; **MC n**, your own saved colours; and three
+cycling entries: **LL1** (clothes and accessories cycle at random, hair / skin / face untouched),
+**LL2** (clothes, accessories and hair -- brows, beard included), **LL3** (everything).
+
+### Preview Camera
+
+While the editor is open, the preview camera is yours to move: left-drag rotates, middle-drag
+pans, and the wheel (or Page Up / Page Down) zooms. On pad: right stick rotates, L3 + right stick
+pans, R2 / L2 zooms. Zoom and Move hint blocks appear next to the game's own Rotation block so the
+control scheme is discoverable in place.
+
+### Localisation
+
+Menu text follows the game's own language setting -- en, fr, ja, zh-Hans, plus it, de, es, es-419,
+ru, pl, pt-BR, ko, zh-Hant, and ar -- and updates live the moment you change it from the game's own
+Options screen.
+
+### Source Files
+
+| Module | Path | Role |
+|---|---|---|
+| SF6_ColorSpinExtra | `autorun/SF6_ColorSpinExtra.lua` | Colour-list injection (RW/MC/LL entries) and the native HSV colour/material editor |
+| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Menu text localisation, follows the game's language |
+
+---
+
+## 11. Case Study -- The Drive Impact Colour Menu
+
+A second worked example of Technique 1, this time reused across three different screens with two
+different depths of menu.
+
+### Where It Opens
+
+The bottom guide shows "X Edit Drive Impact Color" (X on keyboard, Square on pad) in three
+places: the Edit Character screen, the training pause menu's "Character Settings" popup, and the
+VS / training character-select colour panel. The two popups get a **simplified** menu (Enabled +
+Preset only); Edit Character gets the full menu described below.
+
+### Rows
+
+- **Enabled** -- Off / On / Follow. Follow takes the two squares of whichever colour the character
+  is currently wearing in battle; nothing else needs configuring. For a game colour the pair is
+  read from the game's own data (`app.helper.hGUI.GetFighterCostumeColorData(fighter, costume,
+  colour)` returns an `app.FighterColorData` with `Color00` / `Color01`, the exact chips the
+  select screens paint); for a saved colour it is that colour's two squares. The worn costume
+  comes from the colour controller's file path (`esf027_003_CCVD.user` = Terry, costume 3).
+- **Preset** -- a spin listing presets shared across every character, then this character's own
+  saved colours ("MC n" with their two squares shown inline), then **LL** for a cycling palette.
+- **Color 1** (the main colour -- impact splashes, trails) and **Color 2** (the accent) each open
+  an HSV page with the same Backspace-to-saved, copy/paste, and red-dot behaviour as the Colour
+  editor (section 10).
+- **SAVE** overwrites the selected preset -- or, with an "MC n" colour selected instead, writes
+  Color 1 / Color 2 straight into that colour's two squares. **SAVE AS** creates a new preset
+  ("DI n"). **RESET** returns to the selected item's colours; on a saved preset, the page instead
+  offers RESET / DELETE.
+
+### No Preview on Edit Character
+
+The Drive Impact itself can only be triggered in a live fight, so the colours you pick here don't
+render on the Edit Character preview model -- they show up in battle. With LL selected, the
+palette keeps cycling for the rest of the fight.
+
+### Per Player
+
+Settings are per character **and per side**. The menu edits the side it was opened for (the
+title says so: "LUKE - P2"), and `<Fighter>.json` holds two settings, `p1` and `p2`. With two
+different characters each side writes its own effect providers, so P1 Off / P2 On just works. In
+a mirror match both Drive Impacts read the **same** providers: the colours are then written the
+moment a side's Drive Impact starts (player `act_st` 11), with that side's setting -- its
+colours, or the game's palette when Off.
+
+### Data
+
+`data/SF6_DIRecolor_data/<Fighter>.json` (`{ p1 = ..., p2 = ... }`) and `_presets.json` hold
+everything this menu edits; the same files are also editable from the ImGui "DI Recolor (P1 /
+P2)" panel, whose Debug node shows the pair being chosen on a select screen ("colour to apply")
+next to the pair last applied in battle.
+
+### Source Files
+
+| Module | Path | Role |
+|---|---|---|
+| DIColorMenu | `autorun/func/DIColorMenu.lua` | The native Drive Impact colour menu described in this section |
+| SF6_DIRecolor | `autorun/SF6_DIRecolor.lua` | Drive Impact colour engine and per-character data; exposes `_G.SF6_DIRecolor` for the menu to read and write |
+
+---
+
+## 12. Dissecting a Game Menu Yourself
 
 The techniques in this guide were found by probing the game's running UI with throwaway Lua
 scripts. Here is the workflow.
@@ -1151,7 +1310,7 @@ end
 
 ---
 
-## 11. Troubleshooting
+## 13. Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -1173,7 +1332,7 @@ end
 
 ---
 
-## 12. Appendix -- Type and Enum Reference
+## 14. Appendix -- Type and Enum Reference
 
 ### app.Option Enums
 
@@ -1224,7 +1383,6 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 | Module | Path | Role |
 |---|---|---|
 | NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Options dialog window (Technique 1) |
-| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Optional: game-language strings for NativeOptions (Off / On) |
 | NativePauseMenu | [`autorun/func/NativePauseMenu.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePauseMenu.lua) | Pause menu rows and tabs (Technique 2) |
 | NativeHud | [`autorun/func/NativeHud.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeHud.lua) | Damage panel and timer (Technique 3) |
 | NativePopup | [`autorun/func/NativePopup.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePopup.lua) | Borrowed-element popups (Technique 4) |
@@ -1237,7 +1395,7 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 
 ---
 
-## 13. Credits
+## 15. Credits
 
 - **Wael3rd** -- All native UI modules (NativeOptions, NativePauseMenu, NativeHud, NativePopup,
   NativeShortcuts, NativeDialog, NativeTopBar, NativeBottomBar), the probing workflow, crash
@@ -1255,4 +1413,5 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 
 ---
 
-*Changelog: 2026-08-31 -- Initial version.*
+*Changelog: 2026-09-03 -- Added sections 10-11 (Colour editor, Drive Impact colour menu case
+studies). 2026-08-31 -- Initial version.*

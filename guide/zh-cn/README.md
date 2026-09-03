@@ -10,10 +10,30 @@
 | **阅读时间** | 约 45 分钟(完整阅读);约 15 分钟(仅技巧 1-2) |
 | **技能水平** | 中级 REFramework Lua(你需要了解 `sdk.hook`、`sdk.find_type_definition`、`sdk.get_managed_singleton`) |
 | **游戏版本** | Street Fighter 6,RE Engine(在 REFramework-Websockets 版本 LL5271 上测试;所有菜单技巧在普通 REFramework 下同样可用) |
-| **最后更新** | 2026-08-31 |
+| **最后更新** | 2026-09-03 |
 
-[![Native window over the fight](../img/native_window_hitconfirm.png)](../img/native_window_hitconfirm.png)
+[![Native window over the fight](img/native_window_hitconfirm.png)](img/native_window_hitconfirm.png)
 *“Hit Confirm”设置窗口,完全基于游戏自身的 Options 对话框 UI 构建,显示在暂停中的对战画面之上。*
+
+---
+
+## 目录
+
+1.  [本指南适合谁](#1-本指南适合谁)
+2.  [前置条件](#2-前置条件)
+3.  [游戏 UI 的运作原理](#3-游戏-ui-的运作原理)
+4.  [黄金法则(崩溃验证过的经验)](#4-黄金法则崩溃验证过的经验)
+5.  [技巧 1 -- 选项对话框行(NativeOptions)](#5-技巧-1----选项对话框行nativeoptions)
+6.  [技巧 2 -- 暂停菜单行与标签页(NativePauseMenu)](#6-技巧-2----暂停菜单行与标签页nativepausemenu)
+7.  [技巧 3 -- 驱动游戏 HUD(NativeHud)](#7-技巧-3----驱动游戏-hudnativehud)
+8.  [技巧 4 -- 借用 GUI 元素(NativePopup)](#8-技巧-4----借用-gui-元素nativepopup)
+9.  [技巧 5 -- 复用整个游戏菜单(NativeShortcuts, NativeDialog)](#9-技巧-5----复用整个游戏菜单-nativeshortcuts-nativedialog)
+10. [案例研究 -- 颜色编辑器](#10-案例研究----颜色编辑器)
+11. [案例研究 -- Drive Impact 配色菜单](#11-案例研究----drive-impact-配色菜单)
+12. [亲自拆解一个游戏菜单](#12-亲自拆解一个游戏菜单)
+13. [故障排查](#13-故障排查)
+14. [附录 -- 类型与枚举参考](#14-附录----类型与枚举参考)
+15. [致谢](#15-致谢)
 
 ---
 
@@ -267,11 +287,11 @@ AV,而这个对象在几帧之前还是有效的。
 这是最主要的技巧:把设置行注入到游戏自身的 Options 系统中,并将其作为一个独立窗口显示在实时对战画面之上。
 游戏负责构建开关、滑条、spin-text 和按钮;处理十字键/摇杆导航;并用它自己的风格渲染这一切。
 
-[![SF6 Tools in the Options menu](../img/options_sf6tools_submenu.png)](../img/options_sf6tools_submenu.png)
+[![SF6 Tools in the Options menu](img/options_sf6tools_submenu.png)](img/options_sf6tools_submenu.png)
 *“SF6 Tools”出现在 Options > General 的底部。展开它可以看到子分组(Hit Confirm、Script Manager),每一个子
 分组都会在对战画面之上打开一个 BattleHud 风格的窗口。*
 
-[![Options window over the fight](../img/native_window_hitconfirm.png)](../img/native_window_hitconfirm.png)
+[![Options window over the fight](img/native_window_hitconfirm.png)](img/native_window_hitconfirm.png)
 *“Hit Confirm”窗口,包含一个滑条、一个开关和一个按钮,显示在已暂停的对战画面之上。*
 
 ### 工作原理
@@ -667,7 +687,7 @@ end)
 
 把行注入到训练暂停菜单的“Basic Settings”标签页中,并添加全新的标签页。
 
-[![Pause menu with injected row](../img/pause_menu_injected_row.png)](../img/pause_menu_injected_row.png)
+[![Pause menu with injected row](img/pause_menu_injected_row.png)](img/pause_menu_injected_row.png)
 *Basic Settings 底部的“SF6 Tools Shortcut Settings”行,带有滚动指示器。顶部可以看到多出来的一个标签页圆点
 (我们的“SF6 Tools”标签页)。*
 
@@ -814,7 +834,7 @@ end
 用你自己的内容替换训练 HUD 中“Damage / Combo Damage / Attack Type”面板的文字以及回合计时器的数字,同时
 沿用游戏自身的字体、精灵图和布局。
 
-[![Native HUD panel](../img/native_hud_panel.png)](../img/native_hud_panel.png)
+[![Native HUD panel](img/native_hud_panel.png)](img/native_hud_panel.png)
 *训练 HUD,中央顶部为原生的伤害面板,显示着“Damage”、“Combo Damage”和“Attack Type”标签。回合计时器用
 原生数字精灵显示“99”。*
 
@@ -892,7 +912,7 @@ NativeHud.set_timer(nil)               -- give the timer back
 NativeTopBar(顶部的模式按钮)、NativeBottomBar(底部的动作按钮,目前已禁用)以及 NativePopup(通知边框)
 上。
 
-[![Borrowed popup](../img/borrowed_popup.png)](../img/borrowed_popup.png)
+[![Borrowed popup](img/borrowed_popup.png)](img/borrowed_popup.png)
 *一个由借用的 GUI 元素拼装而成的弹窗:“Match Found”霓虹边框(Scale9Grid)、一个深色的 Rect 主体,以及来自
 休眠 agent 的文字元素。*
 
@@ -991,7 +1011,129 @@ NativeBottomBar(屏幕底部的动作按钮)已经构建完成并且能正常工
 
 ---
 
-## 10. 亲自拆解一个游戏菜单
+## 10. 案例研究 -- 颜色编辑器
+
+这是技巧 1(NativeOptions)推向真实、全深度设置 UI 的一个实战案例:一个按插槽划分的 HSV 颜色与材质编辑
+器,用于角色服装,直接从游戏自身的 Edit Character 界面打开。如果上面的技巧 1 展示了其运作机制,这一节
+则展示了它们能扩展到什么程度。
+
+### 打开方式
+
+在 Edit Character 界面(Fighter Settings)中,Color 行的底部引导会显示“Edit Color”提示。按 F(键盘)/
+A(手柄),或左键点击该行,即可打开编辑器。编辑器共有七个页面:QUICK EDIT、EDIT COLORS、EDIT
+MATERIALS、EDIT SQUARES、SAVE、SAVE AS,以及 RESET(当选中的是一个“MC”颜色时,则是 RESET / ERASE)。
+用 A / E(L1 / R1)切换页面,或点击标题旁的箭头。
+
+### 滑条与数值
+
+滑条使用的是 HSV,而不是 RGB:色相(Hue)、饱和度(Saturation)、明度(Brightness),每个都是 0-255
+的范围(色相 0-255 对应 0-360 度)。材质使用 Blend / Rough / Metal,每个都是 0-1000 的范围。Backspace
+(R3)会把当前聚焦的行重置为它**已保存**的值 -- 而不是默认值。C / V(方块 / 三角)用于复制和粘贴某一行
+的数值。
+
+### 未保存状态指示
+
+某一行左上角出现红点,表示它下方的树状结构中有内容与已保存状态不同:最先是被修改的滑条本身,然后是它
+所属的簇(cluster),再往上是根行,所以你始终能一眼看出未保存的改动位于何处。执行 SAVE 后,或者当数值
+被移回它已保存的位置时,红点就会消失。
+
+### 保存 / 另存为 / 重置 / 删除
+
+SAVE 会写入当前数值并保持窗口打开,标题会变为“SAVE OK!”作为确认。SAVE AS 会创建一个新的“MC n”槽位,
+并在该槽位上重新打开编辑器。RESET 会恢复到原始状态 -- 游戏自带的颜色,或已安装的颜色包 -- 如果是
+“MC”颜色,则恢复到它上一次 SAVE 的状态。ERASE 会彻底删除一个“MC”槽位。
+
+### 快速编辑
+
+每个颜色家族对应一个绝对色相滑条。游戏自身的服装簇被归类为七个家族,每个都以其中最大的簇命名:SKIN、
+HAIR、FACE,再加上该套服装自己的簇。每一行下方的引导文字会准确列出该滑条将会影响哪些簇(“Changes:
+...”)。
+
+### 材质纹理槽位
+
+有些槽位在你当前查看的颜色下仍然使用纹理,但游戏在同一套服装的另一种颜色中,对同一个槽位使用的却是纯
+色。这些槽位会在槽位列表中标注为“(texture)”。拖动滑条会为该槽位指定一个属于它自己的颜色(Backspace
+会把它恢复为纹理);Generate Random 同样会覆盖纹理槽位。
+
+### 颜色列表
+
+除了游戏自带的编号颜色之外,列表中还可能包含:**RW n**,模组作者放入
+`data/SF6_ColorSpinExtra_data/colors/<Fighter>/` 的颜色包;**MC n**,你自己保存的颜色;以及三个循环条目:**LL1**(只有衣服和饰品随机循环,头发 / 皮肤 / 脸部不变)、**LL2**(衣服、饰品和头发 --
+含眉毛、胡须)、**LL3**(全部)。
+
+### 预览相机
+
+编辑器打开期间,预览相机可以自由操控:左键拖动旋转,中键拖动平移,滚轮(或 Page Up / Page Down)缩
+放。手柄操作:右摇杆旋转,L3 + 右摇杆平移,R2 / L2 缩放。Zoom 和 Move 的提示块会显示在游戏自带的
+Rotation 提示块旁边,让操作方式可以就地被发现。
+
+### 本地化
+
+菜单文本遵循游戏自身的语言设置 -- en、fr、ja、zh-Hans,以及 it、de、es、es-419、ru、pl、pt-BR、ko、
+zh-Hant 和 ar -- 并且在你于游戏自身的 Options 界面中切换语言的瞬间,就会实时更新。
+
+### 源文件
+
+| 模块 | 路径 | 作用 |
+|---|---|---|
+| SF6_ColorSpinExtra | `autorun/SF6_ColorSpinExtra.lua` | 颜色列表注入(RW/MC/LL 条目)以及原生 HSV 颜色/材质编辑器 |
+| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | 菜单文本本地化,跟随游戏语言 |
+
+---
+
+## 11. 案例研究 -- Drive Impact 配色菜单
+
+这是技巧 1 的第二个实战案例,这一次它被复用在三个不同的界面中,并有两种不同深度的菜单。
+
+### 打开位置
+
+底部引导会在三个地方显示“X Edit Drive Impact Color”(键盘上是 X,手柄上是方块):Edit Character 界
+面、训练模式暂停菜单的“Character Settings”弹窗,以及 VS / 训练模式的角色选择配色面板。两个弹窗中显示
+的是**简化版**菜单(只有 Enabled + Preset);Edit Character 中则是下面描述的完整菜单。
+
+### 菜单行
+
+- **Enabled** -- Off / On / Follow。Follow 会取角色当前在对战中所穿颜色的那两个方块;不需要再配置其他
+  任何东西。对于游戏自带的颜色,这一对颜色直接从游戏数据读取(`app.helper.hGUI.GetFighterCostumeColorData(fighter,
+  costume, colour)` 返回一个带 `Color00` / `Color01` 的 `app.FighterColorData`,正是选择界面所绘制的色块);
+  对于已保存的颜色,则是该颜色的两个方块。当前穿着的服装来自颜色控制器的文件路径(`esf027_003_CCVD.user`
+  = Terry,服装 3)。
+- **Preset** -- 一个 spin,列出所有角色共享的预设,然后是该角色自己保存的颜色(“MC n”,并内联显示它
+  们的两个方块),最后是 **LL**,即循环调色板。
+- **Color 1**(主色 -- 打击特效、拖尾)和 **Color 2**(点缀色)各自打开一个 HSV 页面,拥有与颜色编辑
+  器(第 10 节)相同的 Backspace 恢复已保存值、复制/粘贴以及红点行为。
+- **SAVE** 会覆盖当前选中的预设 -- 如果选中的是“MC n”颜色,则会把 Color 1 / Color 2 直接写入该颜色的
+  两个方块。**SAVE AS** 会创建一个新的预设(“DI n”)。**RESET** 会恢复到所选项目的颜色;在一个已保存
+  的预设上,该页面则会改为提供 RESET / DELETE。
+
+### Edit Character 界面没有预览
+
+Drive Impact 本身只能在实际对战中触发,所以你在这里选择的颜色不会渲染在 Edit Character 的预览模型上
+-- 它们会在对战中显示出来。选中 LL 时,调色板会在剩余的整场对战中持续循环。
+
+### 按玩家区分
+
+设置按角色**并按阵营**保存。菜单编辑的是打开它的那一方(标题会注明,例如“LUKE - P2”),`<Fighter>.json`
+保存 `p1` 和 `p2` 两份设置。两个不同角色时,每一方写入自己的特效 provider,因此 P1 Off / P2 On 可直接生
+效。镜像对局中两个 Drive Impact 读取的是**同一组** provider:此时颜色会在某一方的 Drive Impact 开始的那
+一刻(玩家 `act_st` 为 11)按该方的设置写入 -- 它的颜色,或在 Off 时写回游戏原有调色板。
+
+### 数据
+
+`data/SF6_DIRecolor_data/<Fighter>.json`(`{ p1 = ..., p2 = ... }`)和 `_presets.json` 保存了这个菜单
+所编辑的一切;同样的文件也可以从 ImGui 的“DI Recolor (P1 / P2)”面板中编辑,其 Debug 节点会在选择界面
+显示正在选择的那对颜色(“colour to apply”),并列出对战中最后一次应用的那对颜色。
+
+### 源文件
+
+| 模块 | 路径 | 作用 |
+|---|---|---|
+| DIColorMenu | `autorun/func/DIColorMenu.lua` | 本节所描述的原生 Drive Impact 配色菜单 |
+| SF6_DIRecolor | `autorun/SF6_DIRecolor.lua` | Drive Impact 配色引擎与逐角色数据;暴露 `_G.SF6_DIRecolor` 供菜单读写 |
+
+---
+
+## 12. 亲自拆解一个游戏菜单
 
 本指南中的这些技巧,都是通过用一次性 Lua 脚本探测游戏运行中的 UI 而发现的。下面就是这个工作流。
 
@@ -1100,7 +1242,7 @@ end
 
 ---
 
-## 11. 故障排查
+## 13. 故障排查
 
 | 症状 | 原因 | 解决方法 |
 |---|---|---|
@@ -1122,7 +1264,7 @@ end
 
 ---
 
-## 12. 附录 -- 类型与枚举参考
+## 14. 附录 -- 类型与枚举参考
 
 ### app.Option 枚举
 
@@ -1173,7 +1315,6 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 | 模块 | 路径 | 作用 |
 |---|---|---|
 | NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Options 对话框窗口(技巧 1) |
-| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Optional: game-language strings for NativeOptions (Off / On) |
 | NativePauseMenu | [`autorun/func/NativePauseMenu.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePauseMenu.lua) | 暂停菜单行与标签页(技巧 2) |
 | NativeHud | [`autorun/func/NativeHud.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeHud.lua) | 伤害面板与计时器(技巧 3) |
 | NativePopup | [`autorun/func/NativePopup.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePopup.lua) | 借用元素的弹窗(技巧 4) |
@@ -1186,7 +1327,7 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 
 ---
 
-## 13. 致谢
+## 15. 致谢
 
 - **Wael3rd** -- 所有原生 UI 模块(NativeOptions、NativePauseMenu、NativeHud、NativePopup、
   NativeShortcuts、NativeDialog、NativeTopBar、NativeBottomBar)、探测工作流、崩溃调查,以及本指南。
@@ -1200,4 +1341,5 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 
 ---
 
-*更新日志:2026-08-31 -- 初始版本。*
+*更新日志:2026-09-03 -- 新增第 10-11 节(颜色编辑器、Drive Impact 配色菜单案例研究)。2026-08-31 -- 初始
+版本。*

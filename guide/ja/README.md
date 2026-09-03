@@ -7,10 +7,30 @@
 | **読了時間** | 約45分（全体）／約15分（テクニック1-2のみ） |
 | **スキルレベル** | REFramework Luaの中級者向け（`sdk.hook`、`sdk.find_type_definition`、`sdk.get_managed_singleton`を理解していること） |
 | **ゲームバージョン** | Street Fighter 6、RE Engine（REFramework-Websockets build LL5271でテスト済み。メニュー系のテクニックはすべて素のREFrameworkでも動作します） |
-| **最終更新日** | 2026-08-31 |
+| **最終更新日** | 2026-09-03 |
 
-[![戦闘画面の上に表示されたネイティブウィンドウ](../img/native_window_hitconfirm.png)](../img/native_window_hitconfirm.png)
+[![戦闘画面の上に表示されたネイティブウィンドウ](img/native_window_hitconfirm.png)](img/native_window_hitconfirm.png)
 *ゲーム自身のOptionsダイアログUIだけで構築された「Hit Confirm」設定ウィンドウ。戦闘を一時停止した状態で、進行中の対戦画面の上に表示されている。*
+
+---
+
+## 目次
+
+1.  [対象読者](#1-対象読者)
+2.  [前提条件](#2-前提条件)
+3.  [ゲームUIの仕組み](#3-ゲームuiの仕組み)
+4.  [黄金律（クラッシュで実証済み）](#4-黄金律クラッシュで実証済み)
+5.  [テクニック1 -- オプションダイアログの行 (NativeOptions)](#5-テクニック1----オプションダイアログの行-nativeoptions)
+6.  [テクニック2 -- ポーズメニューの行とタブ (NativePauseMenu)](#6-テクニック2----ポーズメニューの行とタブ-nativepausemenu)
+7.  [テクニック3 -- ゲームのHUDを操作する (NativeHud)](#7-テクニック3----ゲームのhudを操作する-nativehud)
+8.  [テクニック4 -- GUI要素の借用 (NativePopup)](#8-テクニック4----gui要素の借用-nativepopup)
+9.  [テクニック5 -- ゲームメニュー全体の再利用 (NativeShortcuts, NativeDialog)](#9-テクニック5----ゲームメニュー全体の再利用-nativeshortcuts-nativedialog)
+10. [ケーススタディ -- カラーエディター](#10-ケーススタディ----カラーエディター)
+11. [ケーススタディ -- Drive Impactの配色メニュー](#11-ケーススタディ----drive-impactの配色メニュー)
+12. [自分でゲームメニューを解剖する](#12-自分でゲームメニューを解剖する)
+13. [トラブルシューティング](#13-トラブルシューティング)
+14. [付録 -- 型と列挙型リファレンス](#14-付録----型と列挙型リファレンス)
+15. [クレジット](#15-クレジット)
 
 ---
 
@@ -215,10 +235,10 @@ end
 
 これが主軸となるテクニックです。ゲーム自身のOptionsシステムに設定行を注入し、進行中の対戦画面の上に単独のウィンドウとして開きます。トグル、スライダー、スピンテキスト、ボタンの構築、十字キー/スティックによるナビゲーションの処理、そしてすべての描画は、ゲーム自身のスタイルで行われます。
 
-[![Optionsメニュー内のSF6 Tools](../img/options_sf6tools_submenu.png)](../img/options_sf6tools_submenu.png)
+[![Optionsメニュー内のSF6 Tools](img/options_sf6tools_submenu.png)](img/options_sf6tools_submenu.png)
 *「SF6 Tools」はOptions > Generalの一番下に表示される。展開するとサブグループ（Hit Confirm、Script Manager）が現れ、それぞれが戦闘画面の上にBattleHud風のウィンドウを開く。*
 
-[![戦闘画面上に表示されたOptionsウィンドウ](../img/native_window_hitconfirm.png)](../img/native_window_hitconfirm.png)
+[![戦闘画面上に表示されたOptionsウィンドウ](img/native_window_hitconfirm.png)](img/native_window_hitconfirm.png)
 *スライダー、トグル、ボタンを備えた「Hit Confirm」ウィンドウ。一時停止した戦闘画面の上に開いている。*
 
 ### 仕組み
@@ -599,7 +619,7 @@ end)
 
 トレーニングのポーズメニューにある「Basic Settings」タブに行を注入し、まったく新しいタブを追加します。
 
-[![行が注入されたポーズメニュー](../img/pause_menu_injected_row.png)](../img/pause_menu_injected_row.png)
+[![行が注入されたポーズメニュー](img/pause_menu_injected_row.png)](img/pause_menu_injected_row.png)
 *Basic Settingsの一番下にある「SF6 Tools Shortcut Settings」行とスクロールインジケーター。上部には追加のタブドットが見える（自分たちの「SF6 Tools」タブ）。*
 
 ### 仕組み
@@ -731,7 +751,7 @@ end
 
 トレーニングHUDの「Damage / Combo Damage / Attack Type」パネルのテキストと、ラウンドタイマーの数字を、ゲーム自身のフォント・スプライト・レイアウトを使いながら、自分のコンテンツに置き換えます。
 
-[![ネイティブHUDパネル](../img/native_hud_panel.png)](../img/native_hud_panel.png)
+[![ネイティブHUDパネル](img/native_hud_panel.png)](img/native_hud_panel.png)
 *「Damage」「Combo Damage」「Attack Type」のラベルを表示するネイティブなダメージパネル（画面上部中央）を備えたトレーニングHUD。ラウンドタイマーはネイティブの数字スプライトで「99」を表示している。*
 
 ### ダメージパネル
@@ -799,7 +819,7 @@ NativeHud.set_timer(nil)               -- give the timer back
 
 ゲーム自身の`via.gui`要素から、何も新規作成することなく、画面上のポップアップ・バー・フレームを組み立てます。このテクニックは、NativeTopBar（上部に並ぶモードボタン）、NativeBottomBar（下部のアクションボタン、現在は無効化）、NativePopup（通知フレーム）で使われています。
 
-[![借用要素によるポップアップ](../img/borrowed_popup.png)](../img/borrowed_popup.png)
+[![借用要素によるポップアップ](img/borrowed_popup.png)](img/borrowed_popup.png)
 *借用したGUI要素から組み立てたポップアップ: 「Match Found」のネオンフレーム（Scale9Grid）、暗いRectの本体、そして休眠中のエージェントから取ったテキスト要素。*
 
 ### なぜ要素を新規作成しないのか?
@@ -871,7 +891,92 @@ NativeBottomBar（画面下部のアクションボタン）は実装され、�
 
 ---
 
-## 10. 自分でゲームメニューを解剖する
+## 10. ケーススタディ -- カラーエディター
+
+テクニック1（NativeOptions）を、実践投入レベルの本格的な設定UIにまで押し上げた実例です。ゲーム自身のEdit Character画面から直接開く、キャラクターコスチュームのスロットごとのHSVカラー・マテリアルエディターです。上のテクニック1がメカニズムを示したのに対し、このセクションはそれがどこまでスケールするかを示します。
+
+### 開き方
+
+Edit Character画面（Fighter Settings）では、Colorの行の下部ガイドに「Edit Color」のヒントが表示されます。F（キーボード）/ A（パッド）を押すか、行を左クリックすると開きます。エディターにはQUICK EDIT、EDIT COLORS、EDIT MATERIALS、EDIT SQUARES、SAVE、SAVE AS、RESETの7ページ（「MC」カラーを選択している場合はRESET / ERASE）があります。ページ切り替えはA / E（L1 / R1）、またはタイトル横の矢印をクリックします。
+
+### スライダーと数値
+
+スライダーはRGBではなくHSV -- Hue、Saturation、Brightnessで、それぞれ0-255スケールです（Hueの0-255は0-360度に対応）。マテリアルはBlend / Rough / Metalで、それぞれ0-1000です。Backspace（R3）はフォーカス中の行を**保存済みの**値に戻します（デフォルト値ではありません）。C / V（Square / Triangle）は行の数値をコピー・ペーストします。
+
+### 未保存インジケーター
+
+行の左上に赤い点が表示されている場合、その下のツリー内のどこかが保存済みの状態と異なっていることを意味します -- まず変更されたスライダー自体、次にそのクラスター、そしてルートの行、という順で表示されるため、未保存の変更がどこにあるか常に一目でわかります。SAVEすると消えるか、値を保存済みの位置に戻した瞬間に消えます。
+
+### Save / Save As / Reset / Erase
+
+SAVEは現在の値を書き込み、ウィンドウは開いたままでタイトルが確認として「SAVE OK!」に変わります。SAVE AS は新しい「MC n」スロットを作成し、そのスロットでエディターを再度開きます。RESET は初期状態 -- ゲーム本来のカラー、またはインストール済みのカラーパック -- に戻すか、「MC」カラーの場合は直近のSAVEに戻します。ERASEは「MC」スロットを完全に削除します。
+
+### クイック編集
+
+カラーファミリーごとに絶対Hueスライダーが1つあります。ゲーム本来のコスチュームクラスターは7つのファミリーにグループ化され、それぞれ最大のクラスターにちなんで名付けられています: SKIN、HAIR、FACE、そしてアウトフィット固有のクラスターです。各行の下にあるガイド行が、そのスライダーが実際に動かすクラスターを正確に示します（「Changes: ...」）。
+
+### テクスチャスロット
+
+一部のスロットは、現在表示しているカラーではテクスチャのままですが、ゲームは同じコスチュームの別のカラーではそのスロットにフラットカラーを使うことがあります。そうしたスロットはスロット一覧で「(texture)」と表示されます。スライダーを動かすとそのスロット専用のカラーが割り当てられます（Backspaceでテクスチャに戻ります）。Generate Randomはテクスチャスロットにも作用します。
+
+### カラーリスト
+
+ゲーム本来の番号付きカラーに加えて、リストには以下が含まれることがあります: **RW n** -- モッダーが`data/SF6_ColorSpinExtra_data/colors/<Fighter>/`に配置するカラーパック、**MC n** -- 自分で保存したカラー、そして3つの巡回エントリ: **LL1** -- 服とアクセサリーだけがランダムに巡回（髪・肌・顔はそのまま）、**LL2** -- 服・アクセサリー・髪（眉・ひげ含む）、**LL3** -- すべて。
+
+### プレビューカメラ
+
+エディターが開いている間、プレビューカメラは自由に操作できます: 左ドラッグで回転、中ドラッグでパン、ホイール（またはPage Up / Page Down）でズームします。パッドでは右スティックで回転、L3 + 右スティックでパン、R2 / L2でズームします。ズームとMoveのヒントブロックが、ゲーム本来のRotationブロックの隣に表示されるため、その場で操作方法がわかります。
+
+### ローカライズ
+
+メニューテキストはゲーム自身の言語設定 -- en、fr、ja、zh-Hans、さらにit、de、es、es-419、ru、pl、pt-BR、ko、zh-Hant、arに追従し、ゲーム本来のOptions画面で言語を変更した瞬間にリアルタイムで更新されます。
+
+### ソースファイル
+
+| モジュール | パス | 役割 |
+|---|---|---|
+| SF6_ColorSpinExtra | `autorun/SF6_ColorSpinExtra.lua` | カラーリストへの注入（RW/MC/LLエントリー）とネイティブHSVカラー・マテリアルエディター |
+| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | メニューテキストのローカライズ。ゲームの言語設定に追従する |
+
+---
+
+## 11. ケーススタディ -- Drive Impactの配色メニュー
+
+テクニック1の2つ目の実例です。今回は3つの異なる画面で再利用され、メニューの深さも2種類あります。
+
+### どこで開くか
+
+下部ガイドに「X Edit Drive Impact Color」（キーボードはX、パッドはSquare）が3か所に表示されます: Edit Character画面、トレーニングのポーズメニューの「Character Settings」ポップアップ、そしてVS / トレーニングのキャラクターセレクトのカラーパネルです。2つのポップアップでは**簡略版**メニュー（EnabledとPresetのみ）が表示され、Edit Characterでは以下で説明するフルメニューが表示されます。
+
+### 行
+
+- **Enabled** -- Off / On / Follow。Followは、キャラクターが対戦中に現在着用しているカラーの2つのSquareをそのまま使い、他に設定する項目はありません。ゲーム標準のカラーの場合、このペアはゲーム自身のデータから読み取ります（`app.helper.hGUI.GetFighterCostumeColorData(fighter, costume, colour)`が`Color00` / `Color01`を持つ`app.FighterColorData`を返し、これはセレクト画面が描くチップそのものです）。保存済みカラーの場合は、そのカラーの2つのSquareです。着用中のコスチュームはカラーコントローラーのファイルパス（`esf027_003_CCVD.user` = テリー、コスチューム3）から取得します。
+- **Preset** -- 全キャラクター共通のプリセットに続いて、このキャラクター自身の保存済みカラー（「MC n」、その2つのSquareがインラインで表示される）、そして巡回パレット用の**LL**が並ぶスピンです。
+- **Color 1**（メインカラー -- インパクトの飛沫やトレイル）と**Color 2**（アクセントカラー）は、それぞれカラーエディター（10章）と同じBackspace-to-saved、コピー/ペースト、赤い点の挙動を持つHSVページを開きます。
+- **SAVE**は選択中のプリセットを上書きします -- 代わりに「MC n」カラーが選択されている場合は、Color 1 / Color 2をそのカラーの2つのSquareに直接書き込みます。**SAVE AS**は新しいプリセット（「DI n」）を作成します。**RESET**は選択中の項目のカラーに戻します。保存済みのプリセットの場合、ページの代わりにRESET / DELETEが表示されます。
+
+### Edit Characterではプレビューされない
+
+Drive Impact自体は実際の対戦中でしかトリガーできないため、ここで選んだカラーはEdit Characterのプレビューモデルには反映されません -- 対戦中に表示されます。LLを選択している場合、パレットはその対戦が終わるまで巡回し続けます。
+
+### プレイヤーごと
+
+設定はキャラクターごと**かつサイドごと**です。メニューは開かれたサイドの設定を編集し（タイトルに「LUKE - P2」のように表示されます）、`<Fighter>.json`は`p1`と`p2`の2つの設定を保持します。異なる2キャラクターの場合、各サイドは自分のエフェクトプロバイダーに書き込むため、P1 Off / P2 Onはそのまま機能します。ミラーマッチでは両方のDrive Impactが**同じ**プロバイダーを読むため、あるサイドのDrive Impactが始まった瞬間（プレイヤーの`act_st`が11）に、そのサイドの設定でカラーが書き込まれます -- そのサイドのカラー、またはOffならゲーム標準のパレットです。
+
+### データ
+
+`data/SF6_DIRecolor_data/<Fighter>.json`（`{ p1 = ..., p2 = ... }`）と`_presets.json`が、このメニューで編集するすべてのデータを保持します。同じファイルはImGuiの「DI Recolor (P1 / P2)」パネルからも編集でき、そのDebugノードにはセレクト画面で選択中のペア（「colour to apply」）が、対戦で最後に適用されたペアの隣に表示されます。
+
+### ソースファイル
+
+| モジュール | パス | 役割 |
+|---|---|---|
+| DIColorMenu | `autorun/func/DIColorMenu.lua` | 本セクションで説明したネイティブなDrive Impactカラーメニュー |
+| SF6_DIRecolor | `autorun/SF6_DIRecolor.lua` | Drive Impactのカラーエンジンとキャラクターごとのデータ。メニューが読み書きできるよう`_G.SF6_DIRecolor`を公開する |
+
+---
+
+## 12. 自分でゲームメニューを解剖する
 
 本ガイドで紹介したテクニックは、使い捨てのLuaスクリプトで実行中のゲームUIを探査することで見つかったものです。以下はそのワークフローです。
 
@@ -974,7 +1079,7 @@ end
 
 ---
 
-## 11. トラブルシューティング
+## 13. トラブルシューティング
 
 | 症状 | 原因 | 対処法 |
 |---|---|---|
@@ -996,7 +1101,7 @@ end
 
 ---
 
-## 12. 付録 -- 型と列挙型リファレンス
+## 14. 付録 -- 型と列挙型リファレンス
 
 ### app.Optionの列挙型
 
@@ -1047,7 +1152,6 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 | モジュール | パス | 役割 |
 |---|---|---|
 | NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Optionsダイアログウィンドウ（テクニック1） |
-| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Optional: game-language strings for NativeOptions (Off / On) |
 | NativePauseMenu | [`autorun/func/NativePauseMenu.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePauseMenu.lua) | ポーズメニューの行とタブ（テクニック2） |
 | NativeHud | [`autorun/func/NativeHud.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeHud.lua) | ダメージパネルとタイマー（テクニック3） |
 | NativePopup | [`autorun/func/NativePopup.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePopup.lua) | 借用要素によるポップアップ（テクニック4） |
@@ -1060,7 +1164,7 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 
 ---
 
-## 13. クレジット
+## 15. クレジット
 
 - **Wael3rd** -- すべてのネイティブUIモジュール（NativeOptions、NativePauseMenu、NativeHud、NativePopup、NativeShortcuts、NativeDialog、NativeTopBar、NativeBottomBar）、探査ワークフロー、クラッシュ調査、そして本ガイド。
 - **mfyk** -- OptionManagerインジェクションのテクニック（UnitListsへのOptionSettingUnit注入、偽GUIDテキストフック、OpenBattleHudSettingウィンドウ）。2026年に公開共有され、パブリックな利用が許可されている。テクニック1の基礎。
@@ -1071,4 +1175,4 @@ All modules below are published in [`guide/lua/func/`](https://github.com/Wael3r
 
 ---
 
-*変更履歴: 2026-08-31 -- 初版。*
+*変更履歴: 2026-09-03 -- 10-11章（カラーエディター、Drive Impactの配色メニューのケーススタディ）を追加。2026-08-31 -- 初版。*

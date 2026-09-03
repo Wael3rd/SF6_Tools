@@ -13,10 +13,30 @@
 | **Temps de lecture** | ~45 minutes (intégral) ; ~15 minutes (techniques 1-2 seulement) |
 | **Niveau requis** | Lua REFramework intermédiaire (vous maîtrisez `sdk.hook`, `sdk.find_type_definition`, `sdk.get_managed_singleton`) |
 | **Version du jeu** | Street Fighter 6, RE Engine (testé avec le build REFramework-Websockets LL5271 ; REFramework standard fonctionne pour toutes les techniques de menus) |
-| **Dernière mise à jour** | 2026-08-31 |
+| **Dernière mise à jour** | 2026-09-03 |
 
-[![Native window over the fight](../img/native_window_hitconfirm.png)](../img/native_window_hitconfirm.png)
+[![Native window over the fight](img/native_window_hitconfirm.png)](img/native_window_hitconfirm.png)
 *La fenêtre de réglages « Hit Confirm », entièrement construite à partir de l'interface du dialogue Options du jeu, affichée par-dessus le combat en direct, le combat étant en pause.*
+
+---
+
+## Table des matières
+
+1.  [À qui s'adresse ce guide](#1-à-qui-sadresse-ce-guide)
+2.  [Prérequis](#2-prérequis)
+3.  [Comment fonctionne l'interface du jeu](#3-comment-fonctionne-linterface-du-jeu)
+4.  [Les règles d'or (éprouvées par les crashs)](#4-les-règles-dor-éprouvées-par-les-crashs)
+5.  [Technique 1 -- Lignes du dialogue Options (NativeOptions)](#5-technique-1----lignes-du-dialogue-options-nativeoptions)
+6.  [Technique 2 -- Lignes et onglets du menu pause (NativePauseMenu)](#6-technique-2----lignes-et-onglets-du-menu-pause-nativepausemenu)
+7.  [Technique 3 -- Piloter le HUD du jeu (NativeHud)](#7-technique-3----piloter-le-hud-du-jeu-nativehud)
+8.  [Technique 4 -- Emprunter des éléments GUI (NativePopup)](#8-technique-4----emprunter-des-éléments-gui-nativepopup)
+9.  [Technique 5 -- Réutiliser des menus entiers du jeu (NativeShortcuts, NativeDialog)](#9-technique-5----réutiliser-des-menus-entiers-du-jeu-nativeshortcuts-nativedialog)
+10. [Étude de cas -- L'éditeur de couleurs](#10-étude-de-cas----léditeur-de-couleurs)
+11. [Étude de cas -- Le menu de couleur du Drive Impact](#11-étude-de-cas----le-menu-de-couleur-du-drive-impact)
+12. [Disséquer un menu du jeu soi-même](#12-disséquer-un-menu-du-jeu-soi-même)
+13. [Dépannage](#13-dépannage)
+14. [Annexe -- Référence des types et énumérations](#14-annexe----référence-des-types-et-énumérations)
+15. [Crédits](#15-crédits)
 
 ---
 
@@ -312,10 +332,10 @@ jeu et les ouvrir comme une fenêtre autonome par-dessus le combat en direct. Le
 interrupteurs, curseurs, spin-texts et boutons ; gère la navigation au d-pad/stick ; et dessine le
 tout avec son propre style.
 
-[![SF6 Tools in the Options menu](../img/options_sf6tools_submenu.png)](../img/options_sf6tools_submenu.png)
+[![SF6 Tools in the Options menu](img/options_sf6tools_submenu.png)](img/options_sf6tools_submenu.png)
 *« SF6 Tools » apparaît en bas de Options > General. En le développant, on voit apparaître des sous-groupes (Hit Confirm, Script Manager), chacun ouvrant une fenêtre de style BattleHud par-dessus le combat.*
 
-[![Options window over the fight](../img/native_window_hitconfirm.png)](../img/native_window_hitconfirm.png)
+[![Options window over the fight](img/native_window_hitconfirm.png)](img/native_window_hitconfirm.png)
 *La fenêtre « Hit Confirm » avec un curseur, un interrupteur et un bouton, ouverte par-dessus le combat en pause.*
 
 ### Comment ça fonctionne
@@ -727,7 +747,7 @@ Options pour les entrées (table `opts`) :
 Injecter des lignes dans l'onglet « Basic Settings » du menu pause d'entraînement, et ajouter des
 onglets entièrement nouveaux.
 
-[![Pause menu with injected row](../img/pause_menu_injected_row.png)](../img/pause_menu_injected_row.png)
+[![Pause menu with injected row](img/pause_menu_injected_row.png)](img/pause_menu_injected_row.png)
 *La ligne « SF6 Tools Shortcut Settings » en bas de Basic Settings, avec l'indicateur de défilement. Un point d'onglet supplémentaire est visible en haut (notre onglet « SF6 Tools »).*
 
 ### Comment ça fonctionne
@@ -883,7 +903,7 @@ Remplacer le texte du panneau « Damage / Combo Damage / Attack Type » du HUD d
 que les chiffres du minuteur de round, par votre propre contenu, en utilisant les propres polices,
 sprites et mise en page du jeu.
 
-[![Native HUD panel](../img/native_hud_panel.png)](../img/native_hud_panel.png)
+[![Native HUD panel](img/native_hud_panel.png)](img/native_hud_panel.png)
 *Le HUD d'entraînement avec le panneau de dégâts natif (haut centre) affichant les libellés « Damage », « Combo Damage » et « Attack Type ». Le minuteur de round affiche « 99 » avec des sprites de chiffres natifs.*
 
 ### Le panneau de dégâts
@@ -966,7 +986,7 @@ Construire des popups, barres et cadres à l'écran à partir des propres élém
 haut de l'écran), la NativeBottomBar (boutons d'action en bas, désormais désactivée), et la
 NativePopup (cadres de notification).
 
-[![Borrowed popup](../img/borrowed_popup.png)](../img/borrowed_popup.png)
+[![Borrowed popup](img/borrowed_popup.png)](img/borrowed_popup.png)
 *Une popup assemblée à partir d'éléments GUI empruntés : le cadre néon « Match Found » (Scale9Grid), un corps Rect sombre, et des éléments de texte issus d'agents dormants.*
 
 ### Pourquoi ne pas créer d'éléments ?
@@ -1084,7 +1104,156 @@ réglages, la Technique 1 est plus simple et plus fiable.
 
 ---
 
-## 10. Disséquer un menu du jeu soi-même
+## 10. Étude de cas -- L'éditeur de couleurs
+
+Un exemple concret de la Technique 1 (NativeOptions) poussé jusqu'à une véritable interface de
+réglages en pleine profondeur : un éditeur de couleur HSV et de matériaux par emplacement pour les
+costumes des personnages, ouvert directement depuis l'écran Modifier le personnage du jeu. Si la
+Technique 1 ci-dessus vous a montré la mécanique, cette section montre jusqu'où elle peut monter en
+puissance.
+
+### Ouverture
+
+Sur l'écran Modifier le personnage (Réglages du combattant), le guide en bas de la ligne Couleur
+affiche une astuce « Edit Color ». Appuyez sur F (clavier) / A (manette), ou cliquez gauche sur la
+ligne, pour l'ouvrir. L'éditeur compte sept pages : QUICK EDIT, EDIT COLORS, EDIT MATERIALS, EDIT
+SQUARES, SAVE, SAVE AS, et RESET (ou RESET / ERASE quand une couleur « MC » est sélectionnée).
+Changez de page avec A / E (L1 / R1), ou cliquez sur les flèches à côté du titre.
+
+### Curseurs et valeurs
+
+Les curseurs sont en HSV, pas en RGB : Teinte, Saturation et Luminosité, chacun sur une échelle de
+0 à 255 (la Teinte de 0-255 correspond à 0-360 degrés). Les matériaux utilisent Blend / Rough /
+Metal, chacun de 0 à 1000. Retour arrière (R3) réinitialise la ligne sélectionnée à sa valeur
+**sauvegardée** -- pas à une valeur par défaut. C / V (Carré / Triangle) copient et collent le
+nombre d'une ligne.
+
+### Indicateur d'état non sauvegardé
+
+Un point rouge en haut à gauche d'une ligne signifie que quelque chose en dessous d'elle dans
+l'arbre diffère de l'état sauvegardé : d'abord le curseur modifié lui-même, puis son groupe, puis
+les lignes racines, afin que vous puissiez toujours voir d'un coup d'œil où se trouve un changement
+non sauvegardé. Il disparaît après SAVE, ou dès qu'une valeur est ramenée à sa position sauvegardée.
+
+### Save / Save As / Reset / Erase
+
+SAVE écrit les valeurs actuelles et laisse la fenêtre ouverte, en faisant passer le titre à « SAVE
+OK! » comme confirmation. SAVE AS crée un nouvel emplacement « MC n » et rouvre l'éditeur dessus.
+RESET revient à l'état d'origine -- les couleurs du jeu lui-même, ou un pack de couleurs installé
+-- ou, sur une couleur « MC », à son dernier SAVE. ERASE supprime entièrement un emplacement « MC ».
+
+### Quick Edit
+
+Un curseur de teinte absolue par famille de couleurs. Les groupes de costumes propres au jeu se
+rassemblent en sept familles, chacune nommée d'après son plus grand groupe : SKIN, HAIR, FACE, plus
+les groupes propres à la tenue. La ligne de guide sous chaque ligne précise exactement quels
+groupes elle va déplacer (« Changes: ... »).
+
+### Emplacements de texture
+
+Certains emplacements restent sur leur texture dans la couleur que vous consultez actuellement,
+mais le jeu utilise bien une couleur unie pour ce même emplacement dans une autre couleur du
+costume. Ceux-ci sont marqués « (texture) » dans la liste des emplacements. Déplacer le curseur
+attribue à l'emplacement une couleur qui lui est propre (Retour arrière le ramène à la texture) ;
+Generate Random couvre aussi les emplacements en texture.
+
+### Liste des couleurs
+
+Au-delà des couleurs numérotées propres au jeu, la liste peut contenir : **RW n**, des packs de
+couleurs que les moddeurs déposent dans `data/SF6_ColorSpinExtra_data/colors/<Fighter>/` ; **MC n**,
+vos propres couleurs sauvegardées ; et trois entrées de défilement : **LL1** (vêtements et accessoires défilent au hasard, cheveux /
+peau / visage intacts), **LL2** (vêtements, accessoires et cheveux -- sourcils, barbe compris),
+**LL3** (tout).
+
+### Caméra de prévisualisation
+
+Pendant que l'éditeur est ouvert, la caméra de prévisualisation est à vous : le glisser-gauche
+tourne, le glisser-milieu déplace, et la molette (ou Page Up / Page Down) zoome. À la manette :
+le stick droit tourne, L3 + stick droit déplace, R2 / L2 zoome. Des blocs d'astuces Zoom et Move
+apparaissent à côté du bloc Rotation propre au jeu afin que le schéma de contrôle soit découvrable
+sur place.
+
+### Localisation
+
+Le texte des menus suit le réglage de langue du jeu lui-même -- en, fr, ja, zh-Hans, plus it, de,
+es, es-419, ru, pl, pt-BR, ko, zh-Hant, et ar -- et se met à jour en direct dès que vous le changez
+depuis l'écran Options du jeu.
+
+### Fichiers sources
+
+| Module | Chemin | Rôle |
+|---|---|---|
+| SF6_ColorSpinExtra | `autorun/SF6_ColorSpinExtra.lua` | Injection dans la liste des couleurs (entrées RW/MC/LL) et éditeur natif de couleur/matériaux HSV |
+| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Localisation du texte des menus, suit la langue du jeu |
+
+---
+
+## 11. Étude de cas -- Le menu de couleur du Drive Impact
+
+Un second exemple concret de la Technique 1, cette fois réutilisé sur trois écrans différents avec
+deux profondeurs de menu différentes.
+
+### Où il s'ouvre
+
+Le guide en bas affiche « X Edit Drive Impact Color » (X au clavier, Carré à la manette) à trois
+endroits : l'écran Modifier le personnage, le popup « Character Settings » du menu pause
+d'entraînement, et le panneau de couleur de sélection de personnage en VS / entraînement. Les deux
+popups reçoivent un menu **simplifié** (Enabled + Preset seulement) ; Modifier le personnage reçoit
+le menu complet décrit ci-dessous.
+
+### Lignes
+
+- **Enabled** -- Off / On / Follow. Follow reprend les deux carrés de la couleur que porte
+  actuellement le personnage en combat ; rien d'autre n'a besoin d'être configuré. Pour une
+  couleur du jeu, la paire est lue dans les données du jeu (`app.helper.hGUI.GetFighterCostumeColorData(fighter,
+  costume, couleur)` renvoie un `app.FighterColorData` avec `Color00` / `Color01`, exactement les
+  puces que peignent les écrans de sélection) ; pour une couleur sauvegardée, ce sont ses deux
+  carrés. Le costume porté vient du chemin du fichier du contrôleur de couleurs
+  (`esf027_003_CCVD.user` = Terry, costume 3).
+- **Preset** -- un spin listant les préréglages partagés entre tous les personnages, puis les
+  couleurs sauvegardées propres à ce personnage (« MC n » avec leurs deux carrés affichés en
+  ligne), puis **LL** pour une palette qui défile.
+- **Color 1** (la couleur principale -- éclaboussures et traînées d'impact) et **Color 2**
+  (l'accent) ouvrent chacune une page HSV avec le même comportement de Retour arrière vers la
+  valeur sauvegardée, copier/coller et point rouge que l'éditeur de couleurs (section 10).
+- **SAVE** écrase le préréglage sélectionné -- ou, avec une couleur « MC n » sélectionnée à la
+  place, écrit Color 1 / Color 2 directement dans les deux carrés de cette couleur. **SAVE AS**
+  crée un nouveau préréglage (« DI n »). **RESET** revient aux couleurs de l'élément sélectionné ;
+  sur un préréglage sauvegardé, la page propose à la place RESET / DELETE.
+
+### Pas de prévisualisation sur Modifier le personnage
+
+Le Drive Impact lui-même ne peut être déclenché qu'en combat réel, donc les couleurs que vous
+choisissez ici ne s'affichent pas sur le modèle de prévisualisation de l'écran Modifier le
+personnage -- elles apparaissent en combat. Avec LL sélectionné, la palette continue de défiler
+pour le reste du combat.
+
+### Par joueur
+
+Les réglages sont par personnage **et par camp**. Le menu édite le camp depuis lequel il a été
+ouvert (le titre l'indique : « LUKE - P2 »), et `<Fighter>.json` contient deux réglages, `p1` et
+`p2`. Avec deux personnages différents, chaque camp écrit ses propres providers d'effet, donc
+P1 Off / P2 On marche tel quel. En miroir, les deux Drive Impact lisent les **mêmes** providers :
+les couleurs sont alors écrites à l'instant où le Drive Impact d'un camp démarre (`act_st` 11 du
+joueur), avec le réglage de ce camp -- ses couleurs, ou la palette du jeu s'il est Off.
+
+### Données
+
+`data/SF6_DIRecolor_data/<Fighter>.json` (`{ p1 = ..., p2 = ... }`) et `_presets.json`
+contiennent tout ce que ce menu édite ; les mêmes fichiers sont aussi éditables depuis le panneau
+ImGui « DI Recolor (P1 / P2) », dont le nœud Debug affiche la paire en cours de choix sur un écran
+de sélection (« colour to apply ») à côté de la dernière paire appliquée en combat.
+
+### Fichiers sources
+
+| Module | Chemin | Rôle |
+|---|---|---|
+| DIColorMenu | `autorun/func/DIColorMenu.lua` | Le menu natif de couleur du Drive Impact décrit dans cette section |
+| SF6_DIRecolor | `autorun/SF6_DIRecolor.lua` | Moteur de couleur du Drive Impact et données par personnage ; expose `_G.SF6_DIRecolor` pour que le menu puisse lire et écrire |
+
+---
+
+## 12. Disséquer un menu du jeu soi-même
 
 Les techniques de ce guide ont été trouvées en sondant l'UI du jeu en cours d'exécution avec des
 scripts Lua jetables. Voici le processus.
@@ -1202,7 +1371,7 @@ end
 
 ---
 
-## 11. Dépannage
+## 13. Dépannage
 
 | Symptôme | Cause | Correctif |
 |---|---|---|
@@ -1224,7 +1393,7 @@ end
 
 ---
 
-## 12. Annexe -- Référence des types et énumérations
+## 14. Annexe -- Référence des types et énumérations
 
 ### Énumérations app.Option
 
@@ -1275,7 +1444,6 @@ Tous les modules ci-dessous sont publiés dans [`guide/lua/func/`](https://githu
 | Module | Chemin | Rôle |
 |---|---|---|
 | NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Fenêtre du dialogue Options (Technique 1) |
-| NativeLocale | [`autorun/func/NativeLocale.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeLocale.lua) | Optional: game-language strings for NativeOptions (Off / On) |
 | NativePauseMenu | [`autorun/func/NativePauseMenu.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePauseMenu.lua) | Lignes et onglets du menu pause (Technique 2) |
 | NativeHud | [`autorun/func/NativeHud.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeHud.lua) | Panneau de dégâts et minuteur (Technique 3) |
 | NativePopup | [`autorun/func/NativePopup.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativePopup.lua) | Popups à éléments empruntés (Technique 4) |
@@ -1288,7 +1456,7 @@ Tous les modules ci-dessous sont publiés dans [`guide/lua/func/`](https://githu
 
 ---
 
-## 13. Crédits
+## 15. Crédits
 
 - **Wael3rd** -- Tous les modules d'UI native (NativeOptions, NativePauseMenu, NativeHud,
   NativePopup, NativeShortcuts, NativeDialog, NativeTopBar, NativeBottomBar), le processus de
@@ -1307,4 +1475,5 @@ Tous les modules ci-dessous sont publiés dans [`guide/lua/func/`](https://githu
 
 ---
 
-*Changelog : 2026-08-31 -- Version initiale.*
+*Changelog : 2026-09-03 -- Ajout des sections 10-11 (éditeur de couleurs, menu de couleur du Drive
+Impact). 2026-08-31 -- Version initiale.*
