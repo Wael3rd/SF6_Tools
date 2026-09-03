@@ -1042,6 +1042,8 @@ end
 
 ### ソースファイル
 
+All modules below are published in [`guide/lua/func/`](https://github.com/Wael3rd/SF6_Tools/tree/main/guide/lua/func). Copy them into `reframework/autorun/func/`; `NativeOptions.lua` is the base module.
+
 | モジュール | パス | 役割 |
 |---|---|---|
 | NativeOptions | [`autorun/func/NativeOptions.lua`](https://github.com/Wael3rd/SF6_Tools/blob/main/guide/lua/func/NativeOptions.lua) | Optionsダイアログウィンドウ（テクニック1） |
