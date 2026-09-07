@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Native Menu Rows and Texts in SF6</title>
+<meta name="description" content="How the SF6 REFramework mods add rows and texts to the game's native menus: cloning a control from a native plugin versus borrowing a hidden text from Lua.">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Archivo:wght@700;800&display=swap">
+<style>
+  :root {
+    --bg: #f6f4ef;          /* warm paper */
+    --ink: #1d1b19;
+    --muted: #5e5a54;
+    --rule: #d9d3c8;
+    --panel: #fffdf9;
+    --accent: #b3341e;      /* SF6 "Drive" red, desaturated */
+    --accent-ink: #ffffff;
+    --code-bg: #14161a;
+    --code-ink: #e6e1d8;
+    --code-key: #f0b35a;
+    --code-fn: #8ccf7e;
+    --code-str: #7fc4e0;
+    --code-cmt: #7e8590;
+    --good: #2f6f3e;
+    --bad: #9a2a1f;
+    --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+    --font-display: "Archivo", "Arial Black", Impact, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17181b; --ink: #ece7dd; --muted: #a49e93; --rule: #33363c; --panel: #1f2126;
+      --accent: #e0553a; --accent-ink: #17181b; --code-bg: #0e0f11; --code-ink: #e6e1d8;
+      --good: #7fcf8e; --bad: #f08a78;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17181b; --ink: #ece7dd; --muted: #a49e93; --rule: #33363c; --panel: #1f2126;
+    --accent: #e0553a; --accent-ink: #17181b; --code-bg: #0e0f11; --code-ink: #e6e1d8;
+    --good: #7fcf8e; --bad: #f08a78;
+  }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; margin: 0; }
+  main { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { border-bottom: 3px solid var(--accent); padding-bottom: 20px; margin-bottom: 36px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 5vw, 44px); line-height: 1.05; margin: 8px 0 12px; text-wrap: balance; letter-spacing: -0.01em; }
+  .lede { font-size: 18px; color: var(--muted); max-width: 62ch; margin: 0; }
+  h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; margin: 44px 0 10px; text-wrap: balance; }
+  h3 { font-size: 17px; font-weight: 600; margin: 26px 0 8px; }
+  p { max-width: 68ch; margin: 0 0 14px; }
+  ul, ol { max-width: 68ch; padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  code { font-family: var(--font-mono); font-size: 0.92em; background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--code-bg); color: var(--code-ink); font-family: var(--font-mono); font-size: 13.5px; line-height: 1.5; padding: 16px 18px; border-radius: 6px; overflow-x: auto; margin: 12px 0 18px; }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  .k { color: var(--code-key); } .f { color: var(--code-fn); } .s { color: var(--code-str); } .c { color: var(--code-cmt); font-style: italic; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0 8px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+  .case { background: var(--panel); border: 1px solid var(--rule); border-top: 4px solid var(--accent); padding: 16px 18px; }
+  .case h3 { margin-top: 0; }
+  .case .tag { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 10px 0 18px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  td code { white-space: nowrap; }
+  .tablewrap { overflow-x: auto; }
+  .note { border-left: 3px solid var(--rule); padding: 8px 14px; color: var(--muted); margin: 14px 0 18px; max-width: 68ch; }
+  .rule-list li::marker { color: var(--accent); }
+  .ok { color: var(--good); font-weight: 600; } .no { color: var(--bad); font-weight: 600; }
+  figure { margin: 18px 0 22px; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 8px; letter-spacing: 0.02em; }
+  .fig { --row: #2a2f3a; --rowsel: #3b4455; --rowtext: #f2ede4; --rowmuted: #9aa3b3; --new: var(--accent); --box: var(--panel); --line: var(--rule); }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="eyebrow">Street Fighter 6 · RE Engine · REFramework</div>
+  <h1>Adding rows and texts to the game's native menus</h1>
+  <p class="lede">Two very different jobs hide behind "add something to a menu". One is a real clone made by a native plugin. The other is borrowing an element the screen already has. Here is how each works, with the exact calls.</p>
+</header>
+
+<h2>The two cases at a glance</h2>
+<div class="two">
+  <div class="case">
+    <div class="tag">Case A · a new row</div>
+    <h3>Clone a control (native C++ plugin)</h3>
+    <p>You need one more <em>object</em> on screen: a row, a spin, a button. The engine builds a copy of an existing control with <code>duplicate</code>, and you register it as a real part of the menu. Lua cannot do this.</p>
+    <p class="ok">Result: 8 rows where the game had 3.</p>
+  </div>
+  <div class="case">
+    <div class="tag">Case B · a text</div>
+    <h3>Borrow a hidden element (Lua)</h3>
+    <p>You need a <em>text</em> somewhere. Screens ship with elements the game keeps hidden. Make one visible, write your string into it, move it. Nothing is created.</p>
+    <p class="ok">Result: same object count, one more of them visible.</p>
+  </div>
+</div>
+<figure class="fig">
+<svg viewBox="0 0 860 326" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Edit Character menu, before and after the cloned rows">
+  <defs>
+    <style>
+      .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:var(--muted);letter-spacing:.08em}
+      .row{fill:var(--row)} .rowsel{fill:var(--rowsel)} .rt{font-family:"IBM Plex Sans",sans-serif;font-size:12px;fill:var(--rowtext);font-weight:500}
+      .rv{font-family:"IBM Plex Sans",sans-serif;font-size:11px;fill:var(--rowmuted)} .new{fill:var(--new)} .arrow{stroke:var(--muted);stroke-width:1.5;fill:none}
+    </style>
+    <marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
+  </defs>
+  <text x="20" y="18" class="lbl">BEFORE: THE GAME'S 3 ROWS</text>
+  <g transform="translate(20,30)">
+    <rect x="0" y="0" width="340" height="30" rx="2" class="rowsel"/><text x="12" y="19" class="rt">Costume</text><text x="300" y="19" class="rv">01</text>
+    <rect x="0" y="34" width="340" height="30" rx="2" class="row"/><text x="12" y="53" class="rt">Color</text><text x="290" y="53" class="rv">DI 4</text>
+    <circle cx="255" cy="49" r="6" fill="#d33"/><circle cx="272" cy="49" r="6" fill="#39c"/>
+    <rect x="0" y="68" width="340" height="30" rx="2" class="row"/><text x="12" y="87" class="rt">Control Settings</text><text x="300" y="87" class="rv">&#8230;</text>
+  </g>
+  <path d="M380 120 L470 120" class="arrow" marker-end="url(#m1)"/>
+  <text x="380" y="108" class="lbl">duplicate &#215;5</text>
+  <text x="500" y="18" class="lbl">AFTER: 8 ROWS, 5 CLONES OF "COLOR"</text>
+  <g transform="translate(500,30)">
+    <rect x="0" y="0" width="340" height="30" rx="2" class="rowsel"/><text x="12" y="19" class="rt">Costume</text><text x="300" y="19" class="rv">01</text>
+    <rect x="0" y="34" width="340" height="30" rx="2" class="row"/><text x="12" y="53" class="rt">Color</text><text x="290" y="53" class="rv">DI 4</text>
+    <circle cx="255" cy="49" r="6" fill="#d33"/><circle cx="272" cy="49" r="6" fill="#39c"/>
+    <rect x="0" y="68" width="340" height="30" rx="2" class="row"/><text x="12" y="87" class="rt">Control Settings</text><text x="300" y="87" class="rv">&#8230;</text>
+    <rect x="0" y="102" width="340" height="30" rx="2" class="row"/><rect x="0" y="102" width="4" height="30" class="new"/><text x="12" y="121" class="rt">Drive Impact</text><text x="290" y="121" class="rv">DI 4</text><circle cx="255" cy="117" r="6" fill="#d33"/><circle cx="272" cy="117" r="6" fill="#39c"/>
+    <rect x="0" y="136" width="340" height="30" rx="2" class="row"/><rect x="0" y="136" width="4" height="30" class="new"/><text x="12" y="155" class="rt">Drive Reversal</text><text x="290" y="155" class="rv">DI 1</text><circle cx="255" cy="151" r="6" fill="#e8b"/><circle cx="272" cy="151" r="6" fill="#fff"/>
+    <rect x="0" y="170" width="340" height="30" rx="2" class="row"/><rect x="0" y="170" width="4" height="30" class="new"/><text x="12" y="189" class="rt">Drive Parry</text><text x="290" y="189" class="rv">DR 2</text><circle cx="255" cy="185" r="6" fill="#3c6"/><circle cx="272" cy="185" r="6" fill="#3c6"/>
+    <rect x="0" y="204" width="340" height="30" rx="2" class="row"/><rect x="0" y="204" width="4" height="30" class="new"/><text x="12" y="223" class="rt">Drive Rush</text><text x="290" y="223" class="rv">DR 2</text><circle cx="255" cy="219" r="6" fill="#3c6"/><circle cx="272" cy="219" r="6" fill="#3c6"/>
+    <rect x="0" y="238" width="340" height="30" rx="2" class="row"/><rect x="0" y="238" width="4" height="30" class="new"/><text x="12" y="257" class="rt">Special Attacks</text><text x="300" y="257" class="rv">OFF</text>
+  </g>
+  <text x="20" y="318" class="lbl">p_Spin_color &#8594; p_Spin_drvimpact &#8230; p_Spin_drvspecial, each one step below the previous row</text>
+</svg>
+<figcaption>Fig. 1. The Edit Character menu. Each red-marked row is a full copy of the Color row, registered as a real part: it keeps the chips, the arrows and the value text of its model.</figcaption>
+</figure>
+<div class="note">Rule of thumb: need a new element → Case A. Need words on screen → look for a hidden text first (Case B), and only clone one if the screen has none to spare.</div>
+
+<h2>Case A · Cloning a menu row from a native plugin</h2>
+<p>Used for the five Drive colour rows on the <em>Edit Character</em> screen (agent <code>MatchingFighterSetting</code>). The recipe comes from LL's <code>OppAlertNative</code> plugin; the code below is the C++ that runs in <code>SF6_MenuRowsNative.dll</code>.</p>
+
+<h3>1. Run inside the game's own UI flow, never from a generic tick</h3>
+<p>Hook the <code>OnUpdate()</code> of the flow that owns the screen and do the work in the <strong>post</strong> hook. Called from <code>UpdateBehavior</code>, <code>duplicate</code> returns a half-built native object and the managed VM dies on it.</p>
+<pre><code><span class="c">// which flows tick while the screen is open (measured with a probe)</span>
+<span class="f">hook_main</span>(<span class="s">"app.UIFlowMatchingSetting.Main"</span>);
+<span class="f">hook_main</span>(<span class="s">"app.UIFlowMatchingFighterSetting.Main"</span>);
+<span class="f">hook_main</span>(<span class="s">"app.UIFlowUI10505.CharaSetting"</span>);   <span class="c">// character-select panel</span>
+
+<span class="k">bool</span> <span class="f">hook_main</span>(<span class="k">const char</span>* type_name) {
+    <span class="k">auto</span>* type = <span class="f">reapi</span>().tdb()-&gt;<span class="f">find_type</span>(type_name);
+    <span class="k">auto</span>* m = type ? type-&gt;<span class="f">find_method</span>(<span class="s">"OnUpdate()"</span>) : <span class="k">nullptr</span>;
+    <span class="k">return</span> m &amp;&amp; m-&gt;<span class="f">add_hook</span>(update_pre, update_post, <span class="k">false</span>);
+}
+<span class="k">void</span> <span class="f">update_post</span>(<span class="k">void</span>**, REFrameworkTypeDefinitionHandle, <span class="k">unsigned long long</span>) {
+    <span class="k">if</span> (++g_check % <span class="k">10</span>) <span class="k">return</span>;     <span class="c">// one check every ten passes is plenty</span>
+    <span class="f">ensure_rows</span>();
+}</code></pre>
+
+<h3>2. Find the agent, its parts manager and the row to copy</h3>
+<p>Agents live in <code>app.UIAgentManager._Entries</code>; each has a GameObject whose name is the screen. The parts are reached through <code>_PartsManager</code> and, recursively, each part's <code>&lt;ChildManager&gt;k__BackingField</code>. Match the control by its <code>get_Name()</code>.</p>
+<pre><code><span class="k">auto</span>* pm     = <span class="f">field</span>(agent, <span class="s">"_PartsManager"</span>);
+<span class="k">auto</span>* source = <span class="f">find_part</span>(pm, <span class="s">"p_Spin_color"</span>, <span class="k">0</span>);   <span class="c">// the model row (Color)</span>
+<span class="k">if</span> (<span class="f">find_part</span>(pm, <span class="s">"p_Spin_drvimpact"</span>, <span class="k">0</span>)) <span class="k">return</span>;  <span class="c">// already created for this agent</span></code></pre>
+
+<h3>3. The five calls that make a real row</h3>
+<p>The control name carries the part class: <code>p_&lt;Class&gt;_&lt;Name&gt;</code>, so <code>UIPartsManager.Create</code> knows to build a <code>UIPartsSpin</code> for <code>p_Spin_drvimpact</code>. Positions are derived from the last two existing rows.</p>
+<pre><code><span class="k">auto</span>* src      = <span class="f">control</span>(source);                          <span class="c">// via.gui.Control of the model part</span>
+<span class="k">auto</span>* parent   = <span class="f">obj</span>(src, <span class="s">"get_Parent()"</span>);
+<span class="k">auto</span>* manager  = <span class="f">obj</span>(source, <span class="s">"get_Manager()"</span>);            <span class="c">// app.UIPartsManager</span>
+<span class="k">auto</span>* group    = <span class="f">field</span>(manager, <span class="s">"&lt;OwnerParts&gt;k__BackingField"</span>);
+<span class="k">auto</span>* children = <span class="f">field</span>(group, <span class="s">"_Children"</span>);              <span class="c">// List&lt;app.UIPartsItem&gt;</span>
+<span class="k">const int</span> layout = <span class="f">number</span>(source, <span class="s">"get_Layout()"</span>);
+
+<span class="c">// 1. clone the control (name = "p_Spin_" + row)</span>
+<span class="k">auto</span>* clone = <span class="f">obj</span>(src, <span class="s">"duplicate(System.String)"</span>, { <span class="f">create_utf8_string</span>(<span class="s">"p_Spin_drvimpact"</span>) });
+<span class="c">// 2. attach it where the model lives</span>
+<span class="f">call</span>(parent, <span class="s">"addChild(via.gui.PlayObject)"</span>, { clone });
+<span class="c">// 3. turn the control into a part (a spin, deduced from the name)</span>
+<span class="k">auto</span>* part = <span class="f">obj</span>(manager, <span class="s">"Create(via.gui.Control,via.gui.Control)"</span>, { clone, parent });
+<span class="f">call</span>(part, <span class="s">"set_Layout(app.UIPartsItemLayout)"</span>, { <span class="f">arg_i32</span>(layout) });
+<span class="c">// 4. register it in the navigation list, with its index</span>
+<span class="k">const int</span> index = <span class="f">number</span>(children, <span class="s">"get_Count()"</span>);
+<span class="f">call</span>(children, <span class="s">"Add(app.UIPartsItem)"</span>, { part });
+<span class="f">call</span>(part, <span class="s">"set_Index(System.Int32)"</span>, { <span class="f">arg_i32</span>(index) });
+<span class="f">call</span>(part, <span class="s">"set__IsLoop(System.Boolean)"</span>, { <span class="f">arg_bool</span>(<span class="k">true</span>) });
+<span class="c">// 5. place it one step below the last row and name it</span>
+<span class="f">call</span>(clone, <span class="s">"set_Position(via.vec3)"</span>, { pos });        <span class="c">// y = y_last + step * (k+1)</span>
+<span class="f">write_text_message</span>(<span class="f">child</span>(clone, <span class="s">"e_text_title"</span>), <span class="s">"Drive Impact"</span>);</code></pre>
+
+<figure class="fig">
+<svg viewBox="0 0 880 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The five calls that make a row">
+  <defs>
+    <style>
+      .bx{fill:var(--box);stroke:var(--line);stroke-width:1.2} .bxn{fill:var(--box);stroke:var(--new);stroke-width:2}
+      .t{font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;fill:var(--ink);font-weight:600} .m{font-family:"IBM Plex Mono",monospace;font-size:10.5px;fill:var(--muted)}
+      .ln{stroke:var(--muted);stroke-width:1.5;fill:none} .num{font-family:"Archivo",sans-serif;font-size:14px;fill:var(--new);font-weight:800}
+    </style>
+    <marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
+  </defs>
+  <!-- colonne 1 : modele et parent -->
+  <g transform="translate(10,24)">
+    <rect x="0" y="0" width="180" height="60" rx="3" class="bx"/><text x="12" y="24" class="t">p_Spin_color</text><text x="12" y="44" class="m">model via.gui.Control</text>
+    <rect x="0" y="150" width="180" height="60" rx="3" class="bx"/><text x="12" y="174" class="t">parent</text><text x="12" y="194" class="m">src:get_Parent()</text>
+    <path d="M90 60 L90 150" class="ln"/>
+  </g>
+  <!-- colonne 2 : clone -->
+  <g transform="translate(232,24)">
+    <text x="0" y="-6" class="num">1</text>
+    <rect x="0" y="0" width="180" height="60" rx="3" class="bxn"/><text x="12" y="24" class="t">clone</text><text x="12" y="44" class="m">src:duplicate(name)</text>
+    <text x="0" y="122" class="num">2</text>
+    <path d="M90 60 L90 150" class="ln" marker-end="url(#m2)"/>
+    <text x="100" y="110" class="m">parent:addChild(clone)</text>
+    <rect x="0" y="150" width="180" height="60" rx="3" class="bx"/><text x="12" y="174" class="t">attached</text><text x="12" y="194" class="m">next to the model row</text>
+  </g>
+  <path d="M190 54 L232 54" class="ln" marker-end="url(#m2)"/>
+  <!-- colonne 3 : part + liste -->
+  <g transform="translate(454,24)">
+    <text x="0" y="-6" class="num">3</text>
+    <rect x="0" y="0" width="180" height="60" rx="3" class="bxn"/><text x="12" y="24" class="t">part (UIPartsSpin)</text><text x="12" y="44" class="m">manager:Create(clone,parent)</text>
+    <text x="0" y="122" class="num">4</text>
+    <path d="M90 60 L90 150" class="ln" marker-end="url(#m2)"/>
+    <text x="100" y="110" class="m">_Children:Add(part)</text>
+    <rect x="0" y="150" width="180" height="60" rx="3" class="bx"/><text x="12" y="174" class="t">registered</text><text x="12" y="194" class="m">set_Index(n), set__IsLoop</text>
+  </g>
+  <path d="M412 54 L454 54" class="ln" marker-end="url(#m2)"/>
+  <!-- colonne 4 : placement -->
+  <g transform="translate(676,24)">
+    <text x="0" y="-6" class="num">5</text>
+    <rect x="0" y="0" width="190" height="60" rx="3" class="bx"/><text x="12" y="24" class="t">placed &amp; named</text><text x="12" y="44" class="m">set_Position, e_text_title</text>
+  </g>
+  <path d="M634 54 L676 54" class="ln" marker-end="url(#m2)"/>
+  <text x="10" y="250" class="m">All five calls run inside the post hook of app.UIFlowMatchingSetting.Main.OnUpdate(), from the native plugin.</text>
+</svg>
+<figcaption>Fig. 2. The control is copied (1), attached (2), promoted to a part (3), registered in the navigation list (4), then positioned and titled (5).</figcaption>
+</figure>
+<h3>4. What the clone gives you</h3>
+<ul class="rule-list">
+  <li>A real managed part: Lua finds it afterwards by name (<code>p_Spin_drvimpact</code>) and drives titles, values, chips, left/right and confirm exactly like the game's own rows.</li>
+  <li>Its whole sub-tree (background, title, value text, arrows, colour chips) came with the copy.</li>
+  <li>A hidden row is possible: create it with <code>set_IsDisable(true)</code> and invisible, show it later (the character-select panel does this for a fifth "Special Attacks" row).</li>
+  <li>Nothing is removed on close: the game tears the screen down itself.</li>
+</ul>
+
+<h3>Do not</h3>
+<ul class="rule-list">
+  <li><span class="no">Do not</span> call <code>duplicate</code> from Lua or from <code>UpdateBehavior</code>: the object comes back unfinished and the C# / Lua wrapper's refcount kills the VM (crash at <code>StreetFighter6.exe+6F2571C</code>, seen twice).</li>
+  <li><span class="no">Do not</span> add an item to <code>_ItemList</code> from Lua without a control behind it: prefabs have a fixed pool of controls, an item without one crashes in <code>UIPartsManager.get_AllParts</code>.</li>
+</ul>
+
+<h2>Case B · Borrowing a hidden text from Lua</h2>
+<p>Used for the "Move" and "Zoom" camera hints of the colour editor. The <em>Edit Character</em> screen contains three camera hint blocks under the agent's main control, <code>c_00</code>, <code>c_01</code> and <code>c_02</code>. The game only shows <code>c_01</code> ("Rotation"). The other two are complete blocks, just hidden.</p>
+
+<h3>1. Reach the block through the agent's main control</h3>
+<pre><code><span class="k">local</span> cm  = agent:<span class="f">call</span>(<span class="s">"get_ControlMain"</span>)
+<span class="k">local</span> blk = <span class="f">find_name</span>(cm, <span class="s">"c_02"</span>, <span class="k">0</span>)          <span class="c">-- walks get_Child / get_Next, matches get_Name</span>
+<span class="k">local</span> title = <span class="f">find_name</span>(blk, <span class="s">"e_text_title0"</span>, <span class="k">0</span>)</code></pre>
+
+<h3>2. Write the text, only when it changes</h3>
+<p><code>set_Message</code> with the same string twice crashes in <code>UIPartsItem.UpdateFocus</code>. Always compare first. Do it on the game thread (a post hook or <code>LateUpdateBehavior</code>), never from <code>re.on_frame</code>.</p>
+<pre><code><span class="k">if</span> <span class="f">tostring</span>(title:<span class="f">call</span>(<span class="s">"get_Message"</span>)) ~= label <span class="k">then</span>
+    title:<span class="f">call</span>(<span class="s">"set_Message"</span>, label)                <span class="c">-- label = L("hint.zoom"), from the locale files</span>
+<span class="k">end</span>
+title:<span class="f">call</span>(<span class="s">"set_Position"</span>, Vector3f.<span class="f">new</span>(<span class="k">158</span>, <span class="k">96</span>, <span class="k">0</span>))   <span class="c">-- a via.gui.Text's position is its centre</span></code></pre>
+
+<h3>3. Show the block and re-assert what the game rewrites</h3>
+<p>The block's icon texts are managed by the game (rewritten whenever the input device changes), so the mod writes them again every tick, keyboard or pad.</p>
+<pre><code><span class="k">local</span> panel = <span class="f">find_name</span>(blk, <span class="s">"p_InputGuide_LT_s_aUIScaleDown"</span>, <span class="k">0</span>)
+panel:<span class="f">call</span>(<span class="s">"set_Visible"</span>, <span class="k">true</span>)
+<span class="k">local</span> t = <span class="f">find_name</span>(panel, <span class="s">"e_text_0"</span>, <span class="k">0</span>)
+<span class="k">local</span> glyph = pad <span class="k">and</span> <span class="s">"&lt;ICON BtnL2&gt;"</span> <span class="k">or</span> <span class="s">"&lt;ICON MouseWD&gt;"</span>
+<span class="k">if</span> <span class="f">tostring</span>(t:<span class="f">call</span>(<span class="s">"get_Message"</span>)) ~= glyph <span class="k">then</span> t:<span class="f">call</span>(<span class="s">"set_Message"</span>, glyph) <span class="k">end</span>
+t:<span class="f">call</span>(<span class="s">"set_FontSize"</span>, ref_size)                  <span class="c">-- copied from the Rotation block's icon text</span>
+blk:<span class="f">call</span>(<span class="s">"set_Position"</span>, Vector3f.<span class="f">new</span>(<span class="k">1648</span>, <span class="k">508</span>, <span class="k">0</span>))
+blk:<span class="f">call</span>(<span class="s">"set_Visible"</span>, <span class="k">true</span>)</code></pre>
+
+<figure class="fig">
+<svg viewBox="0 0 860 216" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The three camera hint blocks before and after borrowing">
+  <defs>
+    <style>
+      .blk{fill:var(--row)} .hid{fill:none;stroke:var(--muted);stroke-dasharray:4 3;stroke-width:1.2}
+      .bt{font-family:"IBM Plex Sans",sans-serif;font-size:12px;fill:var(--rowtext);font-weight:600} .bm{font-family:"IBM Plex Mono",monospace;font-size:10.5px;fill:var(--rowmuted)}
+      .hm{font-family:"IBM Plex Mono",monospace;font-size:10.5px;fill:var(--muted)} .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;fill:var(--muted);letter-spacing:.08em}
+      .ln{stroke:var(--muted);stroke-width:1.5;fill:none}
+    </style>
+    <marker id="m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--muted)"/></marker>
+  </defs>
+  <text x="20" y="18" class="lbl">AS SHIPPED: get_ControlMain</text>
+  <g transform="translate(20,30)">
+    <rect x="0" y="0" width="300" height="44" rx="3" class="hid"/><text x="12" y="19" class="hm">c_00  (hidden)</text><text x="12" y="36" class="hm">e_text_title0 = ""</text>
+    <rect x="0" y="52" width="300" height="44" rx="3" class="blk"/><text x="12" y="71" class="bt">Rotation</text><text x="12" y="88" class="bm">c_01 &#183; e_text_0 = &lt;ICON StickR&gt;</text>
+    <rect x="0" y="104" width="300" height="44" rx="3" class="hid"/><text x="12" y="123" class="hm">c_02  (hidden)</text><text x="12" y="140" class="hm">e_text_title0 = ""</text>
+  </g>
+  <path d="M340 104 L500 104" class="ln" marker-end="url(#m3)"/>
+  <text x="352" y="92" class="hm">set_Visible &#183; set_Message</text>
+  <text x="520" y="18" class="lbl">BORROWED: SAME OBJECTS</text>
+  <g transform="translate(520,30)">
+    <rect x="0" y="0" width="300" height="44" rx="3" class="blk"/><text x="12" y="19" class="bt">Move</text><text x="12" y="36" class="bm">c_00 &#183; &lt;ICON BtnL3&gt;+&lt;ICON StickR&gt;</text>
+    <rect x="0" y="52" width="300" height="44" rx="3" class="blk"/><text x="12" y="71" class="bt">Rotation</text><text x="12" y="88" class="bm">c_01 &#183; untouched</text>
+    <rect x="0" y="104" width="300" height="44" rx="3" class="blk"/><text x="12" y="123" class="bt">Zoom</text><text x="12" y="140" class="bm">c_02 &#183; &lt;ICON BtnL2&gt; &lt;ICON BtnR2&gt;</text>
+  </g>
+  <text x="20" y="192" class="hm">Titles come from the locale files (hint.move / hint.zoom).</text>
+  <text x="20" y="206" class="hm">Icon glyphs switch between mouse and pad and are re-asserted every tick.</text>
+</svg>
+<figcaption>Fig. 3. Case B creates nothing: the screen already had three hint blocks and the game showed one. The other two are made visible and rewritten.</figcaption>
+</figure>
+<h3>Finding something to borrow</h3>
+<ul class="rule-list">
+  <li>Walk the control tree and list elements whose <code>get_Visible()</code> is false or whose <code>get_ActualVisible()</code> is false with visible parents: the latter is a <code>ForceInvisible</code> lock, lifted with <code>set_ForceInvisible(false)</code> (that is how each Options row got a badge, reusing its hidden <code>p_InputGuide_0_dUIOptionExtraButton</code>).</li>
+  <li>Prefer texts of the same prefab and font slot as your target; the game's popups keep a few hidden ones (<code>e_text_round</code>, <code>e_text_ready</code>, <code>e_txt_wait</code>).</li>
+  <li>Markup works in these strings: <code>&lt;color RRGGBB&gt;…&lt;/color&gt;</code>, <code>&lt;ICON KeyTab&gt;</code>.</li>
+</ul>
+
+<h2>Reference</h2>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Call</th><th>Type</th><th>Used for</th></tr></thead>
+  <tbody>
+    <tr><td><code>duplicate(System.String)</code></td><td>via.gui.Control</td><td>Copy a control with its sub-tree (Case A, plugin only)</td></tr>
+    <tr><td><code>addChild(via.gui.PlayObject)</code></td><td>via.gui.Control</td><td>Attach the copy next to the model</td></tr>
+    <tr><td><code>Create(via.gui.Control, via.gui.Control)</code></td><td>app.UIPartsManager</td><td>Build the part (spin, button…) from the control's name</td></tr>
+    <tr><td><code>set_Layout</code>, <code>set_Index</code>, <code>set_IsDisable</code>, <code>set__IsLoop</code></td><td>app.UIPartsItem</td><td>Make the part navigable like the others</td></tr>
+    <tr><td><code>_Children.Add(app.UIPartsItem)</code></td><td>List on the owner group</td><td>Register the row in the menu's list</td></tr>
+    <tr><td><code>get_ControlMain</code></td><td>UI agent</td><td>Root of a screen's control tree (Case B)</td></tr>
+    <tr><td><code>get_Child</code> / <code>get_Next</code> / <code>get_Name</code></td><td>via.gui.PlayObject</td><td>Walk the tree, find elements by name</td></tr>
+    <tr><td><code>get_Message</code> / <code>set_Message</code></td><td>via.gui.Text</td><td>Read and write a text (compare first)</td></tr>
+    <tr><td><code>set_Visible</code>, <code>set_ForceInvisible</code></td><td>via.gui.PlayObject</td><td>Show a hidden element, lift the game's lock</td></tr>
+    <tr><td><code>set_Position(via.vec3)</code>, <code>set_FontSize(via.Size)</code></td><td>via.gui.*</td><td>Place and size what you borrowed</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Thread and lifetime rules that cost a crash each</h2>
+<ol class="rule-list">
+  <li>GUI writes only on the game thread: a post hook of the flow, or <code>LateUpdateBehavior</code>. <code>re.on_frame</code> is the render thread: read there, never write.</li>
+  <li>Never write into a cached object the game may have freed (screen closed, character changed). Re-find it, or check <code>sdk.is_managed_object</code> and skip during pause / HUD transitions.</li>
+  <li><code>set_Message</code> with an unchanged string crashes. Compare with <code>get_Message</code> first.</li>
+  <li>Never rewrite a dialog's big title (<code>e_title</code>, bound to the message system) and never <code>End()</code> the focused dialog: replace the page instead.</li>
+  <li>Clones: plugin, inside the flow's post hook. Not Lua, not <code>UpdateBehavior</code>.</li>
+</ol>
+
+<footer>Written from the SF6 REFramework training suite (C++ plugin <code>SF6_MenuRowsNative</code>, Lua <code>DriveRows.lua</code> and <code>SF6_ColorSpinExtra.lua</code>). The row recipe is LL's, from <code>OppAlertNative/menu.cpp</code>. REFramework-Websockets build LL5271, September 2026.</footer>
+</main>
+</body>
+</html>
