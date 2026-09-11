@@ -327,3 +327,65 @@ param:call("<span class="fn">UpdatePlaySlotItem</span>", group, idx)</pre>
     </tr>
   </tbody>
 </table>
+
+<hr>
+
+<h2 style="font-size: 1.2rem; margin-top: 2rem;">Jumping a spin to a specific value</h2>
+<p style="font-size: 0.88rem;">A spin's displayed value is controlled by <strong>three things that must stay in sync</strong>. Setting only one leaves the others stale — the game overwrites your change on the next focus or page build.</p>
+
+<div class="step" data-n="1" style="margin-top: 1rem;">
+  <div class="step-head"><code class="fn">_ViewDataList[row].Index</code> (+ <code>.SliderValue</code>)</div>
+  <p>What the game <strong>renders from</strong>. Lives on <code>Param._ViewDataList</code> at the spin's row index. The game copies <code>UIPartsSpin._Num</code> into <code>Index</code> on each D-pad press.</p>
+  <pre class="code-block">local param = <your Param object>
+local vd = param:get_field("_ViewDataList"):call("get_Item", row_index)
+vd.Index = target
+vd.SliderValue = target</pre>
+  <p style="color: var(--flag); font-size: 0.85rem;"><strong>Trap:</strong> the <code>ViewData</code> object handed to the <code>Function(ftype, param, viewData, value)</code> callback is <strong>NOT the same object</strong> as <code>_ViewDataList[row]</code>. Writes to the callback's ViewData are silently lost.</p>
+</div>
+
+<div class="step" data-n="2">
+  <div class="step-head"><code class="fn">UIPartsSpin._Num</code></div>
+  <p>The part's internal value. The game re-initializes it via <code>Init(min, max, num, action)</code> at every page build and every focus, ignoring whatever ViewData says. To hold your value, hook <code>Init</code> and replace the <code>num</code> argument:</p>
+  <pre class="code-block">-- in the Init pre-hook:
+args[5] = sdk.to_ptr(your_value)</pre>
+  <p>Also hook <code>set_Num</code> for the brief window right after <code>Init</code> where the flow writes its own num back.</p>
+</div>
+
+<div class="step" data-n="3">
+  <div class="step-head"><code class="fn">ScrollList.set_SelectedIndex</code> (the carousel)</div>
+  <p>The <code>via.gui.ScrollList</code> inside the <code>UIPartsSpin</code> (<code>p_ScrollList_0_h</code>). This is the visual carousel — what the player sees.</p>
+  <pre class="code-block">local scroll_list = child_named(part:call("get_Control"), "p_ScrollList_0_h")
+scroll_list:call("set_SelectedIndex", target_value)
+
+-- The visible text (the game won't refresh it on its own)
+local sel = child_named(scroll_list, "c_selectItem")
+local txt = child_named(sel, "e_txt_0")
+txt:call("set_Message", your_option_text)</pre>
+</div>
+
+<div class="flow" style="border-color: var(--flag); margin-top: 1.5rem;">
+  <div class="flow-title" style="color: var(--flag);">Thread rule</div>
+  <p style="font-size: 0.82rem; margin: 0; line-height: 1.5;">
+    The carousel writes (<code>set_SelectedIndex</code>, <code>set_Message</code>) must happen from the
+    <strong>UI flow thread</strong> (e.g., in an <code>UpdateSpinBox</code> post-hook), <strong>never</strong> from
+    <code>LateUpdateBehavior</code> — writing from there races the UI job thread and crashes the game in a text hash.
+  </p>
+</div>
+
+<div class="flow" style="margin-top: 1rem;">
+  <div class="flow-title">Complete sequence</div>
+  <pre class="code-block" style="border: none; margin: 0; padding: 0.5rem 0;">-- All three, in order, from the UI flow thread:
+
+-- 1. ViewData entry
+local vd = param:get_field("_ViewDataList"):call("get_Item", row)
+vd.Index = target;  vd.SliderValue = target
+
+-- 2. Part's _Num
+part:call("set_Num", target)
+
+-- 3. Carousel visual
+local scroll = child_named(part:call("get_Control"), "p_ScrollList_0_h")
+scroll:call("set_SelectedIndex", target)
+local txt = child_named(child_named(scroll, "c_selectItem"), "e_txt_0")
+txt:call("set_Message", option_text)</pre>
+</div>
