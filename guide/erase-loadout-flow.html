@@ -199,6 +199,23 @@
 <h1>Erase Loadout — menu reload flow</h1>
 <p class="subtitle">RecordingManagerTab.lua &middot; how the menu rebuilds itself after erasing a loadout</p>
 
+<div class="flow" style="border-color: var(--accent-dim); background: var(--bg-raised);">
+  <div class="flow-title" style="color: var(--accent);">About the source files</div>
+  <p style="font-size: 0.82rem; margin: 0; line-height: 1.5;">
+    The functions below come from <strong>Wael's private training suite</strong> (repo <code>Wael3rd/SF6_REFramework</code>, not public).
+    They are <em>not</em> part of vanilla REFramework or any public mod.
+  </p>
+  <ul style="font-size: 0.82rem; margin: 0.4rem 0 0 1.2rem; padding: 0; line-height: 1.7;">
+    <li><code class="fn">RecordingManagerTab.lua</code> &mdash; custom Lua module that adds the "Manager" tab (30 slots, loadouts) to the game's Recording Settings menu via native pause-menu injection.</li>
+    <li><code class="fn">NativePauseMenu.lua</code> (<code>PM</code>) &mdash; custom Lua module that drives the game's own pause-menu rows: creates spins, buttons, and tabs by injecting <code>TrainingMenuData</code> into the game's <code>TrainingMenuFunc</code> system. <code>PM.prepare_page()</code> and <code>PM.refresh_native_texts()</code> are its API.</li>
+    <li><code class="fn">RSM</code> (SF6_RecordingSlotManager) &mdash; custom Lua module that manages per-character recording slots (file I/O, virtual slots 9–30, naming). Exposed to RecordingManagerTab via <code>rsm()</code>.</li>
+  </ul>
+  <p style="font-size: 0.82rem; margin: 0.4rem 0 0; line-height: 1.5;">
+    <strong>Engine-native</strong> (game code, not ours): <code class="fn">TrainingMenuFunc.ViewUpdate</code>, <code class="fn">UpdateRecordSlotItem</code>, <code class="fn">UpdatePlaySlotItem</code>, <code class="fn">UIPartsGroupScroll.UpdateScroll</code>.
+    These are methods on the game's own managed types, called through REFramework's <code>sdk.hook</code> / <code>:call</code>.
+  </p>
+</div>
+
 <div class="flow">
   <div class="flow-title">Call chain</div>
   <div class="flow-chain">
