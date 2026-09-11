@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SF6 Input Guide Hints</title>
-<meta name="description" content="Comment modifier les textes de hint en bas de l'ecran SF6 via REFramework Lua.">
+<title>Bottom-Screen Hint Texts</title>
+<meta name="description" content="How the two bottom-screen text lines work in SF6 training menus: the per-row description and the input guide bar.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
 :root {
-  --bg: #111318; --bg-surface: #181c24; --bg-code: #1e222c; --border: #282d3a;
-  --text: #c8c6c0; --text-dim: #787c86; --text-bright: #eceae6;
-  --accent: #5c9eff; --accent-dim: #5c9eff18;
-  --red: #e05858; --red-dim: #e0585815; --yellow: #d4a840; --green: #48b878;
-  --mono: 'IBM Plex Mono','Consolas',monospace; --sans: 'IBM Plex Sans',system-ui,sans-serif;
+  --bg:#111318;--bg-surface:#181c24;--bg-code:#1e222c;--border:#282d3a;
+  --text:#c8c6c0;--text-dim:#787c86;--text-bright:#eceae6;
+  --accent:#5c9eff;--accent-dim:#5c9eff18;
+  --red:#e05858;--red-dim:#e0585815;--yellow:#d4a840;--green:#48b878;
+  --mono:'IBM Plex Mono','Consolas',monospace;--sans:'IBM Plex Sans',system-ui,sans-serif;
 }
 @media(prefers-color-scheme:light){:root:not([data-theme="dark"]){
   --bg:#f5f4f1;--bg-surface:#fff;--bg-code:#f0eeea;--border:#d8d4cc;
@@ -29,8 +29,8 @@ p{margin:0 0 12px}a{color:var(--accent);text-decoration:none}
 pre{background:var(--bg-code);border:1px solid var(--border);border-radius:5px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.55;margin:0 0 16px;color:var(--text)}
 code{font-family:var(--mono);font-size:.85em;background:var(--bg-code);padding:1px 5px;border-radius:3px}
 pre code{background:none;padding:0;font-size:inherit}
-.tree{background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;padding:16px 20px;font-family:var(--mono);font-size:.82rem;line-height:1.7;margin:0 0 16px;white-space:pre;overflow-x:auto}
-.tree .dim{color:var(--text-dim)}.tree .hl{color:var(--accent)}.tree .warn{color:var(--yellow)}
+.box{background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;padding:16px 20px;margin:0 0 16px;font-size:.88rem}
+.box .label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:8px}
 .rule{background:var(--red-dim);border:1px solid var(--red);border-left:3px solid var(--red);border-radius:0 5px 5px 0;padding:12px 16px;margin:0 0 10px}
 .rule strong{color:var(--red)}.rule code{background:var(--bg-code)}
 .tip{background:var(--accent-dim);border-left:3px solid var(--accent);border-radius:0 5px 5px 0;padding:12px 16px;margin:0 0 16px}
@@ -45,6 +45,8 @@ td{padding:7px 10px;border-bottom:1px solid var(--border)}td code{font-size:.8re
 .ref ul{margin:0;padding-left:18px}.ref li{margin-bottom:4px}
 .cmt{color:var(--green)}.kw{color:var(--accent)}
 .back{display:inline-block;margin-bottom:24px;font-size:.84rem}
+.diagram{font-family:var(--mono);font-size:.82rem;line-height:1.6;white-space:pre;overflow-x:auto;padding:16px 20px;background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;margin:0 0 16px}
+.diagram .hl{color:var(--accent)}.diagram .dim{color:var(--text-dim)}.diagram .warn{color:var(--yellow)}
 @media(max-width:500px){body{font-size:14px;padding:24px 16px 60px}h1{font-size:1.15rem}pre{font-size:.78rem;padding:10px 12px}}
 </style>
 </head>
@@ -52,61 +54,115 @@ td{padding:7px 10px;border-bottom:1px solid var(--border)}td code{font-size:.8re
 
 <a class="back" href="index.html">&larr; Back to Guide</a>
 
-<h1>SF6 Input Guide Hints</h1>
-<p class="sub">Comment modifier les textes de hint en bas de l'&eacute;cran &mdash; REFramework Lua</p>
+<h1>Bottom-Screen Hint Texts</h1>
+<p class="sub">How the two text lines at the bottom of SF6 training menus work, and how to set them from Lua.</p>
 
-<h2>Structure</h2>
-<div class="tree">Agent <span class="hl">"InputGuide"</span> <span class="dim">(un par joueur sur l'&eacute;cran VS)</span>
+<h2>The two lines</h2>
+
+<div class="box">
+<div class="label">What you see at the bottom of the training pause menu</div>
+<p><strong>Line 1 &mdash; Description text</strong> (white/yellow): changes per focused row.<br>
+Example: <em>"Browse and download loadouts shared by others."</em></p>
+<p><strong>Line 2 &mdash; Input guide bar</strong> (icons + labels): shows available buttons.<br>
+Example: <em>F Confirm &nbsp;&nbsp; Esc Back &nbsp;&nbsp; A + E Return to General tab</em></p>
+</div>
+
+<p>Line 1 is the <code>guide</code> parameter you pass when creating a menu row. Line 2 is built automatically by the game's <code>InputGuide</code> agent.</p>
+
+<h2>Line 1 &mdash; Description text</h2>
+
+<h3>Setting it via NativePauseMenu</h3>
+
+<p>Every row-creation method takes a <code>guide</code> string as its second argument. This is the description shown at the bottom when that row is focused:</p>
+
+<pre><code><span class="kw">local</span> PM = require(<span class="cmt">"func/NativePauseMenu"</span>)
+
+<span class="cmt">-- Simple row on the main SF6 Tools tab</span>
+PM.spin(<span class="cmt">"My Setting"</span>, <span class="cmt">"Adjust this value to change X."</span>, {<span class="cmt">"Low"</span>, <span class="cmt">"Medium"</span>, <span class="cmt">"High"</span>}, get_fn, set_fn)
+PM.button(<span class="cmt">"Do Something"</span>, <span class="cmt">"Press confirm to trigger the action."</span>, on_decide_fn)
+
+<span class="cmt">-- Custom tab with its own page</span>
+<span class="kw">local</span> pg = PM.page(<span class="cmt">"My Tab"</span>, <span class="cmt">"Description shown when the tab header is focused."</span>)
+pg:spin(<span class="cmt">"Speed"</span>, <span class="cmt">"How fast it goes."</span>, {<span class="cmt">"1x"</span>,<span class="cmt">"2x"</span>,<span class="cmt">"4x"</span>}, get, set)
+pg:button(<span class="cmt">"Reset"</span>, <span class="cmt">"Reset all settings to defaults."</span>, reset_fn)
+pg:toggle(<span class="cmt">"Enabled"</span>, <span class="cmt">"Turn this feature on or off."</span>, get, set)
+pg:number(<span class="cmt">"Distance"</span>, <span class="cmt">"Target distance in game units."</span>, 0, 500, 10, get, set)
+pg:value(<span class="cmt">"Status"</span>, <span class="cmt">"Current status (read-only)."</span>, status_fn)
+pg:label(<span class="cmt">"Info Line"</span>, <span class="cmt">"This row is not interactive."</span>)</code></pre>
+
+<h3>All row types</h3>
+
+<div class="tbl">
+<table>
+<tr><th>Method</th><th>Args</th><th>Description</th></tr>
+<tr><td><code>:spin(title, guide, options, get, set)</code></td><td>options: table or function</td><td>Left/right selector</td></tr>
+<tr><td><code>:toggle(title, guide, get, set)</code></td><td>boolean get/set</td><td>Off/On spin</td></tr>
+<tr><td><code>:number(title, guide, min, max, step, get, set, fmt)</code></td><td>real values</td><td>Numeric spin</td></tr>
+<tr><td><code>:button(title, guide, on_decide, keep_open)</code></td><td>keep_open: stay in menu</td><td>Action on confirm</td></tr>
+<tr><td><code>:value(title, guide, fn)</code></td><td>fn() &rarr; display text</td><td>Read-only row</td></tr>
+<tr><td><code>:label(title, guide)</code></td><td>&mdash;</td><td>Static text</td></tr>
+</table>
+</div>
+
+<h3>Dynamic descriptions</h3>
+
+<p>The <code>guide</code> can be a <strong>function</strong> instead of a string. It will be called each time the menu rebuilds or the row is focused:</p>
+
+<pre><code>pg:spin(<span class="cmt">"Slot"</span>, <span class="kw">function</span>() <span class="kw">return</span> <span class="cmt">"Currently loaded: "</span> .. current_slot_name() <span class="kw">end</span>,
+    slot_options, get_slot, set_slot)</code></pre>
+
+<h3>How it works internally</h3>
+
+<p>NativePauseMenu converts the guide string into a message GUID via <code>NativeOptions.message_guid(text)</code>, then writes it to the <code>_GuideMessage</code> field of the row's <code>TrainingMenuData</code>. The game reads this GUID when the row gains focus and displays the resolved text at the bottom.</p>
+
+<pre><code><span class="cmt">-- What NativePauseMenu does under the hood (you don't call this):</span>
+item.guide_guid = NO.message_guid(text_of(item.guide))
+NO.set_guid(data, <span class="cmt">"_GuideMessage"</span>, item.guide_guid)</code></pre>
+
+<h2>Line 2 &mdash; Input guide bar</h2>
+
+<p>The button hints bar (<em>F Confirm &middot; Esc Back &middot; A+E Switch tab</em>) is drawn by the game's <code>InputGuide</code> agent automatically. The game decides which buttons to show based on the current menu context.</p>
+
+<h3>Structure</h3>
+
+<div class="diagram">Agent <span class="hl">"InputGuide"</span>
   &#9492;&#9472; <span class="hl">UIPartsInputGuideList</span> <span class="dim">(part)</span>
-       &#9492;&#9472; Control &#8594; <span class="hl">c_guideBtn</span> <span class="dim">(conteneur)</span>
-            &#9500;&#9472; <span class="warn">e_text_0</span>           <span class="dim">&#8592; TEMPLATE (pr&eacute;fab, clon&eacute; par le moteur)</span>
-            &#9500;&#9472; e_text_0_d_0001    <span class="dim">&#8592; "Esc Retour"</span>
-            &#9500;&#9472; e_text_0_d_0002    <span class="dim">&#8592; "F Confirmer"</span>
-            &#9500;&#9472; e_text_0_d_0003    <span class="dim">&#8592; entr&eacute;e clon&eacute;e</span>
-            &#9492;&#9472; e_text_0_g_0001    <span class="dim">&#8592; "Appliquer &agrave; tous"</span></div>
+       &#9492;&#9472; Control &#8594; <span class="hl">c_guideBtn</span>
+            &#9500;&#9472; <span class="warn">e_text_0</span>           <span class="dim">&larr; TEMPLATE (cloned by NewInputItem)</span>
+            &#9500;&#9472; e_text_0_d_0001    <span class="dim">&larr; "F Confirm"</span>
+            &#9500;&#9472; e_text_0_d_0002    <span class="dim">&larr; "Esc Back"</span>
+            &#9492;&#9472; e_text_0_d_0003    <span class="dim">&larr; "A + E Switch tab"</span></div>
 
-<p>Les entr&eacute;es <code>e_text_0_d_*</code> sont des <strong>clones</strong> du template <code>e_text_0</code>, cr&eacute;&eacute;s par <code>app.UIPartsInputGuideBase.NewInputItem</code> (6 surcharges). Le jeu les recr&eacute;e &agrave; chaque changement d'&eacute;cran ou de p&eacute;riph&eacute;rique.</p>
+<h3>Appending a custom hint</h3>
 
-<h2>Lire un texte</h2>
-<pre><code><span class="kw">local</span> msg = text_element:call(<span class="cmt">"get_Message"</span>)
-<span class="cmt">-- msg contient du markup : "&lt;ICON BtnD&gt; Edit Color"</span></code></pre>
+<p>You cannot add new entries (crash &mdash; fixed pool of controls). Instead, <strong>append to an existing entry's text</strong> in the post-hook of <code>OnLateUpdate</code>:</p>
 
-<h2>Modifier un texte</h2>
-<h3>M&eacute;thode : suffixe (la plus s&ucirc;re)</h3>
-<pre><code><span class="cmt">-- Lire le texte actuel du jeu</span>
-<span class="kw">local</span> cur = text_element:call(<span class="cmt">"get_Message"</span>)
-
-<span class="cmt">-- Ajouter notre hint (6 espaces = s&eacute;parateur visuel)</span>
-<span class="kw">local</span> hint = cur .. "      &lt;ICON BtnD&gt; Mon Texte"
-
-<span class="cmt">-- TOUJOURS comparer avant d'&eacute;crire (r&egrave;gle 15)</span>
-<span class="kw">if</span> tostring(text_element:call(<span class="cmt">"get_Message"</span>)) ~= hint <span class="kw">then</span>
-    text_element:call(<span class="cmt">"set_Message"</span>, hint)
-<span class="kw">end</span></code></pre>
-
-<h3>Quand &eacute;crire</h3>
-<div class="tip"><strong>Post-hook de <code>OnLateUpdate</code> uniquement.</strong> Le jeu r&eacute;&eacute;crit les textes chaque frame dans ce callback. &Eacute;crire ailleurs = imm&eacute;diatement &eacute;cras&eacute;.</div>
 <pre><code><span class="kw">local</span> m = sdk.find_type_definition(<span class="cmt">"app.UIPartsInputGuideList"</span>)
               :get_method(<span class="cmt">"OnLateUpdate"</span>)
 sdk.hook(m,
     <span class="kw">function</span>(args)
-        <span class="cmt">-- pre: sauvegarder l'adresse pour filtrer</span>
-        thread.get_hook_storage()[<span class="cmt">"my_igl"</span>] = sdk.to_int64(args[2])
+        thread.get_hook_storage()[<span class="cmt">"igl"</span>] = sdk.to_int64(args[2])
     <span class="kw">end</span>,
     <span class="kw">function</span>(rv)
-        <span class="kw">local</span> addr = thread.get_hook_storage()[<span class="cmt">"my_igl"</span>]
-        <span class="kw">if</span> addr == ma_part_addr <span class="kw">then</span>
-            <span class="cmt">-- Le jeu vient de r&eacute;&eacute;crire &#8594; on ajoute les n&ocirc;tres</span>
-            guide_text_fix()
+        <span class="kw">local</span> addr = thread.get_hook_storage()[<span class="cmt">"igl"</span>]
+        <span class="kw">if</span> addr ~= my_part_addr <span class="kw">then return</span> rv <span class="kw">end</span>
+        <span class="cmt">-- Read current text, append our hint</span>
+        <span class="kw">local</span> cur = tostring(text:call(<span class="cmt">"get_Message"</span>))
+        <span class="kw">local</span> want = cur .. <span class="cmt">"      &lt;ICON BtnD&gt; My Action"</span>
+        <span class="cmt">-- ALWAYS compare before writing (rule 15)</span>
+        <span class="kw">if</span> tostring(text:call(<span class="cmt">"get_Message"</span>)) ~= want <span class="kw">then</span>
+            text:call(<span class="cmt">"set_Message"</span>, want)
         <span class="kw">end</span>
         <span class="kw">return</span> rv
     <span class="kw">end</span>)</code></pre>
 
-<h2>Ic&ocirc;nes (markup)</h2>
-<p>Les glyphes s'adaptent automatiquement au p&eacute;riph&eacute;rique :</p>
+<h3>Icon markup</h3>
+
+<p>Glyphs adapt automatically to the player's input device:</p>
+
 <div class="tbl">
 <table>
-<tr><th>Markup</th><th>Manette</th><th>Clavier</th></tr>
+<tr><th>Markup</th><th>Controller</th><th>Keyboard</th></tr>
 <tr><td><code>&lt;ICON BtnD&gt;</code></td><td>X (PS) / A (Xbox)</td><td>&mdash;</td></tr>
 <tr><td><code>&lt;ICON BtnR&gt;</code></td><td>O / B</td><td>&mdash;</td></tr>
 <tr><td><code>&lt;ICON BtnU&gt;</code></td><td>&#9651; / Y</td><td>&mdash;</td></tr>
@@ -114,62 +170,37 @@ sdk.hook(m,
 <tr><td><code>&lt;ICON KeyF&gt;</code></td><td>&mdash;</td><td>F</td></tr>
 <tr><td><code>&lt;ICON KeyX&gt;</code></td><td>&mdash;</td><td>X</td></tr>
 <tr><td><code>&lt;ICON KeyEsc&gt;</code></td><td>&mdash;</td><td>Esc</td></tr>
-<tr><td><code>&lt;ICON MouseL&gt;</code></td><td>&mdash;</td><td>clic gauche</td></tr>
+<tr><td><code>&lt;ICON MouseL&gt;</code></td><td>&mdash;</td><td>left click</td></tr>
 <tr><td><code>&lt;ICON KeyTab&gt;</code></td><td>&mdash;</td><td>Tab</td></tr>
 </table>
 </div>
-<p>Combinaisons : <code>&lt;ICON KeyF&gt;&lt;ICON MouseL&gt;</code> affiche &laquo;&nbsp;F / clic gauche&nbsp;&raquo; c&ocirc;te &agrave; c&ocirc;te.</p>
 
-<h2>Template comme texte libre</h2>
-<p>ColorSpinExtra utilise le template <code>e_text_0</code> (normalement invisible) comme texte positionn&eacute; dans le coin :</p>
-<pre><code><span class="kw">local</span> pos = template:call(<span class="cmt">"get_Position"</span>)
-template:call(<span class="cmt">"set_Position"</span>, Vector3f.new(0, -980, pos.z))
-template:call(<span class="cmt">"set_Message"</span>, "X Couleur du Drive Impact")</code></pre>
+<h2>Using the template as a free-positioned text</h2>
 
-<div class="rule"><strong>PI&Egrave;GE CRITIQUE</strong> &mdash; Le moteur <strong>clone</strong> ce template pour fabriquer les entr&eacute;es. Si le template est d&eacute;plac&eacute; (y&ne;0) au moment du clone, la nouvelle entr&eacute;e h&eacute;rite de cette position et toute la barre saute.</div>
+<p>The template <code>e_text_0</code> is never shown by the game. ColorSpinExtra repurposes it as a floating text in the top-left corner:</p>
 
-<p><strong>Solution</strong> : hook pre/post sur les 6 surcharges de <code>NewInputItem</code> &mdash; baisser le template &agrave; y=0 dans le pre-hook, le remonter dans le post-hook :</p>
-<pre><code><span class="kw">local</span> td = sdk.find_type_definition(<span class="cmt">"app.UIPartsInputGuideBase"</span>)
-<span class="kw">for</span> _, m <span class="kw">in</span> ipairs(td:get_methods()) <span class="kw">do</span>
-    <span class="kw">if</span> m:get_name() == <span class="cmt">"NewInputItem"</span> <span class="kw">then</span>
-        sdk.hook(m,
-            <span class="kw">function</span>()
-                <span class="cmt">-- pre: template a y=0 pour que le clone parte bien</span>
-                template:call(<span class="cmt">"set_Position"</span>, Vector3f.new(x, 0, z))
-            <span class="kw">end</span>,
-            <span class="kw">function</span>(rv)
-                <span class="cmt">-- post: remonter le template</span>
-                template:call(<span class="cmt">"set_Position"</span>, Vector3f.new(x, corner_y, z))
-                <span class="kw">return</span> rv
-            <span class="kw">end</span>)
-    <span class="kw">end</span>
-<span class="kw">end</span></code></pre>
+<pre><code>template:call(<span class="cmt">"set_Position"</span>, Vector3f.new(0, -980, 0))
+template:call(<span class="cmt">"set_Message"</span>, <span class="cmt">"X Drive Impact Color"</span>)</code></pre>
 
-<h2>R&egrave;gles anti-crash</h2>
-<div class="rule"><strong>1. JAMAIS <code>Add</code> / <code>NewInputItem</code> depuis Lua</strong> &mdash; pool fixe de contr&ocirc;les. Item sans contr&ocirc;le = crash <code>UIPartsManager.get_AllParts</code> (r&egrave;gle&nbsp;13).</div>
-<div class="rule"><strong>2. JAMAIS <code>set_Message</code> avec un texte identique</strong> &mdash; crash <code>UIPartsItem.UpdateFocus</code> (r&egrave;gle&nbsp;15). Toujours comparer avant.</div>
-<div class="rule"><strong>3. JAMAIS toucher le template d'un autre joueur</strong> &mdash; 2 barres sur l'&eacute;cran 2J. Template de P2 corrompu &#8594; crash <code>0x2d419f3</code>.</div>
-<div class="rule"><strong>4. &Eacute;crire UNIQUEMENT depuis le post-hook de <code>OnLateUpdate</code></strong> ou <code>LateUpdateBehavior</code>.</div>
-<div class="rule"><strong>5. Remettre les textes d'origine en quittant</strong> &mdash; sinon le suffixe reste sur les autres &eacute;crans.</div>
+<div class="rule"><strong>Clone trap</strong> &mdash; The engine clones <code>e_text_0</code> to build entries. If the template is at y&ne;0 during the clone, the new entry inherits that position and the whole bar jumps. Fix: hook all 6 overloads of <code>NewInputItem</code>, set y=0 in pre-hook, restore in post-hook.</div>
 
-<h2>Trouver les &eacute;l&eacute;ments</h2>
-<pre><code><span class="kw">local</span> fm = sdk.get_managed_singleton(<span class="cmt">"app.UIFlowManager"</span>)
-<span class="kw">local</span> list = fm:get_field(<span class="cmt">"_Handles"</span>)
-<span class="kw">for</span> i = 0, list:call(<span class="cmt">"get_Count"</span>) - 1 <span class="kw">do</span>
-    <span class="kw">local</span> ag = list:call(<span class="cmt">"get_Item"</span>, i).Agent
-    <span class="kw">local</span> go = ag <span class="kw">and</span> ag:call(<span class="cmt">"get_GameObject"</span>)
-    <span class="kw">if</span> go <span class="kw">and</span> tostring(go:call(<span class="cmt">"get_Name"</span>)) == <span class="cmt">"InputGuide"</span> <span class="kw">then</span>
-        <span class="kw">local</span> cm = ag:call(<span class="cmt">"get_ControlMain"</span>)
-        <span class="cmt">-- parcourir les enfants de c_guideBtn</span>
-    <span class="kw">end</span>
-<span class="kw">end</span></code></pre>
+<h2>Rules (each one crashed the game)</h2>
+
+<div class="rule"><strong>1. Never call <code>Add</code> or <code>NewInputItem</code> from Lua</strong> &mdash; the prefab has a fixed pool of controls. An item without a control crashes <code>UIPartsManager.get_AllParts</code>.</div>
+<div class="rule"><strong>2. Never <code>set_Message</code> with an identical string</strong> &mdash; crashes <code>UIPartsItem.UpdateFocus</code>. Always compare <code>get_Message</code> first.</div>
+<div class="rule"><strong>3. Never touch another player's template</strong> &mdash; two guide bars exist on the 2-player screen. Writing to P2's template when you don't own it corrupts the clone model &rarr; crash <code>0x2d419f3</code>.</div>
+<div class="rule"><strong>4. Write only from the <code>OnLateUpdate</code> post-hook</strong> or <code>LateUpdateBehavior</code> &mdash; the game rewrites every frame; other timings are overwritten.</div>
+<div class="rule"><strong>5. Restore original texts when leaving</strong> &mdash; otherwise the suffix leaks to other screens.</div>
 
 <div class="ref">
-  <div class="label">Fichiers de r&eacute;f&eacute;rence</div>
+  <div class="label">Source files</div>
   <ul>
-    <li><code>autorun/SF6_ColorSpinExtra.lua</code> lignes 890&ndash;1150 &mdash; suffixe + template coin</li>
-    <li><code>autorun/func/DriveRows.lua</code> &mdash; lignes Drive sur Edit Character</li>
-    <li><code>autorun/func/DIPanelMode.lua</code> &mdash; panneau DI sur l'&eacute;cran de s&eacute;lection</li>
+    <li><code>func/NativePauseMenu.lua</code> &mdash; the <code>guide</code> parameter and tab/page API</li>
+    <li><code>func/NativeOptions.lua</code> &mdash; <code>message_guid()</code>, <code>set_guid()</code>, <code>message_text()</code></li>
+    <li><code>SF6_ColorSpinExtra.lua</code> lines 890&ndash;1150 &mdash; appending to the input guide + template trick</li>
+    <li><code>func/DriveRows.lua</code> &mdash; custom hint on Edit Character rows</li>
+    <li><code>func/DIPanelMode.lua</code> &mdash; hint on the VS character select screen</li>
+    <li><code>func/RecordingManagerTab.lua</code> &mdash; example of <code>:button(title, guide, ...)</code></li>
   </ul>
 </div>
 
