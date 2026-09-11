@@ -1,0 +1,312 @@
+<title>Erase Loadout Flow</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #1a1d23;
+    --bg-raised: #21252d;
+    --bg-inset: #161920;
+    --border: #2d3139;
+    --text: #e0dcd6;
+    --text-dim: #8b8780;
+    --accent: #5fb8a0;
+    --accent-dim: #3d7a6a;
+    --flag: #d4854a;
+    --fn: #a8c7fa;
+    --arrow: #5fb8a0;
+    --step-num: #3d7a6a;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f5f3ef;
+      --bg-raised: #ffffff;
+      --bg-inset: #ebe8e3;
+      --border: #d6d2cb;
+      --text: #2a2520;
+      --text-dim: #7a756e;
+      --accent: #2e8a72;
+      --accent-dim: #b5ddd0;
+      --flag: #b5651d;
+      --fn: #2856a3;
+      --arrow: #2e8a72;
+      --step-num: #b5ddd0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1d23;
+    --bg-raised: #21252d;
+    --bg-inset: #161920;
+    --border: #2d3139;
+    --text: #e0dcd6;
+    --text-dim: #8b8780;
+    --accent: #5fb8a0;
+    --accent-dim: #3d7a6a;
+    --flag: #d4854a;
+    --fn: #a8c7fa;
+    --arrow: #5fb8a0;
+    --step-num: #3d7a6a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 2rem 1.5rem;
+    max-width: 720px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+
+  code, .mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82em;
+  }
+  .fn { color: var(--fn); }
+  .flag { color: var(--flag); font-weight: 500; }
+  .file { color: var(--text-dim); font-style: italic; }
+
+  /* ---- flow diagram ---- */
+  .flow {
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+  }
+  .flow-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+  }
+  .flow-chain {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 2;
+  }
+  .flow-node {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    white-space: nowrap;
+  }
+  .flow-node.trigger { border-color: var(--accent); color: var(--accent); }
+  .flow-node.flag-node { border-color: var(--flag); color: var(--flag); }
+  .flow-arrow { color: var(--arrow); font-size: 0.9rem; flex-shrink: 0; }
+
+  /* ---- steps ---- */
+  .step {
+    border-left: 2px solid var(--border);
+    padding: 0 0 1.5rem 1.25rem;
+    position: relative;
+    margin-left: 0.6rem;
+  }
+  .step:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .step::before {
+    content: attr(data-n);
+    position: absolute;
+    left: -0.85rem;
+    top: -0.1rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--step-num);
+    color: var(--bg);
+    font-size: 0.72rem;
+    font-weight: 600;
+    display: grid;
+    place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .step-head {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.35rem;
+  }
+  .step p { margin: 0.3rem 0; font-size: 0.88rem; }
+  .step .loc {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 0.15rem;
+  }
+
+  /* ---- code block ---- */
+  pre.code-block {
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+  }
+
+  /* ---- summary table ---- */
+  .summary {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin-top: 1.5rem;
+  }
+  .summary th {
+    text-align: left;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .summary td {
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .summary td:first-child { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+  @media (max-width: 500px) {
+    body { padding: 1.25rem 1rem; }
+    .flow-chain { font-size: 0.7rem; }
+    pre.code-block { font-size: 0.72rem; }
+  }
+</style>
+
+<h1>Erase Loadout — menu reload flow</h1>
+<p class="subtitle">RecordingManagerTab.lua &middot; how the menu rebuilds itself after erasing a loadout</p>
+
+<div class="flow">
+  <div class="flow-title">Call chain</div>
+  <div class="flow-chain">
+    <span class="flow-node trigger">Click "Erase"</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-node"><span class="fn">erase_selected()</span></span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-node flag-node">manager_dirty = true</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-node flag-node">rows_dirty = true</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-node"><span class="fn">UpdateScroll</span> post-hook</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-node"><span class="fn">prepare_page</span> + <span class="fn">ViewUpdate</span></span>
+  </div>
+</div>
+
+<div class="step" data-n="1">
+  <div class="step-head">The "Erase" button fires the callback</div>
+  <p>The button calls <code class="fn">confirm()</code> with a confirmation dialog. If the user confirms:</p>
+  <pre class="code-block"><span class="fn">a.erase_selected</span>()
+<span class="flag">manager_dirty</span> = true
+<span class="flag">rows_dirty</span>    = true
+<span class="fn">a.invalidate_files</span>()   -- forces RSM to re-glob
+<span class="fn">a.ensure_files</span>()       -- rebuilds the file list</pre>
+  <div class="loc">RecordingManagerTab.lua:135–146</div>
+</div>
+
+<div class="step" data-n="2">
+  <div class="step-head">Flags are consumed in the <code class="fn">UpdateScroll</code> post-hook</div>
+  <p>The hook lives on <code class="mono">UIPartsGroupScroll.UpdateScroll</code> — it runs every frame on the UI thread while the menu page is displayed.</p>
+  <p>Both flags are read and reset to <code>false</code> here.</p>
+  <div class="loc">RecordingManagerTab.lua:1446–1470</div>
+</div>
+
+<div class="step" data-n="3">
+  <div class="step-head"><code class="flag">rows_dirty</code> → <code class="fn">redraw_rows()</code></div>
+  <p>Iterates the <code class="mono">_SecondaryList</code> groups (from <code>FIRST_ROW</code> to <code>LAST_ROW</code>) and calls the game's setter on each row:</p>
+  <pre class="code-block">-- Record page
+param:call("<span class="fn">UpdateRecordSlotItem</span>", group, idx)
+-- Replay page
+param:call("<span class="fn">UpdatePlaySlotItem</span>", group, idx)</pre>
+  <p>Forces the game to re-read each slot's data and update text, status and arrows.</p>
+  <div class="loc">RecordingManagerTab.lua:1433–1441</div>
+</div>
+
+<div class="step" data-n="4">
+  <div class="step-head"><code class="flag">manager_dirty</code> → spinner + text rebuild</div>
+  <p>Three chained calls:</p>
+  <pre class="code-block"><span class="fn">PM.prepare_page</span>(manager_page)
+  -- Resizes the spinner's option array
+  -- to the number of remaining loadouts.
+  -- Rewrites GUIDs and FuncTypes.
+
+<span class="fn">PM.refresh_native_texts</span>(manager_page)
+  -- Walks every spin on the page
+  -- and forces the displayed native text
+  -- to the current value (enforce_option_text).
+
+<span class="fn">m_viewupdate</span>:call(nil, param, tab, 0)
+  -- = TrainingMenuFunc.ViewUpdate
+  -- Rebuilds the visual menu rows
+  -- for our tab (tab = our MenuData).</pre>
+  <div class="loc">RecordingManagerTab.lua:1455–1459 · NativePauseMenu.lua:490, 779</div>
+</div>
+
+<div class="step" data-n="5">
+  <div class="step-head">Borrowed text refit</div>
+  <p>Over the next 30 frames (<code class="flag">fit_watch</code>), <code class="fn">refit_rows()</code> adjusts the size of texts borrowed from prefabs — rendered dimensions arrive one frame late.</p>
+  <div class="loc">RecordingManagerTab.lua:1468</div>
+</div>
+
+<hr>
+
+<table class="summary">
+  <thead>
+    <tr><th>Function</th><th>Role</th><th>File</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="fn">erase_selected()</td>
+      <td>Deletes the selected loadout in RSM (JSON file + memory buffer)</td>
+      <td class="file">RSM (exposed via rsm())</td>
+    </tr>
+    <tr>
+      <td class="fn">PM.prepare_page()</td>
+      <td>Rebuilds the spinner's option array (sized to the number of live loadouts)</td>
+      <td class="file">NativePauseMenu.lua:490</td>
+    </tr>
+    <tr>
+      <td class="fn">PM.refresh_native_texts()</td>
+      <td>Forces every spin's displayed text to its current value</td>
+      <td class="file">NativePauseMenu.lua:779</td>
+    </tr>
+    <tr>
+      <td class="fn">ViewUpdate()</td>
+      <td>Engine method — rebuilds the visual menu rows for a given tab</td>
+      <td class="file">TrainingMenuFunc (native)</td>
+    </tr>
+    <tr>
+      <td class="fn">redraw_rows()</td>
+      <td>Calls UpdateRecordSlotItem/UpdatePlaySlotItem on each visible row</td>
+      <td class="file">RecordingManagerTab.lua:1433</td>
+    </tr>
+    <tr>
+      <td class="fn">refit_rows()</td>
+      <td>Adjusts borrowed text sizes (30-frame stabilization window)</td>
+      <td class="file">RecordingManagerTab.lua:1468</td>
+    </tr>
+  </tbody>
+</table>

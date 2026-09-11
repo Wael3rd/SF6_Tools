@@ -65,3 +65,6 @@
     - [EConfigInitLayout (Start Position)](/README.md#econfiginitlayout-start-position)
     - [Source Files](/README.md#source-files)
   - [13. Credits](/README.md#13-credits)
+- **Internals**
+  - [Native Menu Rows (C++)](native-menu-rows.html)
+  - [Erase Loadout Flow](erase-loadout-flow.html)
