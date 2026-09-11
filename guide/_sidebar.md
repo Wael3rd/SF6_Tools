@@ -67,4 +67,5 @@
   - [13. Credits](/README.md#13-credits)
 - **Internals**
   - [Native Menu Rows (C++)](native-menu-rows.html)
+  - [Input Guide Hints](input-guide-hints.html)
   - [Erase Loadout Flow](erase-loadout-flow.html)

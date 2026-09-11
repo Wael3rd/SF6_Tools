@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SF6 Input Guide Hints</title>
+<meta name="description" content="Comment modifier les textes de hint en bas de l'ecran SF6 via REFramework Lua.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg: #111318; --bg-surface: #181c24; --bg-code: #1e222c; --border: #282d3a;
+  --text: #c8c6c0; --text-dim: #787c86; --text-bright: #eceae6;
+  --accent: #5c9eff; --accent-dim: #5c9eff18;
+  --red: #e05858; --red-dim: #e0585815; --yellow: #d4a840; --green: #48b878;
+  --mono: 'IBM Plex Mono','Consolas',monospace; --sans: 'IBM Plex Sans',system-ui,sans-serif;
+}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --bg:#f5f4f1;--bg-surface:#fff;--bg-code:#f0eeea;--border:#d8d4cc;
+  --text:#333640;--text-dim:#6e7280;--text-bright:#111318;
+  --accent:#2a6ed4;--accent-dim:#2a6ed410;--red:#c03838;--red-dim:#c0383810;--yellow:#9a7520;--green:#28805a;
+}}
+:root[data-theme="dark"]{--bg:#111318;--bg-surface:#181c24;--bg-code:#1e222c;--border:#282d3a;--text:#c8c6c0;--text-dim:#787c86;--text-bright:#eceae6;--accent:#5c9eff;--accent-dim:#5c9eff18;--red:#e05858;--red-dim:#e0585815;--yellow:#d4a840;--green:#48b878;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);max-width:780px;margin:0 auto;padding:40px 20px 80px;line-height:1.65;font-size:15px}
+h1{font-family:var(--mono);font-size:1.35rem;font-weight:600;color:var(--text-bright);margin:0 0 6px;letter-spacing:-0.01em}
+.sub{color:var(--text-dim);font-size:.82rem;margin-bottom:32px}
+h2{font-weight:700;color:var(--text-bright);margin:36px 0 12px;text-transform:uppercase;letter-spacing:.04em;font-size:.78rem}
+h3{font-size:.92rem;font-weight:600;color:var(--text-bright);margin:20px 0 8px}
+p{margin:0 0 12px}a{color:var(--accent);text-decoration:none}
+pre{background:var(--bg-code);border:1px solid var(--border);border-radius:5px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:.82rem;line-height:1.55;margin:0 0 16px;color:var(--text)}
+code{font-family:var(--mono);font-size:.85em;background:var(--bg-code);padding:1px 5px;border-radius:3px}
+pre code{background:none;padding:0;font-size:inherit}
+.tree{background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;padding:16px 20px;font-family:var(--mono);font-size:.82rem;line-height:1.7;margin:0 0 16px;white-space:pre;overflow-x:auto}
+.tree .dim{color:var(--text-dim)}.tree .hl{color:var(--accent)}.tree .warn{color:var(--yellow)}
+.rule{background:var(--red-dim);border:1px solid var(--red);border-left:3px solid var(--red);border-radius:0 5px 5px 0;padding:12px 16px;margin:0 0 10px}
+.rule strong{color:var(--red)}.rule code{background:var(--bg-code)}
+.tip{background:var(--accent-dim);border-left:3px solid var(--accent);border-radius:0 5px 5px 0;padding:12px 16px;margin:0 0 16px}
+.tip strong{color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:.84rem;margin:0 0 16px}
+th{text-align:left;font-weight:600;color:var(--text-dim);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:2px solid var(--border)}
+td{padding:7px 10px;border-bottom:1px solid var(--border)}td code{font-size:.8rem}tr:last-child td{border-bottom:none}
+.tbl{background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;overflow-x:auto}
+.tbl th:first-child,.tbl td:first-child{padding-left:16px}
+.ref{background:var(--bg-surface);border:1px solid var(--border);border-radius:5px;padding:14px 18px;margin:24px 0 0;font-size:.84rem}
+.ref .label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);margin-bottom:6px}
+.ref ul{margin:0;padding-left:18px}.ref li{margin-bottom:4px}
+.cmt{color:var(--green)}.kw{color:var(--accent)}
+.back{display:inline-block;margin-bottom:24px;font-size:.84rem}
+@media(max-width:500px){body{font-size:14px;padding:24px 16px 60px}h1{font-size:1.15rem}pre{font-size:.78rem;padding:10px 12px}}
+</style>
+</head>
+<body>
+
+<a class="back" href="index.html">&larr; Back to Guide</a>
+
+<h1>SF6 Input Guide Hints</h1>
+<p class="sub">Comment modifier les textes de hint en bas de l'&eacute;cran &mdash; REFramework Lua</p>
+
+<h2>Structure</h2>
+<div class="tree">Agent <span class="hl">"InputGuide"</span> <span class="dim">(un par joueur sur l'&eacute;cran VS)</span>
+  &#9492;&#9472; <span class="hl">UIPartsInputGuideList</span> <span class="dim">(part)</span>
+       &#9492;&#9472; Control &#8594; <span class="hl">c_guideBtn</span> <span class="dim">(conteneur)</span>
+            &#9500;&#9472; <span class="warn">e_text_0</span>           <span class="dim">&#8592; TEMPLATE (pr&eacute;fab, clon&eacute; par le moteur)</span>
+            &#9500;&#9472; e_text_0_d_0001    <span class="dim">&#8592; "Esc Retour"</span>
+            &#9500;&#9472; e_text_0_d_0002    <span class="dim">&#8592; "F Confirmer"</span>
+            &#9500;&#9472; e_text_0_d_0003    <span class="dim">&#8592; entr&eacute;e clon&eacute;e</span>
+            &#9492;&#9472; e_text_0_g_0001    <span class="dim">&#8592; "Appliquer &agrave; tous"</span></div>
+
+<p>Les entr&eacute;es <code>e_text_0_d_*</code> sont des <strong>clones</strong> du template <code>e_text_0</code>, cr&eacute;&eacute;s par <code>app.UIPartsInputGuideBase.NewInputItem</code> (6 surcharges). Le jeu les recr&eacute;e &agrave; chaque changement d'&eacute;cran ou de p&eacute;riph&eacute;rique.</p>
+
+<h2>Lire un texte</h2>
+<pre><code><span class="kw">local</span> msg = text_element:call(<span class="cmt">"get_Message"</span>)
+<span class="cmt">-- msg contient du markup : "&lt;ICON BtnD&gt; Edit Color"</span></code></pre>
+
+<h2>Modifier un texte</h2>
+<h3>M&eacute;thode : suffixe (la plus s&ucirc;re)</h3>
+<pre><code><span class="cmt">-- Lire le texte actuel du jeu</span>
+<span class="kw">local</span> cur = text_element:call(<span class="cmt">"get_Message"</span>)
+
+<span class="cmt">-- Ajouter notre hint (6 espaces = s&eacute;parateur visuel)</span>
+<span class="kw">local</span> hint = cur .. "      &lt;ICON BtnD&gt; Mon Texte"
+
+<span class="cmt">-- TOUJOURS comparer avant d'&eacute;crire (r&egrave;gle 15)</span>
+<span class="kw">if</span> tostring(text_element:call(<span class="cmt">"get_Message"</span>)) ~= hint <span class="kw">then</span>
+    text_element:call(<span class="cmt">"set_Message"</span>, hint)
+<span class="kw">end</span></code></pre>
+
+<h3>Quand &eacute;crire</h3>
+<div class="tip"><strong>Post-hook de <code>OnLateUpdate</code> uniquement.</strong> Le jeu r&eacute;&eacute;crit les textes chaque frame dans ce callback. &Eacute;crire ailleurs = imm&eacute;diatement &eacute;cras&eacute;.</div>
+<pre><code><span class="kw">local</span> m = sdk.find_type_definition(<span class="cmt">"app.UIPartsInputGuideList"</span>)
+              :get_method(<span class="cmt">"OnLateUpdate"</span>)
+sdk.hook(m,
+    <span class="kw">function</span>(args)
+        <span class="cmt">-- pre: sauvegarder l'adresse pour filtrer</span>
+        thread.get_hook_storage()[<span class="cmt">"my_igl"</span>] = sdk.to_int64(args[2])
+    <span class="kw">end</span>,
+    <span class="kw">function</span>(rv)
+        <span class="kw">local</span> addr = thread.get_hook_storage()[<span class="cmt">"my_igl"</span>]
+        <span class="kw">if</span> addr == ma_part_addr <span class="kw">then</span>
+            <span class="cmt">-- Le jeu vient de r&eacute;&eacute;crire &#8594; on ajoute les n&ocirc;tres</span>
+            guide_text_fix()
+        <span class="kw">end</span>
+        <span class="kw">return</span> rv
+    <span class="kw">end</span>)</code></pre>
+
+<h2>Ic&ocirc;nes (markup)</h2>
+<p>Les glyphes s'adaptent automatiquement au p&eacute;riph&eacute;rique :</p>
+<div class="tbl">
+<table>
+<tr><th>Markup</th><th>Manette</th><th>Clavier</th></tr>
+<tr><td><code>&lt;ICON BtnD&gt;</code></td><td>X (PS) / A (Xbox)</td><td>&mdash;</td></tr>
+<tr><td><code>&lt;ICON BtnR&gt;</code></td><td>O / B</td><td>&mdash;</td></tr>
+<tr><td><code>&lt;ICON BtnU&gt;</code></td><td>&#9651; / Y</td><td>&mdash;</td></tr>
+<tr><td><code>&lt;ICON BtnL&gt;</code></td><td>&#9633; / X</td><td>&mdash;</td></tr>
+<tr><td><code>&lt;ICON KeyF&gt;</code></td><td>&mdash;</td><td>F</td></tr>
+<tr><td><code>&lt;ICON KeyX&gt;</code></td><td>&mdash;</td><td>X</td></tr>
+<tr><td><code>&lt;ICON KeyEsc&gt;</code></td><td>&mdash;</td><td>Esc</td></tr>
+<tr><td><code>&lt;ICON MouseL&gt;</code></td><td>&mdash;</td><td>clic gauche</td></tr>
+<tr><td><code>&lt;ICON KeyTab&gt;</code></td><td>&mdash;</td><td>Tab</td></tr>
+</table>
+</div>
+<p>Combinaisons : <code>&lt;ICON KeyF&gt;&lt;ICON MouseL&gt;</code> affiche &laquo;&nbsp;F / clic gauche&nbsp;&raquo; c&ocirc;te &agrave; c&ocirc;te.</p>
+
+<h2>Template comme texte libre</h2>
+<p>ColorSpinExtra utilise le template <code>e_text_0</code> (normalement invisible) comme texte positionn&eacute; dans le coin :</p>
+<pre><code><span class="kw">local</span> pos = template:call(<span class="cmt">"get_Position"</span>)
+template:call(<span class="cmt">"set_Position"</span>, Vector3f.new(0, -980, pos.z))
+template:call(<span class="cmt">"set_Message"</span>, "X Couleur du Drive Impact")</code></pre>
+
+<div class="rule"><strong>PI&Egrave;GE CRITIQUE</strong> &mdash; Le moteur <strong>clone</strong> ce template pour fabriquer les entr&eacute;es. Si le template est d&eacute;plac&eacute; (y&ne;0) au moment du clone, la nouvelle entr&eacute;e h&eacute;rite de cette position et toute la barre saute.</div>
+
+<p><strong>Solution</strong> : hook pre/post sur les 6 surcharges de <code>NewInputItem</code> &mdash; baisser le template &agrave; y=0 dans le pre-hook, le remonter dans le post-hook :</p>
+<pre><code><span class="kw">local</span> td = sdk.find_type_definition(<span class="cmt">"app.UIPartsInputGuideBase"</span>)
+<span class="kw">for</span> _, m <span class="kw">in</span> ipairs(td:get_methods()) <span class="kw">do</span>
+    <span class="kw">if</span> m:get_name() == <span class="cmt">"NewInputItem"</span> <span class="kw">then</span>
+        sdk.hook(m,
+            <span class="kw">function</span>()
+                <span class="cmt">-- pre: template a y=0 pour que le clone parte bien</span>
+                template:call(<span class="cmt">"set_Position"</span>, Vector3f.new(x, 0, z))
+            <span class="kw">end</span>,
+            <span class="kw">function</span>(rv)
+                <span class="cmt">-- post: remonter le template</span>
+                template:call(<span class="cmt">"set_Position"</span>, Vector3f.new(x, corner_y, z))
+                <span class="kw">return</span> rv
+            <span class="kw">end</span>)
+    <span class="kw">end</span>
+<span class="kw">end</span></code></pre>
+
+<h2>R&egrave;gles anti-crash</h2>
+<div class="rule"><strong>1. JAMAIS <code>Add</code> / <code>NewInputItem</code> depuis Lua</strong> &mdash; pool fixe de contr&ocirc;les. Item sans contr&ocirc;le = crash <code>UIPartsManager.get_AllParts</code> (r&egrave;gle&nbsp;13).</div>
+<div class="rule"><strong>2. JAMAIS <code>set_Message</code> avec un texte identique</strong> &mdash; crash <code>UIPartsItem.UpdateFocus</code> (r&egrave;gle&nbsp;15). Toujours comparer avant.</div>
+<div class="rule"><strong>3. JAMAIS toucher le template d'un autre joueur</strong> &mdash; 2 barres sur l'&eacute;cran 2J. Template de P2 corrompu &#8594; crash <code>0x2d419f3</code>.</div>
+<div class="rule"><strong>4. &Eacute;crire UNIQUEMENT depuis le post-hook de <code>OnLateUpdate</code></strong> ou <code>LateUpdateBehavior</code>.</div>
+<div class="rule"><strong>5. Remettre les textes d'origine en quittant</strong> &mdash; sinon le suffixe reste sur les autres &eacute;crans.</div>
+
+<h2>Trouver les &eacute;l&eacute;ments</h2>
+<pre><code><span class="kw">local</span> fm = sdk.get_managed_singleton(<span class="cmt">"app.UIFlowManager"</span>)
+<span class="kw">local</span> list = fm:get_field(<span class="cmt">"_Handles"</span>)
+<span class="kw">for</span> i = 0, list:call(<span class="cmt">"get_Count"</span>) - 1 <span class="kw">do</span>
+    <span class="kw">local</span> ag = list:call(<span class="cmt">"get_Item"</span>, i).Agent
+    <span class="kw">local</span> go = ag <span class="kw">and</span> ag:call(<span class="cmt">"get_GameObject"</span>)
+    <span class="kw">if</span> go <span class="kw">and</span> tostring(go:call(<span class="cmt">"get_Name"</span>)) == <span class="cmt">"InputGuide"</span> <span class="kw">then</span>
+        <span class="kw">local</span> cm = ag:call(<span class="cmt">"get_ControlMain"</span>)
+        <span class="cmt">-- parcourir les enfants de c_guideBtn</span>
+    <span class="kw">end</span>
+<span class="kw">end</span></code></pre>
+
+<div class="ref">
+  <div class="label">Fichiers de r&eacute;f&eacute;rence</div>
+  <ul>
+    <li><code>autorun/SF6_ColorSpinExtra.lua</code> lignes 890&ndash;1150 &mdash; suffixe + template coin</li>
+    <li><code>autorun/func/DriveRows.lua</code> &mdash; lignes Drive sur Edit Character</li>
+    <li><code>autorun/func/DIPanelMode.lua</code> &mdash; panneau DI sur l'&eacute;cran de s&eacute;lection</li>
+  </ul>
+</div>
+
+</body>
+</html>
