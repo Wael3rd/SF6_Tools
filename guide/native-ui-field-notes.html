@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Every pitfall met while injecting native UI into SF6's training pause menu via REFramework: symptom, root cause, fix.">
+<title>SF6 Native UI Field Notes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#EEF0F3; --panel:#FFFFFF; --panel-2:#F6F7F9; --ink:#171C22; --muted:#5B6572; --line:#D7DCE2; --line-strong:#B9C1CA;
+  --accent:#1E8E6C; --accent-ink:#0F5C45; --accent-soft:#DDF1EA;
+  --crash:#B7500F; --crash-soft:#F8E6DA; --freeze:#8E3B46; --freeze-soft:#F3E1E4; --silent:#3E6FA8; --silent-soft:#E0E9F5; --gotcha:#5B6572; --gotcha-soft:#E6E9ED; --perf:#6B7A2E; --perf-soft:#E9EDD8;
+  --code-bg:#F1F3F5; --shadow:0 1px 2px rgba(23,28,34,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1418; --panel:#171E25; --panel-2:#1D252D; --ink:#E6EAEE; --muted:#98A3AE; --line:#2A343E; --line-strong:#3C4854;
+    --accent:#3BB58E; --accent-ink:#8FE0C3; --accent-soft:#173A31;
+    --crash:#E28A4E; --crash-soft:#3D2416; --freeze:#D98A96; --freeze-soft:#3A2126; --silent:#7FAEE6; --silent-soft:#1B2C40; --gotcha:#A6B0BA; --gotcha-soft:#242D36; --perf:#B5C26A; --perf-soft:#2A2F1A;
+    --code-bg:#0F151B; --shadow:0 1px 2px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1418; --panel:#171E25; --panel-2:#1D252D; --ink:#E6EAEE; --muted:#98A3AE; --line:#2A343E; --line-strong:#3C4854;
+  --accent:#3BB58E; --accent-ink:#8FE0C3; --accent-soft:#173A31;
+  --crash:#E28A4E; --crash-soft:#3D2416; --freeze:#D98A96; --freeze-soft:#3A2126; --silent:#7FAEE6; --silent-soft:#1B2C40; --gotcha:#A6B0BA; --gotcha-soft:#242D36; --perf:#B5C26A; --perf-soft:#2A2F1A;
+  --code-bg:#0F151B; --shadow:0 1px 2px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.55;padding-inline:clamp(16px,4vw,48px);padding-block:0 96px}
+a{color:var(--accent-ink)}
+code,kbd{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:.88em;background:var(--code-bg);border:1px solid var(--line);border-radius:3px;padding:0 .3em;white-space:nowrap}
+h1,h2,h3{font-family:"Barlow Condensed","Arial Narrow",sans-serif;text-wrap:balance;margin:0;line-height:1.05}
+.eyebrow{font-family:"Barlow Condensed",sans-serif;font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:.8rem;color:var(--muted)}
+
+/* header */
+.masthead{max-width:1180px;margin:0 auto;padding-block:40px 28px;border-bottom:2px solid var(--ink)}
+.masthead h1{font-size:clamp(2.4rem,6vw,4.4rem);font-weight:700;text-transform:uppercase;letter-spacing:.01em}
+.masthead h1 span{color:var(--accent)}
+.lede{max-width:66ch;font-size:1.05rem;margin:16px 0 0}
+.lede p{margin:0 0 .6em}
+.stats{display:flex;flex-wrap:wrap;gap:0;margin-top:24px;border:1px solid var(--line-strong);background:var(--panel)}
+.stat{flex:1 1 150px;padding:12px 16px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:2rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:.8rem;letter-spacing:.04em;text-transform:uppercase}
+
+/* layout */
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;padding-top:28px}
+nav.toc{position:sticky;top:16px;align-self:start;font-size:.9rem}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:2px solid var(--line)}
+nav.toc li a{display:block;padding:6px 12px;color:var(--muted);text-decoration:none;border-left:2px solid transparent;margin-left:-2px}
+nav.toc li a:hover,nav.toc li a:focus-visible{color:var(--ink);border-left-color:var(--accent)}
+nav.toc .k{font-family:"IBM Plex Mono",monospace;font-size:.75rem;color:var(--accent);margin-right:6px}
+.filters{margin-top:20px;display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 .72rem/1 "IBM Plex Sans",sans-serif;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line-strong);background:var(--panel);color:var(--muted);border-radius:999px;padding:6px 10px;cursor:pointer}
+.chip[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
+.chip:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* sections */
+section.theme{margin-bottom:56px;scroll-margin-top:16px}
+.theme-head{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:end;border-bottom:1px solid var(--line-strong);padding-bottom:10px;margin-bottom:18px}
+.theme-head .k{font-family:"Barlow Condensed",sans-serif;font-size:2.6rem;font-weight:700;color:var(--accent);line-height:.9}
+.theme-head h2{font-size:1.7rem;font-weight:600}
+.theme-head p{grid-column:2;margin:4px 0 0;color:var(--muted);max-width:70ch}
+
+/* cases */
+.case{background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:12px}
+.case[hidden]{display:none}
+.case>header{display:flex;gap:12px;align-items:flex-start;padding:12px 16px 8px}
+.case h3{font-size:1.25rem;font-weight:600;flex:1;min-width:0}
+.tag{flex:none;font:600 .68rem/1 "IBM Plex Sans",sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-radius:3px;margin-top:3px}
+.tag.crash{background:var(--crash-soft);color:var(--crash)}
+.tag.freeze{background:var(--freeze-soft);color:var(--freeze)}
+.tag.silent{background:var(--silent-soft);color:var(--silent)}
+.tag.gotcha{background:var(--gotcha-soft);color:var(--gotcha)}
+.tag.perf{background:var(--perf-soft);color:var(--perf)}
+.case dl{margin:0;display:grid;grid-template-columns:92px minmax(0,1fr);border-top:1px solid var(--line)}
+.case dt{padding:8px 16px;font:600 .72rem/1.6 "IBM Plex Sans",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--panel-2);border-bottom:1px solid var(--line)}
+.case dd{margin:0;padding:8px 16px 8px 12px;border-bottom:1px solid var(--line);max-width:78ch}
+.case dt:last-of-type,.case dd:last-of-type{border-bottom:0}
+.case dd.fix{border-left:3px solid var(--accent);padding-left:9px}
+.case dd.where{color:var(--muted);font-size:.86rem}
+
+/* reference tables */
+table{border-collapse:collapse;width:100%;font-size:.9rem;background:var(--panel)}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 .72rem/1.6 "IBM Plex Sans",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--panel-2)}
+.table-wrap{overflow-x:auto;border:1px solid var(--line)}
+.rules{counter-reset:r;margin:0;padding:0;list-style:none;display:grid;gap:10px}
+.rules li{background:var(--panel);border:1px solid var(--line);padding:12px 16px 12px 56px;position:relative}
+.rules li::before{counter-increment:r;content:counter(r,decimal-leading-zero);position:absolute;left:16px;top:10px;font-family:"Barlow Condensed",sans-serif;font-size:1.6rem;font-weight:700;color:var(--accent)}
+.rules li b{display:block;font-weight:600}
+footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;border-top:1px solid var(--line);padding-top:16px}
+
+@media (max-width:820px){
+  .wrap{grid-template-columns:1fr;gap:24px}
+  nav.toc{position:static}
+  nav.toc ol{display:flex;flex-wrap:wrap;gap:4px;border:0}
+  nav.toc li a{border:1px solid var(--line);border-radius:999px;padding:5px 10px;margin:0}
+  .case dl{grid-template-columns:1fr}
+  .case dt{padding-bottom:2px}
+  .case dd{padding-top:2px}
+  .case dd.fix{border-left:0;padding-left:16px}
+  .stat{flex-basis:45%}
+}
+@media (prefers-reduced-motion:no-preference){ html{scroll-behavior:smooth} }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="eyebrow">Street Fighter 6 · RE Engine · REFramework · training-mode pause menu</div>
+  <h1>SF6 Native UI <span>Field Notes</span></h1>
+  <div class="lede">
+    <p>Everything that bit us while injecting real, game-drawn UI into SF6's training pause menu — rows, tabs, spins, dialogs, texts, a bottom bar — from Lua and two small native plugins, without touching prefabs or drawing anything ourselves. Each entry is one measured failure: what we saw, what was actually happening, what we ship now, and what we tried first and threw away.</p>
+    <p>Written for another modder working on the same surface. Dates are 2026. Addresses and method names are from the current game build and will drift.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="n-total">0</b><small>cases</small></div>
+    <div class="stat"><b id="n-crash">0</b><small>hard crashes</small></div>
+    <div class="stat"><b id="n-freeze">0</b><small>freezes / deadlocks</small></div>
+    <div class="stat"><b>Aug 29 → Sep 13</b><small>measured over</small></div>
+    <div class="stat"><b>14 + 3</b><small>Lua modules + native plugins</small></div>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc" aria-label="Sections">
+  <ol>
+    <li><a href="#a"><span class="k">A</span>Rows &amp; tabs</a></li>
+    <li><a href="#b"><span class="k">B</span>Texts &amp; GUIDs</a></li>
+    <li><a href="#c"><span class="k">C</span>Dialogs &amp; spins</a></li>
+    <li><a href="#d"><span class="k">D</span>Threads</a></li>
+    <li><a href="#e"><span class="k">E</span>Rows built in C++</a></li>
+    <li><a href="#f"><span class="k">F</span>HUD &amp; bottom bar</a></li>
+    <li><a href="#g"><span class="k">G</span>Loader &amp; REFramework</a></li>
+    <li><a href="#h"><span class="k">H</span>Raw memory</a></li>
+    <li><a href="#i"><span class="k">I</span>Keyboard &amp; navigation</a></li>
+    <li><a href="#ref"><span class="k">→</span>Hooks we rely on</a></li>
+    <li><a href="#rules"><span class="k">→</span>The rules that survived</a></li>
+  </ol>
+  <div class="filters" role="group" aria-label="Filter by kind">
+    <button class="chip" aria-pressed="true" data-kind="all" id="f-all">All</button>
+    <button class="chip" aria-pressed="false" data-kind="crash" id="f-crash">Crash</button>
+    <button class="chip" aria-pressed="false" data-kind="freeze" id="f-freeze">Freeze</button>
+    <button class="chip" aria-pressed="false" data-kind="silent" id="f-silent">Silent bug</button>
+    <button class="chip" aria-pressed="false" data-kind="gotcha" id="f-gotcha">Gotcha</button>
+    <button class="chip" aria-pressed="false" data-kind="perf" id="f-perf">Perf</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ===================== A ===================== -->
+<section class="theme" id="a">
+  <div class="theme-head"><div class="k">A</div><h2>Pause-menu rows &amp; tabs</h2>
+  <p><code>app.training.TrainingManager.AddDynamicMenu(TrainingFuncType.DYNAMIC, TrainingMenuData, Action)</code>, <code>TrainingMenuFunc.Function / ViewUpdate / GetOptionText / GetOptionIndex</code>, <code>UIFlowTrainingMenu.Param</code>. The game builds the row; we only feed data and answer its callbacks.</p></div>
+
+  <article class="case" data-kind="silent"><header><h3>FuncType 345 (DYNAMIC) is shared with the game</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>In Battle Hub training the game's own "End Training Session" row vanished after a script reset, then came back but did nothing.</dd>
+    <dt>Cause</dt><dd>The game also uses FuncType 345 for its runtime rows. Our "purge unknown DYNAMIC rows" removed them; a blanket early-return in the <code>Function</code> hook then swallowed their click.</dd>
+    <dt>Fix</dt><dd class="fix">Discriminate by ownership, not by type: a game row carries a real delegate in its <code>DynamicChildData</code> (an <code>Action</code> field), ours pass nil. No purge, no fixed tab-count threshold. Field found by scanning the type definition for <code>Action</code>/<code>Delegate</code>/<code>Func</code>.</dd>
+    <dt>Where</dt><dd class="where">NativePauseMenu.lua, <code>game_owns_dyn()</code> · Sep 12–13</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>AddDynamicMenu clones your data</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Rows registered early or during pause: the pause menu opened as an empty panel with the guide bar still drawn; only a game restart repaired it. Address comparisons never matched.</dd>
+    <dt>Cause</dt><dd>The game copies the <code>TrainingMenuData</code> into <code>tab.DynamicChildData</code>. Touching <code>_ChildData</code> yourself corrupts the layout.</dd>
+    <dt>Fix</dt><dd class="fix">Identify rows by the 16-byte <code>_MessageID</code> GUID, never by address. Register once, ≥5 s after entering training, never while paused.</dd>
+    <dt>Where</dt><dd class="where">NativePauseMenu.lua · Aug 30–31</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>A hand-built DYNAMIC row is focusable but dead</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>Appending a row with <code>_FuncType = 345</code> straight into <code>_ChildData</code>: cursor lands on it, nothing else ever fires.</dd>
+    <dt>Cause</dt><dd><code>ViewUpdate</code> / <code>OptionSelectFunction</code> are keyed on a real <code>System.Action</code> (<code>DynamicChildData.DynamicMethod</code>) that Lua cannot create.</dd>
+    <dt>Fix</dt><dd class="fix">Dropped. Go through <code>AddDynamicMenu</code> (rows) or <code>OptionSettingUnit</code> injection (windows).</dd>
+    <dt>Where</dt><dd class="where">Aug 30</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Never rebuild a page inline from the game's own updater</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>"Save As" then fast navigation: REFramework logs <code>UpdateSpinBox appears to be calling itself</code>, then an access violation in the collector thread (0x6f2xxxx range, <code>GetHashCode</code>).</dd>
+    <dt>Cause</dt><dd>We called <code>ViewUpdate</code> from inside the post-hook of <code>UpdateScroll</code>. That re-enters <code>UpdateSpinBox</code> while the game is still iterating its own view data → use-after-free. The "calling itself" warnings are the symptom, not the bug.</dd>
+    <dt>Fix</dt><dd class="fix">Mark the page dirty and rebuild 2 ticks later from <code>LateUpdateBehavior</code>; while a native window is open, wait instead of skipping (the first guard skipped the rebuild under the dialog and left juxtaposed names in the spin).</dd>
+    <dt>Where</dt><dd class="where">RecordingManagerTab.lua, <code>__rmt_vu_at</code> · Sep 11–13</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Never invoke SpinAction from Lua</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd><code>NullReferenceException</code> in <code>via.gui.Text.get_Message</code>, VM corrupted, crash in <code>UIPartsManager.OnLateUpdate</code> 0.8 s later.</dd>
+    <dt>Cause</dt><dd>The flow's lambda expects state the caller does not have.</dd>
+    <dt>Fix</dt><dd class="fix">Drive the value through <code>Init</code> / <code>set_Num</code> only.</dd>
+    <dt>Where</dt><dd class="where">NativePauseMenu.lua · Sep 7</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Arrow-helper hooks fire for objects that are not spins</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Instant crash after hooking the generic arrow helpers.</dd>
+    <dt>Cause</dt><dd>The same method is called for every <code>UIParts*</code>, not only <code>UIPartsSpin</code>.</dd>
+    <dt>Fix</dt><dd class="fix">Hook only <code>InputRight</code> / <code>InputLeft</code> and validate the runtime type before touching a field.</dd>
+    <dt>Where</dt><dd class="where">Sep 7</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Row count: 13 visible, pool of 20, and don't patch the mask</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>A 14th row was clipped at the mask edge; forcing <code>_ViewSize.h = 745</code> fixed it — and hid the last row of the online training menu.</dd>
+    <dt>Cause</dt><dd>Native scroll already handles 14 rows; the patch fought it.</dd>
+    <dt>Fix</dt><dd class="fix">Patch removed. Keep pages ≤ 13 rows (the game's own tabs never exceed 13; the physical row pool is 20).</dd>
+    <dt>Where</dt><dd class="where">measured Aug 31, patch dropped Sep 12</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Function() receives the option's type, not the row's</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>Making a secondary row "borrow" a real spin FuncType never produced a callback for that row.</dd>
+    <dt>Cause</dt><dd>The flow calls <code>Function(ftype, …)</code> with the FuncType of the current <em>option</em>, never the row.</dd>
+    <dt>Fix</dt><dd class="fix">Dead end, abandoned.</dd>
+    <dt>Where</dt><dd class="where">"BORROW_FT" · Sep 7</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>Reopening lands on the wrong sub-tab</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>With three sub-pages instead of the game's two, the menu reopened one page off.</dd>
+    <dt>Cause</dt><dd>The game picks the sub-page through <code>_ChildData[RecordType]</code>.</dd>
+    <dt>Fix</dt><dd class="fix">Force <code>RecordType</code> to the last known page right before that read.</dd>
+    <dt>Where</dt><dd class="where">RecordingManagerTab.lua · Sep 7</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>The control pool is fixed: you cannot add a row from Lua</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd><code>_ItemList:Add</code> plus a script-side row: access violation in <code>UIPartsManager.get_AllParts</code>.</dd>
+    <dt>Cause</dt><dd>Every menu owns a fixed set of prebuilt controls; an item without a control is undefined behaviour.</dd>
+    <dt>Fix</dt><dd class="fix">Either compress features into the rows that exist (4 spins on the DI panel, 6 borrowed on the matching tab) or create the control from inside the flow in C++ (section E).</dd>
+    <dt>Where</dt><dd class="where">house rule 13</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>SelectItem takes an object, not an index</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd><code>SelectItem(4)</code> crashed immediately.</dd>
+    <dt>Cause</dt><dd>The integer is dereferenced as an address.</dd>
+    <dt>Fix</dt><dd class="fix"><code>SetSelectedIndex</code> and trigger the selection reaction yourself.</dd>
+    <dt>Where</dt><dd class="where">MatchingSettingTab.lua · Sep 5</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>InvokeSelectionChanged on a borrowed tab kills the game silently</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>No exception, no dump — the process is just gone.</dd>
+    <dt>Cause</dt><dd>It looks for a page that does not exist for the phantom 5th tab.</dd>
+    <dt>Fix</dt><dd class="fix"><code>SKIP_ORIGINAL</code>; the script shows the page itself. Page visibility is owned by the toggle group <code>p_Group_0_switch_show</code> on the agent's RootItem: hiding pages by hand does nothing — set the game on the borrowed page for one frame, let it react, restore the index.</dd>
+    <dt>Where</dt><dd class="where">MatchingSettingTab.lua · Sep 5</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Hidden controls are already there</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd><code>get_ItemMax()</code> returns 6 while 4 tabs are drawn.</dd>
+    <dt>Cause</dt><dd><code>c_item_04</code> / <code>c_item_05</code> exist, hidden.</dd>
+    <dt>Fix</dt><dd class="fix">Show one, shift the "E" glyph by one step — a 5th tab without creating anything.</dd>
+    <dt>Where</dt><dd class="where">MatchingSettingTab.lua</dd></dl></article>
+</section>
+
+<!-- ===================== B ===================== -->
+<section class="theme" id="b">
+  <div class="theme-head"><div class="k">B</div><h2>Texts, GUIDs and managed strings</h2>
+  <p>All our texts are fake GUIDs written into <code>_MessageID</code> fields and resolved by a pre-hook on <code>app.helper.hMsg.GetMessage</code> that returns a managed string we own.</p></div>
+
+  <article class="case" data-kind="crash"><header><h3>Only strings may enter the GUID table</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Opening "Download Loadouts": the ticker starts drawing, then a crash. Ten guard patches over two days changed nothing.</dd>
+    <dt>Cause</dt><dd>Rows registered with a <em>function</em> as description (lazy text) stored that function raw. The <code>GetMessage</code> hook handed it to <code>sdk.create_managed_string</code>, which returned nil; <code>nil:add_ref()</code> blew up inside the post-hook and left the menu state corrupted.</dd>
+    <dt>Fix</dt><dd class="fix"><code>text_only()</code> evaluates any function and coerces to string at registration time; <code>managed_string()</code> returns nil instead of indexing nil. Found by bisecting commit by commit against a known-good build — the guards were all treating symptoms.</dd>
+    <dt>Where</dt><dd class="where">NativeOptions.lua · Sep 13</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Double release of managed strings</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Random text-related crashes, minutes after the string was shown.</dd>
+    <dt>Cause</dt><dd>The game releases what <code>GetMessage</code> returns; the Lua wrapper also releases its own reference when it dies. One reference, two releases.</dd>
+    <dt>Fix</dt><dd class="fix">One extra <code>add_ref()</code> per string handed to the game, called directly (not through a <code>pcall</code> closure).</dd>
+    <dt>Where</dt><dd class="where">NativePauseMenu / NativeOptions / NativeDialog / NativeTicker · Sep 3</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Reusing one GUID per distinct text crashes</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>NULL dereference at <code>0x2d419f3</code> right after <code>build()</code>.</dd>
+    <dt>Cause</dt><dd>Two live controls sharing a message id confuse the game's message cache.</dd>
+    <dt>Fix</dt><dd class="fix">A fresh GUID per call. The table grows (~1 830 entries per open/close cycle) and is never purged — accepted. Compare GUIDs as two raw qwords; <code>ToString()</code> allocated a managed string per drawn text.</dd>
+    <dt>Where</dt><dd class="where">NativeOptions.lua · Sep 4</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>Game language ≠ Windows language</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Translations followed the OS locale; a Korean test exposed it.</dd>
+    <dt>Cause</dt><dd><code>via.SystemService.get_Language()</code> and <code>hGUI.GetSystemLanguage()</code> report Windows, not the in-game option.</dd>
+    <dt>Fix</dt><dd class="fix">Read <code>app.Option.GetOptionValue(DispLanguage)</code> and index the game's <code>LanguageList</code>.</dd>
+    <dt>Where</dt><dd class="where">NativeLocale.lua · Sep 6</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Assigning a GUID field fails</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd><code>obj.TitleMessage = guid</code> → "nested field layout" error.</dd>
+    <dt>Fix</dt><dd class="fix">Write the 16 bytes at <code>get_offset_from_base()</code> with <code>write_qword</code> ×2.</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>copyProperties is directional and links animation curves</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>A popup frame got destroyed; a copied text inherited the source's animated visibility and position.</dd>
+    <dt>Cause</dt><dd>Direction is SOURCE → TARGET (it overwrites the source you pass), and curves come along.</dd>
+    <dt>Fix</dt><dd class="fix">Copy property by property, redo it every time the control is resolved.</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>remove() permanently breaks Text and Scale9Grid</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Detached then re-parented text stays invisible forever.</dd>
+    <dt>Cause</dt><dd>Detaching unregisters the font / atlas binding.</dd>
+    <dt>Fix</dt><dd class="fix">Only <code>Rect</code> survives <code>remove()</code>. Move the others with <code>addChild</code> only.</dd>
+    <dt>Where</dt><dd class="where">Aug 29</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>A parent accepts at most 8 borrowed texts</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>The 8th <code>addChild</code> works; every later one silently fails.</dd>
+    <dt>Fix</dt><dd class="fix">Spread the three edge texts of a slot row across three distinct parents of the item. Same on the HUD: pools per agent, and some hosts free their texts on mode change (crash in <code>set_Message</code> after adoption).</dd>
+    <dt>Where</dt><dd class="where">measured Sep 7</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Texts created from scratch do not survive a script reset</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>Even with <code>add_ref()</code>, REFramework frees them on reload; later writes crash.</dd>
+    <dt>Fix</dt><dd class="fix">Borrow existing texts from hidden prefabs instead of creating them.</dd>
+    <dt>Where</dt><dd class="where">Aug 30</dd></dl></article>
+</section>
+
+<!-- ===================== C ===================== -->
+<section class="theme" id="c">
+  <div class="theme-head"><div class="k">C</div><h2>Dialogs, windows and spins</h2>
+  <p>Our windows are <code>OptionSettingUnit</code>s injected into <code>OptionManager</code>: rows, toggles, sliders and spins generated by the game's own option dialog. Rows are clones of native <code>SettingParam</code>s, never fabricated instances (that one was a NullReference on day one).</p></div>
+
+  <article class="case" data-kind="crash"><header><h3>end_dialog() on SAVE — the collector thread reads −1</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Access violation on the collector thread at <code>0x146f23437</code> / <code>0x146f25873</code>, on SAVE only; RESET never crashed.</dd>
+    <dt>Cause</dt><dd>Ending the focused dialog and the whole stack in one frame leaves nothing holding focus; being listed in the General list is what roots our unit tree for the native GC, and we removed the root while the tree was still displayed. RESET went through <em>replace + pop</em> (new dialog started before the old one ends).</dd>
+    <dt>Fix</dt><dd class="fix">Every close path now uses replace + pop; the parent is kept alive 8 ticks by the seamless-open logic. The big title <code>e_title</code> is never written directly — statuses ("SAVE OK!") come from a page rebuild.</dd>
+    <dt>Where</dt><dd class="where">NativeDialog.lua · Sep 4, house rule 14</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Repopulating a focused dialog</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Mutating <code>ChildUnitList</code> then calling <code>SetupDispUnits</code> on an open dialog: crash in <code>UpdateFocus</code> on a dead delegate when a button rebinds to a spin.</dd>
+    <dt>Fix</dt><dd class="fix">The only stable path is <code>End()</code> → wait until the agent is gone → <code>Start()</code>. Under active pause the fade freezes: lift the pause → End → wait (with timeout) → Start → re-pause 30 ticks later.</dd>
+    <dt>Where</dt><dd class="where">NativeDialog.lua · Sep 3</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Hard limit: 16 entries in a native spin</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>A 40-entry colour list: instant AV at <code>0x2d419f3</code> on a background thread, every time.</dd>
+    <dt>Cause</dt><dd>Measured on the game's 147 option spins: max 16 (then 15, 14, 13). Past that the game reads outside its table and resolves a message to null.</dd>
+    <dt>Fix</dt><dd class="fix">Sliding blocks of <code>WINDOW = 15</code>, one block loaded at a time; a trailing 1-element block froze the spin, so blocks are re-balanced.</dd>
+    <dt>Where</dt><dd class="where">DIColorMenu.lua · Sep 4–5</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>UIPartsInputGuideList.Add crashes the game</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Confirmed twice, independently, on two different screens.</dd>
+    <dt>Fix</dt><dd class="fix">The bottom-bar "Back" hint stays out of reach on borrowed tabs; Escape works. Untested lead: a post-hook on <code>TrainingManager.GetGuideData(TrainingMenuData, List&lt;InputGuideData&gt;, List&lt;String&gt;)</code> adding an <code>InputGuideData</code> built by data, seen in another modder's C# branch.</dd>
+    <dt>Where</dt><dd class="where">Sep 2 and Sep 5</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>Orphan dialogs steal focus</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Spamming "Generate Random" left visible orphans; without any purge, 32 roots / 40 entries after 15 cycles and duplicated TypeIds.</dd>
+    <dt>Fix</dt><dd class="fix">A close queue for rapid replacements; purge only on a full close. Widening the purge to "any id we never issued" crashed at <code>0x2d419f3</code> and was reverted.</dd>
+    <dt>Where</dt><dd class="where">Sep 4</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>L1+R1 under a dialog jumps the primary tab</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Cause</dt><dd>Neither an agent input nor the TrainingManager: <code>Param.UpdatePrimaryList → CreateViewData → InitTabItem</code> fires with <code>SelectIndex</code> / <code>SelectChildIndex</code> already rewritten.</dd>
+    <dt>Fix</dt><dd class="fix">Skip <code>UpdatePrimaryList</code>; restore both indices in a pre-hook of <code>CreateViewData</code>.</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Text input hooks are unreliable</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Cause</dt><dd><code>TextInputDecided</code> / <code>Cancel</code> are sometimes inlined and never fire.</dd>
+    <dt>Fix</dt><dd class="fix">Hook every path and always finalize on <code>FlowEvent_AfterHide</code>.</dd>
+    <dt>Where</dt><dd class="where">Sep 8</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>OpenRadioButton dropdowns cannot host custom units</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>Confirm loses focus and no popup opens; tied to native TypeIds.</dd>
+    <dt>Fix</dt><dd class="fix">Unsolved. Use an arrow SpinText. "Restore Default Settings" is hidden and made unfocusable (<code>CheckCanSelect</code>) so the keyboard never dead-ends on it.</dd></dl></article>
+
+  <article class="case" data-kind="perf"><header><h3>Dynamic lists: evaluate on open, never on a timer</h3><span class="tag perf">Perf</span></header><dl>
+    <dt>Symptom</dt><dd>Visible hitch on every screen transition.</dd>
+    <dt>Cause</dt><dd><code>fs.glob</code> walks all of <code>data/</code>: ~260 ms, up to 780 ms with 12 000 files, and a dynamic <code>choice(…, fn)</code> is re-asked on every transition.</dd>
+    <dt>Fix</dt><dd class="fix">Lists are built on first real access and cached (<code>ensure_file_list</code>); nothing globs periodically.</dd>
+    <dt>Where</dt><dd class="where">Sep 8</dd></dl></article>
+</section>
+
+<!-- ===================== D ===================== -->
+<section class="theme" id="d">
+  <div class="theme-head"><div class="k">D</div><h2>Threads</h2>
+  <p>RE Engine runs UI, input and rendering on different job threads. Lua is not. Most of our unexplained crashes were a Lua callback on the wrong thread.</p></div>
+
+  <article class="case" data-kind="crash"><header><h3>Rule zero: GUI writes only from LateUpdateBehavior</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>"Random" crashes minutes into a session, never with the REFramework menu open.</dd>
+    <dt>Cause</dt><dd>Bisected with a soak script, 3 cycles per configuration: Lua hooks on HUD text setters / <code>InputState.Update</code> crashed 3/3 with, 0/3 without. The open REFramework menu masked it because input updates stop while it is shown.</dd>
+    <dt>Fix</dt><dd class="fix">No GUI writes from <code>re.on_frame</code>, <code>on_script_reset</code>, <code>BeginRendering</code> or any hook that runs on a job thread. Everything goes through <code>re.on_pre_application_entry("LateUpdateBehavior")</code>.</dd>
+    <dt>Where</dt><dd class="where">Aug 29, house rule 1</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>on_script_reset runs on the reset thread</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>A <code>set_Message</code> restoring a text during reset → AV.</dd>
+    <dt>Fix</dt><dd class="fix">Restore on the first game-thread tick after the module loads.</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>is_managed_object is not a liveness proof</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Cause</dt><dd>It validates a pointer, not that the chunk was not reallocated to another object during a pause/HUD transition.</dd>
+    <dt>Fix</dt><dd class="fix">Drop caches entirely on those transitions; re-resolve later instead of writing.</dd>
+    <dt>Where</dt><dd class="where">house rule 2</dd></dl></article>
+
+  <article class="case" data-kind="freeze"><header><h3>Native plugins must be built with /EHa</h3><span class="tag freeze">Freeze</span></header><dl>
+    <dt>Symptom</dt><dd>Whole game frozen, REFramework re-hooking D3D12 every 11 s forever.</dd>
+    <dt>Cause</dt><dd>An AV inside a <code>__try</code> in a plugin compiled with <code>/EHsc</code>: SEH does not run destructors, a <code>std::lock_guard</code> stayed locked, the game thread deadlocked on it.</dd>
+    <dt>Fix</dt><dd class="fix"><code>/EHa</code> on every native plugin; AV counters that blacklist the offending object and disable the plugin after 5.</dd>
+    <dt>Where</dt><dd class="where">SF6_MemWriterNative · Sep 12, house rule 17</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Hook storage is per call, not per thread</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Cause</dt><dd><code>thread.get_hook_storage()</code> is scoped to one pre/post pair; nested calls of the same method (they happen: <code>Function</code> inside <code>UpdateSpinBox</code>) get their own storage, so a "current row" kept in a thread-static would lie.</dd>
+    <dt>Fix</dt><dd class="fix">Keep state in the storage, or make it re-entrant.</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Writing the guide bar from BeginRendering</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Instant crash, stack through <code>InputDeviceState&lt;KeyboardDevice&gt;.Update</code>.</dd>
+    <dt>Fix</dt><dd class="fix">Write in the post-hook of <code>UIPartsInputGuideList.OnLateUpdate</code>.</dd>
+    <dt>Where</dt><dd class="where">Sep 5</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Read the stack before blaming a script</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>A crash after a Battle Hub match, 6 s after the D3D12 reset, inside <code>dinput8.dll</code>'s own System.String → std::string helper fed with UTF-16 text instead of a pointer.</dd>
+    <dt>Cause</dt><dd>No Lua, no plugin, no .NET frame on the stack: it was the framework build itself, in the ImGui frame it runs from <code>BeginRendering</code>.</dd>
+    <dt>Fix</dt><dd class="fix">Symbolize <code>reframework_crash.dmp</code> (Python <code>minidump</code> + module table) and disassemble the faulting RVA before touching any script. Copy the log first: REFramework truncates it at the next launch.</dd>
+    <dt>Where</dt><dd class="where">Sep 13</dd></dl></article>
+</section>
+
+<!-- ===================== E ===================== -->
+<section class="theme" id="e">
+  <div class="theme-head"><div class="k">E</div><h2>Rows created from scratch, in C++</h2>
+  <p>When a screen has no spare control, a 34 KB native plugin clones an existing row (<code>p_Spin_color</code>) and lets the game finish it. Lua cannot hold a <code>via.gui</code> object at all ("<code>… is not a managed object</code>").</p></div>
+
+  <article class="case" data-kind="crash"><header><h3>duplicate() is only valid inside the flow's Main.OnUpdate</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Same call from <code>UpdateBehavior</code>: an unfinished native object, then a dead VM.</dd>
+    <dt>Fix</dt><dd class="fix">Post-hook of <code>UIFlowMatchingSetting / UIFlowMatchingFighterSetting / UIFlowUI10505.CharaSetting :: Main.OnUpdate</code>, then <code>clone.duplicate → addChild → UIPartsManager.Create → set_Layout / Index / Position / Visible</code>. Names follow <code>p_&lt;Class&gt;_&lt;Name&gt;</code>.</dd>
+    <dt>Where</dt><dd class="where">SF6_MenuRowsNative.cpp · validated Sep 6</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Raw pointers have no refcount</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Cause</dt><dd>The plugin keeps <code>ret.ptr</code> as a raw pointer; the C# API wraps returns with add_ref/release. Mixing both gives crashes minutes later.</dd>
+    <dt>Fix</dt><dd class="fix">One ownership model per object; the plugin never wraps what it created.</dd>
+    <dt>Where</dt><dd class="where">Sep 6</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>A hidden row must not be created at all</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Creating the part visible then hiding it next tick flashed "Special Attacks" for one frame and left a ghost stop in navigation.</dd>
+    <dt>Fix</dt><dd class="fix">No part when <code>hidden</code>; agents where <code>Create</code> returned null are blacklisted so <code>ensure_rows()</code> does not spam exceptions.</dd>
+    <dt>Where</dt><dd class="where">Sep 8</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>ActualVisible stays false with visible parents</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Fix</dt><dd class="fix"><code>set_ForceInvisible(false)</code>. For a badge, reuse a hidden text already in the prefab rather than building a <code>via.gui.*</code> (house rule 16).</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>The clone keeps its source's message link</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Title reverts to the source text on every focus; <code>set_MessageId(Guid.Empty)</code> is not enough.</dd>
+    <dt>Fix</dt><dd class="fix">Write a slightly different variant before the real text, otherwise the "no identical write" comparison skips the update.</dd></dl></article>
+</section>
+
+<!-- ===================== F ===================== -->
+<section class="theme" id="f">
+  <div class="theme-head"><div class="k">F</div><h2>HUD, bottom bar and ticker</h2>
+  <p>The training HUD is rebuilt by the game whenever the pause bit changes; anything we cached is suspect after that.</p></div>
+
+  <article class="case" data-kind="crash"><header><h3>The pause menu tears the HUD down before the pause flag</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Writing on the "first paused frame" crashed twice in one evening.</dd>
+    <dt>Fix</dt><dd class="fix">Restore in the pre-hook of <code>TrainingManager.OpenMenu</code> (game thread, HUD still intact), then drop every cache. On any pause-bit change: drop caches, wait 20 ticks before resolving again. "Controls alive on first paused frame" was wrong twice — now there are no GUI writes at all while pause or the options window is active.</dd>
+    <dt>Where</dt><dd class="where">NativeHud.lua · Aug 30–31</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>TMAttackInfo rewrites its 9 cells on every hit</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Our values were overwritten even after <code>LateUpdateBehavior</code>.</dd>
+    <dt>Fix</dt><dd class="fix">Pre-hook the three setters with <code>SKIP_ORIGINAL</code>. Never capture an "original" colour from a GUI object — use constants verified by screenshot (0xFFFFF3FA / 0xFFFFFFFF).</dd>
+    <dt>Where</dt><dd class="where">Aug 29</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Native bottom bar: disabled behind a flag</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>Six crashes in a day in <code>set_Message</code> on freed texts after reloads and mode changes.</dd>
+    <dt>Cause</dt><dd>Only one borrowable text is safe; texts made with <code>sdk.create_instance</code> die on reset.</dd>
+    <dt>Fix</dt><dd class="fix">Module kept, off by default. Never <code>sdk.hook</code> a HUD widget; write only on change (compare <code>get_Message</code> first).</dd>
+    <dt>Where</dt><dd class="where">Aug 30</dd></dl></article>
+</section>
+
+<!-- ===================== G ===================== -->
+<section class="theme" id="g">
+  <div class="theme-head"><div class="k">G</div><h2>Loader and REFramework</h2>
+  <p>Things about the scripting host itself that cost us a day each.</p></div>
+
+  <article class="case" data-kind="gotcha"><header><h3>200 locals per chunk</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>"too many local variables (limit is 200)" on the big modules.</dd>
+    <dt>Fix</dt><dd class="fix">Wrap blocks in <code>do … end</code>, or hang related state on one table.</dd></dl></article>
+
+  <article class="case" data-kind="perf"><header><h3>pcall(function() … end) in hot paths</h3><span class="tag perf">Perf</span></header><dl>
+    <dt>Cause</dt><dd>A fresh closure per call, GC pressure; 89 of them found in one audit.</dd>
+    <dt>Fix</dt><dd class="fix"><code>pcall(func, args)</code>. Applied to every <code>add_ref</code> path too.</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>The cold-start latch</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Overlays absent after a cold start until a script reset; fine after a reset in training.</dd>
+    <dt>Cause</dt><dd>A detector re-reading the same global it publishes every frame locks on the first frame's value.</dd>
+    <dt>Fix</dt><dd class="fix">Detect from the engine state, never from your own flag.</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>require() only works while autorun loads</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Cause</dt><dd>REFramework's custom module searcher is only active during autorun loading; only root <code>autorun/</code> scripts auto-load and reload on Reset Scripts.</dd>
+    <dt>Fix</dt><dd class="fix">All <code>require</code>s at top level (cached in <code>package.loaded</code>, so two loaders can share modules); probes and experiments live outside <code>autorun/</code>.</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>get_MainFlowID() returns 0</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Fix</dt><dd class="fix">Read <code>app.bFlowManager.m_flow_work._FlowMap._ID</code>: 3 = training/menus, 6 = battle, 9 = Battle Hub, 10 = replay. Training is <code>_ID ∈ {3, 9}</code> and <code>TrainingManager._tData ≠ nil</code>.</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>The log is gone at the next launch</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Fix</dt><dd class="fix">Copy <code>re2_framework_log.txt</code> and <code>reframework_crash.dmp</code> before relaunching. The Windows Application event log (ids 1000/1001) keeps the faulting module and offset. A frozen process can be dumped alive with <code>rundll32 comsvcs.dll, MiniDump &lt;pid&gt; &lt;path&gt; mini</code> and read with <code>ReadProcessMemory</code>.</dd></dl></article>
+</section>
+
+<!-- ===================== H ===================== -->
+<section class="theme" id="h">
+  <div class="theme-head"><div class="k">H</div><h2>Raw memory and native plugins</h2>
+  <p>Lua cannot write native memory; a small C++ plugin does it from a relay file. Every address in that file is a promise about the future.</p></div>
+
+  <article class="case" data-kind="freeze"><header><h3>The Fighter Settings freeze: a render-layer iterator spinning on freed memory</h3><span class="tag freeze">Freeze</span></header><dl>
+    <dt>Symptom</dt><dd>Game frozen at 100 % of one core, window still responding; REFramework logging "Last chance encountered for hooking" every 11 s. No exception, no dump.</dd>
+    <dt>Cause</dt><dd>Live minidump: the render job thread was looping in the engine's <code>via.render.RenderLayer</code> tree iterator (+0x40 parent, +0x48 children, +0x50 count), searching for a <code>ShadowCast</code> node that had been freed and reallocated mid-traversal. Upstream: the relay's raw writes (<code>W &lt;addr&gt; &lt;val&gt;</code>, guarded only by "page is writable") landed on effect objects freed by a preview reload; the effect manager was recycled at the same address, so the block key still matched.</dd>
+    <dt>Fix</dt><dd class="fix">Every write carries its origin (<code>W addr val orig [obj typeinfo]</code>). The plugin samples each address when the relay loads, and writes only if the dword still equals the origin / the requested value / the sample / a value it wrote before / the same saturation-value colour, and only if the owning object still has the same type-info pointer. Lines without origin are refused. Verified: no freeze, no colour regression, refused-write counter in the log.</dd>
+    <dt>Where</dt><dd class="where">SF6_MemWriterNative.cpp, DriveRecolor / DIRecolor · Sep 13</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Network never on the game thread</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Fix</dt><dd class="fix">The community bridge is a pure-C plugin with one worker thread: it watches <code>request.json</code>, shells <code>curl.exe</code> with stdout to a file (no <code>cmd.exe</code>), writes <code>response.json</code>. No .NET runtime, 160 KB.</dd></dl></article>
+
+  <article class="case" data-kind="perf"><header><h3>Open: validate_spots reads ~1 900 addresses in one frame</h3><span class="tag perf">Perf</span></header><dl>
+    <dt>Symptom</dt><dd>37 ms spike every 60 frames, plus a race with the plugin's writes.</dd>
+    <dt>Fix</dt><dd class="fix">Not fixed yet; spreading the validation over several frames would settle both.</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Never patch game text at the source</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Fix</dt><dd class="fix">Overlay (D2D) or borrowed controls only. Editing the message resources crashed reliably.</dd></dl></article>
+</section>
+
+<!-- ===================== I ===================== -->
+<section class="theme" id="i">
+  <div class="theme-head"><div class="k">I</div><h2>Keyboard and navigation</h2>
+  <p>Menus are driven by the engine's input state, not by <code>SendInput</code>.</p></div>
+
+  <article class="case" data-kind="gotcha"><header><h3>Physical scancodes, not virtual keys</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Fix</dt><dd class="fix">Training menus move on physical scancodes (AZERTY: Z 0x11, S 0x1F, A 0x10, Q 0x1E). Arrow keys and injection by key name are inert.</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>agent:call("InputUp") on the pause menu</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Fix</dt><dd class="fix">Immediate AV; it only works on result menus.</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>Injecting a Tab press</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Fix</dt><dd class="fix">Write <code>Flags = 9</code> <em>before</em> <code>UpdateHID</code> with <code>TriggerFrame</code> = current frame, or the key is read back as released.</dd>
+    <dt>Where</dt><dd class="where">Sep 6</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>List edges: GetNextIndex returns the current index</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Cause</dt><dd>At the edges the window shifts; the flow's cursor never moves.</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>Tab switching: drive Input with a direction</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Rewriting <code>SetSelectedIndex</code> and skipping <code>InvokeSelectionChanged</code> desynced the game's notion of the current tab; leaving the menu landed anywhere. Acting inside the <code>Input</code> hook erased the titles on the next pass.</dd>
+    <dt>Fix</dt><dd class="fix">Call <code>Input</code> with the direction (32 = right, 16 = left); note the target in the hook, move in <code>LateUpdateBehavior</code>.</dd>
+    <dt>Where</dt><dd class="where">Sep 5</dd></dl></article>
+
+  <article class="case" data-kind="crash"><header><h3>Re-resolve controls every tick, never defer</h3><span class="tag crash">Crash</span></header><dl>
+    <dt>Symptom</dt><dd>A 10-tick deferral raised an AV on a text the game had just rebuilt.</dd>
+    <dt>Where</dt><dd class="where">DIPanelMode.lua · Sep 6</dd></dl></article>
+</section>
+
+<!-- ===================== REF ===================== -->
+<section class="theme" id="ref">
+  <div class="theme-head"><div class="k">→</div><h2>Hooks and entry points we rely on</h2>
+  <p>The short list that survived. Everything not on it was tried and hurt.</p></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Entry point</th><th>Kind</th><th>What we do there</th></tr></thead>
+    <tbody>
+      <tr><td><code>re.on_pre_application_entry("LateUpdateBehavior")</code></td><td>engine entry</td><td>every GUI write, page rebuilds, deferred work, mode detection</td></tr>
+      <tr><td><code>TrainingManager.AddDynamicMenu(345, data, nil)</code></td><td>game API</td><td>register our rows; identity = <code>_MessageID</code> GUID</td></tr>
+      <tr><td><code>TrainingMenuFunc.ViewUpdate / Function / GetOptionText / GetOptionIndex</code></td><td>pre/post hooks</td><td>answer the game per row; never call them back inline</td></tr>
+      <tr><td><code>UIFlowTrainingMenu.Param.UpdateScroll / UpdateSpinBox</code></td><td>post hooks</td><td>observe only — set dirty flags</td></tr>
+      <tr><td><code>app.helper.hMsg.GetMessage</code></td><td>pre hook</td><td>fake GUID → our managed string (+1 ref)</td></tr>
+      <tr><td><code>app.Option.GetOptionValue(DispLanguage)</code></td><td>game API</td><td>the real UI language</td></tr>
+      <tr><td><code>OptionManager</code> + cloned <code>OptionSettingUnit</code>s</td><td>data injection</td><td>windows: rows, toggles, sliders, spins ≤ 15 entries</td></tr>
+      <tr><td><code>TrainingManager.OpenMenu</code></td><td>pre hook</td><td>last safe moment to touch the HUD</td></tr>
+      <tr><td><code>UIPartsInputGuideList.OnLateUpdate</code></td><td>post hook</td><td>guide-bar text (the only place it survives)</td></tr>
+      <tr><td><code>UIFlow*.Main.OnUpdate</code></td><td>post hook (C++)</td><td><code>duplicate()</code> a row and let <code>UIPartsManager.Create</code> finish it</td></tr>
+      <tr><td><code>bFlowManager.m_flow_work._FlowMap._ID</code></td><td>field</td><td>3 menus/training · 6 battle · 9 Battle Hub · 10 replay</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ===================== RULES ===================== -->
+<section class="theme" id="rules">
+  <div class="theme-head"><div class="k">→</div><h2>The rules that survived</h2>
+  <p>Numbered because they are, in fact, the order we learned them in.</p></div>
+  <ol class="rules">
+    <li><b>GUI writes only from LateUpdateBehavior.</b> Not from on_frame, not from a reset, not from a render hook, not from an input hook.</li>
+    <li><b>A valid pointer is not a live object.</b> On any pause/HUD transition drop every cache and re-resolve later.</li>
+    <li><b>Never create a control from Lua.</b> Borrow a hidden one, clone by data, or build it from inside the flow in C++.</li>
+    <li><b>Never call the game's UI back from its own update.</b> Set a flag, act two ticks later.</li>
+    <li><b>Identity is the GUID, ownership is the delegate.</b> Addresses lie (clones), types lie (345 is shared).</li>
+    <li><b>Strings only, one extra ref, fresh GUID per call.</b> Anything else in the text table is a crash with a two-day fuse.</li>
+    <li><b>Sixteen entries per spin, thirteen rows per page.</b> Measured on the game's own menus.</li>
+    <li><b>Close dialogs by replace + pop.</b> Ending the focused dialog and its stack in one frame de-roots a tree the collector is still reading.</li>
+    <li><b>Every raw write carries its origin.</b> Page-writable is not the same as still-yours.</li>
+    <li><b>/EHa or nothing.</b> A caught AV that skips destructors is a deadlock, not a recovery.</li>
+    <li><b>Read the stack first.</b> No Lua or plugin frame means it is not your bug; copy the log before the next launch erases it.</li>
+  </ol>
+</section>
+
+</main>
+</div>
+
+<footer>Field notes from a Lua + native-plugin training-mode suite for Street Fighter 6 on REFramework. Method names, offsets and addresses refer to the September 2026 game build. Shared as-is; verify against your own build before relying on any offset.</footer>
+
+<script>
+(function(){
+  var cases=[].slice.call(document.querySelectorAll('.case'));
+  var count=function(k){return cases.filter(function(c){return c.dataset.kind===k}).length};
+  document.getElementById('n-total').textContent=cases.length;
+  document.getElementById('n-crash').textContent=count('crash');
+  document.getElementById('n-freeze').textContent=count('freeze');
+  var chips=[].slice.call(document.querySelectorAll('.chip'));
+  chips.forEach(function(ch){ch.addEventListener('click',function(){
+    var k=ch.dataset.kind;
+    chips.forEach(function(c){c.setAttribute('aria-pressed',String(c===ch))});
+    cases.forEach(function(c){c.hidden=(k!=='all'&&c.dataset.kind!==k)});
+    document.querySelectorAll('section.theme').forEach(function(s){
+      var any=s.querySelector('.case:not([hidden])')||!s.querySelector('.case');
+      s.hidden=!any;
+    });
+  })});
+})();
+</script>
+
+</body>
+</html>
