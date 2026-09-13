@@ -173,6 +173,12 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
     <dt>Fix</dt><dd class="fix">Identify rows by the 16-byte <code>_MessageID</code> GUID, never by address. Register once, ≥5 s after entering training, never while paused.</dd>
     <dt>Where</dt><dd class="where">NativePauseMenu.lua · Aug 30–31</dd></dl></article>
 
+  <article class="case" data-kind="silent"><header><h3>A FuncType of your own gets no renderer</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Tempting idea (it works in another modder's C# branch for the <em>options</em> of a real game spin): give each of our rows a FuncType above <code>TrainingFuncType.MAX</code> (346) so the game's callbacks identify it without sharing 345. On one of our rows: the page came up empty, then showed the neighbouring sub-page under the wrong tab. No crash.</dd>
+    <dt>Cause</dt><dd>The flow picks its rendering path on <code>FuncType == DYNAMIC</code>; an unknown type only gets <code>Function(347, …)</code> at the page build and nothing else — no <code>ViewUpdate</code>, no <code>GetOptionText</code>, no row. Put on an <em>option</em> instead, the custom type is never read at all on the DYNAMIC path.</dd>
+    <dt>Fix</dt><dd class="fix">Dropped after one probe each. Ownership stays the delegate of <code>DynamicData</code> (above). The idea only holds for options of a real game spin, where <code>Function</code> receives the option's type on select.</dd>
+    <dt>Where</dt><dd class="where">probes · Sep 13</dd></dl></article>
+
   <article class="case" data-kind="gotcha"><header><h3>A hand-built DYNAMIC row is focusable but dead</h3><span class="tag gotcha">Gotcha</span></header><dl>
     <dt>Symptom</dt><dd>Appending a row with <code>_FuncType = 345</code> straight into <code>_ChildData</code>: cursor lands on it, nothing else ever fires.</dd>
     <dt>Cause</dt><dd><code>ViewUpdate</code> / <code>OptionSelectFunction</code> are keyed on a real <code>System.Action</code> (<code>DynamicChildData.DynamicMethod</code>) that Lua cannot create.</dd>
@@ -319,7 +325,7 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
 
   <article class="case" data-kind="crash"><header><h3>UIPartsInputGuideList.Add crashes the game</h3><span class="tag crash">Crash</span></header><dl>
     <dt>Symptom</dt><dd>Confirmed twice, independently, on two different screens.</dd>
-    <dt>Fix</dt><dd class="fix">The bottom-bar "Back" hint stays out of reach on borrowed tabs; Escape works. Untested lead: a post-hook on <code>TrainingManager.GetGuideData(TrainingMenuData, List&lt;InputGuideData&gt;, List&lt;String&gt;)</code> adding an <code>InputGuideData</code> built by data, seen in another modder's C# branch.</dd>
+    <dt>Fix</dt><dd class="fix">Never touch the widget's own list. Feed the game instead: the bar is built every frame from <code>TrainingManager.GetGuideData</code> — see "The bottom bar, by data" in section F. On borrowed tabs outside the training menu the "Back" hint stays out of reach; Escape works.</dd>
     <dt>Where</dt><dd class="where">Sep 2 and Sep 5</dd></dl></article>
 
   <article class="case" data-kind="silent"><header><h3>Orphan dialogs steal focus</h3><span class="tag silent">Silent bug</span></header><dl>
@@ -432,11 +438,11 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
     <dt>Fix</dt><dd class="fix">Pre-hook the three setters with <code>SKIP_ORIGINAL</code>. Never capture an "original" colour from a GUI object — use constants verified by screenshot (0xFFFFF3FA / 0xFFFFFFFF).</dd>
     <dt>Where</dt><dd class="where">Aug 29</dd></dl></article>
 
-  <article class="case" data-kind="crash"><header><h3>Native bottom bar: disabled behind a flag</h3><span class="tag crash">Crash</span></header><dl>
-    <dt>Symptom</dt><dd>Six crashes in a day in <code>set_Message</code> on freed texts after reloads and mode changes.</dd>
-    <dt>Cause</dt><dd>Only one borrowable text is safe; texts made with <code>sdk.create_instance</code> die on reset.</dd>
-    <dt>Fix</dt><dd class="fix">Module kept, off by default. Never <code>sdk.hook</code> a HUD widget; write only on change (compare <code>get_Message</code> first).</dd>
-    <dt>Where</dt><dd class="where">Aug 30</dd></dl></article>
+  <article class="case" data-kind="silent"><header><h3>The bottom bar, by data (solved after two failed generations)</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>Generation 1 borrowed texts and wrote them from Lua: six crashes in a day in <code>set_Message</code> on freed texts after reloads and mode changes; texts made with <code>sdk.create_instance</code> die on reset. Generation 2 hooked <code>UIWidget_InputGuide.ApplyData</code> and pushed entries into the widget's <code>_InputGuideList</code> (<code>Add</code> / <code>SetAdditionalMessage</code> / <code>Remove</code> juggling on every focus change). It worked, but it fought the game for a list the game owns.</dd>
+    <dt>Cause</dt><dd>The bar has one source of truth: every frame the flow calls <code>TrainingManager.GetGuideData(focused TrainingMenuData, List&lt;InputGuideData&gt;, List&lt;String&gt;)</code> and draws from that list. The two lists are <em>created inside the call</em> — unreadable in a pre-hook, reachable in the post-hook through the reference slot (<code>sdk.to_valuetype(sdk.to_ptr(addr), "via.mat4"):read_qword(0)</code> then <code>to_managed_object</code>).</dd>
+    <dt>Fix</dt><dd class="fix">Post-hook of <code>GetGuideData</code>: identify the focused row (our GUID, or a provider for game rows), <code>Add</code> our cached <code>InputGuideData</code> objects, done. Five probes fixed the rules: an appended entry is drawn after the game's and laid out by the game (<code>x = previous x + previous width</code>, reflow is automatic); two entries sharing a button are <strong>merged</strong> (our first clones were invisible for that reason alone); <code>Type = 2 (Digital)</code> + <code>DigitalId</code> shows the device glyph and the button's <em>own</em> label — the <code>MessageId</code> is ignored; <code>Type = 5 (Text)</code> shows <code>AdditionalMessage</code> raw, no glyph; <code>Type = 0 (DigitalConfig)</code> + <code>DigitalConfigId</code> + a message GUID shows the glyph of the device in use <em>and our text</em> (the game's own <code>NewInputItem(Int32, Digital.ConfigId, Guid)</code> overload). ConfigIds: UI_DECIDE 90 (F), UI_CANCEL 91 (Esc), UI_X 92 (R / pad X), UI_Y 93 (T / pad Y), LB/RB 94/95, LT/RT 96/97. Fields of <code>app.InputGuideData</code>: <code>Type</code> +0x10, <code>DigitalConfigId</code> +0x14, <code>DigitalId</code> +0x1C, <code>GuideId</code> +0x24, <code>MessageId</code> (Guid) +0x28, <code>AdditionalMessage</code> +0x38 — all <code>&lt;Name&gt;k__BackingField</code>. The hint is display only: the key press stays yours to detect.</dd>
+    <dt>Where</dt><dd class="where">NativePauseMenu.lua <code>guide_provider</code> / <code>item.hints</code>, RecordingManagerTab.lua · Sep 13 (gen. 1 Aug 30, gen. 2 Sep 5)</dd></dl></article>
 </section>
 
 <!-- ===================== G ===================== -->
@@ -447,6 +453,12 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
   <article class="case" data-kind="gotcha"><header><h3>200 locals per chunk</h3><span class="tag gotcha">Gotcha</span></header><dl>
     <dt>Symptom</dt><dd>"too many local variables (limit is 200)" on the big modules.</dd>
     <dt>Fix</dt><dd class="fix">Wrap blocks in <code>do … end</code>, or hang related state on one table.</dd></dl></article>
+
+  <article class="case" data-kind="silent"><header><h3>The do-block cure has its own disease: forward references</h3><span class="tag silent">Silent bug</span></header><dl>
+    <dt>Symptom</dt><dd>"Delete slot name" (R / G / pad X) silently did nothing for days, while "Edit slot name" (T) on the same rows worked.</dd>
+    <dt>Cause</dt><dd>Wrapping a module section in <code>do … end</code> to dodge the 200-locals limit makes every <code>local function</code> inside it invisible after the block. <code>set_slot_name</code> lived inside, the key handler outside: the call resolved to a nil <em>global</em>, and the <code>pcall</code> around the handler swallowed "attempt to call a nil value".</dd>
+    <dt>Fix</dt><dd class="fix">Forward-declare (<code>local set_slot_name</code> before the block, assign inside). After any do-block refactor, script the check: every <code>local function</code> defined inside and called after the block must have a forward declaration — a parser pass does not catch this.</dd>
+    <dt>Where</dt><dd class="where">RecordingManagerTab.lua · Sep 13</dd></dl></article>
 
   <article class="case" data-kind="perf"><header><h3>pcall(function() … end) in hot paths</h3><span class="tag perf">Perf</span></header><dl>
     <dt>Cause</dt><dd>A fresh closure per call, GC pressure; 89 of them found in one audit.</dd>
@@ -533,7 +545,8 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
       <tr><td><code>app.Option.GetOptionValue(DispLanguage)</code></td><td>game API</td><td>the real UI language</td></tr>
       <tr><td><code>OptionManager</code> + cloned <code>OptionSettingUnit</code>s</td><td>data injection</td><td>windows: rows, toggles, sliders, spins ≤ 15 entries</td></tr>
       <tr><td><code>TrainingManager.OpenMenu</code></td><td>pre hook</td><td>last safe moment to touch the HUD</td></tr>
-      <tr><td><code>UIPartsInputGuideList.OnLateUpdate</code></td><td>post hook</td><td>guide-bar text (the only place it survives)</td></tr>
+      <tr><td><code>TrainingManager.GetGuideData</code></td><td>post hook</td><td>bottom bar: append our <code>InputGuideData</code> to the list the game just built (type 0 = device glyph + our GUID text)</td></tr>
+      <tr><td><code>UIPartsInputGuideList.OnLateUpdate</code></td><td>post hook</td><td>legacy: appending text to an existing bar entry on screens without <code>GetGuideData</code></td></tr>
       <tr><td><code>UIFlow*.Main.OnUpdate</code></td><td>post hook (C++)</td><td><code>duplicate()</code> a row and let <code>UIPartsManager.Create</code> finish it</td></tr>
       <tr><td><code>bFlowManager.m_flow_work._FlowMap._ID</code></td><td>field</td><td>3 menus/training · 6 battle · 9 Battle Hub · 10 replay</td></tr>
     </tbody>
@@ -555,6 +568,7 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
     <li><b>Close dialogs by replace + pop.</b> Ending the focused dialog and its stack in one frame de-roots a tree the collector is still reading.</li>
     <li><b>Every raw write carries its origin.</b> Page-writable is not the same as still-yours.</li>
     <li><b>/EHa or nothing.</b> A caught AV that skips destructors is a deadlock, not a recovery.</li>
+    <li><b>Feed the game's data, don't draw over it.</b> The bar, the rows, the texts: find the call that builds them and answer it; the moment you write into a widget the game also writes, you are racing it.</li>
     <li><b>Read the stack first.</b> No Lua or plugin frame means it is not your bug; copy the log before the next launch erases it.</li>
   </ol>
 </section>
