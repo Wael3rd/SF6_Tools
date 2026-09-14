@@ -173,11 +173,11 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
     <dt>Fix</dt><dd class="fix">Identify rows by the 16-byte <code>_MessageID</code> GUID, never by address. Register once, ≥5 s after entering training, never while paused.</dd>
     <dt>Where</dt><dd class="where">NativePauseMenu.lua · Aug 30–31</dd></dl></article>
 
-  <article class="case" data-kind="silent"><header><h3>A FuncType of your own gets no renderer</h3><span class="tag silent">Silent bug</span></header><dl>
-    <dt>Symptom</dt><dd>Tempting idea (it works in another modder's C# branch for the <em>options</em> of a real game spin): give each of our rows a FuncType above <code>TrainingFuncType.MAX</code> (346) so the game's callbacks identify it without sharing 345. On one of our rows: the page came up empty, then showed the neighbouring sub-page under the wrong tab. No crash.</dd>
-    <dt>Cause</dt><dd>The flow picks its rendering path on <code>FuncType == DYNAMIC</code>; an unknown type only gets <code>Function(347, …)</code> at the page build and nothing else — no <code>ViewUpdate</code>, no <code>GetOptionText</code>, no row. Put on an <em>option</em> instead, the custom type is never read at all on the DYNAMIC path.</dd>
-    <dt>Fix</dt><dd class="fix">Dropped after one probe each. Ownership stays the delegate of <code>DynamicData</code> (above). The idea only holds for options of a real game spin, where <code>Function</code> receives the option's type on select.</dd>
-    <dt>Where</dt><dd class="where">probes · Sep 13</dd></dl></article>
+  <article class="case" data-kind="gotcha"><header><h3>A FuncType of your own works — as long as the game builds the row</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>First probe (Sep 13) said the opposite: a custom type (347 = MAX+1) on one of our spin rows got only <code>Function(347, …)</code> at the page build, no <code>ViewUpdate</code>, no <code>GetOptionText</code>, and the page came up empty. We nearly wrote it off.</dd>
+    <dt>Cause</dt><dd>That test was confounded by our own row machinery, which recognises its rows by <code>FuncType == DYNAMIC</code> and answers the game's callbacks for them — a row at 347 fell out of <em>our</em> build, not the game's. Retested clean (Sep 14, credit to a fellow modder's C# branch for insisting): a spin row of type 347 with options 348–350, appended by data to a game tab's <code>_ChildData</code> (array replaced once, menu closed), <strong>renders and works with no hook answering for it</strong>. The game runs <code>GetVisibleCase / GetIsActive / IsChangedValue / IsValueType / GetOptionIndex(347, wanted, 348|349|350)</code> itself, takes the option labels from each option's <code>_MessageID</code>, asks <code>GetGuideData(347)</code> on focus, and dispatches <code>Function(348 | 349 | 350, param, viewData, rowIndex)</code> on every scroll — the <em>option's</em> type, which is all the dispatch you need. No <code>GetOptionText</code> at all.</dd>
+    <dt>Fix</dt><dd class="fix">Two models, then: rows added through <code>AddDynamicMenu</code> live on the DYNAMIC path (shared 345, answered by hooks, ownership by delegate); rows appended by data to a tab's <code>_ChildData</code> can carry their own types and let the game do the work. The second is simpler and is where we are heading. The one thing a custom type cannot do is get the DYNAMIC-path renderer to accept it.</dd>
+    <dt>Where</dt><dd class="where">probes · Sep 13–14</dd></dl></article>
 
   <article class="case" data-kind="gotcha"><header><h3>A hand-built DYNAMIC row is focusable but dead</h3><span class="tag gotcha">Gotcha</span></header><dl>
     <dt>Symptom</dt><dd>Appending a row with <code>_FuncType = 345</code> straight into <code>_ChildData</code>: cursor lands on it, nothing else ever fires.</dd>
@@ -268,6 +268,12 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
     <dt>Cause</dt><dd>Two live controls sharing a message id confuse the game's message cache.</dd>
     <dt>Fix</dt><dd class="fix">A fresh GUID per call. The table grows (~1 830 entries per open/close cycle) and is never purged — accepted. Compare GUIDs as two raw qwords; <code>ToString()</code> allocated a managed string per drawn text.</dd>
     <dt>Where</dt><dd class="where">NativeOptions.lua · Sep 4</dd></dl></article>
+
+  <article class="case" data-kind="gotcha"><header><h3>hMsg.GetMessage vs hLocalize.getMessage</h3><span class="tag gotcha">Gotcha</span></header><dl>
+    <dt>Symptom</dt><dd>Two candidate hooks for fake-GUID texts; other mods hook <code>app.helper.hLocalize.getMessage(Guid)</code>, we hook <code>app.helper.hMsg.GetMessage(Guid)</code>.</dd>
+    <dt>Cause</dt><dd>Counted over ~27 s of pause menu + HUD: <code>hMsg.GetMessage(Guid)</code> fires ~300 times per second (10 017 calls); all three <code>hLocalize.getMessage</code> overloads — <code>(Guid)</code>, <code>(Guid, via.Language)</code>, <code>(via.gui.MessageAccessData)</code> — fired 0 times, never from inside <code>hMsg</code>. On the UI flows' path (row titles, guides, options, dialogs, guide bar, HUD) <code>hMsg</code> is the entry; <code>hLocalize</code> is either elsewhere or inlined.</dd>
+    <dt>Fix</dt><dd class="fix">Hook <code>hMsg.GetMessage(Guid)</code>. At 300 calls/s: early-out when no GUID is registered, compare GUIDs as two raw qwords, never <code>ToString()</code>. If a hook on <code>hLocalize</code> works for you, your callers differ — count before assuming.</dd>
+    <dt>Where</dt><dd class="where">probe · Sep 14</dd></dl></article>
 
   <article class="case" data-kind="silent"><header><h3>Game language ≠ Windows language</h3><span class="tag silent">Silent bug</span></header><dl>
     <dt>Symptom</dt><dd>Translations followed the OS locale; a Korean test exposed it.</dd>
@@ -562,7 +568,7 @@ footer{max-width:1180px;margin:48px auto 0;color:var(--muted);font-size:.86rem;b
     <li><b>A valid pointer is not a live object.</b> On any pause/HUD transition drop every cache and re-resolve later.</li>
     <li><b>Never create a control from Lua.</b> Borrow a hidden one, clone by data, or build it from inside the flow in C++.</li>
     <li><b>Never call the game's UI back from its own update.</b> Set a flag, act two ticks later.</li>
-    <li><b>Identity is the GUID, ownership is the delegate.</b> Addresses lie (clones), types lie (345 is shared).</li>
+    <li><b>Identity is the GUID, ownership is the delegate — on the DYNAMIC path.</b> Addresses lie (clones), 345 is shared. Rows you append by data can carry their own FuncType and the game dispatches on it.</li>
     <li><b>Strings only, one extra ref, fresh GUID per call.</b> Anything else in the text table is a crash with a two-day fuse.</li>
     <li><b>Sixteen entries per spin, thirteen rows per page.</b> Measured on the game's own menus.</li>
     <li><b>Close dialogs by replace + pop.</b> Ending the focused dialog and its stack in one frame de-roots a tree the collector is still reading.</li>
